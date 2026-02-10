@@ -36,8 +36,15 @@ interface LogEntry {
     location: string;
     report: string;
     staff_member: string;
+    uniform: string;
     extra_data: Record<string, any>;
 }
+
+// Fixed option lists
+const SECTORS = ['Sector 1', 'Sector 2', 'Sector 3', 'Administración', 'Taller', 'Patio'];
+const SUPERVISORS = ['Supervisor 1', 'Supervisor 2', 'Supervisor 3'];
+const LOCATIONS = ['Planta 1', 'Planta 2', 'Sótano', 'Oficina Central', 'Almacén'];
+const UNIFORMS = ['Completo', 'Parcial', 'Sin Uniforme', 'Otro'];
 
 export default function LogbookPage() {
     const [entries, setEntries] = useState<LogEntry[]>([]);
@@ -52,11 +59,12 @@ export default function LogbookPage() {
     const [newReport, setNewReport] = useState<Partial<LogEntry>>({
         title: '',
         date: new Date().toISOString().split('T')[0],
-        sector: '',
-        supervisor: '',
-        location: '',
+        sector: SECTORS[0],
+        supervisor: SUPERVISORS[0],
+        location: LOCATIONS[0],
         report: '',
         staff_member: '',
+        uniform: UNIFORMS[0],
         extra_data: {}
     });
 
@@ -71,11 +79,12 @@ export default function LogbookPage() {
     const [inlineData, setInlineData] = useState<Partial<LogEntry>>({
         title: '',
         date: new Date().toISOString().split('T')[0],
-        sector: '',
-        supervisor: '',
-        location: '',
+        sector: SECTORS[0],
+        supervisor: SUPERVISORS[0],
+        location: LOCATIONS[0],
         report: '',
         staff_member: '',
+        uniform: UNIFORMS[0],
         extra_data: {}
     });
 
@@ -117,11 +126,12 @@ export default function LogbookPage() {
                 const resetData = {
                     title: '',
                     date: new Date().toISOString().split('T')[0],
-                    sector: '',
-                    supervisor: '',
-                    location: '',
+                    sector: SECTORS[0],
+                    supervisor: SUPERVISORS[0],
+                    location: LOCATIONS[0],
                     report: '',
                     staff_member: '',
+                    uniform: UNIFORMS[0],
                     extra_data: {}
                 };
                 setNewReport(resetData);
@@ -238,6 +248,7 @@ export default function LogbookPage() {
             { header: 'Sector', key: 'sector', width: 20 },
             { header: 'Supervisor', key: 'supervisor', width: 20 },
             { header: 'Lugar', key: 'location', width: 20 },
+            { header: 'Uniforme', key: 'uniform', width: 20 },
             { header: 'Reporte', key: 'report', width: 50 },
             { header: 'Funcionario', key: 'staff_member', width: 20 },
         ];
@@ -267,6 +278,7 @@ export default function LogbookPage() {
                 sector: entry.sector,
                 supervisor: entry.supervisor,
                 location: entry.location,
+                uniform: entry.uniform,
                 report: entry.report,
                 staff_member: entry.staff_member,
                 ...entry.extra_data
@@ -348,6 +360,7 @@ export default function LogbookPage() {
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Sector</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Supervisor</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Lugar</th>
+                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Uniforme</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Reporte</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Funcionario</th>
                                 {columns.map(col => (
@@ -373,10 +386,27 @@ export default function LogbookPage() {
                                 <td style={{ padding: '0.5rem' }}></td>
                                 <td style={{ padding: '0.5rem' }}><input placeholder="Nuevo reporte..." value={inlineData.title} onChange={e => setInlineData({ ...inlineData, title: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
                                 <td style={{ padding: '0.5rem' }}><input type="date" value={inlineData.date} onChange={e => setInlineData({ ...inlineData, date: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
-                                <td style={{ padding: '0.5rem' }}><input placeholder="Sector" value={inlineData.sector} onChange={e => setInlineData({ ...inlineData, sector: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
-                                <td style={{ padding: '0.5rem' }}><input placeholder="Nombre" value={inlineData.supervisor} onChange={e => setInlineData({ ...inlineData, supervisor: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
-                                <td style={{ padding: '0.5rem' }}><input placeholder="Lugar" value={inlineData.location} onChange={e => setInlineData({ ...inlineData, location: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
-                                <td style={{ padding: '0.5rem' }}><input placeholder="Reporte breve..." value={inlineData.report} onChange={e => setInlineData({ ...inlineData, report: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
+                                <td style={{ padding: '0.5rem' }}>
+                                    <select value={inlineData.sector} onChange={e => setInlineData({ ...inlineData, sector: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
+                                        {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </td>
+                                <td style={{ padding: '0.5rem' }}>
+                                    <select value={inlineData.supervisor} onChange={e => setInlineData({ ...inlineData, supervisor: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
+                                        {SUPERVISORS.map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                </td>
+                                <td style={{ padding: '0.5rem' }}>
+                                    <select value={inlineData.location} onChange={e => setInlineData({ ...inlineData, location: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
+                                        {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                                    </select>
+                                </td>
+                                <td style={{ padding: '0.5rem' }}>
+                                    <select value={inlineData.uniform} onChange={e => setInlineData({ ...inlineData, uniform: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
+                                        {UNIFORMS.map(u => <option key={u} value={u}>{u}</option>)}
+                                    </select>
+                                </td>
+                                <td style={{ padding: '0.5rem' }}><input placeholder="Reporte..." value={inlineData.report} onChange={e => setInlineData({ ...inlineData, report: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
                                 <td style={{ padding: '0.5rem' }}><input placeholder="Funcionario" value={inlineData.staff_member} onChange={e => setInlineData({ ...inlineData, staff_member: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
                                 {columns.map(col => (
                                     <td key={col.id} style={{ padding: '0.5rem' }}>
@@ -427,6 +457,11 @@ export default function LogbookPage() {
                                         <td style={{ padding: '1rem' }}>{entry.sector}</td>
                                         <td style={{ padding: '1rem' }}>{entry.supervisor}</td>
                                         <td style={{ padding: '1rem' }}>{entry.location}</td>
+                                        <td style={{ padding: '1rem' }}>
+                                            <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '10px', backgroundColor: entry.uniform === 'Completo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: entry.uniform === 'Completo' ? '#22c55e' : '#ef4444', border: '1px solid currentColor' }}>
+                                                {entry.uniform}
+                                            </span>
+                                        </td>
                                         <td style={{ padding: '1rem', verticalAlign: 'top', whiteSpace: 'normal', lineBreak: 'anywhere', minWidth: '250px' }}>{entry.report}</td>
                                         <td style={{ padding: '1rem' }}>{entry.staff_member}</td>
                                         {columns.map(col => (
@@ -460,22 +495,36 @@ export default function LogbookPage() {
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Sector</label>
-                                        <input required value={newReport.sector} onChange={e => setNewReport({ ...newReport, sector: e.target.value })} className="input" placeholder="Ej: Piso 3" />
+                                        <select value={newReport.sector} onChange={e => setNewReport({ ...newReport, sector: e.target.value })} className="input" required>
+                                            {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
                                     </div>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Supervisor</label>
-                                        <input required value={newReport.supervisor} onChange={e => setNewReport({ ...newReport, supervisor: e.target.value })} className="input" />
+                                        <select value={newReport.supervisor} onChange={e => setNewReport({ ...newReport, supervisor: e.target.value })} className="input" required>
+                                            {SUPERVISORS.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Lugar</label>
-                                        <input required value={newReport.location} onChange={e => setNewReport({ ...newReport, location: e.target.value })} className="input" />
+                                        <select value={newReport.location} onChange={e => setNewReport({ ...newReport, location: e.target.value })} className="input" required>
+                                            {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                                        </select>
                                     </div>
                                 </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Funcionario / Personal</label>
-                                    <input required value={newReport.staff_member} onChange={e => setNewReport({ ...newReport, staff_member: e.target.value })} className="input" />
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Uniforme</label>
+                                        <select value={newReport.uniform} onChange={e => setNewReport({ ...newReport, uniform: e.target.value })} className="input" required>
+                                            {UNIFORMS.map(u => <option key={u} value={u}>{u}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Funcionario / Personal</label>
+                                        <input required value={newReport.staff_member} onChange={e => setNewReport({ ...newReport, staff_member: e.target.value })} className="input" />
+                                    </div>
                                 </div>
 
                                 {/* Dynamic Fields */}

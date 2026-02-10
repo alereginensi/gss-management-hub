@@ -25,12 +25,12 @@ export async function GET() {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { title, date, sector, supervisor, location, report, staff_member, extra_data } = body;
+        const { title, date, sector, supervisor, location, report, staff_member, uniform, extra_data } = body;
 
         const info = db.prepare(`
-            INSERT INTO logbook (title, date, sector, supervisor, location, report, staff_member, extra_data)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(title, date, sector, supervisor, location, report, staff_member, JSON.stringify(extra_data || {}));
+            INSERT INTO logbook (title, date, sector, supervisor, location, report, staff_member, uniform, extra_data)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(title, date, sector, supervisor, location, report, staff_member, uniform, JSON.stringify(extra_data || {}));
 
         return NextResponse.json({ success: true, id: info.lastInsertRowid });
     } catch (error) {
