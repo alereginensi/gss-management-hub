@@ -79,9 +79,8 @@ export default function LogbookPage() {
         extra_data: {}
     });
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    // Selection State
+    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
     const fetchData = async () => {
         setLoading(true);
@@ -91,6 +90,7 @@ export default function LogbookPage() {
                 const data = await res.json();
                 setEntries(data.entries);
                 setColumns(data.columns);
+                setSelectedIds(new Set()); // Reset selection on new data
             }
         } catch (error) {
             console.error('Error fetching logbook:', error);
@@ -98,6 +98,10 @@ export default function LogbookPage() {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
 
     const handleCreateReport = async (e: React.FormEvent | null, data: Partial<LogEntry>) => {
         if (e) e.preventDefault();
@@ -182,8 +186,30 @@ export default function LogbookPage() {
         }
     };
 
+    const toggleSelection = (id: number) => {
+        const newSelected = new Set(selectedIds);
+        if (newSelected.has(id)) newSelected.delete(id);
+        else newSelected.add(id);
+        setSelectedIds(newSelected);
+    };
+
+    const toggleAll = () => {
+        if (selectedIds.size === entries.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(entries.map(e => e.id)));
+        }
+    };
+
     const exportToExcel = async () => {
-        if (entries.length === 0) return;
+        const entriesToExport = selectedIds.size > 0
+            ? entries.filter(e => selectedIds.has(e.id))
+            : entries;
+
+        if (entriesToExport.length === 0) {
+            alert('Por favor selecciona al menos un reporte para exportar.');
+            return;
+        }
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Bitácora GSS');
@@ -233,7 +259,7 @@ export default function LogbookPage() {
         });
 
         // Add data
-        entries.forEach(entry => {
+        entriesToExport.forEach(entry => {
             const rowData: any = {
                 id: entry.id,
                 title: entry.title,
@@ -281,7 +307,16 @@ export default function LogbookPage() {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button onClick={() => handleManage('clear_entries')} className="btn" style={{ fontSize: '0.8rem', backgroundColor: 'rgba(239, 68, 68, 0.05)', color: '#ef4444' }}>
+                            Vaciar Datos
+                        </button>
+                        <button onClick={() => handleManage('reset_all')} className="btn" style={{ fontSize: '0.8rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 'bold' }}>
+                            Reiniciar TODO
+                        </button>
+                    </div>
+                    <div style={{ flex: 1 }}></div>
                     <button onClick={exportToExcel} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
                         <Download size={18} />
                         Exportar Excel
@@ -300,6 +335,14 @@ export default function LogbookPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ backgroundColor: 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-color)' }}>
+                                <th style={{ padding: '1rem', width: '40px' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={entries.length > 0 && selectedIds.size === entries.length}
+                                        onChange={toggleAll}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                </th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Título</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Fecha</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Sector</th>
@@ -327,6 +370,7 @@ export default function LogbookPage() {
                             </tr>
                             {/* --- INLINE QUICK ADD ROW --- */}
                             <tr style={{ borderBottom: '2px solid var(--accent-color)', backgroundColor: 'rgba(59, 130, 246, 0.05)' }}>
+                                <td style={{ padding: '0.5rem' }}></td>
                                 <td style={{ padding: '0.5rem' }}><input placeholder="Nuevo reporte..." value={inlineData.title} onChange={e => setInlineData({ ...inlineData, title: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
                                 <td style={{ padding: '0.5rem' }}><input type="date" value={inlineData.date} onChange={e => setInlineData({ ...inlineData, date: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
                                 <td style={{ padding: '0.5rem' }}><input placeholder="Sector" value={inlineData.sector} onChange={e => setInlineData({ ...inlineData, sector: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
@@ -356,7 +400,7 @@ export default function LogbookPage() {
                         <tbody>
                             {entries.length === 0 ? (
                                 <tr>
-                                    <td colSpan={9 + columns.length} style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                    <td colSpan={10 + columns.length} style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
                                             <BookOpen size={48} opacity={0.2} />
                                             <p>Empieza a llenar tu Bitácora directamente arriba o usa el botón Nuevo</p>
@@ -365,7 +409,19 @@ export default function LogbookPage() {
                                 </tr>
                             ) : (
                                 entries.map(entry => (
-                                    <tr key={entry.id} style={{ borderBottom: '1px solid var(--border-color)', fontSize: '0.9rem' }}>
+                                    <tr key={entry.id} style={{
+                                        borderBottom: '1px solid var(--border-color)',
+                                        fontSize: '0.9rem',
+                                        backgroundColor: selectedIds.has(entry.id) ? 'rgba(59, 130, 246, 0.03)' : 'transparent'
+                                    }}>
+                                        <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.has(entry.id)}
+                                                onChange={() => toggleSelection(entry.id)}
+                                                style={{ cursor: 'pointer' }}
+                                            />
+                                        </td>
                                         <td style={{ padding: '1rem', fontWeight: 600 }}>{entry.title}</td>
                                         <td style={{ padding: '1rem' }}>{entry.date}</td>
                                         <td style={{ padding: '1rem' }}>{entry.sector}</td>
