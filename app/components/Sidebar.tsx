@@ -68,11 +68,6 @@ export default function Sidebar() {
                         <li>
                             <NavItem href="/new-ticket" icon={<PlusCircle size={18} />} label="Nuevo Ticket" active={pathname === '/new-ticket'} />
                         </li>
-                        {currentUser.role === 'admin' && (
-                            <li>
-                                <NavItem href="/reports" icon={<BarChart3 size={18} />} label="Reportes" active={pathname === '/reports'} />
-                            </li>
-                        )}
                     </ul>
                 </div>
 
