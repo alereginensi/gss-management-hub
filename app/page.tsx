@@ -38,7 +38,7 @@ export default function Home() {
             </div>
             <div>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Tickets Abiertos</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{openTickets}</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{openTickets}</p>
             </div>
           </div>
 
@@ -48,7 +48,7 @@ export default function Home() {
             </div>
             <div>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Resueltos Hoy</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{resolvedToday}</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{resolvedToday}</p>
             </div>
           </div>
 
@@ -58,7 +58,7 @@ export default function Home() {
             </div>
             <div>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Prioridad Alta</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{highPriority}</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{highPriority}</p>
             </div>
           </div>
 
@@ -68,7 +68,7 @@ export default function Home() {
             </div>
             <div>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Tiempo Promedio</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{avgResolutionTime}</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{avgResolutionTime}</p>
             </div>
           </div>
         </section>
@@ -82,30 +82,75 @@ export default function Home() {
             </Link>
           </div>
 
-          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>ID</th>
-                <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Asunto</th>
-                <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Solicitante</th>
-                <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Prioridad</th>
-                <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Estado</th>
-                <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Fecha</th>
-              </tr>
-            </thead>
-            <tbody style={{ fontSize: '0.875rem' }}>
-              {recentTickets.map(ticket => (
-                <tr key={ticket.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>#{`T-${ticket.id}`}</td>
-                  <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>{ticket.subject}</td>
-                  <td style={{ padding: '1rem 0.5rem' }}>{ticket.requester || 'N/A'}</td>
-                  <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.priorityColor }}>{ticket.priority}</span></td>
-                  <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.statusColor }}>{ticket.status}</span></td>
-                  <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>{ticket.date}</td>
+          <div className="desktop-view">
+            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                  <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>ID</th>
+                  <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Asunto</th>
+                  <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Solicitante</th>
+                  <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Prioridad</th>
+                  <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Estado</th>
+                  <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Fecha</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody style={{ fontSize: '0.875rem' }}>
+                {recentTickets.map(ticket => (
+                  <tr key={ticket.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>#{`T-${ticket.id}`}</td>
+                    <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>{ticket.subject}</td>
+                    <td style={{ padding: '1rem 0.5rem' }}>{ticket.requester || 'N/A'}</td>
+                    <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.priorityColor }}>{ticket.priority}</span></td>
+                    <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.statusColor }}>{ticket.status}</span></td>
+                    <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>{ticket.date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mobile-view" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {recentTickets.map(ticket => (
+              <Link href={`/tickets/${ticket.id}`} key={ticket.id} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <div style={{
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-color)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.5rem'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>#{ticket.id}</span>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      padding: '0.2rem 0.5rem',
+                      borderRadius: '12px',
+                      backgroundColor: ticket.statusColor,
+                      color: '#fff',
+                      fontWeight: 600
+                    }}>
+                      {ticket.status}
+                    </span>
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{ticket.subject}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      padding: '0.1rem 0.4rem',
+                      borderRadius: '4px',
+                      backgroundColor: ticket.priorityColor,
+                      color: '#fff'
+                    }}>
+                      {ticket.priority}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{ticket.date}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </section>
       </main>
     </div>

@@ -20,6 +20,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true });
         }
 
+        if (action === 'reject') {
+            db.prepare('DELETE FROM users WHERE email = ? AND approved = 0').run(email);
+            return NextResponse.json({ success: true });
+        }
+
         if (action === 'create_admin') {
             const hashedPassword = await hashPassword(password);
             db.prepare('INSERT INTO users (name, email, password, department, role, approved) VALUES (?, ?, ?, ?, ?, ?)')

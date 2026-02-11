@@ -22,6 +22,27 @@ export default function Register() {
         setError('');
 
         try {
+            // Validate email existence with API
+            const validationResponse = await fetch('/api/validate-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: formData.email })
+            });
+
+            const validationData = await validationResponse.json();
+
+            if (!validationData.valid) {
+                setError('Por favor escribe una dirección de email válida');
+                setLoading(false);
+                return;
+            }
+
+            // Show warning if using fallback validation
+            if (validationData.fallback) {
+                console.warn('Using fallback email validation:', validationData.message);
+            }
+
+            // Proceed with registration
             const res = await fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -36,7 +57,8 @@ export default function Register() {
                 setError(data.error || 'Error al registrar usuario');
             }
         } catch (err) {
-            setError('Error de conexión');
+            console.error('Registration error:', err);
+            setError('Error de conexión. Por favor intenta nuevamente.');
         } finally {
             setLoading(false);
         }
@@ -78,7 +100,7 @@ export default function Register() {
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Correo Electrónico</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Correo Electrónico</label>
                         <div style={{ position: 'relative' }}>
                             <input
                                 type="email"

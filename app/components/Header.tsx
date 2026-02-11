@@ -4,10 +4,15 @@ import { Search, Bell, X } from 'lucide-react';
 import { useTicketContext } from '../context/TicketContext';
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function Header({ title }: { title: string }) {
     const { searchQuery, setSearchQuery, notifications, unreadCount, markNotificationRead, clearAllNotifications, currentUser, setCurrentUser } = useTicketContext();
     const [showNotifications, setShowNotifications] = useState(false);
+    const pathname = usePathname();
+
+    // Show search only on Dashboard, Tickets list, and New Ticket (as requested)
+    const showSearch = pathname === '/' || pathname === '/tickets' || pathname === '/new-ticket';
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(e.target.value);
@@ -29,7 +34,7 @@ export default function Header({ title }: { title: string }) {
     };
 
     return (
-        <header style={{
+        <header className="header-responsive" style={{
             marginBottom: '2rem',
             display: 'flex',
             justifyContent: 'space-between',
@@ -39,25 +44,28 @@ export default function Header({ title }: { title: string }) {
         }}>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h1>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                <div style={{ position: 'relative' }}>
-                    <input
-                        type="text"
-                        placeholder="Buscar tickets..."
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                        style={{
-                            padding: '0.5rem 1rem 0.5rem 2.25rem',
-                            borderRadius: 'var(--radius)',
-                            border: '1px solid var(--border-color)',
-                            fontSize: '0.875rem',
-                            width: '250px',
-                            backgroundColor: 'var(--surface-color)',
-                            color: 'var(--text-primary)'
-                        }}
-                    />
-                    <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
-                </div>
+            <div className="header-controls" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                {showSearch && (
+                    <div className="search-wrapper" style={{ position: 'relative' }}>
+                        <input
+                            type="text"
+                            className="search-input"
+                            placeholder="Buscar tickets..."
+                            value={searchQuery}
+                            onChange={handleSearchChange}
+                            style={{
+                                padding: '0.5rem 1rem 0.5rem 2.25rem',
+                                borderRadius: 'var(--radius)',
+                                border: '1px solid var(--border-color)',
+                                fontSize: '0.875rem',
+                                width: '250px',
+                                backgroundColor: 'var(--surface-color)',
+                                color: 'var(--text-primary)'
+                            }}
+                        />
+                        <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', opacity: 0.5, zIndex: 10, color: 'var(--text-primary)' }} />
+                    </div>
+                )}
 
                 <div style={{ position: 'relative' }}>
                     <button

@@ -152,7 +152,7 @@ export default function Login() {
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Correo Electrónico</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Correo Electrónico</label>
                         <div style={{ position: 'relative' }}>
                             <input
                                 type="email"
@@ -176,7 +176,7 @@ export default function Login() {
 
                     {isAdminLogin && (
                         <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Contraseña</label>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Contraseña</label>
                             <div style={{ position: 'relative' }}>
                                 <input
                                     type={showPassword ? "text" : "password"}

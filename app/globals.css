@@ -1,43 +1,38 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 :root {
   /* GSS Brand Colors */
-  --primary-color: #0f172a;
-  /* Slate 900 - Deep Blue/Black */
-  --primary-hover: #1e293b;
-  --accent-color: #f59e0b;
-  /* Amber 500 - Orange/Yellow for actions */
-  --accent-hover: #d97706;
+  --primary-color: #29416b;
+  /* GSS Dark Blue */
+  --primary-hover: #1e3a8a;
+  --accent-color: #e04951;
+  /* GSS Red */
+  --accent-hover: #b91c1c;
 
   /* Backgrounds */
   --bg-color: #f8fafc;
-  /* Slate 50 */
   --surface-color: #ffffff;
-  --sidebar-bg: #1e293b;
-  /* Slate 800 */
+  --sidebar-bg: #29416b;
+  /* Sidebar matches brand */
 
   /* Text */
   --text-primary: #0f172a;
   --text-secondary: #64748b;
-  --text-inverse: #f8fafc;
+  --text-inverse: #ffffff;
 
   /* Status Colors */
-  --status-new: #3b82f6;
-  /* Blue */
+  --status-new: #3850a0;
+  /* GSS Blue */
   --status-progress: #f59e0b;
-  /* Amber */
-  --status-resolved: #22c55e;
-  /* Green */
+  /* Amber (keep for warning/progress) */
+  --status-resolved: #16a34a;
+  /* GSS Green-ish */
   --status-closed: #64748b;
-  /* Slate */
 
   /* Priority Colors */
-  --priority-high: #ef4444;
-  /* Red */
+  --priority-high: #e04951;
+  /* GSS Red */
   --priority-medium: #f59e0b;
-  --priority-low: #22c55e;
+  --priority-low: #16a34a;
+  /* Green */
 
   /* Spacing & Borders */
   --radius: 0.5rem;
@@ -76,6 +71,16 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Global Form Elements */
+input,
+select,
+textarea {
+  background-color: var(--surface-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
 }
 
 /* Utilities */
@@ -120,4 +125,299 @@ a {
   font-size: 0.75rem;
   font-weight: 600;
   color: white;
+}
+
+.btn-secondary {
+  background-color: var(--surface-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-color);
+  border-color: var(--text-secondary);
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+}
+
+.btn-outline:hover {
+  background-color: rgba(15, 23, 42, 0.05);
+}
+
+/* ========================================
+   MOBILE RESPONSIVE STYLES
+   ======================================== */
+
+/* Mobile: < 768px */
+@media (max-width: 767px) {
+
+  /* Adjust main content for mobile (no sidebar offset) */
+  main {
+    margin-left: 0 !important;
+    padding: 1rem !important;
+    padding-top: 4rem !important;
+    /* Space for hamburger button */
+  }
+
+  /* Make cards more compact on mobile */
+  .card {
+    padding: 1rem;
+    border-radius: 0.75rem;
+  }
+
+  /* Larger touch targets for buttons */
+  .btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+    min-height: 44px;
+  }
+
+  /* Stack form grids vertically */
+  [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Larger input fields for touch */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+    /* Prevents zoom on iOS */
+    padding: 0.875rem !important;
+    min-height: 48px;
+  }
+
+  /* Hide desktop-only elements */
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* Full width on mobile */
+  .mobile-full-width {
+    width: 100% !important;
+  }
+}
+
+/* Tablet: 768px - 1024px */
+@media (min-width: 768px) and (max-width: 1024px) {
+  main {
+    margin-left: 260px;
+    padding: 1.5rem;
+  }
+
+  .card {
+    padding: 1.25rem;
+  }
+}
+
+/* Desktop: > 1024px */
+@media (min-width: 1025px) {
+  main {
+    margin-left: 260px;
+    padding: 2rem;
+  }
+}
+
+/* Mobile View Switcher */
+.mobile-view {
+  display: none;
+}
+
+.desktop-view {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .mobile-view {
+    display: block;
+  }
+
+  .desktop-view {
+    display: none;
+  }
+
+  /* Logbook Card Styles */
+  .logbook-card {
+    background: var(--surface-color);
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+  }
+
+  .logbook-card-header {
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .logbook-card-body {
+    padding: 1rem;
+  }
+
+  .logbook-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .logbook-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .logbook-value {
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: right;
+  }
+
+  /* Floating Action Button (FAB) */
+  .fab {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .fab:active {
+    transform: scale(0.95);
+  }
+
+  /* Responsive Modal */
+  .modal-responsive {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Responsive Header */
+  .header-responsive {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
+  }
+
+  .header-controls {
+    width: 100%;
+    justify-content: space-between;
+    gap: 1rem !important;
+  }
+
+  .search-wrapper {
+    flex: 1;
+    width: 100%;
+  }
+
+  .search-input {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Prevent horizontal scroll globally */
+  html,
+  body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* User Management Mobile */
+  .user-management-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .user-card-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .user-actions {
+    width: 100%;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .user-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* User Management Desktop default */
+.user-management-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 2rem;
+}
+
+.user-card-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background-color: var(--bg-color);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-color);
+}
+
+/* Visibility Utilities */
+.mobile-view {
+  display: none;
+}
+
+.desktop-view {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .mobile-view {
+    display: block;
+  }
+
+  .desktop-view {
+    display: none;
+  }
+}
+
+/* Dark Mode Autofill Overrides */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--surface-color) inset !important;
+  -webkit-text-fill-color: var(--text-primary) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Ensure global label visibility */
+label {
+  color: var(--text-primary);
 }

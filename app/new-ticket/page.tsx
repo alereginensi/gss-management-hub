@@ -34,7 +34,7 @@ export default function NewTicket() {
         }
     }, [currentUser]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!formData.name || !formData.email || !formData.department) {
@@ -42,11 +42,36 @@ export default function NewTicket() {
             return;
         }
 
-        // Validate email format
+        // Validate email format first
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
             alert('Por favor ingresa un email válido.');
             return;
+        }
+
+        // Validate email existence with API
+        try {
+            const validationResponse = await fetch('/api/validate-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: formData.email })
+            });
+
+            const validationData = await validationResponse.json();
+
+            if (!validationData.valid) {
+                alert('Por favor escribe una dirección de email válida');
+                return;
+            }
+
+            // Show warning if using fallback validation
+            if (validationData.fallback) {
+                console.warn('Using fallback email validation:', validationData.message);
+            }
+        } catch (error) {
+            console.error('Email validation error:', error);
+            // Continue with ticket creation even if validation fails
+            console.warn('Email validation failed, proceeding with basic validation');
         }
 
         // Update current user email if not set
@@ -110,7 +135,7 @@ export default function NewTicket() {
                         <form onSubmit={handleSubmit} className="card">
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Nombre Completo *</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Nombre Completo *</label>
                                     <input
                                         type="text"
                                         name="name"
@@ -131,7 +156,7 @@ export default function NewTicket() {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Email *</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Email *</label>
                                     <input
                                         type="email"
                                         name="email"
@@ -152,7 +177,7 @@ export default function NewTicket() {
                                 </div>
 
                                 <div style={{ gridColumn: '1 / -1' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Asunto</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Asunto</label>
                                     <input
                                         type="text"
                                         name="subject"
@@ -173,7 +198,7 @@ export default function NewTicket() {
                                 </div>
 
                                 <div style={{ gridColumn: '1 / -1' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Descripción Detallada</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Descripción Detallada</label>
                                     <textarea
                                         name="description"
                                         required
@@ -195,7 +220,7 @@ export default function NewTicket() {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Departamento</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Departamento</label>
                                     <select
                                         name="department"
                                         required
@@ -219,7 +244,7 @@ export default function NewTicket() {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Prioridad</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Prioridad</label>
                                     <select
                                         name="priority"
                                         value={formData.priority}
@@ -241,7 +266,7 @@ export default function NewTicket() {
                                 </div>
 
                                 <div style={{ gridColumn: '1 / -1' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Adjuntos</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Adjuntos</label>
                                     <div
                                         onClick={() => document.getElementById('file-upload')?.click()}
                                         style={{

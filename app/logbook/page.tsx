@@ -65,6 +65,7 @@ export default function LogbookPage() {
     // Modals
     const [showReportModal, setShowReportModal] = useState(false);
     const [showColumnModal, setShowColumnModal] = useState(false);
+    const [selectedReport, setSelectedReport] = useState<LogEntry | null>(null);
 
     // Form States
     const [newReportHeader, setNewReportHeader] = useState({
@@ -435,6 +436,32 @@ export default function LogbookPage() {
         document.body.removeChild(link);
     };
 
+    // Prepare data for rendering (Sort and Color)
+    const sortedEntries = [...entries].sort((a, b) => {
+        if (a.sector !== b.sector) {
+            return a.sector.localeCompare(b.sector);
+        }
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
+
+    let currentSector = '';
+    const sectorColors = [
+        'rgba(59, 130, 246, 0.02)',  // Blue tint
+        'rgba(16, 185, 129, 0.02)',  // Green tint
+        'rgba(245, 158, 11, 0.02)',  // Orange tint
+        'rgba(139, 92, 246, 0.02)',  // Purple tint
+        'rgba(236, 72, 153, 0.02)'   // Pink tint
+    ];
+    const sectorColorMap: Record<string, string> = {};
+    let colorIndex = 0;
+
+    sortedEntries.forEach(entry => {
+        if (!sectorColorMap[entry.sector]) {
+            sectorColorMap[entry.sector] = sectorColors[colorIndex % sectorColors.length];
+            colorIndex++;
+        }
+    });
+
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-color)' }}>
             <Sidebar />
@@ -443,31 +470,34 @@ export default function LogbookPage() {
                     <Header title="Bitácora - Supervisores" />
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button onClick={handleDeleteSelected} className="btn" style={{ fontSize: '0.8rem', backgroundColor: 'rgba(239, 68, 68, 0.05)', color: '#ef4444' }}>
+                <div className="desktop-view" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button onClick={handleDeleteSelected} className="btn" style={{ fontSize: '0.8rem', backgroundColor: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                             Eliminar Fila(s)
                         </button>
-                        <button onClick={() => handleManage('clear_entries')} className="btn" style={{ fontSize: '0.8rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 'bold' }}>
+                        <button onClick={() => handleManage('clear_entries')} className="btn" style={{ fontSize: '0.8rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 'bold', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                             Vaciar Todo
                         </button>
                     </div>
-                    <div style={{ flex: 1 }}></div>
-                    <button onClick={exportToExcel} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
-                        <Download size={18} />
-                        Exportar Excel
-                    </button>
-                    <button onClick={() => setShowColumnModal(true)} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-color)' }}>
-                        <Layout size={18} />
-                        Agregar columna
-                    </button>
-                    <button onClick={() => setShowReportModal(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Plus size={18} />
-                        Nuevo Registro
-                    </button>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button onClick={exportToExcel} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                            <Download size={18} />
+                            Exportar Excel
+                        </button>
+                        <button onClick={() => setShowColumnModal(true)} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-color)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                            <Layout size={18} />
+                            Agregar columna
+                        </button>
+                        <button onClick={() => setShowReportModal(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Plus size={18} />
+                            Nuevo Reporte
+                        </button>
+                    </div>
                 </div>
 
-                <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+                {/* Desktop Table View */}
+                <div className="card desktop-view" style={{ padding: 0, overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ backgroundColor: 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-color)' }}>
@@ -577,93 +607,109 @@ export default function LogbookPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                (() => {
-                                    // Sort entries by sector first, then by date (newest first)
-                                    const sortedEntries = [...entries].sort((a, b) => {
-                                        if (a.sector !== b.sector) {
-                                            return a.sector.localeCompare(b.sector);
-                                        }
-                                        return new Date(b.date).getTime() - new Date(a.date).getTime();
-                                    });
+                                sortedEntries.map((entry, index) => {
+                                    const isNewSector = index === 0 || entry.sector !== sortedEntries[index - 1].sector;
+                                    const sectorBgColor = sectorColorMap[entry.sector] || 'transparent';
+                                    const rowBgColor = selectedIds.has(entry.id)
+                                        ? 'rgba(59, 130, 246, 0.08)'
+                                        : sectorBgColor;
 
-                                    let currentSector = '';
-                                    const sectorColors = [
-                                        'rgba(59, 130, 246, 0.02)',  // Blue tint
-                                        'rgba(16, 185, 129, 0.02)',  // Green tint
-                                        'rgba(245, 158, 11, 0.02)',  // Orange tint
-                                        'rgba(139, 92, 246, 0.02)',  // Purple tint
-                                        'rgba(236, 72, 153, 0.02)'   // Pink tint
-                                    ];
-                                    const sectorColorMap: Record<string, string> = {};
-                                    let colorIndex = 0;
-
-                                    return sortedEntries.map((entry, index) => {
-                                        const isNewSector = entry.sector !== currentSector;
-
-                                        if (isNewSector) {
-                                            currentSector = entry.sector;
-                                            if (!sectorColorMap[entry.sector]) {
-                                                sectorColorMap[entry.sector] = sectorColors[colorIndex % sectorColors.length];
-                                                colorIndex++;
-                                            }
-                                        }
-
-                                        const sectorBgColor = sectorColorMap[entry.sector] || 'transparent';
-                                        const rowBgColor = selectedIds.has(entry.id)
-                                            ? 'rgba(59, 130, 246, 0.08)'
-                                            : sectorBgColor;
-
-                                        return (
-                                            <React.Fragment key={entry.id}>
-                                                {isNewSector && index > 0 && (
-                                                    <tr style={{ height: '8px', backgroundColor: 'rgba(0,0,0,0.03)' }}>
-                                                        <td colSpan={10 + columns.length} style={{ padding: 0, borderTop: '2px solid var(--border-color)' }}></td>
-                                                    </tr>
-                                                )}
-                                                <tr style={{
-                                                    borderBottom: '1px solid var(--border-color)',
-                                                    fontSize: '0.9rem',
-                                                    backgroundColor: rowBgColor,
-                                                    borderLeft: isNewSector ? `3px solid ${sectorColorMap[entry.sector].replace('0.02', '0.4')}` : 'none'
-                                                }}>
-                                                    <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedIds.has(entry.id)}
-                                                            onChange={() => toggleSelection(entry.id)}
-                                                            style={{ cursor: 'pointer' }}
-                                                        />
-                                                    </td>
-                                                    <td style={{ padding: '1rem' }}>{entry.date}</td>
-                                                    <td style={{ padding: '1rem' }}>{entry.supervised_by}</td>
-                                                    <td style={{ padding: '1rem' }}>{entry.supervisor}</td>
-                                                    <td style={{ padding: '1rem', fontWeight: isNewSector ? 600 : 400 }}>{entry.sector}</td>
-                                                    <td style={{ padding: '1rem' }}>{entry.location}</td>
-                                                    <td style={{ padding: '1rem' }}>{entry.staff_member}</td>
-                                                    <td style={{ padding: '1rem' }}>
-                                                        <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '10px', backgroundColor: entry.uniform === 'Completo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: entry.uniform === 'Completo' ? '#22c55e' : '#ef4444', border: '1px solid currentColor' }}>
-                                                            {entry.uniform}
-                                                        </span>
-                                                    </td>
-                                                    <td style={{ padding: '1rem', verticalAlign: 'top', whiteSpace: 'normal', lineBreak: 'anywhere', minWidth: '250px' }}>{entry.report}</td>
-                                                    {columns.map(col => (
-                                                        <td key={col.id} style={{ padding: '1rem' }}>{entry.extra_data[col.name] || '-'}</td>
-                                                    ))}
-                                                    <td style={{ padding: '1rem' }}></td>
+                                    return (
+                                        <React.Fragment key={entry.id}>
+                                            {isNewSector && index > 0 && (
+                                                <tr style={{ height: '8px', backgroundColor: 'rgba(0,0,0,0.03)' }}>
+                                                    <td colSpan={10 + columns.length} style={{ padding: 0, borderTop: '2px solid var(--border-color)' }}></td>
                                                 </tr>
-                                            </React.Fragment>
-                                        );
-                                    });
-                                })()
+                                            )}
+                                            <tr style={{
+                                                borderBottom: '1px solid var(--border-color)',
+                                                fontSize: '0.9rem',
+                                                backgroundColor: rowBgColor,
+                                                borderLeft: isNewSector ? `3px solid ${sectorColorMap[entry.sector].replace('0.02', '0.4')}` : 'none'
+                                            }}>
+                                                <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedIds.has(entry.id)}
+                                                        onChange={() => toggleSelection(entry.id)}
+                                                        style={{ cursor: 'pointer' }}
+                                                    />
+                                                </td>
+                                                <td style={{ padding: '1rem' }}>{entry.date}</td>
+                                                <td style={{ padding: '1rem' }}>{entry.supervised_by}</td>
+                                                <td style={{ padding: '1rem' }}>{entry.supervisor}</td>
+                                                <td style={{ padding: '1rem', fontWeight: isNewSector ? 600 : 400 }}>{entry.sector}</td>
+                                                <td style={{ padding: '1rem' }}>{entry.location}</td>
+                                                <td style={{ padding: '1rem' }}>{entry.staff_member}</td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '10px', backgroundColor: entry.uniform === 'Completo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: entry.uniform === 'Completo' ? '#22c55e' : '#ef4444', border: '1px solid currentColor' }}>
+                                                        {entry.uniform}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '1rem', verticalAlign: 'top', whiteSpace: 'normal', lineBreak: 'anywhere', minWidth: '250px' }}>{entry.report}</td>
+                                                {columns.map(col => (
+                                                    <td key={col.id} style={{ padding: '1rem' }}>{entry.extra_data[col.name] || '-'}</td>
+                                                ))}
+                                                <td style={{ padding: '1rem' }}></td>
+                                            </tr>
+                                        </React.Fragment>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
                 </div>
 
+                {/* Mobile Card View */}
+                {/* Mobile Card View (Compact) */}
+                <div className="mobile-view">
+                    {entries.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                            <BookOpen size={48} opacity={0.2} />
+                            <p style={{ marginTop: '1rem' }}>No hay registros. Usa el botón + para agregar uno.</p>
+                        </div>
+                    ) : (
+                        sortedEntries.map((entry) => (
+                            <div key={entry.id} className="logbook-card" style={{
+                                borderLeft: `4px solid ${sectorColorMap[entry.sector]?.replace('0.02', '0.6') || 'var(--border-color)'}`,
+                                padding: '1rem',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                gap: '1rem'
+                            }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem', textTransform: 'uppercase' }}>
+                                        {entry.sector} • {entry.date}
+                                    </div>
+                                    <div style={{ fontWeight: 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {entry.location}
+                                    </div>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {entry.staff_member || 'Sin funcionario'}
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setSelectedReport(entry)}
+                                    className="btn btn-secondary"
+                                    style={{ fontSize: '0.8rem', padding: '0.5rem 0.8rem', whiteSpace: 'nowrap' }}
+                                >
+                                    Ver Reporte
+                                </button>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* FAB for Mobile */}
+                <button className="fab mobile-view" onClick={() => setShowReportModal(true)} aria-label="Nuevo Reporte">
+                    <Plus size={24} />
+                </button>
+
                 {/* Modal: Nuevo Reporte */}
                 {showReportModal && (
                     <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-                        <div className="card" style={{ width: '1000px', maxWidth: '95vw', padding: '2rem', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div className="card modal-responsive" style={{ width: '1000px', maxWidth: '95vw', padding: '2rem', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
                             <button onClick={() => setShowReportModal(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)', opacity: 0.5 }}><X size={24} /></button>
 
                             <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -729,7 +775,7 @@ export default function LogbookPage() {
                                     </div>
 
                                     {reportItems.map((item, idx) => (
-                                        <div key={idx} style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '1rem', position: 'relative', backgroundColor: 'white' }}>
+                                        <div key={idx} style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '1rem', position: 'relative', backgroundColor: 'var(--surface-color)' }}>
                                             {reportItems.length > 1 && (
                                                 <button
                                                     type="button"
@@ -893,6 +939,105 @@ export default function LogbookPage() {
                                     <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Crear Columna</button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                )}
+                {/* Detail Modal */}
+                {selectedReport && (
+                    <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+                        <div className="card modal-responsive" style={{ width: '500px', maxWidth: '95vw', padding: '2rem', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
+                            <button onClick={() => setSelectedReport(null)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)', opacity: 0.5 }}><X size={24} /></button>
+                            <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', fontWeight: 700, paddingRight: '2rem' }}>Detalle del Reporte</h3>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sector</span>
+                                        <div style={{ fontWeight: 600 }}>{selectedReport.sector}</div>
+                                    </div>
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lugar</span>
+                                        <div style={{ fontWeight: 600 }}>{selectedReport.location}</div>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fecha</span>
+                                        <div>{selectedReport.date}</div>
+                                    </div>
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Uniforme</span>
+                                        <div>
+                                            <span style={{
+                                                fontSize: '0.75rem',
+                                                padding: '0.1rem 0.4rem',
+                                                borderRadius: '4px',
+                                                backgroundColor: selectedReport.uniform === 'Completo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                                color: selectedReport.uniform === 'Completo' ? '#22c55e' : '#ef4444'
+                                            }}>
+                                                {selectedReport.uniform}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Funcionario</span>
+                                    <div style={{ fontSize: '1rem' }}>{selectedReport.staff_member || '-'}</div>
+                                </div>
+
+                                <div>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Reporte / Novedades</span>
+                                    <div style={{ padding: '1rem', backgroundColor: 'var(--bg-color)', borderRadius: '8px', fontSize: '0.9rem', whiteSpace: 'pre-wrap', border: '1px solid var(--border-color)', marginTop: '0.25rem' }}>
+                                        {selectedReport.report || 'Sin novedades'}
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Supervisor</span>
+                                        <div>{selectedReport.supervisor}</div>
+                                    </div>
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Superviso</span>
+                                        <div>{selectedReport.supervised_by}</div>
+                                    </div>
+                                </div>
+
+                                {/* Extra Columns */}
+                                {Object.keys(selectedReport.extra_data).length > 0 && (
+                                    <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-color)' }}>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Datos Adicionales</span>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                            {Object.entries(selectedReport.extra_data).map(([key, value]) => (
+                                                <div key={key}>
+                                                    <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{key.replace(/_/g, ' ')}:</span>
+                                                    <div style={{ fontSize: '0.9rem' }}>{String(value)}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                <button
+                                    className="btn"
+                                    style={{ width: '100%', backgroundColor: '#fee2e2', color: '#b91c1c', justifyContent: 'center', padding: '0.75rem' }}
+                                    onClick={() => {
+                                        if (confirm('¿Eliminar este reporte permanentemente?')) {
+                                            setSelectedIds(new Set([selectedReport.id]));
+                                            setTimeout(() => {
+                                                handleDeleteSelected();
+                                                setSelectedReport(null);
+                                            }, 100);
+                                        }
+                                    }}
+                                >
+                                    <Trash2 size={18} style={{ marginRight: '0.5rem' }} /> Eliminar Reporte
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

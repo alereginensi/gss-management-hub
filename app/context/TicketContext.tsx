@@ -83,6 +83,7 @@ interface TicketContextType {
     updateSystemSettings: (settings: Record<string, string>) => Promise<void>;
     requestAccess: (email: string, name: string, department: string) => Promise<{ success: boolean; error?: string }>;
     approveUser: (email: string) => Promise<boolean>;
+    rejectUser: (email: string) => Promise<boolean>;
     pendingUsers: User[];
     fetchAllUsers: () => Promise<void>;
 }
@@ -197,6 +198,24 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             }
             return false;
         } catch (error) {
+            return false;
+        }
+    };
+
+    const rejectUser = async (email: string) => {
+        try {
+            const res = await fetch('/api/admin/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, action: 'reject' })
+            });
+            if (res.ok) {
+                fetchAllUsers();
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error rejecting user:', error);
             return false;
         }
     };
@@ -501,6 +520,7 @@ Gracias por utilizar el sistema de tickets GSS.`.trim();
             updateSystemSettings,
             requestAccess,
             approveUser,
+            rejectUser,
             pendingUsers,
             fetchAllUsers
         }}>
