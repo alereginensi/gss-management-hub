@@ -4,10 +4,10 @@ import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import { useTicketContext } from '../../context/TicketContext';
 import { useEffect, useState } from 'react';
-import { UserCheck, UserPlus, Info, Mail, Shield } from 'lucide-react';
+import { UserCheck, UserPlus, Info, Mail, Shield, X, Check } from 'lucide-react';
 
 export default function UserManagement() {
-    const { pendingUsers, fetchAllUsers, approveUser, currentUser } = useTicketContext();
+    const { pendingUsers, fetchAllUsers, approveUser, rejectUser, currentUser } = useTicketContext();
     const [loading, setLoading] = useState(false);
     const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', department: 'Administración' });
 
@@ -20,6 +20,13 @@ export default function UserManagement() {
     const handleApprove = async (email: string) => {
         setLoading(true);
         await approveUser(email);
+        setLoading(false);
+    };
+
+    const handleReject = async (email: string) => {
+        if (!confirm('¿Estás seguro de que deseas rechazar y eliminar esta solicitud?')) return;
+        setLoading(true);
+        await rejectUser(email);
         setLoading(false);
     };
 
@@ -59,7 +66,9 @@ export default function UserManagement() {
             }}>
                 <Header title="Gestión de Usuarios" />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2rem' }}>
+
+
+                <div className="user-management-grid">
 
                     {/* Approvals Section */}
                     <div>
@@ -77,29 +86,40 @@ export default function UserManagement() {
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     {pendingUsers.map(user => (
-                                        <div key={user.email} style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            padding: '1rem',
-                                            backgroundColor: 'var(--bg-color)',
-                                            borderRadius: 'var(--radius)',
-                                            border: '1px solid var(--border-color)'
-                                        }}>
-                                            <div>
+                                        <div key={user.email} className="user-card-item">
+                                            <div className="user-info">
                                                 <div style={{ fontWeight: 600 }}>{user.name === 'Solicitante Pendiente' ? 'Nueva Solicitud' : user.name}</div>
                                                 <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
                                                     {user.email} {user.department !== 'Sin Asignar' && `• ${user.department}`}
                                                 </div>
                                             </div>
-                                            <button
-                                                className="btn btn-primary"
-                                                style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
-                                                onClick={() => handleApprove(user.email!)}
-                                                disabled={loading}
-                                            >
-                                                Aprobar
-                                            </button>
+                                            <div className="user-actions">
+                                                <button
+                                                    className="btn"
+                                                    style={{
+                                                        fontSize: '0.875rem',
+                                                        padding: '0.5rem 1rem',
+                                                        backgroundColor: '#fee2e2',
+                                                        color: '#b91c1c',
+                                                        border: '1px solid #fecaca',
+                                                        display: 'flex', alignItems: 'center', gap: '0.25rem'
+                                                    }}
+                                                    onClick={() => handleReject(user.email!)}
+                                                    disabled={loading}
+                                                    title="Rechazar solicitud"
+                                                >
+                                                    <X size={16} /> Recharzar
+                                                </button>
+                                                <button
+                                                    className="btn btn-primary"
+                                                    style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                                    onClick={() => handleApprove(user.email!)}
+                                                    disabled={loading}
+                                                    title="Aprobar solicitud"
+                                                >
+                                                    <Check size={16} /> Aprobar
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -117,7 +137,7 @@ export default function UserManagement() {
 
                             <form onSubmit={handleCreateAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Nombre</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-primary)' }}>Nombre</label>
                                     <input
                                         type="text"
                                         required
@@ -128,7 +148,7 @@ export default function UserManagement() {
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Email</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-primary)' }}>Email</label>
                                     <input
                                         type="email"
                                         required
@@ -139,7 +159,7 @@ export default function UserManagement() {
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Contraseña</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-primary)' }}>Contraseña</label>
                                     <input
                                         type="password"
                                         required

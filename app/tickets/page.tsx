@@ -5,10 +5,12 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import Link from 'next/link';
 import { useTicketContext } from '../context/TicketContext';
+import { X, ArrowRight, Eye } from 'lucide-react';
 
 export default function TicketList() {
     const { tickets, searchQuery, filter, setFilter, currentUser } = useTicketContext();
     const [departmentFilter, setDepartmentFilter] = useState<string>('Todos');
+    const [selectedTicket, setSelectedTicket] = useState<any>(null);
 
     // Apply filters
     const filteredTickets = tickets.filter(ticket => {
@@ -100,41 +102,174 @@ export default function TicketList() {
                         )}
                     </div>
 
-                    <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                                <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>ID</th>
-                                <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Asunto</th>
-                                <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Prioridad</th>
-                                <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Estado</th>
-                                <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Fecha</th>
-                                <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody style={{ fontSize: '0.875rem' }}>
-                            {filteredTickets.length > 0 ? (
-                                filteredTickets.map(ticket => (
-                                    <tr key={ticket.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                        <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>#{`T-${ticket.id}`}</td>
-                                        <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>{ticket.subject}</td>
-                                        <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.priorityColor }}>{ticket.priority}</span></td>
-                                        <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.statusColor }}>{ticket.status}</span></td>
-                                        <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>{ticket.date}</td>
-                                        <td style={{ padding: '1rem 0.5rem' }}>
-                                            <Link href={`/tickets/${ticket.id}`} style={{ color: 'var(--accent-color)', fontWeight: 500 }}>Ver Detalle</Link>
+                    <div className="desktop-view">
+                        <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                                    <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>ID</th>
+                                    <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Asunto</th>
+                                    <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Prioridad</th>
+                                    <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Estado</th>
+                                    <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Fecha</th>
+                                    <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody style={{ fontSize: '0.875rem' }}>
+                                {filteredTickets.length > 0 ? (
+                                    filteredTickets.map(ticket => (
+                                        <tr key={ticket.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                            <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>#{`T-${ticket.id}`}</td>
+                                            <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>{ticket.subject}</td>
+                                            <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.priorityColor }}>{ticket.priority}</span></td>
+                                            <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.statusColor }}>{ticket.status}</span></td>
+                                            <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>{ticket.date}</td>
+                                            <td style={{ padding: '1rem 0.5rem' }}>
+                                                <Link href={`/tickets/${ticket.id}`} style={{ color: 'var(--accent-color)', fontWeight: 500 }}>Ver Detalle</Link>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                            {searchQuery ? `No se encontraron tickets que coincidan con "${searchQuery}"` : 'No hay tickets en esta categoría'}
                                         </td>
                                     </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                        {searchQuery ? `No se encontraron tickets que coincidan con "${searchQuery}"` : 'No hay tickets en esta categoría'}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Mobile View */}
+                    <div className="mobile-view">
+                        {filteredTickets.length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {filteredTickets.map(ticket => (
+                                    <div key={ticket.id} style={{
+                                        padding: '1rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--border-color)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.5rem',
+                                        backgroundColor: 'var(--bg-color)'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>#{ticket.id} • {ticket.date}</span>
+                                            <span style={{
+                                                fontSize: '0.75rem',
+                                                padding: '0.2rem 0.5rem',
+                                                borderRadius: '12px',
+                                                backgroundColor: ticket.statusColor,
+                                                color: '#fff',
+                                                fontWeight: 600
+                                            }}>
+                                                {ticket.status}
+                                            </span>
+                                        </div>
+                                        <div style={{ fontWeight: 600, fontSize: '1rem' }}>{ticket.subject}</div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                                            <span style={{
+                                                fontSize: '0.75rem',
+                                                padding: '0.2rem 0.5rem',
+                                                borderRadius: '4px',
+                                                backgroundColor: ticket.priorityColor,
+                                                color: '#fff',
+                                                fontWeight: 500
+                                            }}>
+                                                {ticket.priority}
+                                            </span>
+                                            <button
+                                                onClick={() => setSelectedTicket(ticket)}
+                                                className="btn btn-secondary"
+                                                style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                                            >
+                                                <Eye size={14} /> Vista Rápida
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                {searchQuery ? `No se encontraron tickets` : 'No hay tickets'}
+                            </div>
+                        )}
+                    </div>
                 </div>
+
+                {/* Ticket Quick View Modal */}
+                {selectedTicket && (
+                    <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+                        <div className="card modal-responsive" style={{ width: '500px', maxWidth: '95vw', padding: '2rem', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
+                            <button onClick={() => setSelectedTicket(null)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)', opacity: 0.5 }}><X size={24} /></button>
+                            <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', fontWeight: 700, paddingRight: '2rem' }}>Vista Rápida del Ticket</h3>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ID</span>
+                                        <div style={{ fontWeight: 600 }}>#{selectedTicket.id}</div>
+                                    </div>
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fecha</span>
+                                        <div>{selectedTicket.date}</div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Asunto</span>
+                                    <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{selectedTicket.subject}</div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Estado</span>
+                                        <div>
+                                            <span style={{
+                                                fontSize: '0.8rem',
+                                                padding: '0.2rem 0.6rem',
+                                                borderRadius: '12px',
+                                                backgroundColor: selectedTicket.statusColor,
+                                                color: '#fff',
+                                                fontWeight: 600
+                                            }}>
+                                                {selectedTicket.status}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Prioridad</span>
+                                        <div>
+                                            <span style={{
+                                                fontSize: '0.8rem',
+                                                padding: '0.2rem 0.6rem',
+                                                borderRadius: '4px',
+                                                backgroundColor: selectedTicket.priorityColor,
+                                                color: '#fff',
+                                                fontWeight: 500
+                                            }}>
+                                                {selectedTicket.priority}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Departamento</span>
+                                    <div>{selectedTicket.department}</div>
+                                </div>
+                            </div>
+
+                            <Link
+                                href={`/tickets/${selectedTicket.id}`}
+                                className="btn btn-primary"
+                                style={{ width: '100%', justifyContent: 'center', padding: '0.8rem' }}
+                            >
+                                Ir a Gestión Completa <ArrowRight size={18} style={{ marginLeft: '0.5rem' }} />
+                            </Link>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     );
