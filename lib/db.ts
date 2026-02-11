@@ -24,7 +24,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS logbook (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
+    title TEXT, -- Made optional
     date TEXT NOT NULL,
     sector TEXT,
     supervisor TEXT,
@@ -32,6 +32,7 @@ db.exec(`
     report TEXT,
     staff_member TEXT,
     uniform TEXT,
+    supervised_by TEXT,
     extra_data TEXT, -- JSON string
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -50,6 +51,12 @@ try {
   db.exec("ALTER TABLE users ADD COLUMN approved INTEGER DEFAULT 0");
 } catch (e) {
   // Column already exists or table doesn't exist yet
+}
+
+try {
+  db.exec("ALTER TABLE logbook ADD COLUMN supervised_by TEXT");
+} catch (e) {
+  // Column already exists
 }
 
 try {
