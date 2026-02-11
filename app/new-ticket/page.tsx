@@ -14,6 +14,7 @@ export default function NewTicket() {
 
     const [formData, setFormData] = useState({
         name: currentUser.name === 'Solicitante Pendiente' ? '' : (currentUser.name || ''),
+        email: currentUser.email || '',
         subject: '',
         description: '',
         department: currentUser.department === 'Sin Asignar' ? '' : (currentUser.department || ''),
@@ -25,6 +26,9 @@ export default function NewTicket() {
         if (currentUser.name && currentUser.name !== 'Solicitante Pendiente' && currentUser.name !== 'Demo User') {
             setFormData(prev => ({ ...prev, name: currentUser.name }));
         }
+        if (currentUser.email) {
+            setFormData(prev => ({ ...prev, email: currentUser.email || '' }));
+        }
         if (currentUser.department && currentUser.department !== 'Sin Asignar') {
             setFormData(prev => ({ ...prev, department: currentUser.department }));
         }
@@ -33,9 +37,21 @@ export default function NewTicket() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.name || !formData.department) {
-            alert('Por favor completa todos los campos obligatorios.');
+        if (!formData.name || !formData.email || !formData.department) {
+            alert('Por favor completa todos los campos obligatorios (Nombre, Email, Departamento).');
             return;
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            alert('Por favor ingresa un email válido.');
+            return;
+        }
+
+        // Update current user email if not set
+        if (!currentUser.email) {
+            currentUser.email = formData.email;
         }
 
         // Add ticket to global state
@@ -45,7 +61,8 @@ export default function NewTicket() {
             department: formData.department,
             priority: formData.priority,
             status: 'Nuevo',
-            requester: formData.name
+            requester: formData.name,
+            requesterEmail: formData.email
         });
 
         setSubmitted(true);
@@ -92,8 +109,8 @@ export default function NewTicket() {
                     ) : (
                         <form onSubmit={handleSubmit} className="card">
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Nombre Completo</label>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Nombre Completo *</label>
                                     <input
                                         type="text"
                                         name="name"
@@ -101,6 +118,27 @@ export default function NewTicket() {
                                         value={formData.name}
                                         onChange={handleInputChange}
                                         placeholder="Tu nombre y apellido"
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            borderRadius: 'var(--radius)',
+                                            border: '1px solid var(--border-color)',
+                                            fontSize: '1rem',
+                                            backgroundColor: 'var(--surface-color)',
+                                            color: 'var(--text-primary)'
+                                        }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Email *</label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        required
+                                        value={formData.email}
+                                        onChange={handleInputChange}
+                                        placeholder="tu.email@ejemplo.com"
                                         style={{
                                             width: '100%',
                                             padding: '0.75rem',
