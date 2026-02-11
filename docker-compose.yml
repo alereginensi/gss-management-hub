@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   web:
+    container_name: gss-management-hub
     build:
       context: .
       dockerfile: Dockerfile
@@ -13,3 +14,4 @@ services:
     restart: always
     environment:
       - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1

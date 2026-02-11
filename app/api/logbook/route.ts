@@ -25,14 +25,35 @@ export async function GET() {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { title, date, sector, supervisor, location, report, staff_member, uniform, extra_data } = body;
 
-        const info = db.prepare(`
-            INSERT INTO logbook (title, date, sector, supervisor, location, report, staff_member, uniform, extra_data)
+        // Handle both single object and array of objects
+        const items = Array.isArray(body) ? body : [body];
+
+        const insert = db.prepare(`
+            INSERT INTO logbook (date, sector, supervisor, location, report, staff_member, uniform, extra_data, supervised_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(title, date, sector, supervisor, location, report, staff_member, uniform, JSON.stringify(extra_data || {}));
+        `);
 
-        return NextResponse.json({ success: true, id: info.lastInsertRowid });
+        // Use a transaction for multiple inserts
+        const transaction = db.transaction((entries) => {
+            for (const entry of entries) {
+                insert.run(
+                    entry.date,
+                    entry.sector,
+                    entry.supervisor,
+                    entry.location,
+                    entry.report || '',
+                    entry.staff_member || '',
+                    entry.uniform || '',
+                    JSON.stringify(entry.extra_data || {}),
+                    entry.supervised_by
+                );
+            }
+        });
+
+        transaction(items);
+
+        return NextResponse.json({ success: true, count: items.length });
     } catch (error) {
         console.error('Logbook POST Error:', error);
         return NextResponse.json({ error: 'Failed to create logbook entry' }, { status: 500 });

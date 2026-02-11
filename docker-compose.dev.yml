@@ -1,0 +1,20 @@
+services:
+  web:
+    container_name: gss-management-hub-dev
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder # Use the builder stage which has all devDependencies
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app # Mount the whole directory
+      - /app/node_modules # Anonymous volume to prevent host node_modules from overriding container's
+      - /app/.next # Anonymous volume for build artifacts
+      - ./tickets.db:/app/tickets.db
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+      - WATCHPACK_POLLING=true # Useful for Docker on Windows
+    command: npm run dev
+    restart: always
