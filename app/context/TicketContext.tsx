@@ -381,6 +381,60 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
                 statusColor: statusColors[newStatus]
             };
             setNotifications(prev => [notification, ...prev]);
+
+            // Send email notification when ticket is resolved
+            if (newStatus === 'Resuelto') {
+                const resolvedBy = currentUser.name;
+                const resolvedByEmail = currentUser.email || '';
+                const requesterEmail = ticket.requesterEmail || '';
+                const requesterName = ticket.requester || 'Usuario';
+
+                // Prepare email recipients: ticket creator and admin who resolved it
+                const recipients = [];
+                if (requesterEmail) recipients.push(requesterEmail);
+                if (resolvedByEmail && resolvedByEmail !== requesterEmail) recipients.push(resolvedByEmail);
+
+                if (recipients.length > 0) {
+                    const emailBody = `
+El ticket ha sido marcado como RESUELTO:
+
+- Ticket ID: ${ticket.id}
+- Asunto: ${ticket.subject}
+- Descripción: ${ticket.description || 'N/A'}
+- Departamento: ${ticket.department}
+- Prioridad: ${ticket.priority}
+- Solicitante: ${requesterName} (${requesterEmail})
+- Resuelto por: ${resolvedBy} (${resolvedByEmail})
+- Fecha de creación: ${ticket.date}
+- Fecha de resolución: ${new Date().toLocaleString('es-AR')}
+
+Gracias por utilizar el sistema de tickets GSS.`.trim();
+
+                    fetch('/api/notify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            to: recipients,
+                            subject: `[TICKET RESUELTO] ${ticket.subject}`,
+                            body: emailBody,
+                            ticketData: {
+                                id: ticket.id,
+                                requester: requesterName,
+                                requesterEmail: requesterEmail,
+                                department: ticket.department,
+                                subject: ticket.subject,
+                                description: ticket.description,
+                                priority: ticket.priority,
+                                status: 'Resuelto',
+                                resolvedBy: resolvedBy,
+                                resolvedByEmail: resolvedByEmail,
+                                date: ticket.date,
+                                resolvedDate: new Date().toLocaleString('es-AR')
+                            }
+                        })
+                    }).catch(err => console.error('Error sending resolution notification:', err));
+                }
+            }
         }
     };
 
