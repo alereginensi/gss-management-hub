@@ -135,7 +135,7 @@ export default function NewTicket() {
                         <form onSubmit={handleSubmit} className="card">
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Nombre Completo *</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Nombre Completo *</label>
                                     <input
                                         type="text"
                                         name="name"
@@ -156,28 +156,29 @@ export default function NewTicket() {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Email *</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Email *</label>
                                     <input
                                         type="email"
                                         name="email"
                                         required
                                         value={formData.email}
-                                        onChange={handleInputChange}
-                                        placeholder="tu.email@ejemplo.com"
+                                        readOnly
                                         style={{
                                             width: '100%',
                                             padding: '0.75rem',
                                             borderRadius: 'var(--radius)',
                                             border: '1px solid var(--border-color)',
                                             fontSize: '1rem',
-                                            backgroundColor: 'var(--surface-color)',
-                                            color: 'var(--text-primary)'
+                                            backgroundColor: 'var(--background-color)',
+                                            color: 'var(--text-primary)',
+                                            opacity: 0.8,
+                                            cursor: 'not-allowed'
                                         }}
                                     />
                                 </div>
 
                                 <div style={{ gridColumn: '1 / -1' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Asunto</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Asunto</label>
                                     <input
                                         type="text"
                                         name="subject"
@@ -198,7 +199,7 @@ export default function NewTicket() {
                                 </div>
 
                                 <div style={{ gridColumn: '1 / -1' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Descripción Detallada</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Descripción Detallada</label>
                                     <textarea
                                         name="description"
                                         required
@@ -220,7 +221,7 @@ export default function NewTicket() {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Departamento</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Departamento</label>
                                     <select
                                         name="department"
                                         required
@@ -244,7 +245,7 @@ export default function NewTicket() {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Prioridad</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Prioridad</label>
                                     <select
                                         name="priority"
                                         value={formData.priority}
@@ -266,7 +267,7 @@ export default function NewTicket() {
                                 </div>
 
                                 <div style={{ gridColumn: '1 / -1' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-primary)' }}>Adjuntos</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Adjuntos</label>
                                     <div
                                         onClick={() => document.getElementById('file-upload')?.click()}
                                         style={{

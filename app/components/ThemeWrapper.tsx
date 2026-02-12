@@ -35,7 +35,7 @@ export default function ThemeWrapper({ children }: { children: React.ReactNode }
     if (!isMounted) return null;
 
     return (
-        <div data-theme={theme} style={{ minHeight: '100vh' }}>
+        <div style={{ minHeight: '100vh' }}>
             {children}
         </div>
     );

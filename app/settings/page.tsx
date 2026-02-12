@@ -21,66 +21,7 @@ export default function Settings() {
                 <Header title="Configuración" />
 
                 <div style={{ maxWidth: '800px' }}>
-                    {/* Theme Settings */}
-                    <div className="card" style={{ marginBottom: '1.5rem' }}>
-                        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem' }}>Apariencia</h2>
 
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.75rem', color: 'var(--text-secondary)' }}>
-                                Tema
-                            </label>
-
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button
-                                    onClick={() => setTheme('light')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '1rem',
-                                        borderRadius: 'var(--radius)',
-                                        border: theme === 'light' ? '2px solid var(--accent-color)' : '2px solid var(--border-color)',
-                                        backgroundColor: theme === 'light' ? 'rgba(245, 158, 11, 0.1)' : 'var(--surface-color)',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    <Sun size={32} color={theme === 'light' ? 'var(--accent-color)' : 'var(--text-secondary)'} />
-                                    <span style={{ fontWeight: theme === 'light' ? 600 : 400, color: theme === 'light' ? 'var(--accent-color)' : 'var(--text-primary)' }}>
-                                        Claro
-                                    </span>
-                                </button>
-
-                                <button
-                                    onClick={() => setTheme('dark')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '1rem',
-                                        borderRadius: 'var(--radius)',
-                                        border: theme === 'dark' ? '2px solid var(--accent-color)' : '2px solid var(--border-color)',
-                                        backgroundColor: theme === 'dark' ? 'rgba(245, 158, 11, 0.1)' : 'var(--surface-color)',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        gap: '0.5rem',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    <Moon size={32} color={theme === 'dark' ? 'var(--accent-color)' : 'var(--text-secondary)'} />
-                                    <span style={{ fontWeight: theme === 'dark' ? 600 : 400, color: theme === 'dark' ? 'var(--accent-color)' : 'var(--text-primary)' }}>
-                                        Oscuro
-                                    </span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem' }}>
-                            Selecciona el tema de tu preferencia. El cambio se aplicará inmediatamente.
-                        </p>
-                    </div>
 
                     {/* User Information */}
                     <div className="card" style={{ marginBottom: '1.5rem' }}>

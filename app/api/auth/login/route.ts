@@ -16,16 +16,28 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'El usuario no existe o no ha sido aprobado' }, { status: 401 });
         }
 
-        if (isAdminLogin || user.role === 'admin') {
+        if (isAdminLogin) {
+            // Personal/Admin Login (Requires Password)
             if (!password) {
-                return NextResponse.json({ error: 'Contraseña obligatoria para administradores' }, { status: 400 });
+                return NextResponse.json({ error: 'Contraseña obligatoria' }, { status: 400 });
             }
+
             const isPasswordValid = await comparePassword(password, user.password);
             if (!isPasswordValid) {
-                return NextResponse.json({ error: 'Credenciales de admin inválidas' }, { status: 401 });
+                return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
             }
+
+            // Check if user is approved (even for staff) - Admin is always approved effectively, but good to check
+            if (user.role !== 'admin' && user.approved !== 1) {
+                return NextResponse.json({ error: 'Tu cuenta requiere aprobación' }, { status: 403 });
+            }
+
         } else {
-            // Regular user flow: check approval
+            // Solicitante Login (No Password)
+            if (user.role !== 'user') {
+                return NextResponse.json({ error: 'Este email corresponde a un usuario con acceso restringido. Por favor utilice "Acceso Personal".' }, { status: 403 });
+            }
+
             if (user.approved !== 1) {
                 return NextResponse.json({ error: 'Tu acceso aún no ha sido aprobado por un administrador' }, { status: 403 });
             }

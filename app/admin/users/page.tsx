@@ -108,7 +108,7 @@ export default function UserManagement() {
                                                     disabled={loading}
                                                     title="Rechazar solicitud"
                                                 >
-                                                    <X size={16} /> Recharzar
+                                                    <X size={16} /> Rechazar
                                                 </button>
                                                 <button
                                                     className="btn btn-primary"
@@ -137,7 +137,7 @@ export default function UserManagement() {
 
                             <form onSubmit={handleCreateAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-primary)' }}>Nombre</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Nombre</label>
                                     <input
                                         type="text"
                                         required
@@ -148,7 +148,7 @@ export default function UserManagement() {
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-primary)' }}>Email</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Email</label>
                                     <input
                                         type="email"
                                         required
@@ -159,7 +159,7 @@ export default function UserManagement() {
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-primary)' }}>Contraseña</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Contraseña</label>
                                     <input
                                         type="password"
                                         required

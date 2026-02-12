@@ -48,10 +48,11 @@ export interface Notification {
 }
 
 export interface User {
+    id: number;
     name: string;
     email?: string;
     department: string;
-    role: 'user' | 'admin';
+    role: 'user' | 'admin' | 'supervisor' | 'funcionario';
     approved?: boolean;
 }
 
@@ -109,6 +110,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     const [activities, setActivities] = useState<Activity[]>(initialActivities);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [currentUser, setCurrentUser] = useState<User>({
+        id: 0,
         name: 'Demo User',
         department: 'Mantenimiento',
         role: 'user'
@@ -124,9 +126,22 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     React.useEffect(() => {
         const auth = localStorage.getItem('isAuthenticated');
         const user = localStorage.getItem('user');
+
         if (auth === 'true' && user) {
-            setIsAuthenticated(true);
-            setCurrentUser(JSON.parse(user));
+            try {
+                const parsedUser = JSON.parse(user);
+                // Check if user has ID (migration fix)
+                if (parsedUser && (parsedUser.id || parsedUser.id === 0)) {
+                    setIsAuthenticated(true);
+                    setCurrentUser(parsedUser);
+                } else {
+                    // Invalid session (stale), clear it
+                    logout();
+                }
+            } catch (e) {
+                console.error("Error parsing user from local storage", e);
+                logout();
+            }
         }
 
         // Fetch system settings
@@ -262,6 +277,16 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         };
 
         setTickets(prev => [newTicket, ...prev]);
+
+        // Save to Database
+        fetch('/api/tickets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newTicket)
+        }).catch(err => console.error('Error saving ticket:', err));
+
+        // Add In-App Notification
+        addNotification(newId, newTicket.subject, `Ticket creado exitosamente: ${newTicket.subject}`);
 
         // Trigger real email notification via API
         // Determine recipient emails: priority to department-specific setting, then global fallback

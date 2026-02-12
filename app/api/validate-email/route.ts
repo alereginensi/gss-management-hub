@@ -17,6 +17,14 @@ export async function POST(request: Request) {
             });
         }
 
+        // Whitelist GSS domains to skip API check
+        if (email.endsWith('@gss.com.uy') || email.endsWith('@gss.com')) {
+            return NextResponse.json({
+                valid: true,
+                message: 'Domain whitelisted'
+            });
+        }
+
         const apiKey = process.env.ABSTRACT_API_KEY;
 
         if (!apiKey) {
@@ -42,21 +50,23 @@ export async function POST(request: Request) {
         );
 
         if (!response.ok) {
-            console.error('Abstract API error:', response.status);
-            // Fallback to basic validation if API fails
+            console.error('Abstract API error status:', response.status);
+            // Fallback to true if API fails
             return NextResponse.json({
                 valid: true,
                 fallback: true,
-                message: 'API unavailable, using basic validation'
+                message: 'API unavailable'
             });
         }
 
         const data = await response.json();
+        console.log('Abstract API Response for', email, ':', JSON.stringify(data));
 
-        // Check if email is deliverable based on reputation data
-        // API returns fields like: deliverability, quality_score, is_valid_format, etc.
-        const isDeliverable = data.deliverability === 'DELIVERABLE' || data.deliverability === 'RISKY';
-        const isDisposable = data.is_disposable_email?.value || false;
+        // Fix parsing for nested Abstract API response
+        const deliverability = data.email_deliverability?.status || data.deliverability;
+        const isDisposable = data.email_quality?.is_disposable || data.is_disposable_email?.value || false;
+
+        const isDeliverable = deliverability === 'DELIVERABLE' || deliverability === 'RISKY' || deliverability === 'UNKNOWN' || deliverability === 'deliverable';
 
         // Quality score threshold (optional, e.g. < 0.5 might be suspicious)
         const qualityScore = data.quality_score;

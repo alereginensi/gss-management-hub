@@ -5,9 +5,23 @@ import Header from './components/Header';
 import Link from 'next/link';
 import { Clock, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
 import { useTicketContext } from './context/TicketContext';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function Home() {
-  const { tickets, getAverageResolutionTime } = useTicketContext();
+  const { tickets, getAverageResolutionTime, currentUser } = useTicketContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (currentUser && currentUser.role === 'funcionario') {
+      router.push('/tasks');
+    }
+  }, [currentUser, router]);
+
+  // Don't render dashboard for funcionario while redirecting
+  if (currentUser && currentUser.role === 'funcionario') {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Redirigiendo...</div>;
+  }
 
   // Calculate KPIs from tickets
   const openTickets = tickets.filter(t => t.status === 'Nuevo' || t.status === 'En Progreso').length;
@@ -38,7 +52,7 @@ export default function Home() {
             </div>
             <div>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Tickets Abiertos</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{openTickets}</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{openTickets}</p>
             </div>
           </div>
 
@@ -48,7 +62,7 @@ export default function Home() {
             </div>
             <div>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Resueltos Hoy</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{resolvedToday}</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{resolvedToday}</p>
             </div>
           </div>
 
@@ -58,7 +72,7 @@ export default function Home() {
             </div>
             <div>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Prioridad Alta</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{highPriority}</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{highPriority}</p>
             </div>
           </div>
 
@@ -68,7 +82,7 @@ export default function Home() {
             </div>
             <div>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Tiempo Promedio</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{avgResolutionTime}</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{avgResolutionTime}</p>
             </div>
           </div>
         </section>

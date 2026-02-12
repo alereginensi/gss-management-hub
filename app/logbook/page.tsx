@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import ExcelJS from 'exceljs';
+// exceljs imported dynamically to save bundle size
+import type * as ExcelJS from 'exceljs';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import {
@@ -12,7 +13,9 @@ import {
     X,
     Calendar,
     ClipboardList,
-    Trash2
+    Trash2,
+    Pencil,
+    Save
 } from 'lucide-react';
 
 interface Column {
@@ -66,6 +69,8 @@ export default function LogbookPage() {
     const [showReportModal, setShowReportModal] = useState(false);
     const [showColumnModal, setShowColumnModal] = useState(false);
     const [selectedReport, setSelectedReport] = useState<LogEntry | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editData, setEditData] = useState<Partial<LogEntry>>({});
 
     // Form States
     const [newReportHeader, setNewReportHeader] = useState({
@@ -108,6 +113,15 @@ export default function LogbookPage() {
     // Selection State
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
+    // Mobile Check
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth <= 1024);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -128,6 +142,30 @@ export default function LogbookPage() {
     useEffect(() => {
         fetchData();
     }, []);
+
+    const handleUpdateReport = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedReport) return;
+
+        try {
+            const res = await fetch('/api/logbook', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...selectedReport, ...editData, id: selectedReport.id })
+            });
+
+            if (res.ok) {
+                setIsEditing(false);
+                setSelectedReport({ ...selectedReport, ...editData } as LogEntry);
+                fetchData();
+            } else {
+                alert('Error al actualizar el reporte');
+            }
+        } catch (error) {
+            console.error('Error updating report:', error);
+            alert('Error al actualizar el reporte');
+        }
+    };
 
     const handleCreateReport = async (e: React.FormEvent | null, data: any) => {
         if (e) e.preventDefault();
@@ -309,7 +347,8 @@ export default function LogbookPage() {
             return new Date(b.date).getTime() - new Date(a.date).getTime();
         });
 
-        const workbook = new ExcelJS.Workbook();
+        const Excel = (await import('exceljs')).default;
+        const workbook = new Excel.Workbook();
         const worksheet = workbook.addWorksheet('Bitácora GSS');
 
         const greenFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00B050' } };
@@ -380,22 +419,11 @@ export default function LogbookPage() {
 
             if (isNewSector) {
                 currentSector = entry.sector;
-
                 // Assign color to sector if not already assigned
                 if (!sectorColorMap[entry.sector]) {
                     sectorColorMap[entry.sector] = sectorColors[colorIndex % sectorColors.length];
                     colorIndex++;
                 }
-
-                // Add sector header row
-                const sectorHeaderRow = worksheet.addRow([`SECTOR: ${entry.sector}`]);
-                sectorHeaderRow.height = 25;
-                sectorHeaderRow.eachCell((cell, colNumber) => {
-                    if (colNumber === 1) {
-                        cell.style = sectorHeaderStyle;
-                    }
-                });
-                worksheet.mergeCells(sectorHeaderRow.number, 1, sectorHeaderRow.number, excelCols.length);
             }
 
             const rowData: any = {
@@ -415,7 +443,7 @@ export default function LogbookPage() {
             // Apply sector color to the row
             row.eachCell(cell => {
                 cell.border = {
-                    top: { style: 'thin' },
+                    top: { style: isNewSector ? 'medium' : 'thin' },
                     left: { style: 'thin' },
                     bottom: { style: 'thin' },
                     right: { style: 'thin' }
@@ -467,10 +495,20 @@ export default function LogbookPage() {
             <Sidebar />
             <main style={{ flex: 1, marginLeft: '260px', padding: '2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <Header title="Bitácora - Supervisores" />
+                    <Header
+                        title="Bitácora - Supervisores"
+                        actions={
+                            isMobile ? (
+                                <button onClick={exportToExcel} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', border: '1px solid rgba(34, 197, 94, 0.2)', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                                    <Download size={16} />
+                                    <span>Exportar</span>
+                                </button>
+                            ) : undefined
+                        }
+                    />
                 </div>
 
-                <div className="desktop-view" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                <div className="desktop-toolbar">
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <button onClick={handleDeleteSelected} className="btn" style={{ fontSize: '0.8rem', backgroundColor: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                             Eliminar Fila(s)
@@ -944,100 +982,221 @@ export default function LogbookPage() {
                 )}
                 {/* Detail Modal */}
                 {selectedReport && (
-                    <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+                    <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }}>
                         <div className="card modal-responsive" style={{ width: '500px', maxWidth: '95vw', padding: '2rem', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
-                            <button onClick={() => setSelectedReport(null)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)', opacity: 0.5 }}><X size={24} /></button>
-                            <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', fontWeight: 700, paddingRight: '2rem' }}>Detalle del Reporte</h3>
+                            <button onClick={() => { setSelectedReport(null); setIsEditing(false); }} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)', opacity: 0.5 }}><X size={24} /></button>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sector</span>
-                                        <div style={{ fontWeight: 600 }}>{selectedReport.sector}</div>
-                                    </div>
-                                    <div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lugar</span>
-                                        <div style={{ fontWeight: 600 }}>{selectedReport.location}</div>
-                                    </div>
-                                </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fecha</span>
-                                        <div>{selectedReport.date}</div>
-                                    </div>
-                                    <div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Uniforme</span>
-                                        <div>
-                                            <span style={{
-                                                fontSize: '0.75rem',
-                                                padding: '0.1rem 0.4rem',
-                                                borderRadius: '4px',
-                                                backgroundColor: selectedReport.uniform === 'Completo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                                color: selectedReport.uniform === 'Completo' ? '#22c55e' : '#ef4444'
-                                            }}>
-                                                {selectedReport.uniform}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Funcionario</span>
-                                    <div style={{ fontSize: '1rem' }}>{selectedReport.staff_member || '-'}</div>
-                                </div>
-
-                                <div>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Reporte / Novedades</span>
-                                    <div style={{ padding: '1rem', backgroundColor: 'var(--bg-color)', borderRadius: '8px', fontSize: '0.9rem', whiteSpace: 'pre-wrap', border: '1px solid var(--border-color)', marginTop: '0.25rem' }}>
-                                        {selectedReport.report || 'Sin novedades'}
-                                    </div>
-                                </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                    <div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Supervisor</span>
-                                        <div>{selectedReport.supervisor}</div>
-                                    </div>
-                                    <div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Superviso</span>
-                                        <div>{selectedReport.supervised_by}</div>
-                                    </div>
-                                </div>
-
-                                {/* Extra Columns */}
-                                {Object.keys(selectedReport.extra_data).length > 0 && (
-                                    <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-color)' }}>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Datos Adicionales</span>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                                            {Object.entries(selectedReport.extra_data).map(([key, value]) => (
-                                                <div key={key}>
-                                                    <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{key.replace(/_/g, ' ')}:</span>
-                                                    <div style={{ fontSize: '0.9rem' }}>{String(value)}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingRight: '3rem' }}>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{isEditing ? 'Editar Reporte' : 'Detalle del Reporte'}</h3>
+                                {!isEditing && (
+                                    <button
+                                        onClick={() => { setEditData(selectedReport); setIsEditing(true); }}
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
+                                    >
+                                        <Pencil size={18} /> Editar
+                                    </button>
                                 )}
                             </div>
 
-                            <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                                <button
-                                    className="btn"
-                                    style={{ width: '100%', backgroundColor: '#fee2e2', color: '#b91c1c', justifyContent: 'center', padding: '0.75rem' }}
-                                    onClick={() => {
-                                        if (confirm('¿Eliminar este reporte permanentemente?')) {
-                                            setSelectedIds(new Set([selectedReport.id]));
-                                            setTimeout(() => {
-                                                handleDeleteSelected();
-                                                setSelectedReport(null);
-                                            }, 100);
-                                        }
-                                    }}
-                                >
-                                    <Trash2 size={18} style={{ marginRight: '0.5rem' }} /> Eliminar Reporte
-                                </button>
-                            </div>
+                            {isEditing ? (
+                                <form onSubmit={handleUpdateReport} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Sector</label>
+                                            <select
+                                                className="input"
+                                                value={editData.sector || selectedReport.sector}
+                                                onChange={e => setEditData({ ...editData, sector: e.target.value })}
+                                            >
+                                                {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Lugar</label>
+                                            <select
+                                                className="input"
+                                                value={editData.location || selectedReport.location}
+                                                onChange={e => setEditData({ ...editData, location: e.target.value })}
+                                            >
+                                                {(SECTOR_MAPPING[editData.sector || selectedReport.sector || ''] || []).map(l => <option key={l} value={l}>{l}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Fecha</label>
+                                            <input
+                                                type="date"
+                                                className="input"
+                                                value={editData.date || selectedReport.date}
+                                                onChange={e => setEditData({ ...editData, date: e.target.value })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Uniforme</label>
+                                            <select
+                                                className="input"
+                                                value={editData.uniform || selectedReport.uniform}
+                                                onChange={e => setEditData({ ...editData, uniform: e.target.value })}
+                                            >
+                                                {UNIFORMS.map(u => <option key={u} value={u}>{u}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Funcionario</label>
+                                        <input
+                                            className="input"
+                                            value={editData.staff_member || selectedReport.staff_member || ''}
+                                            onChange={e => setEditData({ ...editData, staff_member: e.target.value })}
+                                            placeholder="Nombre del funcionario"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Reporte / Novedades</label>
+                                        <textarea
+                                            className="input"
+                                            style={{ minHeight: '100px', resize: 'vertical' }}
+                                            value={editData.report || selectedReport.report || ''}
+                                            onChange={e => setEditData({ ...editData, report: e.target.value })}
+                                        />
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Supervisor</label>
+                                            <select
+                                                className="input"
+                                                value={editData.supervisor || selectedReport.supervisor}
+                                                onChange={e => setEditData({ ...editData, supervisor: e.target.value })}
+                                            >
+                                                {SUPERVISORS.map(s => <option key={s} value={s}>{s}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Superviso</label>
+                                            <select
+                                                className="input"
+                                                value={editData.supervised_by || selectedReport.supervised_by}
+                                                onChange={e => setEditData({ ...editData, supervised_by: e.target.value })}
+                                            >
+                                                {SUPERVISO_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                        <button type="button" onClick={() => setIsEditing(false)} className="btn btn-secondary" style={{ flex: 1 }}>Cancelar</button>
+                                        <button type="submit" className="btn btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                                            <Save size={18} /> Guardar Cambios
+                                        </button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sector</span>
+                                            <div style={{ fontWeight: 600 }}>{selectedReport.sector}</div>
+                                        </div>
+                                        <div>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lugar</span>
+                                            <div style={{ fontWeight: 600 }}>{selectedReport.location}</div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fecha</span>
+                                            <div>{selectedReport.date}</div>
+                                        </div>
+                                        <div>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Uniforme</span>
+                                            <div>
+                                                <span style={{
+                                                    fontSize: '0.75rem',
+                                                    padding: '0.1rem 0.4rem',
+                                                    borderRadius: '4px',
+                                                    backgroundColor: selectedReport.uniform === 'Completo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                                    color: selectedReport.uniform === 'Completo' ? '#22c55e' : '#ef4444'
+                                                }}>
+                                                    {selectedReport.uniform}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Funcionario</span>
+                                        <div style={{ fontSize: '1rem' }}>{selectedReport.staff_member || '-'}</div>
+                                    </div>
+
+                                    <div>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Reporte / Novedades</span>
+                                        <div style={{ padding: '1rem', backgroundColor: 'var(--bg-color)', borderRadius: '8px', fontSize: '0.9rem', whiteSpace: 'pre-wrap', border: '1px solid var(--border-color)', marginTop: '0.25rem' }}>
+                                            {selectedReport.report || 'Sin novedades'}
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Supervisor</span>
+                                            <div>{selectedReport.supervisor}</div>
+                                        </div>
+                                        <div>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Superviso</span>
+                                            <div>{selectedReport.supervised_by}</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Extra Columns */}
+                                    {Object.keys(selectedReport.extra_data).length > 0 && (
+                                        <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-color)' }}>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Datos Adicionales</span>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                                {Object.entries(selectedReport.extra_data).map(([key, value]) => (
+                                                    <div key={key}>
+                                                        <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{key.replace(/_/g, ' ')}:</span>
+                                                        <div style={{ fontSize: '0.9rem' }}>{String(value)}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                        <button
+                                            className="btn"
+                                            style={{ width: '100%', backgroundColor: '#fee2e2', color: '#b91c1c', justifyContent: 'center', padding: '0.75rem' }}
+                                            onClick={async () => {
+                                                if (confirm('¿Eliminar este reporte permanentemente?')) {
+                                                    try {
+                                                        const res = await fetch('/api/logbook/delete', {
+                                                            method: 'DELETE',
+                                                            headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({ ids: [selectedReport.id] })
+                                                        });
+                                                        if (res.ok) {
+                                                            setSelectedReport(null);
+                                                            fetchData();
+                                                        } else {
+                                                            alert('Error al eliminar');
+                                                        }
+                                                    } catch (error) {
+                                                        console.error('Error deleting report:', error);
+                                                        alert('Error al eliminar');
+                                                    }
+                                                }
+                                            }}
+                                        >
+                                            <Trash2 size={18} style={{ marginRight: '0.5rem' }} /> Eliminar Reporte
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

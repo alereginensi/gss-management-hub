@@ -44,6 +44,23 @@ db.exec(`
     type TEXT NOT NULL, -- text, number, date, select
     options TEXT -- JSON string for select types
   );
+
+  CREATE TABLE IF NOT EXISTS tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    description TEXT, -- Nullable for check-in/out
+    type TEXT DEFAULT 'task', -- task, check_in, check_out
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+  CREATE TABLE IF NOT EXISTS supervisor_worker (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    supervisor_id INTEGER NOT NULL,
+    worker_id INTEGER NOT NULL,
+    FOREIGN KEY (supervisor_id) REFERENCES users(id),
+    FOREIGN KEY (worker_id) REFERENCES users(id),
+    UNIQUE(supervisor_id, worker_id)
+  );
 `);
 
 // Migration: Ensure 'approved' column exists in users table

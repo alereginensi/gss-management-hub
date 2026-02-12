@@ -41,10 +41,11 @@ export default function Login() {
 
             if (res.ok) {
                 login({
+                    id: data.user.id,
                     name: data.user.name,
                     email: data.user.email,
                     department: data.user.department,
-                    role: data.user.role as 'user' | 'admin'
+                    role: data.user.role as any
                 });
 
                 router.push('/tickets');
@@ -116,22 +117,22 @@ export default function Login() {
                             transition: 'all 0.2s'
                         }}
                     >
-                        Soy Administrador
+                        Acceso Personal
                     </button>
                 </div>
 
                 {pendingApproval && (
                     <div style={{
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        color: 'var(--accent-color)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        color: '#047857',
                         padding: '1rem',
                         borderRadius: 'var(--radius)',
                         fontSize: '0.875rem',
                         marginBottom: '1.5rem',
-                        border: '1px solid var(--accent-color)',
+                        border: '1px solid #10b981',
                         textAlign: 'center'
                     }}>
-                        <strong>Solicitud Pendiente</strong><br />
+                        <strong style={{ color: '#047857' }}>Solicitud Pendiente</strong><br />
                         Tu cuenta está esperando aprobación por un administrador. Te notificaremos cuando esté lista.
                     </div>
                 )}
@@ -152,7 +153,7 @@ export default function Login() {
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Correo Electrónico</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Correo Electrónico</label>
                         <div style={{ position: 'relative' }}>
                             <input
                                 type="email"
@@ -161,22 +162,22 @@ export default function Login() {
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 style={{
                                     width: '100%',
-                                    padding: '0.75rem 1rem 0.75rem 2.5rem',
+                                    padding: '0.75rem',
                                     borderRadius: 'var(--radius)',
                                     border: '1px solid var(--border-color)',
                                     backgroundColor: 'var(--surface-color)',
                                     color: 'var(--text-primary)',
-                                    fontSize: '0.875rem'
+                                    fontSize: '0.875rem',
+                                    boxSizing: 'border-box'
                                 }}
                                 placeholder="tu@empresa.com"
                             />
-                            <Mail size={16} style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                         </div>
                     </div>
 
                     {isAdminLogin && (
                         <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Contraseña</label>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Contraseña</label>
                             <div style={{ position: 'relative' }}>
                                 <input
                                     type={showPassword ? "text" : "password"}
@@ -185,16 +186,16 @@ export default function Login() {
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                     style={{
                                         width: '100%',
-                                        padding: '0.75rem 3rem 0.75rem 2.5rem',
+                                        padding: '0.75rem 3rem 0.75rem 0.75rem',
                                         borderRadius: 'var(--radius)',
                                         border: '1px solid var(--border-color)',
                                         backgroundColor: 'var(--surface-color)',
                                         color: 'var(--text-primary)',
-                                        fontSize: '0.875rem'
+                                        fontSize: '0.875rem',
+                                        boxSizing: 'border-box'
                                     }}
                                     placeholder="••••••••"
                                 />
-                                <Lock size={16} style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
@@ -225,16 +226,14 @@ export default function Login() {
                         className="btn btn-primary"
                         style={{ padding: '0.75rem', marginTop: '0.5rem' }}
                     >
-                        {loading ? 'Procesando...' : (isAdminLogin ? 'Acceder como Admin' : 'Acceder')}
+                        {loading ? 'Procesando...' : 'Iniciar Sesión'}
                     </button>
                 </form>
 
-                {!isAdminLogin && (
-                    <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>¿Aún no tienes acceso? </span>
-                        <Link href="/register" style={{ color: 'var(--accent-color)', fontWeight: 600 }}>Solicitar ahora</Link>
-                    </div>
-                )}
+                <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>¿Aún no tienes acceso? </span>
+                    <Link href="/register" style={{ color: 'var(--accent-color)', fontWeight: 600 }}>Solicitar ahora</Link>
+                </div>
             </div>
         </div>
     );
