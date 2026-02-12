@@ -10,6 +10,8 @@ export default function Register() {
         name: '',
         email: '',
         password: '',
+        confirmPassword: '',
+        role: 'user',
         department: 'Mantenimiento'
     });
     const [error, setError] = useState('');
@@ -20,6 +22,12 @@ export default function Register() {
         e.preventDefault();
         setLoading(true);
         setError('');
+
+        if (formData.role !== 'user' && formData.password !== formData.confirmPassword) {
+            setError('Las contraseñas no coinciden');
+            setLoading(false);
+            return;
+        }
 
         try {
             // Validate email existence with API
@@ -100,7 +108,30 @@ export default function Register() {
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>Correo Electrónico</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Nombre Completo</label>
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type="text"
+                                required
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    borderRadius: 'var(--radius)',
+                                    border: '1px solid var(--border-color)',
+                                    backgroundColor: 'var(--surface-color)',
+                                    color: 'var(--text-primary)',
+                                    fontSize: '0.875rem',
+                                    boxSizing: 'border-box'
+                                }}
+                                placeholder="Tu Nombre Completo"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Correo Electrónico</label>
                         <div style={{ position: 'relative' }}>
                             <input
                                 type="email"
@@ -109,18 +140,93 @@ export default function Register() {
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 style={{
                                     width: '100%',
-                                    padding: '0.75rem 1rem 0.75rem 2.5rem',
+                                    padding: '0.75rem',
                                     borderRadius: 'var(--radius)',
                                     border: '1px solid var(--border-color)',
                                     backgroundColor: 'var(--surface-color)',
                                     color: 'var(--text-primary)',
-                                    fontSize: '0.875rem'
+                                    fontSize: '0.875rem',
+                                    boxSizing: 'border-box'
                                 }}
                                 placeholder="tu@email.com"
                             />
-                            <Mail size={16} style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                         </div>
                     </div>
+
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Tipo de Usuario</label>
+                        <div style={{ position: 'relative' }}>
+                            <select
+                                required
+                                value={formData.role}
+                                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    borderRadius: 'var(--radius)',
+                                    border: '1px solid var(--border-color)',
+                                    backgroundColor: 'var(--surface-color)',
+                                    color: 'var(--text-primary)',
+                                    fontSize: '0.875rem',
+                                    appearance: 'none',
+                                    boxSizing: 'border-box'
+                                }}
+                            >
+                                <option value="user">Solicitante</option>
+                                <option value="supervisor">Supervisor (Bitácoras)</option>
+                                <option value="funcionario">Funcionario</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {formData.role !== 'user' && (
+                        <>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Contraseña</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type="password"
+                                        required={formData.role !== 'user'}
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            borderRadius: 'var(--radius)',
+                                            border: '1px solid var(--border-color)',
+                                            backgroundColor: 'var(--surface-color)',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '0.875rem',
+                                            boxSizing: 'border-box'
+                                        }}
+                                        placeholder="Crear contraseña"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Confirmar Contraseña</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type="password"
+                                        required={formData.role !== 'user'}
+                                        value={formData.confirmPassword}
+                                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            borderRadius: 'var(--radius)',
+                                            border: '1px solid var(--border-color)',
+                                            backgroundColor: 'var(--surface-color)',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '0.875rem',
+                                            boxSizing: 'border-box'
+                                        }}
+                                        placeholder="Repetir contraseña"
+                                    />
+                                </div>
+                            </div>
+                        </>
+                    )}
 
                     <button
                         type="submit"

@@ -39,21 +39,7 @@
   --border-color: #e2e8f0;
 }
 
-[data-theme="dark"] {
-  /* Backgrounds */
-  --bg-color: #0f172a;
-  --surface-color: #1e293b;
-  --sidebar-bg: #0a0f1e;
 
-  /* Text */
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-inverse: #f8fafc;
-  /* Keep light for dark backgrounds */
-
-  /* Borders */
-  --border-color: #334155;
-}
 
 * {
   box-sizing: border-box;
@@ -397,27 +383,47 @@ textarea {
   display: block;
 }
 
+.desktop-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 768px) {
   .mobile-view {
     display: block;
   }
 
-  .desktop-view {
-    display: none;
+  .desktop-view,
+  .desktop-toolbar {
+    display: none !important;
   }
 }
 
-/* Dark Mode Autofill Overrides */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus,
-input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px var(--surface-color) inset !important;
-  -webkit-text-fill-color: var(--text-primary) !important;
-  transition: background-color 5000s ease-in-out 0s;
+/* Utility for flex items only visible on mobile */
+.mobile-only-flex {
+  display: none !important;
 }
 
-/* Ensure global label visibility */
-label {
-  color: var(--text-primary);
+@media (max-width: 768px) {
+  .mobile-only-flex {
+    display: flex !important;
+  }
+}
+
+.main-content {
+  padding: 2rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1rem;
+    padding-top: 5rem;
+    /* Space for fixed header on mobile if needed */
+  }
 }

@@ -11,14 +11,16 @@ import {
     Users,
     BookOpen,
     Menu,
-    X
+    X,
+    Bell,
+    Clock
 } from 'lucide-react';
 import { useTicketContext } from '../context/TicketContext';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 export default function Sidebar() {
-    const { currentUser, logout, isAuthenticated } = useTicketContext();
+    const { currentUser, logout, isAuthenticated, unreadCount } = useTicketContext();
     const router = useRouter();
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -61,28 +63,39 @@ export default function Sidebar() {
             </div>
 
             <nav style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
-                {/* --- SECCIÓN TICKETS --- */}
-                <div style={{ marginBottom: '2rem' }}>
-                    <div style={{ paddingLeft: '1rem', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
-                        Tickets y Soporte
-                    </div>
-                    <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: 0, margin: 0 }}>
-                        {currentUser.role === 'admin' && (
+                {/* --- SECCIÓN PRINCIPAL (Restringida para Funcionarios) --- */}
+                {currentUser.role !== 'funcionario' && (
+                    <div style={{ marginBottom: '2rem' }}>
+                        <div style={{ paddingLeft: '1rem', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
+                            Menu Principal
+                        </div>
+                        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: 0, margin: 0 }}>
+                            {currentUser.role === 'admin' && (
+                                <li>
+                                    <NavItem href="/" icon={<LayoutDashboard size={18} />} label="Dashboard" active={pathname === '/'} />
+                                </li>
+                            )}
                             <li>
-                                <NavItem href="/" icon={<LayoutDashboard size={18} />} label="Dashboard" active={pathname === '/'} />
+                                <NavItem href="/tickets" icon={<TicketIcon size={18} />} label="Mis Tickets" active={pathname === '/tickets'} />
                             </li>
-                        )}
-                        <li>
-                            <NavItem href="/tickets" icon={<TicketIcon size={18} />} label="Mis Tickets" active={pathname === '/tickets' || pathname.startsWith('/tickets/')} />
-                        </li>
-                        <li>
-                            <NavItem href="/new-ticket" icon={<PlusCircle size={18} />} label="Nuevo Ticket" active={pathname === '/new-ticket'} />
-                        </li>
-                    </ul>
-                </div>
+                            <li>
+                                <NavItem href="/new-ticket" icon={<PlusCircle size={18} />} label="Nuevo Ticket" active={pathname === '/new-ticket'} />
+                            </li>
+                            <li>
+                                <NavItem
+                                    href="/notifications"
+                                    icon={<Bell size={18} />}
+                                    label="Notificaciones"
+                                    active={pathname === '/notifications'}
+                                    badge={unreadCount > 0 ? unreadCount : undefined}
+                                />
+                            </li>
+                        </ul>
+                    </div>
+                )}
 
                 {/* --- SECCIÓN BITÁCORA --- */}
-                {currentUser.role === 'admin' && (
+                {(currentUser.role === 'admin' || currentUser.role === 'supervisor') && (
                     <div style={{ marginBottom: '2rem' }}>
                         <div style={{ paddingLeft: '1rem', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
                             Operaciones
@@ -90,10 +103,10 @@ export default function Sidebar() {
                         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: 0, margin: 0 }}>
                             <li>
                                 <NavItem
-                                    href="/logbook"
-                                    icon={<BookOpen size={18} />}
-                                    label="Bitácora"
-                                    active={pathname === '/logbook'}
+                                    href="/admin/attendance"
+                                    icon={<Clock size={18} />}
+                                    label="Asistencia"
+                                    active={pathname === '/admin/attendance'}
                                 />
                             </li>
                         </ul>
@@ -158,10 +171,10 @@ export default function Sidebar() {
 
     return (
         <>
-            {/* Mobile Hamburger Button */}
-            {isMobile && (
+            {/* Mobile Hamburger Button - Only show when closed */}
+            {isMobile && !isMobileMenuOpen && (
                 <button
-                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    onClick={() => setIsMobileMenuOpen(true)}
                     style={{
                         position: 'fixed',
                         top: '1rem',
@@ -179,7 +192,7 @@ export default function Sidebar() {
                         boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
                     }}
                 >
-                    {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                    <Menu size={24} />
                 </button>
             )}
 
@@ -214,13 +227,32 @@ export default function Sidebar() {
                 transition: 'left 0.3s ease-in-out',
                 boxShadow: isMobile ? '2px 0 8px rgba(0,0,0,0.3)' : 'none'
             }}>
+                {/* Mobile Close Button inside Sidebar */}
+                {isMobile && (
+                    <button
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        style={{
+                            position: 'absolute',
+                            top: '1rem',
+                            right: '1rem',
+                            background: 'none',
+                            border: 'none',
+                            color: 'white',
+                            cursor: 'pointer',
+                            padding: '0.5rem',
+                            zIndex: 1002
+                        }}
+                    >
+                        <X size={24} />
+                    </button>
+                )}
                 {sidebarContent}
             </aside>
         </>
     );
 }
 
-function NavItem({ href, icon, label, active }: { href: string, icon: React.ReactNode, label: string, active: boolean }) {
+function NavItem({ href, icon, label, active, badge }: { href: string, icon: React.ReactNode, label: string, active: boolean, badge?: number }) {
     return (
         <Link href={href} style={{
             display: 'flex',
@@ -232,12 +264,27 @@ function NavItem({ href, icon, label, active }: { href: string, icon: React.Reac
             backgroundColor: active ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
             textDecoration: 'none',
             transition: 'all 0.2s',
+            position: 'relative',
             opacity: active ? 1 : 0.8,
             fontSize: '0.9rem',
-            minHeight: '44px' // Touch-friendly
+            minHeight: '44px'
         }}>
             {icon}
-            <span>{label}</span>
+            <span style={{ fontSize: '0.9rem', flex: 1 }}>{label}</span>
+            {badge !== undefined && badge > 0 && (
+                <span style={{
+                    backgroundColor: '#ef4444',
+                    color: 'white',
+                    fontSize: '0.7rem',
+                    fontWeight: 'bold',
+                    padding: '0.1rem 0.4rem',
+                    borderRadius: '9999px',
+                    minWidth: '1.25em',
+                    textAlign: 'center'
+                }}>
+                    {badge}
+                </span>
+            )}
         </Link>
     );
 }

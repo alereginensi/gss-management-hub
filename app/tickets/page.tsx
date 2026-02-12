@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import Link from 'next/link';
@@ -11,6 +12,17 @@ export default function TicketList() {
     const { tickets, searchQuery, filter, setFilter, currentUser } = useTicketContext();
     const [departmentFilter, setDepartmentFilter] = useState<string>('Todos');
     const [selectedTicket, setSelectedTicket] = useState<any>(null);
+    const router = useRouter();
+
+    useEffect(() => {
+        if (currentUser && currentUser.role === 'funcionario') {
+            router.push('/tasks');
+        }
+    }, [currentUser, router]);
+
+    if (currentUser && currentUser.role === 'funcionario') {
+        return null;
+    }
 
     // Apply filters
     const filteredTickets = tickets.filter(ticket => {

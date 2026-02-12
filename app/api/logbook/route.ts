@@ -59,3 +59,38 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Failed to create logbook entry' }, { status: 500 });
     }
 }
+
+export async function PUT(req: Request) {
+    try {
+        const body = await req.json();
+        const { id, date, sector, supervisor, location, report, staff_member, uniform, extra_data, supervised_by } = body;
+
+        if (!id) {
+            return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+        }
+
+        const update = db.prepare(`
+            UPDATE logbook 
+            SET date = ?, sector = ?, supervisor = ?, location = ?, report = ?, staff_member = ?, uniform = ?, extra_data = ?, supervised_by = ?
+            WHERE id = ?
+        `);
+
+        update.run(
+            date,
+            sector,
+            supervisor,
+            location,
+            report || '',
+            staff_member || '',
+            uniform || '',
+            JSON.stringify(extra_data || {}),
+            supervised_by,
+            id
+        );
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error('Logbook PUT Error:', error);
+        return NextResponse.json({ error: 'Failed to update logbook entry' }, { status: 500 });
+    }
+}
