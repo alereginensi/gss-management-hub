@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function Home() {
-  const { tickets, getAverageResolutionTime, currentUser } = useTicketContext();
+  const { tickets, getAverageResolutionTime, currentUser, isSidebarOpen } = useTicketContext();
   const router = useRouter();
 
   useEffect(() => {
@@ -38,7 +38,8 @@ export default function Home() {
 
       <main style={{
         flex: 1,
-        marginLeft: '260px', /* Width of sidebar */
+        marginLeft: isSidebarOpen ? '260px' : '0',
+        transition: 'margin-left 0.3s ease-in-out',
         padding: '2rem',
         backgroundColor: 'var(--bg-color)'
       }}>

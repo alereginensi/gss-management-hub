@@ -6,19 +6,24 @@ import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import { Clock, CheckCircle, LogIn, LogOut, FileText, Calendar, AlertCircle } from 'lucide-react';
+import { JOB_ROLES, JobRole } from '../config/rubros';
 
 interface Task {
     id: number;
     description: string | null;
     type: 'task' | 'check_in' | 'check_out';
     created_at: string;
+    location?: string;
 }
 
 export default function TasksPage() {
-    const { currentUser } = useTicketContext();
+    const { currentUser, isSidebarOpen } = useTicketContext();
     const router = useRouter();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [description, setDescription] = useState('');
+    const [selectedLocation, setSelectedLocation] = useState<string | ''>('');
+    const [selectedSector, setSelectedSector] = useState<string | ''>('');
+    const [locations, setLocations] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
@@ -27,8 +32,20 @@ export default function TasksPage() {
         console.log("TasksPage: Render with user", currentUser);
         if (currentUser && (currentUser.id !== undefined && currentUser.id !== null)) {
             fetchTasks();
+            fetchLocations();
         }
     }, [currentUser]);
+
+    const fetchLocations = async () => {
+        try {
+            const res = await fetch('/api/config/locations');
+            if (res.ok) {
+                setLocations(await res.json());
+            }
+        } catch (error) {
+            console.error('Error fetching locations:', error);
+        }
+    };
 
     const fetchTasks = async () => {
         if (!currentUser || (currentUser.id === undefined || currentUser.id === null)) return;
@@ -60,6 +77,11 @@ export default function TasksPage() {
             return;
         }
 
+        if (type === 'check_in' && !selectedLocation) {
+            alert('Debe seleccionar en qué lugar está trabajando.');
+            return;
+        }
+
         setSubmitting(true);
         try {
             const res = await fetch('/api/tasks', {
@@ -67,8 +89,10 @@ export default function TasksPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userId: currentUser.id,
-                    description: type === 'task' ? description : (type === 'check_in' ? 'Ingreso registrado' : 'Salida registrada'),
+                    description: type === 'task' ? description : (type === 'check_in' ? `Ingreso en: ${selectedLocation}${selectedSector ? ' - ' + selectedSector : ''}` : 'Salida registrada'),
                     type: type,
+                    location: type === 'check_in' ? selectedLocation : null,
+                    sector: type === 'check_in' ? selectedSector : null,
                     localTimestamp: new Date().toISOString()
                 })
             });
@@ -88,6 +112,12 @@ export default function TasksPage() {
         } finally {
             setSubmitting(false);
         }
+    };
+
+    // Helper to get sectors for selected location
+    const getSectorsForLocation = (locName: string) => {
+        const location = locations.find(l => l.name === locName);
+        return location?.sectors || [];
     };
 
     // Determine state logic
@@ -114,7 +144,12 @@ export default function TasksPage() {
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-color)' }}>
             <Sidebar />
-            <div className="main-content" style={{ flex: 1, padding: '2rem' }}>
+            <div className="main-content" style={{
+                flex: 1,
+                marginLeft: isSidebarOpen ? '260px' : '0',
+                transition: 'margin-left 0.3s ease-in-out',
+                padding: '2rem'
+            }}>
                 <Header title="Registro de Tareas" />
 
                 <div style={{ maxWidth: '600px', margin: '0 auto', paddingBottom: '4rem' }}>
@@ -130,11 +165,68 @@ export default function TasksPage() {
                             Control de Jornada ({new Date().toLocaleDateString()})
                         </h2>
 
+                        {!isCheckedIn && !hasCheckInToday && (
+                            <div style={{ marginBottom: '1.5rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                                        ¿Dónde estás ingresando? <span style={{ color: 'red' }}>*</span>
+                                    </label>
+                                    <select
+                                        value={selectedLocation}
+                                        onChange={(e) => {
+                                            setSelectedLocation(e.target.value);
+                                            setSelectedSector('');
+                                        }}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            borderRadius: 'var(--radius)',
+                                            border: '1px solid var(--border-color)',
+                                            backgroundColor: '#fff',
+                                            color: '#000',
+                                            appearance: 'none'
+                                        }}
+                                    >
+                                        <option value="">Seleccione un lugar...</option>
+                                        {locations.map(loc => (
+                                            <option key={loc.id} value={loc.name}>{loc.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {selectedLocation && getSectorsForLocation(selectedLocation).length > 0 && (
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                                            Sector (Opcional)
+                                        </label>
+                                        <select
+                                            value={selectedSector}
+                                            onChange={(e) => setSelectedSector(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '0.75rem',
+                                                borderRadius: 'var(--radius)',
+                                                border: '1px solid var(--border-color)',
+                                                backgroundColor: '#fff',
+                                                color: '#000',
+                                                appearance: 'none'
+                                            }}
+                                        >
+                                            <option value="">Todos los sectores (General)</option>
+                                            {getSectorsForLocation(selectedLocation).map((s: any) => (
+                                                <option key={s.id} value={s.name}>{s.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '2rem' }}>
                             <button
                                 id="btn-checkin"
                                 onClick={() => handleRegister('check_in')}
-                                disabled={submitting || hasCheckInToday}
+                                disabled={submitting || loading || hasCheckInToday}
                                 className="btn"
                                 style={{
                                     backgroundColor: hasCheckInToday ? '#eee' : '#22c55e',
@@ -156,7 +248,7 @@ export default function TasksPage() {
                             <button
                                 id="btn-checkout"
                                 onClick={() => handleRegister('check_out')}
-                                disabled={submitting || !isCheckedIn || hasCheckOutToday}
+                                disabled={submitting || loading || !isCheckedIn || hasCheckOutToday}
                                 className="btn"
                                 style={{
                                     backgroundColor: (!isCheckedIn || hasCheckOutToday) ? '#eee' : '#ef4444',
@@ -180,13 +272,27 @@ export default function TasksPage() {
                             <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', textAlign: 'left' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Nueva Actividad / Tarea</label>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <input
-                                        type="text"
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                        placeholder="Describa la tarea realizada..."
-                                        style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: '#fff', color: '#000' }}
-                                    />
+                                    {currentUser?.rubro && JOB_ROLES[currentUser.rubro as JobRole] ? (
+                                        <select
+                                            value={description}
+                                            onChange={(e) => setDescription(e.target.value)}
+                                            style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: '#fff', color: '#000', appearance: 'none' }}
+                                        >
+                                            <option value="">Seleccione una tarea...</option>
+                                            {JOB_ROLES[currentUser.rubro as JobRole].map(task => (
+                                                <option key={task} value={task}>{task}</option>
+                                            ))}
+                                            <option value="Otra">Otra / No listada</option>
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            value={description}
+                                            onChange={(e) => setDescription(e.target.value)}
+                                            placeholder="Describa la tarea realizada..."
+                                            style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: '#fff', color: '#000' }}
+                                        />
+                                    )}
                                     <button
                                         onClick={() => handleRegister('task')}
                                         disabled={submitting || !description.trim()}

@@ -9,6 +9,9 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 export const metadata: Metadata = {
   title: 'GSS Management Hub',
   description: 'Central Administrative Portal for GSS Facility Services',
+  icons: {
+    icon: '/logo.png',
+  },
 }
 
 export const viewport = {
@@ -25,6 +28,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
+      <head>
+        <meta charSet="utf-8" />
+      </head>
       <body className={inter.variable}>
         <TicketProvider>
           <ThemeWrapper>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { comparePassword } from '@/lib/auth';
+import { createSession } from '@/lib/auth-server';
 
 export async function POST(request: Request) {
     try {
@@ -43,8 +44,16 @@ export async function POST(request: Request) {
             }
         }
 
-        // In a real app, we would set a session cookie here.
-        // For this demo, we'll return the user info and handle session in context.
+        // Create the session
+        await createSession({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            department: user.department,
+            role: user.role,
+            rubro: user.rubro
+        });
+
         return NextResponse.json({
             success: true,
             user: {
@@ -52,7 +61,8 @@ export async function POST(request: Request) {
                 name: user.name,
                 email: user.email,
                 department: user.department,
-                role: user.role
+                role: user.role,
+                rubro: user.rubro
             }
         });
     } catch (error) {

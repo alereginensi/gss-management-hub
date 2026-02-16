@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShieldCheck, UserPlus, Mail, Lock, Building } from 'lucide-react';
 
+
 export default function Register() {
     const [formData, setFormData] = useState({
         name: '',
@@ -12,11 +13,29 @@ export default function Register() {
         password: '',
         confirmPassword: '',
         role: 'user',
-        department: 'Mantenimiento'
+        department: 'Mantenimiento',
+        rubro: ''
     });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [roles, setRoles] = useState<any[]>([]);
     const router = useRouter();
+
+    useState(() => {
+        fetchRoles();
+    });
+
+    async function fetchRoles() {
+        try {
+            const res = await fetch('/api/config/roles');
+            if (res.ok) {
+                const data = await res.json();
+                setRoles(data);
+            }
+        } catch (error) {
+            console.error('Error fetching roles:', error);
+        }
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -178,6 +197,35 @@ export default function Register() {
                             </select>
                         </div>
                     </div>
+
+                    {formData.role === 'funcionario' && (
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Rubro / Área</label>
+                            <div style={{ position: 'relative' }}>
+                                <select
+                                    required
+                                    value={formData.rubro}
+                                    onChange={(e) => setFormData({ ...formData, rubro: e.target.value })}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        borderRadius: 'var(--radius)',
+                                        border: '1px solid var(--border-color)',
+                                        backgroundColor: 'var(--surface-color)',
+                                        color: 'var(--text-primary)',
+                                        fontSize: '0.875rem',
+                                        appearance: 'none',
+                                        boxSizing: 'border-box'
+                                    }}
+                                >
+                                    <option value="">Seleccione un rubro...</option>
+                                    {roles.map(role => (
+                                        <option key={role.id} value={role.name}>{role.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
 
                     {formData.role !== 'user' && (
                         <>

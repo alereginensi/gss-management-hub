@@ -12,6 +12,27 @@ export const DEPARTMENTS = [
     'Logística'
 ];
 
+export const TICKET_SUPERVISORS = [
+    'Victor Ruilopez (Limpieza)',
+    'Silvia Betancourt (Limpieza)',
+    'Mebyl Crossa (Limpieza)',
+    'Santiago Medina (Limpieza)',
+    'Martin Batista (Seguridad / Limpieza)',
+    'Pedro Silva (Seguridad)',
+    'Juan Cigaran (Seguridad / Limpieza)',
+    'Nahim Gomez (Seguridad / Limpieza)',
+    'Jorge Arqueta (Seguridad)',
+    'Rodrigo Correa (Seguridad Electrónica)',
+    'Santiago Peñalva (Seguridad Electrónica)',
+    'Valeria Godoy (Tercerizados)',
+    'Lorena Sotelo (Limpieza)',
+    'Lourdes Casal (Limpieza)',
+    'Carla Da Luz (Limpieza)',
+    'Romina Turturiello (Seguridad)',
+    'Christian del Puerto (Seguridad)',
+    'María Álvarez (Seguridad)'
+];
+
 export interface Ticket {
     id: string;
     subject: string;
@@ -24,6 +45,8 @@ export interface Ticket {
     statusColor: string;
     requester?: string;
     requesterEmail?: string;
+    affectedWorker?: string;
+    supervisor?: string;
     createdAt?: Date;
     startedAt?: Date;
     resolvedAt?: Date;
@@ -53,6 +76,7 @@ export interface User {
     email?: string;
     department: string;
     role: 'user' | 'admin' | 'supervisor' | 'funcionario';
+    rubro?: string;
     approved?: boolean;
 }
 
@@ -85,8 +109,12 @@ interface TicketContextType {
     requestAccess: (email: string, name: string, department: string) => Promise<{ success: boolean; error?: string }>;
     approveUser: (email: string) => Promise<boolean>;
     rejectUser: (email: string) => Promise<boolean>;
+    deleteUser: (email: string) => Promise<boolean>;
+    isSidebarOpen: boolean;
+    toggleSidebar: () => void;
     pendingUsers: User[];
     fetchAllUsers: () => Promise<void>;
+    loading: boolean;
 }
 
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
@@ -121,31 +149,32 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         notification_emails: 'admin@gss-facility.com'
     });
     const [pendingUsers, setPendingUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
 
     // Restore session on mount
     React.useEffect(() => {
-        const auth = localStorage.getItem('isAuthenticated');
-        const user = localStorage.getItem('user');
-
-        if (auth === 'true' && user) {
+        const restoreSession = async () => {
             try {
-                const parsedUser = JSON.parse(user);
-                // Check if user has ID (migration fix)
-                if (parsedUser && (parsedUser.id || parsedUser.id === 0)) {
-                    setIsAuthenticated(true);
-                    setCurrentUser(parsedUser);
+                const res = await fetch('/api/auth/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.user) {
+                        setIsAuthenticated(true);
+                        setCurrentUser(data.user);
+                    }
                 } else {
-                    // Invalid session (stale), clear it
+                    // If cookie is invalid/expired, ensure we are logged out locally
                     logout();
                 }
             } catch (e) {
-                console.error("Error parsing user from local storage", e);
-                logout();
+                console.error("Error restoring session", e);
+            } finally {
+                setLoading(false);
             }
-        }
+            fetchSettings();
+        };
 
-        // Fetch system settings
-        fetchSettings();
+        restoreSession();
     }, []);
 
     const fetchSettings = async () => {
@@ -246,7 +275,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('user');
         setIsAuthenticated(false);
-        setCurrentUser({ name: '', department: '', role: 'user' });
+        setCurrentUser({ id: 0, name: '', department: '', role: 'user' });
     };
 
     const addTicket = (ticketData: Omit<Ticket, 'id' | 'date' | 'priorityColor' | 'statusColor'>) => {
@@ -272,7 +301,10 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             date: dateStr,
             priorityColor: priorityColors[ticketData.priority],
             statusColor: statusColors[ticketData.status],
-            requesterEmail: currentUser.email,
+            requester: ticketData.requester || currentUser.name || 'Anónimo',
+            requesterEmail: ticketData.requesterEmail || currentUser.email,
+            affectedWorker: ticketData.affectedWorker,
+            supervisor: ticketData.supervisor,
             createdAt: now
         };
 
@@ -303,6 +335,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
 Se ha registrado una nueva solicitud en el portal:
 
 - Colaborador: ${newTicket.requester}
+${newTicket.affectedWorker ? `- Funcionario Afectado: ${newTicket.affectedWorker}` : ''}
 - Email: ${currentUser.email}
 - Sector/Departamento: ${newTicket.department}
 - Asunto: ${newTicket.subject}
@@ -323,6 +356,7 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
                         id: newTicket.id,
                         requester: newTicket.requester,
                         requesterEmail: currentUser.email,
+                        affectedWorker: newTicket.affectedWorker,
                         department: newTicket.department,
                         subject: newTicket.subject,
                         description: newTicket.description,
@@ -514,7 +548,28 @@ Gracias por utilizar el sistema de tickets GSS.`.trim();
         }
     };
 
+    const deleteUser = async (email: string) => {
+        try {
+            const res = await fetch('/api/admin/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, action: 'delete' })
+            });
+            if (res.ok) {
+                fetchAllUsers();
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            return false;
+        }
+    };
+
     const unreadCount = notifications.filter(n => !n.read).length;
+
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
     return (
         <TicketContext.Provider value={{
@@ -546,8 +601,12 @@ Gracias por utilizar el sistema de tickets GSS.`.trim();
             requestAccess,
             approveUser,
             rejectUser,
+            deleteUser,
+            isSidebarOpen,
+            toggleSidebar,
             pendingUsers,
-            fetchAllUsers
+            fetchAllUsers,
+            loading
         }}>
             {children}
         </TicketContext.Provider>

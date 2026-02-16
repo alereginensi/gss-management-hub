@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 // exceljs imported dynamically to save bundle size
 import type * as ExcelJS from 'exceljs';
 import Sidebar from '../components/Sidebar';
@@ -17,6 +17,7 @@ import {
     Pencil,
     Save
 } from 'lucide-react';
+import { useTicketContext } from '../context/TicketContext';
 
 interface Column {
     id: number;
@@ -40,27 +41,21 @@ interface LogEntry {
 }
 
 interface ReportItem {
-    location: string;
+    sector: string; // Was location
     staff_member: string;
     uniform: string;
     report: string;
     extra_data: Record<string, any>;
 }
 
-// Fixed option lists
-const SUPERVISO_OPTIONS = ['GSS', 'Cliente', 'Otro'];
+const SUPERVISO_OPTIONS = ['Limpieza', 'Seguridad Fisica', 'Seguridad Electronica', 'Tercerizados', 'Administrativos'];
 const SUPERVISORS = ['Supervisor A', 'Supervisor B', 'Supervisor C'];
-const SECTOR_MAPPING: Record<string, string[]> = {
-    'Sector Norte': ['Puerta 1', 'Puerta 2', 'Estacionamiento A'],
-    'Sector Sur': ['Recepción', 'Muelle de Carga', 'Depósito 3'],
-    'Administración': ['Oficina 101', 'Sala de Juntas', 'Archivo'],
-    'Taller': ['Zona A', 'Zona B', 'Pañol'],
-    'Patio': ['Perímetro', 'Garita', 'Entrada Principal']
-};
-const SECTORS = Object.keys(SECTOR_MAPPING);
+// Removed hardcoded SECTOR_MAPPING
 const UNIFORMS = ['Completo', 'Parcial', 'Sin Uniforme', 'Otro'];
 
 export default function LogbookPage() {
+    const { isSidebarOpen } = useTicketContext();
+    const [locations, setLocations] = useState<any[]>([]);
     const [entries, setEntries] = useState<LogEntry[]>([]);
     const [columns, setColumns] = useState<Column[]>([]);
     const [loading, setLoading] = useState(true);
@@ -72,17 +67,28 @@ export default function LogbookPage() {
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState<Partial<LogEntry>>({});
 
+    // Helper to get sectors for a location (now Client)
+    const getSectorsForLocation = (locationName: string) => {
+        const loc = locations.find(l => l.name === locationName);
+        return loc?.sectors || [];
+    };
+
+    // Helper to get all stored sectors (for filtering or initial states if needed)
+    // In this model, we select Location (Client) first, then Sector (Place)
+    const availableLocations = locations.map(l => l.name);
+
     // Form States
     const [newReportHeader, setNewReportHeader] = useState({
         date: new Date().toISOString().split('T')[0],
-        sector: SECTORS[0],
+        location: '',
+        sector: '',
         supervisor: SUPERVISORS[0],
         supervised_by: SUPERVISO_OPTIONS[0],
     });
 
     const [reportItems, setReportItems] = useState<ReportItem[]>([
         {
-            location: SECTOR_MAPPING[SECTORS[0]][0],
+            sector: '',
             staff_member: '',
             uniform: UNIFORMS[0],
             report: '',
@@ -100,10 +106,10 @@ export default function LogbookPage() {
     // Inline Add State
     const [inlineData, setInlineData] = useState<Partial<LogEntry>>({
         date: new Date().toISOString().split('T')[0],
-        sector: SECTORS[0],
+        sector: '',
+        location: '',
         supervisor: SUPERVISORS[0],
         supervised_by: SUPERVISO_OPTIONS[0],
-        location: SECTOR_MAPPING[SECTORS[0]][0],
         report: '',
         staff_member: '',
         uniform: UNIFORMS[0],
@@ -125,12 +131,19 @@ export default function LogbookPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/logbook');
+            const [res, locRes] = await Promise.all([
+                fetch('/api/logbook'),
+                fetch('/api/config/locations')
+            ]);
+
             if (res.ok) {
                 const data = await res.json();
                 setEntries(data.entries);
                 setColumns(data.columns);
                 setSelectedIds(new Set()); // Reset selection on new data
+            }
+            if (locRes.ok) {
+                setLocations(await locRes.json());
             }
         } catch (error) {
             console.error('Error fetching logbook:', error);
@@ -193,29 +206,30 @@ export default function LogbookPage() {
                 fetchData();
 
                 // Reset states
-                const defaultSector = SECTORS[0];
+                const defaultLoc = locations[0]?.name || '';
+                const defaultSec = locations[0]?.sectors?.[0] || '';
+
                 setNewReportHeader({
                     date: new Date().toISOString().split('T')[0],
-                    sector: defaultSector,
+                    location: defaultLoc,
+                    sector: defaultSec,
                     supervisor: SUPERVISORS[0],
                     supervised_by: SUPERVISO_OPTIONS[0],
                 });
                 setReportItems([{
-                    location: SECTOR_MAPPING[defaultSector][0],
+                    sector: defaultSec,
                     staff_member: '',
                     uniform: UNIFORMS[0],
                     report: '',
                     extra_data: {}
                 }]);
 
-                // For inline add, preserve the current sector selection
-                const currentSector = Array.isArray(data) ? defaultSector : data.sector;
                 setInlineData({
                     date: new Date().toISOString().split('T')[0],
-                    sector: currentSector,
+                    location: defaultLoc,
+                    sector: defaultSec,
                     supervisor: SUPERVISORS[0],
                     supervised_by: SUPERVISO_OPTIONS[0],
-                    location: SECTOR_MAPPING[currentSector][0],
                     report: '',
                     staff_member: '',
                     uniform: UNIFORMS[0],
@@ -464,36 +478,51 @@ export default function LogbookPage() {
         document.body.removeChild(link);
     };
 
-    // Prepare data for rendering (Sort and Color)
-    const sortedEntries = [...entries].sort((a, b) => {
-        if (a.sector !== b.sector) {
-            return a.sector.localeCompare(b.sector);
-        }
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-    });
+    // Prepare data for rendering (Sort and Color) - Optimized with useMemo
+    const sortedEntries = useMemo(() => {
+        return [...entries].sort((a, b) => {
+            if (a.sector !== b.sector) {
+                return a.sector.localeCompare(b.sector);
+            }
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
+        });
+    }, [entries]);
 
-    let currentSector = '';
-    const sectorColors = [
-        'rgba(59, 130, 246, 0.02)',  // Blue tint
-        'rgba(16, 185, 129, 0.02)',  // Green tint
-        'rgba(245, 158, 11, 0.02)',  // Orange tint
-        'rgba(139, 92, 246, 0.02)',  // Purple tint
-        'rgba(236, 72, 153, 0.02)'   // Pink tint
-    ];
-    const sectorColorMap: Record<string, string> = {};
-    let colorIndex = 0;
+    const sectorColorMap = useMemo(() => {
+        const colors = [
+            'rgba(59, 130, 246, 0.02)',  // Blue tint
+            'rgba(16, 185, 129, 0.02)',  // Green tint
+            'rgba(245, 158, 11, 0.02)',  // Orange tint
+            'rgba(139, 92, 246, 0.02)',  // Purple tint
+            'rgba(236, 72, 153, 0.02)'   // Pink tint
+        ];
+        const map: Record<string, string> = {};
+        let colorIndex = 0;
 
-    sortedEntries.forEach(entry => {
-        if (!sectorColorMap[entry.sector]) {
-            sectorColorMap[entry.sector] = sectorColors[colorIndex % sectorColors.length];
-            colorIndex++;
-        }
-    });
+        sortedEntries.forEach(entry => {
+            if (!map[entry.sector]) {
+                map[entry.sector] = colors[colorIndex % colors.length];
+                colorIndex++;
+            }
+        });
+        return map;
+    }, [sortedEntries]);
+
+    const updateReportItem = (index: number, field: keyof ReportItem, value: any) => {
+        const newItems = [...reportItems];
+        newItems[index] = { ...newItems[index], [field]: value };
+        setReportItems(newItems);
+    };
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-color)' }}>
             <Sidebar />
-            <main style={{ flex: 1, marginLeft: '260px', padding: '2rem' }}>
+            <main style={{
+                flex: 1,
+                marginLeft: isSidebarOpen ? '260px' : '0',
+                transition: 'margin-left 0.3s ease-in-out',
+                padding: '2rem'
+            }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <Header
                         title="Bitácora - Supervisores"
@@ -588,33 +617,47 @@ export default function LogbookPage() {
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
                                     <select
-                                        value={inlineData.sector}
+                                        value={inlineData.location}
                                         onChange={e => {
-                                            const newSector = e.target.value;
+                                            const newLoc = e.target.value;
+                                            const sectors = getSectorsForLocation(newLoc);
                                             setInlineData({
                                                 ...inlineData,
-                                                sector: newSector,
-                                                location: SECTOR_MAPPING[newSector] ? SECTOR_MAPPING[newSector][0] : ''
+                                                location: newLoc,
+                                                sector: sectors[0]?.name || ''
                                             });
                                         }}
                                         className="input"
                                         style={{ padding: '0.4rem', fontSize: '0.85rem' }}
                                     >
-                                        {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
+                                        <option value="">Seleccionar Cliente</option>
+                                        {availableLocations.map(l => <option key={l} value={l}>{l}</option>)}
                                     </select>
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
-                                    <select value={inlineData.location} onChange={e => setInlineData({ ...inlineData, location: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
-                                        {SECTOR_MAPPING[inlineData.sector || SECTORS[0]]?.map(l => <option key={l} value={l}>{l}</option>)}
+                                    <select
+                                        value={inlineData.sector}
+                                        onChange={e => setInlineData({ ...inlineData, sector: e.target.value })}
+                                        className="input"
+                                        style={{ padding: '0.4rem', fontSize: '0.85rem' }}
+                                    >
+                                        <option value="">Seleccionar Sector</option>
+                                        {getSectorsForLocation(inlineData.location || '').map((s: any) => (
+                                            <option key={s.id} value={s.name}>{s.name}</option>
+                                        ))}
                                     </select>
                                 </td>
-                                <td style={{ padding: '0.5rem' }}><input placeholder="Funcionario" value={inlineData.staff_member} onChange={e => setInlineData({ ...inlineData, staff_member: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
+                                <td style={{ padding: '0.5rem' }}>
+                                    <input placeholder="Funcionario" value={inlineData.staff_member} onChange={e => setInlineData({ ...inlineData, staff_member: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} />
+                                </td>
                                 <td style={{ padding: '0.5rem' }}>
                                     <select value={inlineData.uniform} onChange={e => setInlineData({ ...inlineData, uniform: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
                                         {UNIFORMS.map(u => <option key={u} value={u}>{u}</option>)}
                                     </select>
                                 </td>
-                                <td style={{ padding: '0.5rem' }}><input placeholder="Reporte..." value={inlineData.report} onChange={e => setInlineData({ ...inlineData, report: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
+                                <td style={{ padding: '0.5rem' }}>
+                                    <input placeholder="Reporte..." value={inlineData.report} onChange={e => setInlineData({ ...inlineData, report: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} />
+                                </td>
                                 {columns.map(col => (
                                     <td key={col.id} style={{ padding: '0.5rem' }}>
                                         {col.type === 'select' ? (
@@ -745,225 +788,220 @@ export default function LogbookPage() {
                 </button>
 
                 {/* Modal: Nuevo Reporte */}
-                {showReportModal && (
-                    <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-                        <div className="card modal-responsive" style={{ width: '1000px', maxWidth: '95vw', padding: '2rem', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
-                            <button onClick={() => setShowReportModal(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)', opacity: 0.5 }}><X size={24} /></button>
+                {
+                    showReportModal && (
+                        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+                            <div className="card modal-responsive" style={{ width: '1000px', maxWidth: '95vw', padding: '2rem', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
+                                <button onClick={() => setShowReportModal(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)', opacity: 0.5 }}><X size={24} /></button>
 
-                            <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <ClipboardList className="accent-text" />
-                                Nuevo Reporte por Sector
-                            </h2>
+                                <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <ClipboardList className="accent-text" />
+                                    Nuevo Reporte por Sector
+                                </h2>
 
-                            <form onSubmit={(e) => handleCreateReport(e, reportItems)}>
-                                <div style={{ backgroundColor: 'rgba(0,0,0,0.02)', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--border-color)' }}>
-                                    <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Datos Generales</h3>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem' }}>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Fecha</label>
-                                            <input type="date" required value={newReportHeader.date} onChange={e => setNewReportHeader({ ...newReportHeader, date: e.target.value })} className="input" />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Superviso</label>
-                                            <select value={newReportHeader.supervised_by} onChange={e => setNewReportHeader({ ...newReportHeader, supervised_by: e.target.value })} className="input" required>
-                                                {SUPERVISO_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Supervisor</label>
-                                            <select value={newReportHeader.supervisor} onChange={e => setNewReportHeader({ ...newReportHeader, supervisor: e.target.value })} className="input" required>
-                                                {SUPERVISORS.map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Sector</label>
-                                            <select
-                                                value={newReportHeader.sector}
-                                                onChange={e => {
-                                                    const newSector = e.target.value;
-                                                    setNewReportHeader({
-                                                        ...newReportHeader,
-                                                        sector: newSector
-                                                    });
-                                                    setReportItems(reportItems.map(item => ({
-                                                        ...item,
-                                                        location: SECTOR_MAPPING[newSector][0]
-                                                    })));
-                                                }}
-                                                className="input"
-                                                required
-                                            >
-                                                {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div style={{ marginBottom: '1.5rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                        <h3 style={{ fontSize: '0.9rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lugares y Novedades</h3>
-                                        <button
-                                            type="button"
-                                            onClick={() => setReportItems([...reportItems, { location: SECTOR_MAPPING[newReportHeader.sector][0], staff_member: '', uniform: UNIFORMS[0], report: '', extra_data: {} }])}
-                                            className="btn btn-secondary"
-                                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                                        >
-                                            <Plus size={14} /> Añadir Lugar
-                                        </button>
-                                    </div>
-
-                                    {reportItems.map((item, idx) => (
-                                        <div key={idx} style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '1rem', position: 'relative', backgroundColor: 'var(--surface-color)' }}>
-                                            {reportItems.length > 1 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setReportItems(reportItems.filter((_, i) => i !== idx))}
-                                                    style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', opacity: 0.6 }}
-                                                    title="Quitar lugar"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            )}
-
-                                            <div style={{ display: 'grid', gridTemplateColumns: '200px 200px 150px 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Lugar</label>
-                                                    <select
-                                                        value={item.location}
-                                                        onChange={e => {
-                                                            const newItems = [...reportItems];
-                                                            newItems[idx].location = e.target.value;
-                                                            setReportItems(newItems);
-                                                        }}
-                                                        className="input"
-                                                        required
-                                                    >
-                                                        {SECTOR_MAPPING[newReportHeader.sector].map(l => <option key={l} value={l}>{l}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Funcionario / Personal</label>
-                                                    <input
-                                                        required
-                                                        value={item.staff_member}
-                                                        onChange={e => {
-                                                            const newItems = [...reportItems];
-                                                            newItems[idx].staff_member = e.target.value;
-                                                            setReportItems(newItems);
-                                                        }}
-                                                        className="input"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Uniforme</label>
-                                                    <select
-                                                        value={item.uniform}
-                                                        onChange={e => {
-                                                            const newItems = [...reportItems];
-                                                            newItems[idx].uniform = e.target.value;
-                                                            setReportItems(newItems);
-                                                        }}
-                                                        className="input"
-                                                        required
-                                                    >
-                                                        {UNIFORMS.map(u => <option key={u} value={u}>{u}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Reporte / Novedad</label>
-                                                    <input
-                                                        required
-                                                        value={item.report}
-                                                        onChange={e => {
-                                                            const newItems = [...reportItems];
-                                                            newItems[idx].report = e.target.value;
-                                                            setReportItems(newItems);
-                                                        }}
-                                                        className="input"
-                                                    />
-                                                </div>
+                                <form onSubmit={(e) => handleCreateReport(e, reportItems)}>
+                                    <div style={{ backgroundColor: 'rgba(0,0,0,0.02)', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--border-color)' }}>
+                                        <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Datos Generales</h3>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Fecha</label>
+                                                <input type="date" required value={newReportHeader.date} onChange={e => setNewReportHeader({ ...newReportHeader, date: e.target.value })} className="input" />
                                             </div>
-
-                                            {columns.length > 0 && (
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-                                                    {columns.map(col => (
-                                                        <div key={col.id}>
-                                                            <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>{col.label}</label>
-                                                            {col.type === 'select' ? (
-                                                                <select
-                                                                    className="input"
-                                                                    value={item.extra_data[col.name] || ''}
-                                                                    onChange={e => {
-                                                                        const newItems = [...reportItems];
-                                                                        newItems[idx].extra_data = { ...newItems[idx].extra_data, [col.name]: e.target.value };
-                                                                        setReportItems(newItems);
-                                                                    }}
-                                                                >
-                                                                    <option value="">Seleccionar...</option>
-                                                                    {col.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                                                </select>
-                                                            ) : (
-                                                                <input
-                                                                    type={col.type}
-                                                                    className="input"
-                                                                    value={item.extra_data[col.name] || ''}
-                                                                    onChange={e => {
-                                                                        const newItems = [...reportItems];
-                                                                        newItems[idx].extra_data = { ...newItems[idx].extra_data, [col.name]: e.target.value };
-                                                                        setReportItems(newItems);
-                                                                    }}
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Superviso</label>
+                                                <select value={newReportHeader.supervised_by} onChange={e => setNewReportHeader({ ...newReportHeader, supervised_by: e.target.value })} className="input" required>
+                                                    {SUPERVISO_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Supervisor</label>
+                                                <select value={newReportHeader.supervisor} onChange={e => setNewReportHeader({ ...newReportHeader, supervisor: e.target.value })} className="input" required>
+                                                    {SUPERVISORS.map(s => <option key={s} value={s}>{s}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Cliente</label>
+                                                <select
+                                                    value={newReportHeader.location}
+                                                    onChange={e => {
+                                                        const newLoc = e.target.value;
+                                                        const sectors = getSectorsForLocation(newLoc);
+                                                        setNewReportHeader({
+                                                            ...newReportHeader,
+                                                            location: newLoc,
+                                                            sector: sectors[0]?.name || ''
+                                                        });
+                                                        // Update items to match new location context if needed, or leave flexibility
+                                                        const newItems = reportItems.map(item => ({
+                                                            ...item,
+                                                            sector: sectors[0]?.name || ''
+                                                        }));
+                                                        setReportItems(newItems);
+                                                    }}
+                                                    className="input"
+                                                    required
+                                                >
+                                                    <option value="">Seleccionar Cliente</option>
+                                                    {availableLocations.map(l => <option key={l} value={l}>{l}</option>)}
+                                                </select>
+                                            </div>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
 
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                                    <button type="button" onClick={() => setShowReportModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>Cancelar</button>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>Guardar Reporte de Sector</button>
-                                </div>
-                            </form>
+                                    <div style={{ marginBottom: '1.5rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                            <h3 style={{ fontSize: '0.9rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sectores y Novedades</h3>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const sectors = getSectorsForLocation(newReportHeader.location);
+                                                    setReportItems([...reportItems, { sector: sectors[0]?.name || '', staff_member: '', uniform: UNIFORMS[0], report: '', extra_data: {} }]);
+                                                }}
+                                                className="btn btn-secondary"
+                                                style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                            >
+                                                <Plus size={14} /> Añadir Lugar
+                                            </button>
+                                        </div>
+
+                                        {reportItems.map((item, idx) => (
+                                            <div key={idx} style={{ padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '1rem', position: 'relative', backgroundColor: 'var(--surface-color)' }}>
+                                                {reportItems.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setReportItems(reportItems.filter((_, i) => i !== idx))}
+                                                        style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', opacity: 0.6 }}
+                                                        title="Quitar lugar"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+
+                                                <div style={{ display: 'grid', gridTemplateColumns: '200px 200px 150px 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Lugar</label>
+                                                        <select
+                                                            required
+                                                            value={item.sector}
+                                                            onChange={e => updateReportItem(idx, 'sector', e.target.value)}
+                                                            className="input"
+                                                            style={{ width: '100%', padding: '0.6rem' }}
+                                                        >
+                                                            <option value="">Seleccionar Sector</option>
+                                                            {getSectorsForLocation(newReportHeader.location).map((s: any) => (
+                                                                <option key={s.id} value={s.name}>{s.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Funcionario / Personal</label>
+                                                        <input
+                                                            required
+                                                            value={item.staff_member}
+                                                            onChange={e => updateReportItem(idx, 'staff_member', e.target.value)}
+                                                            className="input"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Uniforme</label>
+                                                        <select
+                                                            value={item.uniform}
+                                                            onChange={e => updateReportItem(idx, 'uniform', e.target.value)}
+                                                            className="input"
+                                                            required
+                                                        >
+                                                            {UNIFORMS.map(u => <option key={u} value={u}>{u}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Reporte / Novedad</label>
+                                                        <input
+                                                            required
+                                                            value={item.report}
+                                                            onChange={e => updateReportItem(idx, 'report', e.target.value)}
+                                                            className="input"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {columns.length > 0 && (
+                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                                                        {columns.map(col => (
+                                                            <div key={col.id}>
+                                                                <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>{col.label}</label>
+                                                                {col.type === 'select' ? (
+                                                                    <select
+                                                                        className="input"
+                                                                        value={item.extra_data[col.name] || ''}
+                                                                        onChange={e => {
+                                                                            const newData = { ...item.extra_data, [col.name]: e.target.value };
+                                                                            updateReportItem(idx, 'extra_data', newData);
+                                                                        }}
+                                                                    >
+                                                                        <option value="">Seleccionar...</option>
+                                                                        {col.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                                                    </select>
+                                                                ) : (
+                                                                    <input
+                                                                        type={col.type}
+                                                                        className="input"
+                                                                        value={item.extra_data[col.name] || ''}
+                                                                        onChange={e => {
+                                                                            const newData = { ...item.extra_data, [col.name]: e.target.value };
+                                                                            updateReportItem(idx, 'extra_data', newData);
+                                                                        }}
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                                        <button type="button" onClick={() => setShowReportModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>Cancelar</button>
+                                        <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>Guardar Reporte</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
                 {/* Modal: Nueva Columna */}
                 {showColumnModal && (
-                    <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-                        <div className="card" style={{ width: '400px', maxWidth: '90vw' }}>
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '1rem' }}>
+                        <div className="card" style={{ width: '100%', maxWidth: '400px', padding: '2rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center' }}>
-                                <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Agregar Columna Personalizada</h3>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Nueva Columna</h3>
                                 <button onClick={() => setShowColumnModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}><X size={20} /></button>
                             </div>
-                            <form onSubmit={handleCreateColumn} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>Nombre de la Columna</label>
-                                    <input required value={newColumn.label} onChange={e => setNewColumn({ ...newColumn, label: e.target.value })} className="input" placeholder="Ej: Temperatura" />
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>Nombre</label>
+                                    <input value={newColumn.label} onChange={e => setNewColumn({ ...newColumn, label: e.target.value })} className="input" placeholder="Ej: Kilometraje" />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>Tipo de Dato</label>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>Tipo</label>
                                     <select className="input" value={newColumn.type} onChange={e => setNewColumn({ ...newColumn, type: e.target.value as any })}>
                                         <option value="text">Texto</option>
                                         <option value="number">Número</option>
                                         <option value="date">Fecha</option>
-                                        <option value="select">Selección (Menú)</option>
+                                        <option value="select">Lista Desplegable</option>
                                     </select>
                                 </div>
-
                                 {newColumn.type === 'select' && (
-                                    <div style={{ border: '1px solid var(--border-color)', padding: '1rem', borderRadius: '12px', backgroundColor: 'rgba(0,0,0,0.01)' }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>Opciones del Menú</label>
-                                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                                            <input value={optionText} onChange={e => setOptionText(e.target.value)} className="input" style={{ flex: 1 }} placeholder="Nueva opción..." />
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>Opciones</label>
+                                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                            <input value={optionText} onChange={e => setOptionText(e.target.value)} className="input" placeholder="Nueva opción..." />
                                             <button type="button" onClick={() => { if (optionText) { setNewColumn({ ...newColumn, options: [...(newColumn.options || []), optionText] }); setOptionText(''); } }} className="btn btn-secondary">Añadir</button>
                                         </div>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                                             {newColumn.options?.map(opt => (
-                                                <span key={opt} style={{ backgroundColor: 'white', padding: '0.25rem 0.6rem', borderRadius: '20px', fontSize: '0.75rem', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                <span key={opt} style={{ padding: '0.2rem 0.6rem', border: '1px solid var(--border-color)', borderRadius: '20px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                     {opt}
                                                     <X size={12} style={{ cursor: 'pointer' }} onClick={() => setNewColumn({ ...newColumn, options: newColumn.options?.filter(o => o !== opt) })} />
                                                 </span>
@@ -971,232 +1009,92 @@ export default function LogbookPage() {
                                         </div>
                                     </div>
                                 )}
-
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                                    <button type="button" onClick={() => setShowColumnModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>Cancelar</button>
-                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Crear Columna</button>
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                    <button onClick={() => setShowColumnModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>Cancelar</button>
+                                    <button onClick={handleCreateColumn} className="btn btn-primary" style={{ flex: 1 }}>Crear</button>
                                 </div>
-                            </form>
+                            </div>
                         </div>
                     </div>
                 )}
-                {/* Detail Modal */}
-                {selectedReport && (
-                    <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '1rem' }}>
-                        <div className="card modal-responsive" style={{ width: '500px', maxWidth: '95vw', padding: '2rem', position: 'relative', maxHeight: '90vh', overflowY: 'auto' }}>
-                            <button onClick={() => { setSelectedReport(null); setIsEditing(false); }} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-color)', opacity: 0.5 }}><X size={24} /></button>
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingRight: '3rem' }}>
-                                <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{isEditing ? 'Editar Reporte' : 'Detalle del Reporte'}</h3>
-                                {!isEditing && (
-                                    <button
-                                        onClick={() => { setEditData(selectedReport); setIsEditing(true); }}
-                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
-                                    >
-                                        <Pencil size={18} /> Editar
-                                    </button>
+                {/* VIEW/EDIT MODAL */}
+                {selectedReport && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '1rem' }}>
+                        <div className="card" style={{ width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', padding: '2rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'flex-start' }}>
+                                <div>
+                                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Detalles del Reporte</h2>
+                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{selectedReport.date} - {selectedReport.sector}</div>
+                                </div>
+                                <button onClick={() => setSelectedReport(null)} className="btn btn-secondary" style={{ padding: '0.5rem' }}><X size={20} /></button>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', opacity: 0.6, marginBottom: '0.25rem' }}>Cliente</label>
+                                        <div style={{ fontWeight: 500 }}>{selectedReport.location}</div>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', opacity: 0.6, marginBottom: '0.25rem' }}>Supervisor</label>
+                                        <div style={{ fontWeight: 500 }}>{selectedReport.supervisor}</div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', opacity: 0.6, marginBottom: '0.25rem' }}>Funcionario</label>
+                                    <div style={{ fontWeight: 500 }}>{selectedReport.staff_member || 'No asignado'}</div>
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', opacity: 0.6, marginBottom: '0.25rem' }}>Reporte / Novedad</label>
+                                    <div style={{ backgroundColor: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: '8px', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                                        {selectedReport.report}
+                                    </div>
+                                </div>
+
+                                {columns.length > 0 && (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        {columns.map(col => (
+                                            <div key={col.id}>
+                                                <label style={{ display: 'block', fontSize: '0.75rem', opacity: 0.6, marginBottom: '0.25rem' }}>{col.label}</label>
+                                                <div style={{ fontWeight: 500 }}>{selectedReport.extra_data[col.name] || '-'}</div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
 
-                            {isEditing ? (
-                                <form onSubmit={handleUpdateReport} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Sector</label>
-                                            <select
-                                                className="input"
-                                                value={editData.sector || selectedReport.sector}
-                                                onChange={e => setEditData({ ...editData, sector: e.target.value })}
-                                            >
-                                                {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Lugar</label>
-                                            <select
-                                                className="input"
-                                                value={editData.location || selectedReport.location}
-                                                onChange={e => setEditData({ ...editData, location: e.target.value })}
-                                            >
-                                                {(SECTOR_MAPPING[editData.sector || selectedReport.sector || ''] || []).map(l => <option key={l} value={l}>{l}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Fecha</label>
-                                            <input
-                                                type="date"
-                                                className="input"
-                                                value={editData.date || selectedReport.date}
-                                                onChange={e => setEditData({ ...editData, date: e.target.value })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Uniforme</label>
-                                            <select
-                                                className="input"
-                                                value={editData.uniform || selectedReport.uniform}
-                                                onChange={e => setEditData({ ...editData, uniform: e.target.value })}
-                                            >
-                                                {UNIFORMS.map(u => <option key={u} value={u}>{u}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Funcionario</label>
-                                        <input
-                                            className="input"
-                                            value={editData.staff_member || selectedReport.staff_member || ''}
-                                            onChange={e => setEditData({ ...editData, staff_member: e.target.value })}
-                                            placeholder="Nombre del funcionario"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Reporte / Novedades</label>
-                                        <textarea
-                                            className="input"
-                                            style={{ minHeight: '100px', resize: 'vertical' }}
-                                            value={editData.report || selectedReport.report || ''}
-                                            onChange={e => setEditData({ ...editData, report: e.target.value })}
-                                        />
-                                    </div>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Supervisor</label>
-                                            <select
-                                                className="input"
-                                                value={editData.supervisor || selectedReport.supervisor}
-                                                onChange={e => setEditData({ ...editData, supervisor: e.target.value })}
-                                            >
-                                                {SUPERVISORS.map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Superviso</label>
-                                            <select
-                                                className="input"
-                                                value={editData.supervised_by || selectedReport.supervised_by}
-                                                onChange={e => setEditData({ ...editData, supervised_by: e.target.value })}
-                                            >
-                                                {SUPERVISO_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                                        <button type="button" onClick={() => setIsEditing(false)} className="btn btn-secondary" style={{ flex: 1 }}>Cancelar</button>
-                                        <button type="submit" className="btn btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
-                                            <Save size={18} /> Guardar Cambios
-                                        </button>
-                                    </div>
-                                </form>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sector</span>
-                                            <div style={{ fontWeight: 600 }}>{selectedReport.sector}</div>
-                                        </div>
-                                        <div>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lugar</span>
-                                            <div style={{ fontWeight: 600 }}>{selectedReport.location}</div>
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Fecha</span>
-                                            <div>{selectedReport.date}</div>
-                                        </div>
-                                        <div>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Uniforme</span>
-                                            <div>
-                                                <span style={{
-                                                    fontSize: '0.75rem',
-                                                    padding: '0.1rem 0.4rem',
-                                                    borderRadius: '4px',
-                                                    backgroundColor: selectedReport.uniform === 'Completo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                                    color: selectedReport.uniform === 'Completo' ? '#22c55e' : '#ef4444'
-                                                }}>
-                                                    {selectedReport.uniform}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Funcionario</span>
-                                        <div style={{ fontSize: '1rem' }}>{selectedReport.staff_member || '-'}</div>
-                                    </div>
-
-                                    <div>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Reporte / Novedades</span>
-                                        <div style={{ padding: '1rem', backgroundColor: 'var(--bg-color)', borderRadius: '8px', fontSize: '0.9rem', whiteSpace: 'pre-wrap', border: '1px solid var(--border-color)', marginTop: '0.25rem' }}>
-                                            {selectedReport.report || 'Sin novedades'}
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Supervisor</span>
-                                            <div>{selectedReport.supervisor}</div>
-                                        </div>
-                                        <div>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Superviso</span>
-                                            <div>{selectedReport.supervised_by}</div>
-                                        </div>
-                                    </div>
-
-                                    {/* Extra Columns */}
-                                    {Object.keys(selectedReport.extra_data).length > 0 && (
-                                        <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border-color)' }}>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.5rem' }}>Datos Adicionales</span>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                                                {Object.entries(selectedReport.extra_data).map(([key, value]) => (
-                                                    <div key={key}>
-                                                        <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{key.replace(/_/g, ' ')}:</span>
-                                                        <div style={{ fontSize: '0.9rem' }}>{String(value)}</div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                                        <button
-                                            className="btn"
-                                            style={{ width: '100%', backgroundColor: '#fee2e2', color: '#b91c1c', justifyContent: 'center', padding: '0.75rem' }}
-                                            onClick={async () => {
-                                                if (confirm('¿Eliminar este reporte permanentemente?')) {
-                                                    try {
-                                                        const res = await fetch('/api/logbook/delete', {
-                                                            method: 'DELETE',
-                                                            headers: { 'Content-Type': 'application/json' },
-                                                            body: JSON.stringify({ ids: [selectedReport.id] })
-                                                        });
-                                                        if (res.ok) {
-                                                            setSelectedReport(null);
-                                                            fetchData();
-                                                        } else {
-                                                            alert('Error al eliminar');
-                                                        }
-                                                    } catch (error) {
-                                                        console.error('Error deleting report:', error);
-                                                        alert('Error al eliminar');
-                                                    }
+                            <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem' }}>
+                                <button
+                                    onClick={async () => {
+                                        if (confirm('¿Eliminar este reporte permanentemente?')) {
+                                            try {
+                                                const res = await fetch('/api/logbook/delete', {
+                                                    method: 'DELETE',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ ids: [selectedReport.id] })
+                                                });
+                                                if (res.ok) {
+                                                    setSelectedReport(null);
+                                                    fetchData();
+                                                } else {
+                                                    alert('Error al eliminar');
                                                 }
-                                            }}
-                                        >
-                                            <Trash2 size={18} style={{ marginRight: '0.5rem' }} /> Eliminar Reporte
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                                            } catch (error) {
+                                                console.error('Error deleting report:', error);
+                                                alert('Error al eliminar');
+                                            }
+                                        }
+                                    }}
+                                    className="btn"
+                                    style={{ flex: 1, backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                                >
+                                    <Trash2 size={18} /> Eliminar
+                                </button>
+                                <button onClick={() => setSelectedReport(null)} className="btn btn-primary" style={{ flex: 2 }}>Cerrar</button>
+                            </div>
                         </div>
                     </div>
                 )}
