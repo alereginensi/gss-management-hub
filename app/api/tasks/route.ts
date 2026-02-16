@@ -19,20 +19,24 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
-        const { userId, description, type, localTimestamp } = await request.json();
+        const { userId, description, type, localTimestamp, location, sector } = await request.json();
 
         if (!userId) {
             return NextResponse.json({ error: 'UserID obligatorio' }, { status: 400 });
         }
 
         const taskType = type || 'task';
+
+        if (taskType === 'check_in' && (!location || !location.trim())) {
+            return NextResponse.json({ error: 'Debe seleccionar en qué lugar está trabajando.' }, { status: 400 });
+        }
         const timestamp = localTimestamp || new Date().toISOString();
 
         // Ensure description is NEVER null/undefined for DB constraint
-        const descValue = description || (taskType === 'check_in' ? 'Ingreso registrado' : (taskType === 'check_out' ? 'Salida registrada' : 'Tarea sin descripción'));
+        const descValue = description || (taskType === 'check_in' ? `Ingreso registrado en ${location}${sector ? ' - ' + sector : ''}` : (taskType === 'check_out' ? 'Salida registrada' : 'Tarea sin descripción'));
 
-        const stmt = db.prepare('INSERT INTO tasks (user_id, description, type, created_at) VALUES (?, ?, ?, ?)');
-        const result = stmt.run(userId, descValue, taskType, timestamp);
+        const stmt = db.prepare('INSERT INTO tasks (user_id, description, type, created_at, location, sector) VALUES (?, ?, ?, ?, ?, ?)');
+        const result = stmt.run(userId, descValue, taskType, timestamp, location || null, sector || null);
 
         return NextResponse.json({
             success: true,

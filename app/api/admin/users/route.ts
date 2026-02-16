@@ -2,7 +2,13 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 
+import { getSession } from '@/lib/auth-server';
+
 export async function GET() {
+    const session = await getSession();
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'supervisor')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     try {
         const users = db.prepare('SELECT id, name, email, department, role, approved FROM users').all();
         return NextResponse.json(users);
@@ -12,6 +18,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+    const session = await getSession();
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'supervisor')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     try {
         const { email, action, name, password, department, role } = await request.json();
 
@@ -22,6 +32,11 @@ export async function POST(request: Request) {
 
         if (action === 'reject') {
             db.prepare('DELETE FROM users WHERE email = ? AND approved = 0').run(email);
+            return NextResponse.json({ success: true });
+        }
+
+        if (action === 'delete') {
+            db.prepare('DELETE FROM users WHERE email = ?').run(email);
             return NextResponse.json({ success: true });
         }
 

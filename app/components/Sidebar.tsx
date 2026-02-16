@@ -13,18 +13,33 @@ import {
     Menu,
     X,
     Bell,
-    Clock
+    Clock,
+    UserMinus
 } from 'lucide-react';
 import { useTicketContext } from '../context/TicketContext';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 export default function Sidebar() {
-    const { currentUser, logout, isAuthenticated, unreadCount } = useTicketContext();
+    const { currentUser, logout, isAuthenticated, unreadCount, deleteUser, isSidebarOpen, toggleSidebar } = useTicketContext();
     const router = useRouter();
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+
+    const handleDeleteUser = async () => {
+        const email = prompt('Ingrese el correo electrónico del usuario que desea eliminar:');
+        if (!email) return;
+
+        if (confirm(`¿Estás seguro de que deseas eliminar permanentemente al usuario "${email}"? Esta acción no se puede deshacer.`)) {
+            const success = await deleteUser(email);
+            if (success) {
+                alert('Usuario eliminado con éxito.');
+            } else {
+                alert('No se pudo eliminar al usuario. Verifique el correo electrónico e intente nuevamente.');
+            }
+        }
+    };
 
     useEffect(() => {
         const checkMobile = () => {
@@ -41,10 +56,17 @@ export default function Sidebar() {
         setIsMobileMenuOpen(false);
     }, [pathname]);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
-            logout();
-            router.push('/register');
+            try {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                logout();
+                router.push('/login');
+            } catch (error) {
+                console.error('Logout error:', error);
+                logout();
+                router.push('/login');
+            }
         }
     };
 
@@ -54,12 +76,11 @@ export default function Sidebar() {
 
     const sidebarContent = (
         <>
-            <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <ShieldCheck size={24} color="#ffffff" />
-                    <h1 style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.025em' }}>GSS Hub</h1>
+            <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'center' }}>
+                <div style={{ width: '100%', maxWidth: '160px' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logo.png" alt="GSS Logo" style={{ width: '100%', height: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)' }} />
                 </div>
-                <p style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '0.25rem' }}>Management Solutions</p>
             </div>
 
             <nav style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
@@ -109,6 +130,14 @@ export default function Sidebar() {
                                     active={pathname === '/admin/attendance'}
                                 />
                             </li>
+                            <li>
+                                <NavItem
+                                    href="/logbook"
+                                    icon={<BookOpen size={18} />}
+                                    label="Bitácora"
+                                    active={pathname === '/logbook'}
+                                />
+                            </li>
                         </ul>
                     </div>
                 )}
@@ -124,7 +153,36 @@ export default function Sidebar() {
                                 <NavItem href="/admin/users" icon={<Users size={18} />} label="Usuarios" active={pathname === '/admin/users'} />
                             </li>
                             <li>
-                                <NavItem href="/settings" icon={<Settings size={18} />} label="Configuración" active={pathname === '/settings'} />
+                                <button
+                                    onClick={handleDeleteUser}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.75rem',
+                                        padding: '0.75rem 1rem',
+                                        borderRadius: 'var(--radius)',
+                                        color: 'var(--text-inverse)',
+                                        backgroundColor: 'transparent',
+                                        textDecoration: 'none',
+                                        transition: 'all 0.2s',
+                                        position: 'relative',
+                                        opacity: 0.8,
+                                        fontSize: '0.9rem',
+                                        minHeight: '44px',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        width: '100%',
+                                        textAlign: 'left'
+                                    }}
+                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                    <UserMinus size={18} />
+                                    <span>Eliminar Usuario</span>
+                                </button>
+                            </li>
+                            <li>
+                                <NavItem href="/admin/config" icon={<Settings size={18} />} label="Configuración" active={pathname === '/admin/config'} />
                             </li>
                         </ul>
                     </div>
@@ -171,6 +229,31 @@ export default function Sidebar() {
 
     return (
         <>
+            {/* Desktop Toggle Button - Only show when closed */}
+            {!isMobile && !isSidebarOpen && (
+                <button
+                    onClick={toggleSidebar}
+                    style={{
+                        position: 'fixed',
+                        top: '1rem',
+                        left: '1rem',
+                        zIndex: 1001,
+                        backgroundColor: 'var(--sidebar-bg)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '0.75rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                    }}
+                >
+                    <Menu size={24} />
+                </button>
+            )}
+
             {/* Mobile Hamburger Button - Only show when closed */}
             {isMobile && !isMobileMenuOpen && (
                 <button
@@ -222,30 +305,30 @@ export default function Sidebar() {
                 height: '100vh',
                 position: 'fixed',
                 top: 0,
-                left: isMobile ? (isMobileMenuOpen ? 0 : '-260px') : 0,
+                left: isMobile
+                    ? (isMobileMenuOpen ? 0 : '-260px')
+                    : (isSidebarOpen ? 0 : '-260px'),
                 zIndex: 1000,
                 transition: 'left 0.3s ease-in-out',
-                boxShadow: isMobile ? '2px 0 8px rgba(0,0,0,0.3)' : 'none'
+                boxShadow: (isMobile || !isSidebarOpen) ? '2px 0 8px rgba(0,0,0,0.3)' : 'none'
             }}>
-                {/* Mobile Close Button inside Sidebar */}
-                {isMobile && (
-                    <button
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        style={{
-                            position: 'absolute',
-                            top: '1rem',
-                            right: '1rem',
-                            background: 'none',
-                            border: 'none',
-                            color: 'white',
-                            cursor: 'pointer',
-                            padding: '0.5rem',
-                            zIndex: 1002
-                        }}
-                    >
-                        <X size={24} />
-                    </button>
-                )}
+                {/* Close Button inside Sidebar (Mobile and Desktop) */}
+                <button
+                    onClick={isMobile ? () => setIsMobileMenuOpen(false) : toggleSidebar}
+                    style={{
+                        position: 'absolute',
+                        top: '1rem',
+                        right: '1rem',
+                        background: 'none',
+                        border: 'none',
+                        color: 'white',
+                        cursor: 'pointer',
+                        padding: '0.5rem',
+                        zIndex: 1002
+                    }}
+                >
+                    <X size={24} />
+                </button>
                 {sidebarContent}
             </aside>
         </>

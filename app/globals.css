@@ -19,20 +19,20 @@
   --text-inverse: #ffffff;
 
   /* Status Colors */
-  --status-new: #3850a0;
+  --status-new: #29416b;
   /* GSS Blue */
   --status-progress: #f59e0b;
-  /* Amber (keep for warning/progress) */
-  --status-resolved: #16a34a;
-  /* GSS Green-ish */
+  /* Amber */
+  --status-resolved: #7DA63A;
+  /* GSS Olive Green */
   --status-closed: #64748b;
 
   /* Priority Colors */
   --priority-high: #e04951;
   /* GSS Red */
   --priority-medium: #f59e0b;
-  --priority-low: #16a34a;
-  /* Green */
+  --priority-low: #7DA63A;
+  /* GSS Olive Green */
 
   /* Spacing & Borders */
   --radius: 0.5rem;

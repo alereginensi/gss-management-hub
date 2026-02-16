@@ -4,14 +4,14 @@ import db from '@/lib/db';
 export async function POST(request: Request) {
     try {
         const ticket = await request.json();
-        const { id, subject, description, department, priority, status, requester, requesterEmail, date } = ticket;
+        const { id, subject, description, department, priority, status, requester, requesterEmail, affectedWorker, date, supervisor } = ticket;
 
         const stmt = db.prepare(`
-            INSERT INTO tickets (id, subject, description, department, priority, status, requester, requesterEmail, date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO tickets (id, subject, description, department, priority, status, requester, requesterEmail, affected_worker, date, supervisor)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
-        stmt.run(id, subject, description, department, priority, status, requester, requesterEmail, date);
+        stmt.run(id, subject, description, department, priority, status, requester, requesterEmail, affectedWorker, date, supervisor);
 
         return NextResponse.json({ success: true });
     } catch (error) {

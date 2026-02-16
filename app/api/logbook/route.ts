@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 
-export async function GET() {
+export async function GET(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
+
     try {
-        const entries = db.prepare('SELECT * FROM logbook ORDER BY createdAt DESC').all();
+        const entries = db.prepare('SELECT * FROM logbook ORDER BY createdAt DESC LIMIT ? OFFSET ?').all(limit, offset);
         const columns = db.prepare('SELECT * FROM logbook_columns').all();
+        const totalCount = db.prepare('SELECT count(*) as count FROM logbook').get() as { count: number };
 
         return NextResponse.json({
             entries: entries.map((e: any) => ({
@@ -14,7 +19,8 @@ export async function GET() {
             columns: columns.map((c: any) => ({
                 ...c,
                 options: c.options ? JSON.parse(c.options) : []
-            }))
+            })),
+            totalCount: totalCount.count
         });
     } catch (error) {
         console.error('Logbook GET Error:', error);

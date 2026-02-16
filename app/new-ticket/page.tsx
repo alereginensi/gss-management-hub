@@ -4,12 +4,12 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { UploadCloud, CheckCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useTicketContext, DEPARTMENTS } from '../context/TicketContext';
+import { useTicketContext, DEPARTMENTS, TICKET_SUPERVISORS } from '../context/TicketContext';
 import { useRouter } from 'next/navigation';
 
 export default function NewTicket() {
     const [submitted, setSubmitted] = useState(false);
-    const { addTicket, currentUser } = useTicketContext();
+    const { addTicket, currentUser, isSidebarOpen } = useTicketContext();
     const router = useRouter();
 
     const [formData, setFormData] = useState({
@@ -18,7 +18,9 @@ export default function NewTicket() {
         subject: '',
         description: '',
         department: currentUser.department === 'Sin Asignar' ? '' : (currentUser.department || ''),
-        priority: 'Media' as 'Alta' | 'Media' | 'Baja'
+        priority: 'Media' as 'Alta' | 'Media' | 'Baja',
+        affectedWorker: '',
+        supervisor: ''
     });
     const [files, setFiles] = useState<File[]>([]);
 
@@ -31,6 +33,9 @@ export default function NewTicket() {
         }
         if (currentUser.department && currentUser.department !== 'Sin Asignar') {
             setFormData(prev => ({ ...prev, department: currentUser.department }));
+        }
+        if (currentUser.role === 'supervisor' && currentUser.name) {
+            setFormData(prev => ({ ...prev, supervisor: currentUser.name }));
         }
     }, [currentUser]);
 
@@ -80,6 +85,7 @@ export default function NewTicket() {
         }
 
         // Add ticket to global state
+        // Add ticket to global state
         addTicket({
             subject: formData.subject,
             description: formData.description,
@@ -87,7 +93,8 @@ export default function NewTicket() {
             priority: formData.priority,
             status: 'Nuevo',
             requester: formData.name,
-            requesterEmail: formData.email
+            requesterEmail: formData.email,
+            affectedWorker: formData.affectedWorker
         });
 
         setSubmitted(true);
@@ -115,7 +122,8 @@ export default function NewTicket() {
 
             <main style={{
                 flex: 1,
-                marginLeft: '260px',
+                marginLeft: isSidebarOpen ? '260px' : '0',
+                transition: 'margin-left 0.3s ease-in-out',
                 padding: '2rem',
                 backgroundColor: 'var(--bg-color)'
             }}>
@@ -135,24 +143,47 @@ export default function NewTicket() {
                         <form onSubmit={handleSubmit} className="card">
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Nombre Completo *</label>
-                                    <input
-                                        type="text"
-                                        name="name"
-                                        required
-                                        value={formData.name}
-                                        onChange={handleInputChange}
-                                        placeholder="Tu nombre y apellido"
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.75rem',
-                                            borderRadius: 'var(--radius)',
-                                            border: '1px solid var(--border-color)',
-                                            fontSize: '1rem',
-                                            backgroundColor: 'var(--surface-color)',
-                                            color: 'var(--text-primary)'
-                                        }}
-                                    />
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Supervisor</label>
+                                    {currentUser.role === 'admin' ? (
+                                        <select
+                                            name="supervisor"
+                                            value={formData.supervisor}
+                                            onChange={handleInputChange}
+                                            style={{
+                                                width: '100%',
+                                                padding: '0.75rem',
+                                                borderRadius: 'var(--radius)',
+                                                border: '1px solid var(--border-color)',
+                                                fontSize: '1rem',
+                                                backgroundColor: 'var(--surface-color)',
+                                                color: 'var(--text-primary)'
+                                            }}
+                                        >
+                                            <option value="">Seleccionar Supervisor...</option>
+                                            {TICKET_SUPERVISORS.map(sup => (
+                                                <option key={sup} value={sup}>{sup}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            name="supervisor"
+                                            value={formData.supervisor}
+                                            readOnly
+                                            placeholder="Auto-asignado"
+                                            style={{
+                                                width: '100%',
+                                                padding: '0.75rem',
+                                                borderRadius: 'var(--radius)',
+                                                border: '1px solid var(--border-color)',
+                                                fontSize: '1rem',
+                                                backgroundColor: 'var(--background-color)',
+                                                color: 'var(--text-primary)',
+                                                opacity: 0.8,
+                                                cursor: 'not-allowed'
+                                            }}
+                                        />
+                                    )}
                                 </div>
 
                                 <div>
@@ -177,6 +208,29 @@ export default function NewTicket() {
                                     />
                                 </div>
 
+                                {currentUser.role !== 'supervisor' && (
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Nombre Completo *</label>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            required
+                                            value={formData.name}
+                                            onChange={handleInputChange}
+                                            placeholder="Tu nombre y apellido"
+                                            style={{
+                                                width: '100%',
+                                                padding: '0.75rem',
+                                                borderRadius: 'var(--radius)',
+                                                border: '1px solid var(--border-color)',
+                                                fontSize: '1rem',
+                                                backgroundColor: 'var(--surface-color)',
+                                                color: 'var(--text-primary)'
+                                            }}
+                                        />
+                                    </div>
+                                )}
+
                                 <div style={{ gridColumn: '1 / -1' }}>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Asunto</label>
                                     <input
@@ -186,6 +240,26 @@ export default function NewTicket() {
                                         value={formData.subject}
                                         onChange={handleInputChange}
                                         placeholder="Resumen breve del problema"
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            borderRadius: 'var(--radius)',
+                                            border: '1px solid var(--border-color)',
+                                            fontSize: '1rem',
+                                            backgroundColor: 'var(--surface-color)',
+                                            color: 'var(--text-primary)'
+                                        }}
+                                    />
+                                </div>
+
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Funcionario Afectado (Opcional)</label>
+                                    <input
+                                        type="text"
+                                        name="affectedWorker"
+                                        value={formData.affectedWorker}
+                                        onChange={handleInputChange}
+                                        placeholder="Nombre del funcionario (si es diferente al solicitante)"
                                         style={{
                                             width: '100%',
                                             padding: '0.75rem',
