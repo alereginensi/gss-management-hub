@@ -22,6 +22,7 @@ export async function POST(request: Request) {
                     to: Array.isArray(to) ? to.join(', ') : to,
                     subject,
                     description: body,
+                    affected_worker: ticketData.affectedWorker,
                     ...ticketData
                 };
 

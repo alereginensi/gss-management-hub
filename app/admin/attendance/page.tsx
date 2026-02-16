@@ -5,13 +5,16 @@ import React from 'react';
 import { useTicketContext } from '../../context/TicketContext';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
-import { Calendar, Users, Clock, Search, FileText, ChevronDown, ChevronUp, Download, LogIn, LogOut } from 'lucide-react';
+import { Calendar, Clock, ChevronDown, ChevronUp, Download, LogIn, LogOut, Filter } from 'lucide-react';
 
 interface Workday {
     date: string;
     userId: number;
     userName: string;
     department: string;
+    rubro?: string;
+    location?: string;
+    sector?: string;
     checkIn: string | null;
     checkOut: string | null;
     totalHours: string;
@@ -19,22 +22,41 @@ interface Workday {
 }
 
 export default function AttendancePage() {
-    const { currentUser } = useTicketContext();
+    const { currentUser, isSidebarOpen } = useTicketContext();
     const [attendance, setAttendance] = useState<Workday[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedRow, setExpandedRow] = useState<string | null>(null);
     const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+    const [filterLocation, setFilterLocation] = useState('');
+    const [filterRubro, setFilterRubro] = useState('');
+    const [filterSector, setFilterSector] = useState('');
+    const [locations, setLocations] = useState<any[]>([]);
+    const [roles, setRoles] = useState<any[]>([]);
 
     useEffect(() => {
         if (currentUser.id) {
             fetchAttendance();
+            fetchFilters();
         }
-    }, [currentUser, filterDate]);
+    }, [currentUser, filterDate, filterLocation, filterRubro, filterSector]);
+
+    const fetchFilters = async () => {
+        try {
+            const [locRes, roleRes] = await Promise.all([
+                fetch('/api/config/locations'),
+                fetch('/api/config/roles')
+            ]);
+            if (locRes.ok) setLocations(await locRes.json());
+            if (roleRes.ok) setRoles(await roleRes.json());
+        } catch (error) {
+            console.error('Error fetching filters:', error);
+        }
+    };
 
     const fetchAttendance = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/admin/attendance?requesterId=${currentUser.id}&requesterRole=${currentUser.role}&startDate=${filterDate}&endDate=${filterDate}`);
+            const res = await fetch(`/api/admin/attendance?requesterId=${currentUser.id}&requesterRole=${currentUser.role}&startDate=${filterDate}&endDate=${filterDate}&location=${encodeURIComponent(filterLocation)}&rubro=${encodeURIComponent(filterRubro)}&sector=${encodeURIComponent(filterSector)}`);
             if (res.ok) {
                 const data = await res.json();
                 setAttendance(data);
@@ -61,6 +83,8 @@ export default function AttendancePage() {
             worksheet.columns = [
                 { header: 'Funcionario', key: 'userName', width: 25 },
                 { header: 'Departamento', key: 'department', width: 20 },
+                { header: 'Lugar', key: 'location', width: 20 },
+                { header: 'Sector', key: 'sector', width: 20 },
                 { header: 'Fecha', key: 'date', width: 15 },
                 { header: 'Hora Ingreso', key: 'checkIn', width: 15 },
                 { header: 'Hora Salida', key: 'checkOut', width: 15 },
@@ -85,16 +109,16 @@ export default function AttendancePage() {
             });
 
             // CUSTOM COLORS FOR METRICS
-            // 1. Hora Ingreso (Col 4) -> Green
-            const checkInCell = headerRow.getCell(4);
+            // 1. Hora Ingreso (Col 6) -> Green
+            const checkInCell = headerRow.getCell(6);
             checkInCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF22C55E' } };
 
-            // 2. Hora Salida (Col 5) -> Red
-            const checkOutCell = headerRow.getCell(5);
+            // 2. Hora Salida (Col 7) -> Red
+            const checkOutCell = headerRow.getCell(7);
             checkOutCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEF4444' } };
 
-            // 3. Total Horas (Col 6) -> Yellow (with dark text for visibility)
-            const totalHoursCell = headerRow.getCell(6);
+            // 3. Total Horas (Col 8) -> Yellow (with dark text for visibility)
+            const totalHoursCell = headerRow.getCell(8);
             totalHoursCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
             totalHoursCell.font = { bold: true, color: { argb: 'FF000000' } };
 
@@ -103,7 +127,9 @@ export default function AttendancePage() {
                 if (day.tasks.length === 0) {
                     worksheet.addRow({
                         userName: day.userName,
-                        department: day.department,
+                        department: day.rubro || day.department,
+                        location: day.location || '-',
+                        sector: day.sector || '-',
                         date: day.date,
                         checkIn: day.checkIn,
                         checkOut: day.checkOut,
@@ -115,7 +141,9 @@ export default function AttendancePage() {
                     day.tasks.forEach(t => {
                         worksheet.addRow({
                             userName: day.userName,
-                            department: day.department,
+                            department: day.rubro || day.department,
+                            location: day.location || '-',
+                            sector: day.sector || '-',
                             date: day.date,
                             checkIn: day.checkIn,
                             checkOut: day.checkOut,
@@ -145,7 +173,7 @@ export default function AttendancePage() {
             // Auto-filters
             worksheet.autoFilter = {
                 from: { row: 1, column: 1 },
-                to: { row: 1, column: 8 }
+                to: { row: 1, column: 10 }
             };
 
             const buffer = await workbook.xlsx.writeBuffer();
@@ -166,6 +194,12 @@ export default function AttendancePage() {
         setExpandedRow(expandedRow === id ? null : id);
     };
 
+    // Helper to get sectors for selected location
+    const getSectorsForLocation = (locName: string) => {
+        const location = locations.find(l => l.name === locName);
+        return location?.sectors || [];
+    };
+
     if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
         return <div style={{ padding: '2rem', textAlign: 'center' }}>Acceso denegado</div>;
     }
@@ -173,7 +207,12 @@ export default function AttendancePage() {
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-color)' }}>
             <Sidebar />
-            <div className="main-content" style={{ flex: 1, padding: '2rem' }}>
+            <div className="main-content" style={{
+                flex: 1,
+                marginLeft: isSidebarOpen ? '260px' : '0',
+                transition: 'margin-left 0.3s ease-in-out',
+                padding: '2rem'
+            }}>
                 <Header title="Reporte de Asistencia" />
 
                 <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
@@ -189,6 +228,51 @@ export default function AttendancePage() {
                                 onChange={(e) => setFilterDate(e.target.value)}
                                 style={{ padding: '0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)' }}
                             />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <Filter size={20} color="var(--accent-color)" />
+                            <select
+                                value={filterLocation}
+                                onChange={(e) => {
+                                    setFilterLocation(e.target.value);
+                                    setFilterSector('');
+                                }}
+                                style={{ padding: '0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)' }}
+                            >
+                                <option value="">Todos los Lugares</option>
+                                {locations.map(loc => (
+                                    <option key={loc.id} value={loc.name}>{loc.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {filterLocation && getSectorsForLocation(filterLocation).length > 0 && (
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <select
+                                    value={filterSector}
+                                    onChange={(e) => setFilterSector(e.target.value)}
+                                    style={{ padding: '0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)' }}
+                                >
+                                    <option value="">Todos los Sectores</option>
+                                    {getSectorsForLocation(filterLocation).map((sec: any) => (
+                                        <option key={sec.id} value={sec.name}>{sec.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <select
+                                value={filterRubro}
+                                onChange={(e) => setFilterRubro(e.target.value)}
+                                style={{ padding: '0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)' }}
+                            >
+                                <option value="">Todos los Rubros</option>
+                                {roles.map(role => (
+                                    <option key={role.id} value={role.name}>{role.name}</option>
+                                ))}
+                            </select>
                         </div>
 
                         <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
@@ -208,7 +292,19 @@ export default function AttendancePage() {
                         {loading ? (
                             <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Cargando datos...</div>
                         ) : attendance.length === 0 ? (
-                            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>No se encontró actividad para esta fecha.</div>
+                            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                <p>No se encontró actividad para esta fecha.</p>
+                                {currentUser.role === 'supervisor' && (
+                                    <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', opacity: 0.7 }}>
+                                        Nota: Solo verás la actividad de los funcionarios asignados a tu supervisión.
+                                        <br />
+                                        <span style={{ fontSize: '0.7rem', color: '#999' }}>Debug: ID {currentUser.id} ({currentUser.role}) | Fecha: {filterDate}</span>
+                                    </p>
+                                )}
+                                {currentUser.role === 'admin' && (
+                                    <p style={{ fontSize: '0.7rem', color: '#999', marginTop: '0.5rem' }}>Debug: ID {currentUser.id} (admin) | Fecha: {filterDate}</p>
+                                )}
+                            </div>
                         ) : (
                             <div style={{ overflowX: 'auto' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -216,6 +312,8 @@ export default function AttendancePage() {
                                         <tr style={{ backgroundColor: 'var(--surface-color)', borderBottom: '1px solid var(--border-color)' }}>
                                             <th style={{ padding: '1rem' }}>Funcionario</th>
                                             <th style={{ padding: '1rem' }}>Departamento</th>
+                                            <th style={{ padding: '1rem' }}>Lugar</th>
+                                            <th style={{ padding: '1rem' }}>Sector</th>
                                             <th style={{ padding: '1rem' }}><LogIn size={14} style={{ marginRight: '0.4rem' }} /> Ingreso</th>
                                             <th style={{ padding: '1rem' }}><LogOut size={14} style={{ marginRight: '0.4rem' }} /> Salida</th>
                                             <th style={{ padding: '1rem' }}><Clock size={14} style={{ marginRight: '0.4rem' }} /> Total</th>
@@ -233,9 +331,11 @@ export default function AttendancePage() {
                                                         <td style={{ padding: '1rem', fontWeight: 500 }}>{day.userName}</td>
                                                         <td style={{ padding: '1rem' }}>
                                                             <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', backgroundColor: '#f3f4f6', borderRadius: '12px', color: '#374151' }}>
-                                                                {day.department}
+                                                                {day.rubro || day.department}
                                                             </span>
                                                         </td>
+                                                        <td style={{ padding: '1rem', fontSize: '0.85rem' }}>{day.location || '-'}</td>
+                                                        <td style={{ padding: '1rem', fontSize: '0.85rem' }}>{day.sector || '-'}</td>
                                                         <td style={{ padding: '1rem', color: '#16a34a', fontWeight: 600 }}>{day.checkIn || '--:--'}</td>
                                                         <td style={{ padding: '1rem', color: '#dc2626', fontWeight: 600 }}>{day.checkOut || '--:--'}</td>
                                                         <td style={{ padding: '1rem', fontWeight: 700 }}>{day.totalHours} hs</td>
@@ -247,7 +347,7 @@ export default function AttendancePage() {
                                                     </tr>
                                                     {isExpanded && (
                                                         <tr style={{ backgroundColor: '#f9fafb' }}>
-                                                            <td colSpan={6} style={{ padding: '1.5rem' }}>
+                                                            <td colSpan={8} style={{ padding: '1.5rem' }}>
                                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderLeft: '2px solid #e5e7eb', paddingLeft: '1.5rem' }}>
                                                                     <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Detalle de Actividades</h4>
                                                                     {day.tasks.length === 0 ? (

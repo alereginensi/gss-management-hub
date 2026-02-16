@@ -45,7 +45,8 @@ export default function Login() {
                     name: data.user.name,
                     email: data.user.email,
                     department: data.user.department,
-                    role: data.user.role as any
+                    role: data.user.role as any,
+                    rubro: data.user.rubro
                 });
 
                 router.push('/tickets');
@@ -75,12 +76,13 @@ export default function Login() {
         }}>
             <div className="card" style={{ width: '100%', maxWidth: '450px', padding: '2.5rem' }}>
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-                        <ShieldCheck size={48} color="var(--accent-color)" />
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src="/logo.png" alt="GSS Logo" style={{ maxWidth: '200px', height: 'auto' }} />
                     </div>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>Acceso al Portal</h2>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: '0.5rem' }}>
-                        GSS Ticket Portal
+                        GSS Facility Services
                     </p>
                 </div>
 

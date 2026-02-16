@@ -8,7 +8,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 
 export default function NotificationsPage() {
-    const { notifications, unreadCount, markNotificationRead, clearAllNotifications, loading } = useTicketContext();
+    const { notifications, unreadCount, markNotificationRead, clearAllNotifications, loading, isSidebarOpen } = useTicketContext();
 
     const handleNotificationClick = (notificationId: string) => {
         markNotificationRead(notificationId);
@@ -27,7 +27,12 @@ export default function NotificationsPage() {
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-color)' }}>
             <Sidebar />
-            <main style={{ flex: 1, marginLeft: '260px', padding: '2rem' }}>
+            <main style={{
+                flex: 1,
+                marginLeft: isSidebarOpen ? '260px' : '0',
+                transition: 'margin-left 0.3s ease-in-out',
+                padding: '2rem'
+            }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <Header title="Notificaciones" />
                 </div>

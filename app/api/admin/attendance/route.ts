@@ -7,6 +7,9 @@ export async function GET(request: Request) {
     const requesterRole = searchParams.get('requesterRole');
     const startDate = searchParams.get('startDate'); // YYYY-MM-DD
     const endDate = searchParams.get('endDate'); // YYYY-MM-DD
+    const filterLocation = searchParams.get('location');
+    const filterRubro = searchParams.get('rubro');
+    const filterSector = searchParams.get('sector');
 
     if (!requesterId || !requesterRole) {
         return NextResponse.json({ error: 'Missing requester info' }, { status: 400 });
@@ -16,13 +19,31 @@ export async function GET(request: Request) {
         let query = `
             SELECT 
                 t.*, 
+                t.location as taskLocation,
                 u.name as userName,
-                u.department as userDepartment
+                u.department as userDepartment,
+                u.rubro as userRubro
             FROM tasks t
             JOIN users u ON t.user_id = u.id
             WHERE 1=1
         `;
         const params: any[] = [];
+
+        // Filter by location/sector at the DB level
+        if (filterLocation || filterSector) {
+            query += ` AND t.user_id IN (
+                SELECT DISTINCT user_id FROM tasks 
+                WHERE type = 'check_in' 
+                ${filterLocation ? 'AND location = ?' : ''} 
+                ${filterSector ? 'AND sector = ?' : ''}
+                ${startDate ? 'AND DATE(created_at) >= ?' : ''}
+                ${endDate ? 'AND DATE(created_at) <= ?' : ''}
+            )`;
+            if (filterLocation) params.push(filterLocation);
+            if (filterSector) params.push(filterSector);
+            if (startDate) params.push(startDate);
+            if (endDate) params.push(endDate);
+        }
 
         // Filter by Supervisor if not Admin
         if (requesterRole === 'supervisor') {
@@ -39,6 +60,10 @@ export async function GET(request: Request) {
         if (endDate) {
             query += ` AND DATE(t.created_at) <= ?`;
             params.push(endDate);
+        }
+        if (filterRubro) {
+            query += ` AND u.rubro = ?`;
+            params.push(filterRubro);
         }
 
         query += ` ORDER BY t.created_at ASC`;
@@ -58,6 +83,7 @@ export async function GET(request: Request) {
                     userId: task.user_id,
                     userName: task.userName,
                     department: task.userDepartment,
+                    rubro: task.userRubro,
                     checkIn: null,
                     checkOut: null,
                     tasks: [],
@@ -71,6 +97,8 @@ export async function GET(request: Request) {
             if (task.type === 'check_in' && !current.checkIn) {
                 current.checkIn = time;
                 current.checkInFull = task.created_at;
+                current.location = task.taskLocation; // Capture location from check-in
+                current.sector = task.sector; // Capture sector from check-in
             } else if (task.type === 'check_out') {
                 current.checkOut = time;
                 current.checkOutFull = task.created_at;
@@ -101,12 +129,20 @@ export async function GET(request: Request) {
             };
         });
 
-        // Sort by date DESC
-        result.sort((a, b) => b.date.localeCompare(a.date));
+        // Filter by location and sector if requested
+        const filteredResult = result.filter((day: any) => {
+            const locMatch = !filterLocation || day.location === filterLocation;
+            const secMatch = !filterSector || day.sector === filterSector;
+            return locMatch && secMatch;
+        });
 
-        return NextResponse.json(result);
-    } catch (error) {
+        // Sort by date DESC
+        filteredResult.sort((a, b) => b.date.localeCompare(a.date));
+
+        return NextResponse.json(filteredResult);
+    } catch (error: any) {
         console.error('Attendance API Error:', error);
-        return NextResponse.json({ error: 'Error processing attendance data' }, { status: 500 });
+        console.error('Error Stack:', error.stack);
+        return NextResponse.json({ error: 'Error processing attendance data', details: error.message }, { status: 500 });
     }
 }
