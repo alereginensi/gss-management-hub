@@ -10,18 +10,19 @@ import Link from 'next/link';
 export default function NotificationsPage() {
     const { notifications, unreadCount, markNotificationRead, clearAllNotifications, loading, isSidebarOpen } = useTicketContext();
 
-    const handleNotificationClick = (notificationId: string) => {
+    const handleNotificationClick = (notificationId: number) => {
         markNotificationRead(notificationId);
     };
 
-    const formatTimestamp = (timestamp: Date) => {
+    const formatTimestamp = (timestamp: Date | string) => {
         const now = new Date();
-        const diff = Math.floor((now.getTime() - timestamp.getTime()) / 1000); // seconds
+        const timestampDate = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+        const diff = Math.floor((now.getTime() - timestampDate.getTime()) / 1000); // seconds
 
         if (diff < 60) return 'Hace unos segundos';
         if (diff < 3600) return `Hace ${Math.floor(diff / 60)} min`;
-        if (diff < 86400) return `Hace ${Math.floor(diff / 3600)} hora${Math.floor(diff / 3600) > 1 ? 's' : ''}`;
-        return `Hace ${Math.floor(diff / 86400)} día${Math.floor(diff / 86400) > 1 ? 's' : ''}`;
+        if (diff < 86400) return `Hace ${Math.floor(diff / 3600)} horas`;
+        return `Hace ${Math.floor(diff / 86400)} días`;
     };
 
     return (
@@ -69,13 +70,13 @@ export default function NotificationsPage() {
                                 {notifications.map(notification => (
                                     <Link
                                         key={notification.id}
-                                        href={`/tickets/${notification.ticketId}`}
+                                        href={notification.ticket_id ? `/tickets/${notification.ticket_id}` : '#'}
                                         onClick={() => handleNotificationClick(notification.id)}
                                         style={{
                                             display: 'block',
                                             padding: '1rem',
                                             borderBottom: '1px solid var(--border-color)',
-                                            borderLeft: notification.statusColor ? `4px solid ${notification.statusColor}` : 'none',
+                                            borderLeft: '4px solid #3b82f6',
                                             backgroundColor: notification.read ? 'transparent' : 'rgba(59, 130, 246, 0.05)',
                                             cursor: 'pointer',
                                             textDecoration: 'none',
@@ -85,10 +86,10 @@ export default function NotificationsPage() {
                                     >
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                                             <div style={{ fontWeight: notification.read ? 400 : 700, fontSize: '1rem' }}>
-                                                {notification.ticketSubject}
+                                                {notification.type === 'ticket_assigned' ? '🎫 Ticket Asignado' : 'Notificación'}
                                             </div>
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                {formatTimestamp(notification.timestamp)}
+                                                {formatTimestamp(notification.created_at)}
                                             </div>
                                         </div>
                                         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>

@@ -95,6 +95,30 @@ db.exec(`
     active INTEGER DEFAULT 1
   );
 
+  CREATE TABLE IF NOT EXISTS ticket_collaborators (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    added_by INTEGER NOT NULL,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ticket_id) REFERENCES tickets(id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (added_by) REFERENCES users(id),
+    UNIQUE(ticket_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    ticket_id TEXT,
+    message TEXT NOT NULL,
+    type TEXT DEFAULT 'info',
+    read INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (ticket_id) REFERENCES tickets(id)
+  );
+
   CREATE TABLE IF NOT EXISTS sectors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
