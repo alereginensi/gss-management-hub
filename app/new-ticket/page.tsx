@@ -4,28 +4,30 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { UploadCloud, CheckCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useTicketContext, DEPARTMENTS, TICKET_SUPERVISORS } from '../context/TicketContext';
+import { useTicketContext, DEPARTMENTS } from '../context/TicketContext';
 import { useRouter } from 'next/navigation';
 
 export default function NewTicket() {
     const [submitted, setSubmitted] = useState(false);
-    const { addTicket, currentUser, isSidebarOpen } = useTicketContext();
+    const { addTicket, currentUser, isSidebarOpen, allUsers } = useTicketContext();
     const router = useRouter();
 
     const [formData, setFormData] = useState({
-        name: currentUser.name === 'Solicitante Pendiente' ? '' : (currentUser.name || ''),
+        name: currentUser.id > 0 ? currentUser.name : '',
         email: currentUser.email || '',
         subject: '',
         description: '',
-        department: currentUser.department === 'Sin Asignar' ? '' : (currentUser.department || ''),
+        department: currentUser.department || '',
         priority: 'Media' as 'Alta' | 'Media' | 'Baja',
         affectedWorker: '',
-        supervisor: ''
+        supervisor: '',
+        location: '',
+        sector: ''
     });
     const [files, setFiles] = useState<File[]>([]);
 
     useEffect(() => {
-        if (currentUser.name && currentUser.name !== 'Solicitante Pendiente' && currentUser.name !== 'Demo User') {
+        if (currentUser.id > 0) {
             setFormData(prev => ({ ...prev, name: currentUser.name }));
         }
         if (currentUser.email) {
@@ -160,9 +162,11 @@ export default function NewTicket() {
                                             }}
                                         >
                                             <option value="">Seleccionar Supervisor...</option>
-                                            {TICKET_SUPERVISORS.map(sup => (
-                                                <option key={sup} value={sup}>{sup}</option>
-                                            ))}
+                                            {allUsers
+                                                .filter(u => u.role === 'supervisor' || u.role === 'admin')
+                                                .map(sup => (
+                                                    <option key={sup.id} value={sup.name}>{sup.name}</option>
+                                                ))}
                                         </select>
                                     ) : (
                                         <input

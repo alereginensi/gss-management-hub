@@ -209,13 +209,13 @@ export default function AttendancePage() {
             <Sidebar />
             <div className="main-content" style={{
                 flex: 1,
-                marginLeft: isSidebarOpen ? '260px' : '0',
+                marginLeft: '0',
                 transition: 'margin-left 0.3s ease-in-out',
-                padding: '2rem'
+                padding: '1rem'
             }}>
                 <Header title="Reporte de Asistencia" />
 
-                <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+                <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
 
                     {/* FILTERS */}
                     <div className="card" style={{ padding: '1.5rem', marginBottom: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>

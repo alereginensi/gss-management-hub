@@ -12,27 +12,6 @@ export const DEPARTMENTS = [
     'Logística'
 ];
 
-export const TICKET_SUPERVISORS = [
-    'Victor Ruilopez (Limpieza)',
-    'Silvia Betancourt (Limpieza)',
-    'Mebyl Crossa (Limpieza)',
-    'Santiago Medina (Limpieza)',
-    'Martin Batista (Seguridad / Limpieza)',
-    'Pedro Silva (Seguridad)',
-    'Juan Cigaran (Seguridad / Limpieza)',
-    'Nahim Gomez (Seguridad / Limpieza)',
-    'Jorge Arqueta (Seguridad)',
-    'Rodrigo Correa (Seguridad Electrónica)',
-    'Santiago Peñalva (Seguridad Electrónica)',
-    'Valeria Godoy (Tercerizados)',
-    'Lorena Sotelo (Limpieza)',
-    'Lourdes Casal (Limpieza)',
-    'Carla Da Luz (Limpieza)',
-    'Romina Turturiello (Seguridad)',
-    'Christian del Puerto (Seguridad)',
-    'María Álvarez (Seguridad)'
-];
-
 export interface Ticket {
     id: string;
     subject: string;
@@ -61,13 +40,17 @@ export interface Activity {
 }
 
 export interface Notification {
-    id: string;
-    ticketId: string;
-    ticketSubject: string;
+    id: number;
+    user_id: number;
+    ticket_id?: string;
     message: string;
-    timestamp: Date;
-    read: boolean;
-    statusColor?: string;
+    type: string;
+    read: number;
+    created_at: string;
+    ticketId?: string; // Legacy support
+    ticketSubject?: string; // Legacy support
+    timestamp?: Date; // Legacy support
+    statusColor?: string; // Legacy support
 }
 
 export interface User {
@@ -93,7 +76,7 @@ interface TicketContextType {
     getActivitiesByTicket: (ticketId: string) => Activity[];
     notifications: Notification[];
     addNotification: (ticketId: string, ticketSubject: string, message: string) => void;
-    markNotificationRead: (notificationId: string) => void;
+    markNotificationRead: (notificationId: number) => void;
     clearAllNotifications: () => void;
     unreadCount: number;
     getAverageResolutionTime: () => string;
@@ -115,33 +98,29 @@ interface TicketContextType {
     pendingUsers: User[];
     fetchAllUsers: () => Promise<void>;
     loading: boolean;
+    allUsers: User[];
+    updateUser: (userId: number, userData: Partial<User> & { password?: string }) => Promise<boolean>;
+    transferTicket: (ticketId: string, newSupervisorId: number, transferredBy: number, reason?: string) => Promise<boolean>;
+    addCollaborator: (ticketId: string, userId: number, addedBy: number) => Promise<boolean>;
+    removeCollaborator: (ticketId: string, userId: number) => Promise<boolean>;
+    getTicketCollaborators: (ticketId: string) => Promise<any[]>;
+    fetchTickets: () => Promise<void>;
 }
 
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
 
-const initialTickets: Ticket[] = [
-    { id: '1024', subject: 'Fallo en Aire Acondicionado Piso 3', description: 'El aire acondicionado del piso 3 no está trabajando', department: 'Mantenimiento', priority: 'Alta', status: 'Nuevo', date: '10/02/2026', priorityColor: 'var(--priority-high)', statusColor: 'var(--status-new)', requester: 'Juan Pérez', requesterEmail: 'juan@gss.com' },
-    { id: '1023', subject: 'Solicitud de Limpieza Sala Reuniones', description: 'Se requiere limpieza profunda de la sala de reuniones', department: 'Limpieza', priority: 'Media', status: 'En Progreso', date: '09/02/2026', priorityColor: 'var(--priority-medium)', statusColor: 'var(--status-progress)', requester: 'Ana Gómez', requesterEmail: 'ana@gss.com' },
-    { id: '1022', subject: 'Cambio de Toner Impresora RRHH', description: 'La impresora de RRHH necesita cambio de toner', department: 'IT', priority: 'Baja', status: 'Resuelto', date: '07/02/2026', priorityColor: 'var(--priority-low)', statusColor: 'var(--status-resolved)', requester: 'Carlos Ruiz', requesterEmail: 'carlos@gss.com' },
-    { id: '1020', subject: 'Solicitud monitor adicional', description: 'Necesito un monitor adicional para mi estación de trabajo', department: 'IT', priority: 'Baja', status: 'Resuelto', date: '08/02/2026', priorityColor: 'var(--priority-low)', statusColor: 'var(--status-resolved)', requester: 'María López', requesterEmail: 'maria@gss.com' },
-];
-
-const initialActivities: Activity[] = [
-    { id: '1', ticketId: '1024', user: 'Soporte IT (Carlos)', message: 'Recibido. Estamos enviando un técnico de mantenimiento para revisar la unidad exterior.', timestamp: new Date(Date.now() - 5 * 60 * 1000) },
-    { id: '2', ticketId: '1024', user: 'Demo User', message: 'Gracias, quedo atento.', timestamp: new Date(Date.now() - 2 * 60 * 1000) },
-];
-
 export function TicketProvider({ children }: { children: ReactNode }) {
-    const [tickets, setTickets] = useState<Ticket[]>(initialTickets);
+    const [tickets, setTickets] = useState<Ticket[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState<'Todos' | 'Abiertos' | 'Cerrados'>('Todos');
-    const [activities, setActivities] = useState<Activity[]>(initialActivities);
+    const [activities, setActivities] = useState<Activity[]>([]);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [currentUser, setCurrentUser] = useState<User>({
         id: 0,
-        name: 'Demo User',
-        department: 'Mantenimiento',
-        role: 'user'
+        name: '',
+        department: '',
+        role: 'user',
+        email: ''
     });
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -149,6 +128,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         notification_emails: 'admin@gss-facility.com'
     });
     const [pendingUsers, setPendingUsers] = useState<User[]>([]);
+    const [allUsers, setAllUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
     // Restore session on mount
@@ -172,6 +152,8 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                 setLoading(false);
             }
             fetchSettings();
+            fetchTickets(); // Load tickets on mount
+            fetchNotifications(); // Load notifications on mount
         };
 
         restoreSession();
@@ -209,10 +191,41 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             const res = await fetch('/api/admin/users');
             if (res.ok) {
                 const data = await res.json();
-                setPendingUsers(data.filter((u: any) => u.approved === 0));
+                // API returns array directly, not { users: [] }
+                const pending = data.filter((u: User) => !u.approved);
+                const approved = data.filter((u: User) => u.approved);
+                setPendingUsers(pending);
+                setAllUsers(approved);
+                console.log('✅ Users loaded - Approved:', approved.length, 'Pending:', pending.length);
             }
         } catch (error) {
             console.error('Error fetching users:', error);
+        }
+    };
+
+    const fetchTickets = async () => {
+        try {
+            const res = await fetch('/api/tickets');
+            if (res.ok) {
+                const data = await res.json();
+                setTickets(data);
+                console.log('✅ Tickets loaded:', data.length);
+            }
+        } catch (error) {
+            console.error('Error fetching tickets:', error);
+        }
+    };
+
+    const fetchNotifications = async () => {
+        try {
+            const res = await fetch('/api/notifications');
+            if (res.ok) {
+                const data = await res.json();
+                setNotifications(data);
+                console.log('✅ Notifications loaded:', data.length);
+            }
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
         }
     };
 
@@ -379,9 +392,9 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
 
         setActivities(prev => [...prev, newActivity]);
 
-        // Create notification for ticket owner (if not the current user)
+        // Add notification for ticket owner (if user is authenticated)
         const ticket = tickets.find(t => t.id === ticketId);
-        if (ticket && user !== 'Demo User') {
+        if (ticket && currentUser.id > 0) {
             addNotification(ticketId, ticket.subject, `${user} comentó: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
         }
     };
@@ -390,23 +403,29 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
         return activities.filter(a => a.ticketId === ticketId).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     };
 
-    const addNotification = (ticketId: string, ticketSubject: string, message: string) => {
+    const addNotification = (ticketId: string, ticketSubject: string, message: string, statusColor?: string) => {
         const newNotification: Notification = {
-            id: Date.now().toString(),
-            ticketId,
-            ticketSubject,
+            id: Date.now(),
+            user_id: currentUser.id,
+            ticket_id: ticketId,
             message,
-            timestamp: new Date(),
-            read: false
+            type: 'info',
+            read: 0,
+            created_at: new Date().toISOString(),
+            ticketId, // Legacy support
+            ticketSubject, // Legacy support
+            timestamp: new Date(), // Legacy support
+            statusColor // Legacy support
         };
-
         setNotifications(prev => [newNotification, ...prev]);
     };
 
-    const markNotificationRead = (notificationId: string) => {
-        setNotifications(prev => prev.map(n =>
-            n.id === notificationId ? { ...n, read: true } : n
-        ));
+    const markNotificationRead = (notificationId: number) => {
+        setNotifications(prev =>
+            prev.map(notif =>
+                notif.id === notificationId ? { ...notif, read: 1 } : notif
+            )
+        );
     };
 
     const clearAllNotifications = () => {
@@ -450,13 +469,17 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
                 'Resuelto': 'var(--status-resolved)'
             };
             const notification: Notification = {
-                id: Date.now().toString(),
-                ticketId,
-                ticketSubject: ticket.subject,
+                id: Date.now(),
+                user_id: currentUser.id,
+                ticket_id: ticketId,
                 message: `El estado cambió a: ${newStatus}`,
-                timestamp: new Date(),
-                read: false,
-                statusColor: statusColors[newStatus]
+                type: 'status_change',
+                read: 0,
+                created_at: new Date().toISOString(),
+                ticketId, // Legacy support
+                ticketSubject: ticket.subject, // Legacy support
+                timestamp: new Date(), // Legacy support
+                statusColor: statusColors[newStatus] // Legacy support
             };
             setNotifications(prev => [notification, ...prev]);
 
@@ -566,10 +589,93 @@ Gracias por utilizar el sistema de tickets GSS.`.trim();
         }
     };
 
+    const updateUser = async (userId: number, userData: Partial<User> & { password?: string }) => {
+        try {
+            const res = await fetch(`/api/admin/users/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(userData)
+            });
+            if (res.ok) {
+                await fetchAllUsers();
+                return true;
+            }
+            const error = await res.json();
+            console.error('Error updating user:', error);
+            return false;
+        } catch (error) {
+            console.error('Error updating user:', error);
+            return false;
+        }
+    };
+
     const unreadCount = notifications.filter(n => !n.read).length;
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+    const transferTicket = async (ticketId: string, newSupervisorId: number, transferredBy: number, reason?: string) => {
+        try {
+            console.log('📡 API Call - Transfer Ticket:', { ticketId, newSupervisorId, transferredBy, reason });
+            const res = await fetch(`/api/tickets/${ticketId}/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newSupervisorId, transferredBy, reason })
+            });
+            console.log('📡 API Response status:', res.status);
+            const data = await res.json();
+            console.log('📡 API Response data:', data);
+            if (res.ok) {
+                // Refresh tickets from database
+                await fetchTickets();
+                return true;
+            }
+            console.error('Transfer failed:', data);
+            return false;
+        } catch (error) {
+            console.error('Error transferring ticket:', error);
+            return false;
+        }
+    };
+
+    const addCollaborator = async (ticketId: string, userId: number, addedBy: number) => {
+        try {
+            const res = await fetch(`/api/tickets/${ticketId}/collaborators`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, addedBy })
+            });
+            return res.ok;
+        } catch (error) {
+            console.error('Error adding collaborator:', error);
+            return false;
+        }
+    };
+
+    const removeCollaborator = async (ticketId: string, userId: number) => {
+        try {
+            const res = await fetch(`/api/tickets/${ticketId}/collaborators?userId=${userId}`, {
+                method: 'DELETE'
+            });
+            return res.ok;
+        } catch (error) {
+            console.error('Error removing collaborator:', error);
+            return false;
+        }
+    };
+
+    const getTicketCollaborators = async (ticketId: string) => {
+        try {
+            const res = await fetch(`/api/tickets/${ticketId}/collaborators`);
+            if (res.ok) {
+                return await res.json();
+            }
+            return [];
+        } catch (error) {
+            console.error('Error fetching collaborators:', error);
+            return [];
+        }
+    };
 
     return (
         <TicketContext.Provider value={{
@@ -602,11 +708,18 @@ Gracias por utilizar el sistema de tickets GSS.`.trim();
             approveUser,
             rejectUser,
             deleteUser,
+            updateUser,
             isSidebarOpen,
             toggleSidebar,
             pendingUsers,
             fetchAllUsers,
-            loading
+            loading,
+            allUsers,
+            transferTicket,
+            addCollaborator,
+            removeCollaborator,
+            getTicketCollaborators,
+            fetchTickets
         }}>
             {children}
         </TicketContext.Provider>

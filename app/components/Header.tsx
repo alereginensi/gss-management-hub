@@ -19,7 +19,7 @@ export default function Header({ title, actions }: { title: string, actions?: Re
     };
 
     const handleNotificationClick = (notificationId: string) => {
-        markNotificationRead(notificationId);
+        markNotificationRead(parseInt(notificationId));
         setShowNotifications(false);
     };
 

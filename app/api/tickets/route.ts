@@ -1,31 +1,47 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
-
-export async function POST(request: Request) {
-    try {
-        const ticket = await request.json();
-        const { id, subject, description, department, priority, status, requester, requesterEmail, affectedWorker, date, supervisor } = ticket;
-
-        const stmt = db.prepare(`
-            INSERT INTO tickets (id, subject, description, department, priority, status, requester, requesterEmail, affected_worker, date, supervisor)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-
-        stmt.run(id, subject, description, department, priority, status, requester, requesterEmail, affectedWorker, date, supervisor);
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('Error saving ticket:', error);
-        return NextResponse.json({ error: 'Failed to save ticket' }, { status: 500 });
-    }
-}
+import { getSession } from '@/lib/auth-server';
 
 export async function GET() {
+    const session = await getSession();
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
-        const tickets = db.prepare('SELECT * FROM tickets ORDER BY date DESC').all();
+        const userId = session.user.id;
+        const userRole = session.user.role;
+        const userEmail = session.user.email;
+
+        let tickets;
+
+        if (userRole === 'admin') {
+            // Admins see all tickets
+            tickets = db.prepare('SELECT * FROM tickets ORDER BY date DESC').all();
+        } else if (userRole === 'supervisor') {
+            // Supervisors see tickets assigned to them or where they are collaborators
+            const userName = session.user.name;
+            tickets = db.prepare(`
+                SELECT DISTINCT t.* FROM tickets t
+                LEFT JOIN ticket_collaborators tc ON t.id = tc.ticket_id
+                WHERE (t.supervisor = ? AND t.supervisor IS NOT NULL)
+                   OR tc.user_id = ?
+                ORDER BY t.date DESC
+            `).all(userName, userId);
+        } else {
+            // Regular users see tickets they created or where they are collaborators
+            tickets = db.prepare(`
+                SELECT DISTINCT t.* FROM tickets t
+                LEFT JOIN ticket_collaborators tc ON t.id = tc.ticket_id AND tc.user_id = ?
+                WHERE t.requesterEmail = ?
+                   OR tc.user_id = ?
+                ORDER BY t.date DESC
+            `).all(userId, userEmail, userId);
+        }
+
         return NextResponse.json(tickets);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching tickets:', error);
-        return NextResponse.json({ error: 'Failed to fetch tickets' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to fetch tickets', details: error.message }, { status: 500 });
     }
 }
