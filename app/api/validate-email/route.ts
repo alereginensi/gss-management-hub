@@ -66,19 +66,24 @@ export async function POST(request: Request) {
         const deliverability = data.email_deliverability?.status || data.deliverability;
         const isDisposable = data.email_quality?.is_disposable || data.is_disposable_email?.value || false;
 
-        const isDeliverable = deliverability === 'DELIVERABLE' || deliverability === 'RISKY' || deliverability === 'UNKNOWN' || deliverability === 'deliverable';
+        // Be more permissive - accept DELIVERABLE, RISKY, and UNKNOWN
+        // Only reject UNDELIVERABLE
+        const isDeliverable = deliverability !== 'UNDELIVERABLE' && deliverability !== 'undeliverable';
 
         // Quality score threshold (optional, e.g. < 0.5 might be suspicious)
         const qualityScore = data.quality_score;
 
+        // For now, be permissive and only block clearly bad emails
+        const isValid = isDeliverable && !isDisposable;
+
         return NextResponse.json({
-            valid: isDeliverable && !isDisposable,
+            valid: isValid,
             quality_score: qualityScore,
             is_disposable: isDisposable,
-            deliverability: data.deliverability,
+            deliverability: deliverability,
             is_valid_format: data.is_valid_format?.value,
             is_free_email: data.is_free_email?.value,
-            reason: !isDeliverable ? `Email is ${data.deliverability?.toLowerCase() || 'undeliverable'}` : (isDisposable ? 'Disposable email not allowed' : null)
+            reason: !isDeliverable ? `Email is ${deliverability?.toLowerCase() || 'undeliverable'}` : (isDisposable ? 'Disposable email not allowed' : null)
         });
     } catch (error) {
         console.error('Email validation error:', error);

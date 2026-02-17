@@ -14,6 +14,8 @@ export async function proxy(request: NextRequest) {
         '/',
         '/api/auth/login',
         '/api/auth/register',
+        '/api/validate-email',
+        '/api/config/roles',
     ];
 
     const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith('/api/auth'));
