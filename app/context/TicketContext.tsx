@@ -292,7 +292,13 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     };
 
     const addTicket = (ticketData: Omit<Ticket, 'id' | 'date' | 'priorityColor' | 'statusColor'>) => {
-        const newId = (Math.max(...tickets.map(t => parseInt(t.id))) + 1).toString();
+        // Safe ID generation
+        const numericIds = tickets
+            .map(t => parseInt(t.id))
+            .filter(id => !isNaN(id) && isFinite(id));
+
+        const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 99; // Start at 100 if empty
+        const newId = (maxId + 1).toString();
         const now = new Date();
         const dateStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
