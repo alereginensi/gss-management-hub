@@ -5,6 +5,7 @@ import { TicketProvider } from './context/TicketContext'
 import ThemeWrapper from './components/ThemeWrapper'
 import SWRegistration from './components/SWRegistration'
 import NotificationRequester from './components/NotificationRequester'
+import NotificationRequester from './components/NotificationRequester'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
