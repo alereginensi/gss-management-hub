@@ -2,14 +2,15 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const session = await getSession();
     if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
-        const activities = db.prepare('SELECT * FROM ticket_activities WHERE ticket_id = ? ORDER BY created_at DESC').all(params.id);
+        const { id } = await params;
+        const activities = db.prepare('SELECT * FROM ticket_activities WHERE ticket_id = ? ORDER BY created_at DESC').all(id);
 
         // Map to frontend model
         const mappedActivities = activities.map((a: any) => ({
@@ -27,13 +28,14 @@ export async function GET(request: Request, { params }: { params: { id: string }
     }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const session = await getSession();
     if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
+        const { id } = await params;
         const { message, type } = await request.json();
 
         if (!message) {
@@ -42,7 +44,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
         const stmt = db.prepare('INSERT INTO ticket_activities (ticket_id, user_name, user_email, message, type) VALUES (?, ?, ?, ?, ?)');
         const result = stmt.run(
-            params.id,
+            id,
             session.user.name,
             session.user.email,
             message,
