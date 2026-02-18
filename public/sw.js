@@ -1,10 +1,10 @@
-const CACHE_NAME = 'gss-hub-v1';
+const CACHE_NAME = 'gss-hub-v2';
 const urlsToCache = [
     '/',
     '/login',
     '/manifest.webmanifest',
     '/logo.png',
-    '/offline.html' // Ideally we should create this
+    '/offline.html'
 ];
 
 self.addEventListener('install', (event) => {
@@ -17,7 +17,29 @@ self.addEventListener('install', (event) => {
     self.skipWaiting();
 });
 
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        Promise.all([
+            caches.keys().then((cacheNames) => {
+                return Promise.all(
+                    cacheNames.map((cacheName) => {
+                        if (cacheName !== CACHE_NAME) {
+                            return caches.delete(cacheName);
+                        }
+                    })
+                );
+            }),
+            self.clients.claim() // Take control immediately
+        ])
+    );
+});
+
 self.addEventListener('fetch', (event) => {
+    // Exclude API calls and non-GET requests from caching strategies
+    if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request)
             .then((response) => {
@@ -34,8 +56,8 @@ self.addEventListener('push', function (event) {
         const data = event.data.json();
         const options = {
             body: data.body,
-            icon: '/icon-192x192.png', // Ensure this icon exists or use a default
-            badge: '/badge.png', // Optional
+            icon: '/icon-192x192.png',
+            badge: '/badge.png',
             vibrate: [100, 50, 100],
             data: {
                 dateOfArrival: Date.now(),
