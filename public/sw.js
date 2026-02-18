@@ -1,9 +1,9 @@
-const CACHE_NAME = 'gss-hub-v3';
+const CACHE_NAME = 'gss-hub-v4';
 const urlsToCache = [
     '/',
     '/login',
     '/manifest.webmanifest',
-    '/logo.png',
+    '/icon.svg',
     '/offline.html'
 ];
 
@@ -62,8 +62,8 @@ self.addEventListener('push', function (event) {
         const data = event.data.json();
         const options = {
             body: data.body,
-            icon: '/icon-192x192.png',
-            badge: '/badge.png',
+            icon: '/icon.svg',
+            badge: '/icon.svg',
             vibrate: [100, 50, 100],
             data: {
                 dateOfArrival: Date.now(),
