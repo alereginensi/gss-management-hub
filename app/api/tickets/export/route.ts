@@ -22,12 +22,14 @@ export async function GET(request: Request) {
 
         // 1. Status Filter
         // Normalize filter to handle potential casing or encoding issues
-        const normalizedFilter = filter.toLowerCase();
+        const normalizedFilter = filter.toLowerCase().trim();
 
         if (normalizedFilter === 'abiertos') {
-            conditions.push("status IN ('Nuevo', 'En Progreso', 'nuevo', 'en progreso')");
+            // Use SQL LOWER() to be case-insensitive against the DB column
+            conditions.push("LOWER(status) IN ('nuevo', 'en progreso')");
         } else if (normalizedFilter === 'cerrados') {
-            conditions.push("status IN ('Resuelto', 'resuelto')");
+            // Use SQL LOWER() to be case-insensitive against the DB column
+            conditions.push("LOWER(status) = 'resuelto'");
         }
 
         // 2. Department Filter (if Admin)
