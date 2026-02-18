@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import webpush from 'web-push';
 
 // Configuration
-webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:admin@gss.com',
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-    process.env.VAPID_PRIVATE_KEY!
-);
+// Configuration
+// webpush.setVapidDetails(
+//     process.env.VAPID_SUBJECT || 'mailto:admin@gss.com',
+//     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+//     process.env.VAPID_PRIVATE_KEY!
+// );
 
 // In-memory storage for subscriptions (Replace with DB in production)
 // Note: In a real app, store this in `tickets.db` (users table or subscriptions table)
@@ -25,10 +26,22 @@ export async function POST(request: Request) {
     const payload = JSON.stringify({ title: 'GSS Hub', body: 'Subscripción exitosa a notificaciones.' });
 
     try {
-        await webpush.sendNotification(subscription, payload);
-        return NextResponse.json({ success: true, message: 'Subscribed successfully' });
+        // Only send if VAPID keys are configured
+        if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+            webpush.setVapidDetails(
+                process.env.VAPID_SUBJECT || 'mailto:admin@gss.com',
+                process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+                process.env.VAPID_PRIVATE_KEY
+            );
+            await webpush.sendNotification(subscription, payload);
+            return NextResponse.json({ success: true, message: 'Subscribed successfully' });
+        } else {
+            console.log('Push notifications disabled: keys not configured');
+            return NextResponse.json({ success: true, message: 'Push notifications disabled' });
+        }
     } catch (error) {
         console.error('Error sending test notification', error);
-        return NextResponse.json({ success: false, error: 'Failed to subscribe' }, { status: 500 });
+        // Don't fail the request if push fails
+        return NextResponse.json({ success: false, error: 'Failed to subscribe' }, { status: 200 });
     }
 }
