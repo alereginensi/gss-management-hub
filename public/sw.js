@@ -1,3 +1,34 @@
+const CACHE_NAME = 'gss-hub-v1';
+const urlsToCache = [
+    '/',
+    '/login',
+    '/manifest.webmanifest',
+    '/logo.png',
+    '/offline.html' // Ideally we should create this
+];
+
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then((cache) => {
+                return cache.addAll(urlsToCache);
+            })
+    );
+    self.skipWaiting();
+});
+
+self.addEventListener('fetch', (event) => {
+    event.respondWith(
+        caches.match(event.request)
+            .then((response) => {
+                if (response) {
+                    return response;
+                }
+                return fetch(event.request);
+            })
+    );
+});
+
 self.addEventListener('push', function (event) {
     if (event.data) {
         const data = event.data.json();
