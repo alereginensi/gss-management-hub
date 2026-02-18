@@ -105,6 +105,7 @@ interface TicketContextType {
     removeCollaborator: (ticketId: string, userId: number) => Promise<boolean>;
     getTicketCollaborators: (ticketId: string) => Promise<any[]>;
     fetchTickets: () => Promise<void>;
+    loadTicketActivities: (ticketId: string) => Promise<void>;
 }
 
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
@@ -226,6 +227,27 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             }
         } catch (error) {
             console.error('Error fetching notifications:', error);
+        }
+    };
+
+    const loadTicketActivities = async (ticketId: string) => {
+        try {
+            const res = await fetch(`/api/tickets/${ticketId}/activities`);
+            if (res.ok) {
+                const data = await res.json();
+                // Merge with existing activities, avoiding duplicates
+                setActivities(prev => {
+                    const otherActivities = prev.filter(a => a.ticketId !== ticketId);
+                    // Standardize dates
+                    const newActivities = data.map((a: any) => ({
+                        ...a,
+                        timestamp: new Date(a.timestamp)
+                    }));
+                    return [...otherActivities, ...newActivities];
+                });
+            }
+        } catch (error) {
+            console.error('Error loading activities:', error);
         }
     };
 
@@ -387,21 +409,76 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
         }
     };
 
-    const addActivity = (ticketId: string, user: string, message: string) => {
-        const newActivity: Activity = {
-            id: Date.now().toString(),
-            ticketId,
-            user,
-            message,
-            timestamp: new Date()
-        };
+    const addActivity = async (ticketId: string, user: string, message: string) => {
+        try {
+            // Optimistic update
+            const tempActivity: Activity = {
+                id: Date.now().toString(),
+                ticketId,
+                user,
+                message,
+                timestamp: new Date()
+            };
+            setActivities(prev => [...prev, tempActivity]);
 
-        setActivities(prev => [...prev, newActivity]);
+            // Save to DB
+            const res = await fetch(`/api/tickets/${ticketId}/activities`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message, type: 'comment' })
+            });
 
-        // Add notification for ticket owner (if user is authenticated)
-        const ticket = tickets.find(t => t.id === ticketId);
-        if (ticket && currentUser.id > 0) {
-            addNotification(ticketId, ticket.subject, `${user} comentó: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
+            if (!res.ok) {
+                console.error('Failed to save activity');
+            }
+
+            // Send notification to ticket owner/supervisor
+            const ticket = tickets.find(t => t.id === ticketId);
+            if (ticket && currentUser.id > 0) {
+                // In-App Notification
+                addNotification(ticketId, ticket.subject, `${user}: ${message.substring(0, 50)}...`);
+
+                // Email Notification logic
+                const recipients = [];
+                // Notify requester if comment is not from them
+                if (ticket.requesterEmail && ticket.requesterEmail !== currentUser.email) {
+                    recipients.push(ticket.requesterEmail);
+                }
+                // Notify supervisor/admin if comment is not from them (simplified logic: notify admin/supervisor emails)
+                // For now, we rely on the specific `notification_emails` setting or department emails if the user is the requester
+                if (currentUser.email === ticket.requesterEmail) {
+                    const deptEmailKey = `notification_emails_${ticket.department}`.replace(/\s+/g, '_');
+                    const deptEmails = systemSettings[deptEmailKey] || systemSettings.notification_emails || '';
+                    const admins = deptEmails.split(',').map(e => e.trim()).filter(e => e);
+                    recipients.push(...admins);
+                }
+
+                if (recipients.length > 0) {
+                    const emailBody = `
+Nuevo comentario en el Ticket #${ticket.id}:
+
+"${message}"
+
+- Autor: ${user}
+- Ticket: ${ticket.subject}
+- Estado: ${ticket.status}
+
+Ingrese al portal para responder.`.trim();
+
+                    fetch('/api/notify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            to: [...new Set(recipients)], // Unique emails
+                            subject: `[COMENTARIO] Ticket #${ticket.id} - ${ticket.subject}`,
+                            body: emailBody,
+                            ticketData: { ...ticket, id: ticket.id }
+                        })
+                    }).catch(err => console.error('Error sending comment notification:', err));
+                }
+            }
+        } catch (error) {
+            console.error('Error adding activity:', error);
         }
     };
 
@@ -725,7 +802,8 @@ Gracias por utilizar el sistema de tickets GSS.`.trim();
             addCollaborator,
             removeCollaborator,
             getTicketCollaborators,
-            fetchTickets
+            fetchTickets,
+            loadTicketActivities
         }}>
             {children}
         </TicketContext.Provider>
