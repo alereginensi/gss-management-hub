@@ -235,21 +235,36 @@ if (db) {
   } catch (e) { }
 
   try {
+  } catch (e) {
+    console.error("DB Admin Init Error:", e);
+  }
+} // End if (db) block from line 23
+
+// Separate block for Admin User to ensure it runs
+if (db) {
+  try {
     const adminPass = '$2b$10$ms9LTCqoDe5zRtwxnMZZ1.ZlQKcOdjBeZD.scyLnG0vkOpnt/ouAq';
     const checkAdmin = db.prepare('SELECT * FROM users WHERE email = ?').get('admin@gss.com');
 
     if (!checkAdmin) {
-      // Password is 'admin123'
+      console.log('Creating default admin user...');
       db.prepare('INSERT INTO users (name, email, password, department, role, approved) VALUES (?, ?, ?, ?, ?, ?)')
         .run('Admin System', 'admin@gss.com', adminPass, 'Administración', 'admin', 1);
+      console.log('Default admin created.');
     } else {
+      console.log('Updating default admin user...');
       // Always update the password and approval status for the default admin to ensure it works
       db.prepare("UPDATE users SET password = ?, role = 'admin', approved = 1 WHERE email = ?")
         .run(adminPass, 'admin@gss.com');
+      console.log('Default admin updated.');
     }
   } catch (e) {
-    console.error("DB Admin Init Error:", e);
+    console.error("CRITICAL: Failed to create/update admin user:", e);
   }
+}
+
+if (db) {
+
 
   // Initialize default settings if they don't exist
   const initSettings = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
