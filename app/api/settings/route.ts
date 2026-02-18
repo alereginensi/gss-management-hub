@@ -3,6 +3,10 @@ import db from '@/lib/db';
 
 export async function GET() {
     try {
+        if (!db) {
+            console.error('Database not initialized');
+            return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+        }
         const settingsRows = db.prepare('SELECT * FROM settings').all() as any[];
         const settings: Record<string, string> = {};
         settingsRows.forEach(row => {
