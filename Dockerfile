@@ -44,7 +44,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Ensure better-sqlite3 is handled correctly in standalone mode
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 
-USER nextjs
+# USER nextjs
 
 EXPOSE 3000
 
