@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { TicketProvider } from './context/TicketContext'
 import ThemeWrapper from './components/ThemeWrapper'
+import SWRegistration from './components/SWRegistration'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
@@ -34,6 +35,7 @@ export default function RootLayout({
       <body className={inter.variable}>
         <TicketProvider>
           <ThemeWrapper>
+            <SWRegistration />
             {children}
           </ThemeWrapper>
         </TicketProvider>
