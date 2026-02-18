@@ -48,7 +48,8 @@ if (db) {
     supervisor TEXT,
     startedAt TEXT,
     resolvedAt TEXT,
-    statusColor TEXT
+    statusColor TEXT,
+    createdAt DATETIME
   );
 
   CREATE TABLE IF NOT EXISTS settings (
@@ -308,6 +309,7 @@ if (db) {
     // Migrations for existing tables
     try { db.exec("ALTER TABLE tickets ADD COLUMN supervisor TEXT;"); } catch (e) { }
     try { db.exec("ALTER TABLE tickets ADD COLUMN statusColor TEXT;"); } catch (e) { }
+    try { db.exec("ALTER TABLE tickets ADD COLUMN createdAt DATETIME;"); } catch (e) { }
   } catch (e) {
     console.error('Error creating database indexes:', e);
   }
