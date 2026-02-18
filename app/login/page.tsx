@@ -236,6 +236,25 @@ export default function Login() {
                     <span style={{ color: 'var(--text-secondary)' }}>¿Aún no tienes acceso? </span>
                     <Link href="/register" style={{ color: 'var(--accent-color)', fontWeight: 600 }}>Solicitar ahora</Link>
                 </div>
+
+                <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            if ('serviceWorker' in navigator) {
+                                const registrations = await navigator.serviceWorker.getRegistrations();
+                                for (const registration of registrations) {
+                                    await registration.unregister();
+                                }
+                                alert('Cache reiniciado. La página se recargará.');
+                                window.location.reload();
+                            }
+                        }}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.75rem', textDecoration: 'underline', cursor: 'pointer', opacity: 0.7 }}
+                    >
+                        ¿Problemas? Reiniciar Aplicación
+                    </button>
+                </div>
             </div>
         </div>
     );
