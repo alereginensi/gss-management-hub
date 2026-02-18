@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: 'GSS Management Hub',
   description: 'Central Administrative Portal for GSS Facility Services',
   icons: {
-    icon: '/logo.png',
+    icon: '/icon.svg',
   },
 }
 
