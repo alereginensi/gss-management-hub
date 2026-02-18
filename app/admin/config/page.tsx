@@ -111,6 +111,14 @@ export default function ConfigPage() {
     const [locations, setLocations] = useState<any[]>([]);
     const [roles, setRoles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     // Form States
     const [newLocation, setNewLocation] = useState('');
@@ -239,9 +247,11 @@ export default function ConfigPage() {
             <Sidebar />
             <div className="main-content" style={{
                 flex: 1,
-                marginLeft: isSidebarOpen ? '260px' : '0',
+                marginLeft: isSidebarOpen && !isMobile ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
-                padding: '2rem'
+                padding: '2rem',
+                width: '100%',
+                overflowX: 'hidden'
             }}>
                 <Header title="Configuración del Sistema" />
 
