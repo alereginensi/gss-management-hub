@@ -60,6 +60,14 @@ export async function GET() {
                 } catch (qError: any) {
                     debugInfo.dbQueryError = qError.message;
                 }
+
+                // Check if admin exists
+                try {
+                    const admin = dbModule.default.prepare('SELECT id, email, role, approved FROM users WHERE email = ?').get('admin@gss.com');
+                    debugInfo.adminUser = admin || 'Not Found';
+                } catch (uError: any) {
+                    debugInfo.adminCheckError = uError.message;
+                }
             } else {
                 debugInfo.dbInstance = 'Not found on default export';
             }
