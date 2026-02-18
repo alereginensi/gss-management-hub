@@ -4,6 +4,7 @@ import './globals.css'
 import { TicketProvider } from './context/TicketContext'
 import ThemeWrapper from './components/ThemeWrapper'
 import SWRegistration from './components/SWRegistration'
+import NotificationRequester from './components/NotificationRequester'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
@@ -36,6 +37,7 @@ export default function RootLayout({
         <TicketProvider>
           <ThemeWrapper>
             <SWRegistration />
+            <NotificationRequester />
             {children}
           </ThemeWrapper>
         </TicketProvider>
