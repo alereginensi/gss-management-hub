@@ -32,7 +32,9 @@ COPY --from=builder /app/public ./public
 
 # Set the correct permission for prerender cache
 RUN mkdir .next
+RUN mkdir -p /app/data
 RUN chown nextjs:nodejs .next
+RUN chown nextjs:nodejs /app/data
 
 # Automatically leverage output traces to reduce image size
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
