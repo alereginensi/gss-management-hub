@@ -15,7 +15,9 @@ export async function proxy(request: NextRequest) {
         '/api/auth/login',
         '/api/auth/register',
         '/api/validate-email',
+        '/api/validate-email',
         '/api/config/roles',
+        '/api/diagnose', // Diagnostic tool
     ];
 
     const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith('/api/auth'));
