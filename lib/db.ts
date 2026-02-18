@@ -1,7 +1,11 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 
-const dbPath = path.resolve(process.cwd(), 'tickets.db');
+const dbPath = process.env.NODE_ENV === 'production'
+  ? path.resolve('/app/data/tickets.db')
+  : path.resolve(process.cwd(), 'tickets.db');
+
+console.log(`Using database at: ${dbPath}`);
 const db = new Database(dbPath);
 
 // Initialize tables

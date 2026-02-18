@@ -45,3 +45,47 @@ export async function GET() {
         return NextResponse.json({ error: 'Failed to fetch tickets', details: error.message }, { status: 500 });
     }
 }
+
+export async function POST(request: Request) {
+    try {
+        const ticket = await request.json();
+
+        // Validate required fields
+        if (!ticket.id || !ticket.subject || !ticket.priority || !ticket.status) {
+            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        }
+
+        const stmt = db.prepare(`
+            INSERT INTO tickets (
+                id, subject, description, department, priority, status,
+                requester, requesterEmail, affected_worker, date,
+                supervisor, statusColor, createdAt
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?
+            )
+        `);
+
+        stmt.run(
+            ticket.id,
+            ticket.subject,
+            ticket.description || '',
+            ticket.department || 'General',
+            ticket.priority,
+            ticket.status,
+            ticket.requester,
+            ticket.requesterEmail,
+            ticket.affectedWorker || null,
+            ticket.date,
+            ticket.supervisor || null,
+            ticket.statusColor || null,
+            ticket.createdAt ? new Date(ticket.createdAt).toISOString() : new Date().toISOString()
+        );
+
+        return NextResponse.json({ success: true, message: 'Ticket created successfully' }, { status: 201 });
+    } catch (error: any) {
+        console.error('Error creating ticket:', error);
+        return NextResponse.json({ error: 'Failed to create ticket', details: error.message }, { status: 500 });
+    }
+}

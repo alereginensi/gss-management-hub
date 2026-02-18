@@ -55,7 +55,16 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: result.error }, { status: 500 });
         }
     } catch (error) {
-        console.error('Notify API error:', error);
-        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+        console.error('Notify API error (General):', error);
+        // @ts-ignore
+        const errorMessage = error?.message || 'Unknown error';
+        // @ts-ignore
+        const errorStack = error?.stack || 'No stack trace';
+        console.error('Error details:', errorMessage, errorStack);
+
+        return NextResponse.json({
+            error: 'Error interno del servidor',
+            details: errorMessage
+        }, { status: 500 });
     }
 }
