@@ -47,24 +47,36 @@ export async function POST(request: Request) {
         }
 
         // 2. Fallback to SMTP/Nodemailer
-        const result = await sendEmail({ to, subject, body });
+        try {
+            const result = await sendEmail({ to, subject, body });
 
-        if (result.success) {
-            return NextResponse.json({ success: true, message: 'Notificación enviada vía SMTP' });
-        } else {
-            return NextResponse.json({ error: result.error }, { status: 500 });
+            if (result.success) {
+                return NextResponse.json({ success: true, message: 'Notificación enviada vía SMTP' });
+            } else {
+                console.error('SMTP Error:', result.error);
+                // Return success anyway to not block the UI, but log the error
+                return NextResponse.json({
+                    success: true,
+                    warning: 'Ticket creado pero falló el envío de correo',
+                    errorDetails: result.error
+                });
+            }
+        } catch (smtpError: any) {
+            console.error('SMTP Exception:', smtpError);
+            return NextResponse.json({
+                success: true,
+                warning: 'Ticket creado pero ocurrió un error al enviar correo',
+                errorDetails: smtpError.message
+            });
         }
     } catch (error) {
         console.error('Notify API error (General):', error);
-        // @ts-ignore
-        const errorMessage = error?.message || 'Unknown error';
-        // @ts-ignore
-        const errorStack = error?.stack || 'No stack trace';
-        console.error('Error details:', errorMessage, errorStack);
-
+        // Even on general error, if it's just notification, we might want to return 200 or 202 if possible,
+        // but since this is the top-level catch, something went wrong with parsing or logic.
+        // We'll return 500 here but ensure we don't crash.
         return NextResponse.json({
-            error: 'Error interno del servidor',
-            details: errorMessage
+            error: 'Error interno en servicio de notificaciones',
+            details: (error as Error).message
         }, { status: 500 });
     }
 }
