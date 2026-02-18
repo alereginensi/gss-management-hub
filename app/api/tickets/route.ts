@@ -67,21 +67,30 @@ export async function POST(request: Request) {
             )
         `);
 
-        stmt.run(
-            ticket.id,
-            ticket.subject,
-            ticket.description || '',
-            ticket.department || 'General',
-            ticket.priority,
-            ticket.status,
-            ticket.requester,
-            ticket.requesterEmail,
-            ticket.affectedWorker || null,
-            ticket.date,
-            ticket.supervisor || null,
-            ticket.statusColor || null,
-            ticket.createdAt ? new Date(ticket.createdAt).toISOString() : new Date().toISOString()
-        );
+        try {
+            stmt.run(
+                ticket.id,
+                ticket.subject,
+                ticket.description || '',
+                ticket.department || 'General',
+                ticket.priority,
+                ticket.status,
+                ticket.requester,
+                ticket.requesterEmail,
+                ticket.affectedWorker || null,
+                ticket.date,
+                ticket.supervisor || null,
+                ticket.statusColor || null,
+                ticket.createdAt ? new Date(ticket.createdAt).toISOString() : new Date().toISOString()
+            );
+        } catch (insertError: any) {
+            console.error('Database Insertion Error:', insertError);
+            return NextResponse.json({
+                error: 'Database error during ticket creation',
+                details: insertError.message,
+                sql: stmt.source
+            }, { status: 500 });
+        }
 
         return NextResponse.json({ success: true, message: 'Ticket created successfully' }, { status: 201 });
     } catch (error: any) {
