@@ -310,6 +310,16 @@ if (db) {
     try { db.exec("ALTER TABLE tickets ADD COLUMN supervisor TEXT;"); } catch (e) { }
     try { db.exec("ALTER TABLE tickets ADD COLUMN statusColor TEXT;"); } catch (e) { }
     try { db.exec("ALTER TABLE tickets ADD COLUMN createdAt DATETIME;"); } catch (e) { }
+
+    // Cleanup corrupt IDs
+    try {
+      const result = db.prepare("DELETE FROM tickets WHERE id IN ('NaN', 'Infinity', '-Infinity')").run();
+      if (result.changes > 0) {
+        console.log(`🧹 Cleaned up ${result.changes} corrupt tickets.`);
+      }
+    } catch (e) {
+      console.error("Error cleaning tickets:", e);
+    }
   } catch (e) {
     console.error('Error creating database indexes:', e);
   }
