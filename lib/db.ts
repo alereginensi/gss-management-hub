@@ -303,8 +303,20 @@ if (db) {
     
     CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
     CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(date);
+    
+    CREATE TABLE IF NOT EXISTS ticket_activities (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id TEXT NOT NULL,
+        user_name TEXT NOT NULL,
+        user_email TEXT,
+        message TEXT NOT NULL,
+        type TEXT DEFAULT 'comment', -- comment, status_change
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (ticket_id) REFERENCES tickets(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_activities_ticket_id ON ticket_activities(ticket_id);
   `);
-    console.log('Database indexes verified/created');
+    console.log('Database indexes and tables verified/created');
 
     // Migrations for existing tables
     try { db.exec("ALTER TABLE tickets ADD COLUMN supervisor TEXT;"); } catch (e) { }
