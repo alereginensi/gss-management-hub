@@ -13,6 +13,11 @@ export async function GET() {
         const userRole = session.user.role;
         const userEmail = session.user.email;
 
+        if (!db) {
+            console.error('Database instance is null');
+            return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+        }
+
         let tickets;
 
         if (userRole === 'admin') {
