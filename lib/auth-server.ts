@@ -24,7 +24,8 @@ export async function createSession(user: any) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        path: '/'
+        path: '/',
+        priority: 'high'
     });
 
     return sessionToken;
