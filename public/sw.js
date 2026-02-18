@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gss-hub-v2';
+const CACHE_NAME = 'gss-hub-v3';
 const urlsToCache = [
     '/',
     '/login',
@@ -29,7 +29,7 @@ self.addEventListener('activate', (event) => {
                     })
                 );
             }),
-            self.clients.claim() // Take control immediately
+            self.clients.claim()
         ])
     );
 });
@@ -46,7 +46,13 @@ self.addEventListener('fetch', (event) => {
                 if (response) {
                     return response;
                 }
-                return fetch(event.request);
+                return fetch(event.request).catch((error) => {
+                    // Check if it's a navigation request (for a page)
+                    if (event.request.mode === 'navigate') {
+                        return caches.match('/offline.html');
+                    }
+                    throw error;
+                });
             })
     );
 });
