@@ -68,6 +68,14 @@ export async function GET() {
                 } catch (uError: any) {
                     debugInfo.adminCheckError = uError.message;
                 }
+
+                // List tables
+                try {
+                    const tables = dbModule.default.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+                    debugInfo.tables = tables.map((t: any) => t.name);
+                } catch (tError: any) {
+                    debugInfo.tableListError = tError.message;
+                }
             } else {
                 debugInfo.dbInstance = 'Not found on default export';
             }
