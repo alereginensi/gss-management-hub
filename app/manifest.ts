@@ -7,19 +7,14 @@ export default function manifest(): MetadataRoute.Manifest {
         description: 'Portal de Gestión para GSS Facility Services',
         start_url: '/',
         display: 'standalone',
-        background_color: '#ffffff',
+        background_color: '#0f172a',
         theme_color: '#0f172a',
         icons: [
             {
-                src: '/logo.png',
-                sizes: '192x192',
-                type: 'image/png',
-            },
-            {
-                src: '/logo.png',
-                sizes: '512x512',
-                type: 'image/png',
-            },
+                src: '/icon.svg',
+                sizes: 'any',
+                type: 'image/svg+xml',
+            }
         ],
     }
 }
