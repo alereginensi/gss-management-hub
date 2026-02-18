@@ -6,7 +6,18 @@ const dbPath = process.env.NODE_ENV === 'production'
   : path.resolve(process.cwd(), 'tickets.db');
 
 console.log(`Using database at: ${dbPath}`);
-const db = new Database(dbPath);
+
+let db: Database.Database;
+
+try {
+  db = new Database(dbPath, { verbose: console.log });
+  console.log('Database connection successful');
+} catch (error) {
+  console.error('CRITICAL: Failed to connect to database at', dbPath);
+  console.error(error);
+  // @ts-ignore
+  db = null;
+}
 
 // Initialize tables
 db.exec(`
