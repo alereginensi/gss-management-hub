@@ -20,7 +20,8 @@ try {
 }
 
 // Initialize tables
-db.exec(`
+if (db) {
+  db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -144,136 +145,136 @@ db.exec(`
   );
 `);
 
-// Initialize Locations
-try {
-  const count = db.prepare('SELECT count(*) as count FROM locations').get() as { count: number };
-  if (count.count === 0) {
-    const insert = db.prepare('INSERT INTO locations (name) VALUES (?)');
-    const initialLocations = [
-      'Edificio Central',
-      'Planta Industrial',
-      'Depósito Norte',
-      'Depósito Sur',
-      'Oficinas Administrativas',
-      'Comedor',
-      'Estacionamiento',
-      'Puesto de Guardia 1',
-      'Puesto de Guardia 2'
-    ];
-    initialLocations.forEach(loc => insert.run(loc));
-    console.log('Initialized locations table');
+  // Initialize Locations
+  try {
+    const count = db.prepare('SELECT count(*) as count FROM locations').get() as { count: number };
+    if (count.count === 0) {
+      const insert = db.prepare('INSERT INTO locations (name) VALUES (?)');
+      const initialLocations = [
+        'Edificio Central',
+        'Planta Industrial',
+        'Depósito Norte',
+        'Depósito Sur',
+        'Oficinas Administrativas',
+        'Comedor',
+        'Estacionamiento',
+        'Puesto de Guardia 1',
+        'Puesto de Guardia 2'
+      ];
+      initialLocations.forEach(loc => insert.run(loc));
+      console.log('Initialized locations table');
+    }
+  } catch (e) {
+    console.error('Error initializing locations:', e);
   }
-} catch (e) {
-  console.error('Error initializing locations:', e);
-}
 
-// Initialize Job Roles
-try {
-  const count = db.prepare('SELECT count(*) as count FROM job_roles').get() as { count: number };
-  if (count.count === 0) {
-    const insert = db.prepare('INSERT INTO job_roles (name, tasks) VALUES (?, ?)');
-    const initialRoles = {
-      'Limpieza': [
-        'Limpieza de Pisos', 'Limpieza de Baños', 'Recolección de Residuos',
-        'Limpieza de Vidrios', 'Desinfección de Superficies', 'Limpieza de Comedor', 'Reposo de Insumos'
-      ],
-      'Mantenimiento': [
-        'Reparación Eléctrica', 'Reparación Sanitaria', 'Pintura', 'Carpintería',
-        'Jardinería', 'Revisión de Luminarias', 'Mantenimiento Preventivo AA'
-      ],
-      'Seguridad': [
-        'Ronda Perimetral', 'Control de Acceso', 'Revisión de Cámaras',
-        'Reporte de Incidentes', 'Apertura de Portones', 'Cierre de Instalaciones'
-      ],
-      'Logística': [
-        'Recepción de Mercadería', 'Control de Stock', 'Preparación de Pedidos',
-        'Carga de Camiones', 'Inventario'
-      ]
-    };
-    Object.entries(initialRoles).forEach(([role, tasks]) => {
-      insert.run(role, JSON.stringify(tasks));
-    });
-    console.log('Initialized job_roles table');
+  // Initialize Job Roles
+  try {
+    const count = db.prepare('SELECT count(*) as count FROM job_roles').get() as { count: number };
+    if (count.count === 0) {
+      const insert = db.prepare('INSERT INTO job_roles (name, tasks) VALUES (?, ?)');
+      const initialRoles = {
+        'Limpieza': [
+          'Limpieza de Pisos', 'Limpieza de Baños', 'Recolección de Residuos',
+          'Limpieza de Vidrios', 'Desinfección de Superficies', 'Limpieza de Comedor', 'Reposo de Insumos'
+        ],
+        'Mantenimiento': [
+          'Reparación Eléctrica', 'Reparación Sanitaria', 'Pintura', 'Carpintería',
+          'Jardinería', 'Revisión de Luminarias', 'Mantenimiento Preventivo AA'
+        ],
+        'Seguridad': [
+          'Ronda Perimetral', 'Control de Acceso', 'Revisión de Cámaras',
+          'Reporte de Incidentes', 'Apertura de Portones', 'Cierre de Instalaciones'
+        ],
+        'Logística': [
+          'Recepción de Mercadería', 'Control de Stock', 'Preparación de Pedidos',
+          'Carga de Camiones', 'Inventario'
+        ]
+      };
+      Object.entries(initialRoles).forEach(([role, tasks]) => {
+        insert.run(role, JSON.stringify(tasks));
+      });
+      console.log('Initialized job_roles table');
+    }
+  } catch (e) {
+    console.error('Error initializing job_roles:', e);
   }
-} catch (e) {
-  console.error('Error initializing job_roles:', e);
-}
 
-// Migration: Ensure 'approved' column exists in users table
-try {
-  db.exec("ALTER TABLE users ADD COLUMN approved INTEGER DEFAULT 0");
-} catch (e) {
-  // Column already exists or table doesn't exist yet
-}
-
-try {
-  db.exec("ALTER TABLE users ADD COLUMN rubro TEXT");
-} catch (e) {
-  // Column already exists
-}
-
-try {
-  db.exec("ALTER TABLE logbook ADD COLUMN supervised_by TEXT");
-} catch (e) {
-  // Column already exists
-}
-
-try {
-  db.exec("ALTER TABLE logbook ADD COLUMN uniform TEXT");
-} catch (e) {
-  // Column already exists
-}
-
-// Ensure at least one admin exists for testing
-try {
-  db.exec("ALTER TABLE tasks ADD COLUMN location TEXT");
-} catch (e) { }
-
-try {
-  db.exec("ALTER TABLE tasks ADD COLUMN sector TEXT");
-} catch (e) { }
-
-try {
-  const adminPass = '$2b$10$ms9LTCqoDe5zRtwxnMZZ1.ZlQKcOdjBeZD.scyLnG0vkOpnt/ouAq';
-  const checkAdmin = db.prepare('SELECT * FROM users WHERE email = ?').get('admin@gss.com');
-
-  if (!checkAdmin) {
-    // Password is 'admin123'
-    db.prepare('INSERT INTO users (name, email, password, department, role, approved) VALUES (?, ?, ?, ?, ?, ?)')
-      .run('Admin System', 'admin@gss.com', adminPass, 'Administración', 'admin', 1);
-  } else {
-    // Always update the password and approval status for the default admin to ensure it works
-    db.prepare("UPDATE users SET password = ?, role = 'admin', approved = 1 WHERE email = ?")
-      .run(adminPass, 'admin@gss.com');
+  // Migration: Ensure 'approved' column exists in users table
+  try {
+    db.exec("ALTER TABLE users ADD COLUMN approved INTEGER DEFAULT 0");
+  } catch (e) {
+    // Column already exists or table doesn't exist yet
   }
-} catch (e) {
-  console.error("DB Admin Init Error:", e);
-}
 
-// Initialize default settings if they don't exist
-const initSettings = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
-initSettings.run('notification_emails', 'admin@gss-facility.com');
-initSettings.run('power_automate_url', '');
+  try {
+    db.exec("ALTER TABLE users ADD COLUMN rubro TEXT");
+  } catch (e) {
+    // Column already exists
+  }
 
-// Default departments for initialization (should match TicketContext.tsx)
-const departments = [
-  'Mantenimiento',
-  'Limpieza',
-  'IT',
-  'Seguridad',
-  'RRHH',
-  'Administración',
-  'Logística'
-];
+  try {
+    db.exec("ALTER TABLE logbook ADD COLUMN supervised_by TEXT");
+  } catch (e) {
+    // Column already exists
+  }
 
-departments.forEach(dept => {
-  const deptKey = `notification_emails_${dept}`.replace(/\s+/g, '_');
-  initSettings.run(deptKey, 'admin@gss-facility.com');
-});
+  try {
+    db.exec("ALTER TABLE logbook ADD COLUMN uniform TEXT");
+  } catch (e) {
+    // Column already exists
+  }
 
-// Optimization: Database Indexes
-try {
-  db.exec(`
+  // Ensure at least one admin exists for testing
+  try {
+    db.exec("ALTER TABLE tasks ADD COLUMN location TEXT");
+  } catch (e) { }
+
+  try {
+    db.exec("ALTER TABLE tasks ADD COLUMN sector TEXT");
+  } catch (e) { }
+
+  try {
+    const adminPass = '$2b$10$ms9LTCqoDe5zRtwxnMZZ1.ZlQKcOdjBeZD.scyLnG0vkOpnt/ouAq';
+    const checkAdmin = db.prepare('SELECT * FROM users WHERE email = ?').get('admin@gss.com');
+
+    if (!checkAdmin) {
+      // Password is 'admin123'
+      db.prepare('INSERT INTO users (name, email, password, department, role, approved) VALUES (?, ?, ?, ?, ?, ?)')
+        .run('Admin System', 'admin@gss.com', adminPass, 'Administración', 'admin', 1);
+    } else {
+      // Always update the password and approval status for the default admin to ensure it works
+      db.prepare("UPDATE users SET password = ?, role = 'admin', approved = 1 WHERE email = ?")
+        .run(adminPass, 'admin@gss.com');
+    }
+  } catch (e) {
+    console.error("DB Admin Init Error:", e);
+  }
+
+  // Initialize default settings if they don't exist
+  const initSettings = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
+  initSettings.run('notification_emails', 'admin@gss-facility.com');
+  initSettings.run('power_automate_url', '');
+
+  // Default departments for initialization (should match TicketContext.tsx)
+  const departments = [
+    'Mantenimiento',
+    'Limpieza',
+    'IT',
+    'Seguridad',
+    'RRHH',
+    'Administración',
+    'Logística'
+  ];
+
+  departments.forEach(dept => {
+    const deptKey = `notification_emails_${dept}`.replace(/\s+/g, '_');
+    initSettings.run(deptKey, 'admin@gss-facility.com');
+  });
+
+  // Optimization: Database Indexes
+  try {
+    db.exec(`
     CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
     CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at);
     CREATE INDEX IF NOT EXISTS idx_tasks_location ON tasks(location);
@@ -287,13 +288,14 @@ try {
     CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
     CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(date);
   `);
-  console.log('Database indexes verified/created');
+    console.log('Database indexes verified/created');
 
-  // Migrations for existing tables
-  try { db.exec("ALTER TABLE tickets ADD COLUMN supervisor TEXT;"); } catch (e) { }
-  try { db.exec("ALTER TABLE tickets ADD COLUMN statusColor TEXT;"); } catch (e) { }
-} catch (e) {
-  console.error('Error creating database indexes:', e);
+    // Migrations for existing tables
+    try { db.exec("ALTER TABLE tickets ADD COLUMN supervisor TEXT;"); } catch (e) { }
+    try { db.exec("ALTER TABLE tickets ADD COLUMN statusColor TEXT;"); } catch (e) { }
+  } catch (e) {
+    console.error('Error creating database indexes:', e);
+  }
 }
 
 export default db;
