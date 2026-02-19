@@ -36,9 +36,19 @@ export async function deleteSession() {
     cookieStore.set('session', '', { expires: new Date(0), path: '/' });
 }
 
+// getSession now checks both Cookie and Authorization Header
 export async function getSession() {
     const cookieStore = await cookies();
-    const session = cookieStore.get('session')?.value;
+    let session = cookieStore.get('session')?.value;
+
+    if (!session) {
+        const headersList = await import('next/headers').then(mod => mod.headers());
+        const authHeader = headersList.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            session = authHeader.substring(7);
+        }
+    }
+
     if (!session) return null;
     try {
         return await decrypt(session);
