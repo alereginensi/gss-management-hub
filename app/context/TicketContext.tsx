@@ -82,7 +82,7 @@ interface TicketContextType {
     clearAllNotifications: () => void;
     unreadCount: number;
     getAverageResolutionTime: () => string;
-    currentUser: User;
+    currentUser: User | null;
     setCurrentUser: (user: User) => void;
     theme: 'light' | 'dark';
     setTheme: (theme: 'light' | 'dark') => void;
