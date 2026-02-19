@@ -4,13 +4,17 @@ import { hashPassword } from '@/lib/auth';
 
 import { getSession } from '@/lib/auth-server';
 
-export async function GET() {
+export async function GET(request: Request) {
     const session = await getSession();
     if (!session || (session.user.role !== 'admin' && session.user.role !== 'supervisor')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     try {
-        const users = db.prepare('SELECT id, name, email, department, role, approved FROM users').all();
+        const { searchParams } = new URL(request.url);
+        const roleFilter = searchParams.get('role');
+        const users = roleFilter
+            ? db.prepare('SELECT id, name, email, department, role, approved FROM users WHERE role = ? ORDER BY name ASC').all(roleFilter)
+            : db.prepare('SELECT id, name, email, department, role, approved FROM users ORDER BY name ASC').all();
         return NextResponse.json(users);
     } catch (error) {
         return NextResponse.json({ error: 'Error fetching users' }, { status: 500 });
