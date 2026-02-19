@@ -35,7 +35,9 @@ export async function middleware(request: NextRequest) {
 
     if (!session) {
         if (pathname.startsWith('/api/')) {
-            return NextResponse.json({ error: 'Unauthorized: No session found' }, { status: 401 });
+            const response = NextResponse.json({ error: 'Unauthorized: No session found' }, { status: 401 });
+            response.headers.set('X-Auth-Reason', 'missing_cookie');
+            return response;
         }
         return NextResponse.redirect(new URL('/login', request.url));
     }
@@ -89,7 +91,9 @@ export async function middleware(request: NextRequest) {
         response.cookies.delete('session');
 
         if (pathname.startsWith('/api/')) {
-            return NextResponse.json({ error: 'Unauthorized: Invalid session' }, { status: 401 });
+            const response = NextResponse.json({ error: `Unauthorized: Invalid session (${e.message})` }, { status: 401 });
+            response.headers.set('X-Auth-Reason', 'invalid_token');
+            return response;
         }
         return response;
     }

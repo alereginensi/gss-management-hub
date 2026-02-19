@@ -6,8 +6,19 @@
 const encoder = new TextEncoder();
 
 function base64urlEncode(data: Uint8Array | string): string {
-    const str = typeof data === 'string' ? data : String.fromCharCode(...data);
-    return btoa(str)
+    let bytes: Uint8Array;
+    if (typeof data === 'string') {
+        bytes = encoder.encode(data);
+    } else {
+        bytes = data;
+    }
+
+    // Safely convert bytes to binary string
+    const binString = Array.from(bytes, (byte) =>
+        String.fromCodePoint(byte)
+    ).join("");
+
+    return btoa(binString)
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=/g, '');
