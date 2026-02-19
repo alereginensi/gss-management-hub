@@ -61,7 +61,7 @@ export default function PushManager() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     subscription,
-                    email: currentUser.email
+                    email: currentUser?.email
                 })
             });
 
