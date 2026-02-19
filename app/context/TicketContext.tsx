@@ -86,7 +86,7 @@ interface TicketContextType {
     theme: 'light' | 'dark';
     setTheme: (theme: 'light' | 'dark') => void;
     isAuthenticated: boolean;
-    login: (user: User) => void;
+    login: (user: User, token?: string) => void;
     logout: () => void;
     systemSettings: Record<string, string>;
     updateSystemSettings: (settings: Record<string, string>) => Promise<void>;
@@ -117,13 +117,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     const [filter, setFilter] = useState<'Todos' | 'Abiertos' | 'Cerrados'>('Todos');
     const [activities, setActivities] = useState<Activity[]>([]);
     const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [currentUser, setCurrentUser] = useState<User>({
-        id: 0,
-        name: '',
-        department: '',
-        role: 'user',
-        email: ''
-    });
+    const [currentUser, setCurrentUser] = useState<User | null>(null); // Updated initial state to null
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [systemSettings, setSystemSettings] = useState<Record<string, string>>({
@@ -132,6 +126,76 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     const [pendingUsers, setPendingUsers] = useState<User[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
+
+    const router = useRouter(); // Initialize useRouter
+
+    // Helper to get headers with fallback token
+    const getAuthHeaders = () => {
+        const token = localStorage.getItem('authToken');
+        const headers: HeadersInit = {
+            'Content-Type': 'application/json' // Default content type for most requests
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    };
+
+    const fetchSettings = async () => {
+        try {
+            // Settings might be public or protected, add header just in case
+            const res = await fetch('/api/settings', { headers: getAuthHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                setSystemSettings(data);
+            }
+        } catch (error) {
+            console.error('Error fetching settings:', error);
+        }
+    };
+
+    const fetchAllUsers = async () => {
+        try {
+            const res = await fetch('/api/admin/users', { headers: getAuthHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                // API returns array directly, not { users: [] }
+                const pending = data.filter((u: User) => !u.approved);
+                const approved = data.filter((u: User) => u.approved);
+                setPendingUsers(pending);
+                setAllUsers(approved);
+                console.log('✅ Users loaded - Approved:', approved.length, 'Pending:', pending.length);
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        }
+    };
+
+    const fetchTickets = async () => {
+        try {
+            const res = await fetch('/api/tickets', { headers: getAuthHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                setTickets(data);
+                console.log('✅ Tickets loaded:', data.length);
+            }
+        } catch (error) {
+            console.error('Error fetching tickets:', error);
+        }
+    };
+
+    const fetchNotifications = async () => {
+        try {
+            const res = await fetch('/api/notifications', { headers: getAuthHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                setNotifications(data);
+                console.log('✅ Notifications loaded:', data.length);
+            }
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+        }
+    };
 
     const refreshData = async () => {
         setLoading(true);
@@ -148,7 +212,9 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     React.useEffect(() => {
         const restoreSession = async () => {
             try {
-                const res = await fetch('/api/auth/me');
+                // Try to restore from server (cookie OR header)
+                // We send the header if we have one from a previous session
+                const res = await fetch('/api/auth/me', { headers: getAuthHeaders() });
                 if (res.ok) {
                     const data = await res.json();
                     if (data.user) {
@@ -158,7 +224,9 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                         refreshData();
                     }
                 } else {
-                    // If cookie is invalid/expired, ensure we are logged out locally
+                    // Only logout if we REALLY fail.
+                    // But if we have a token in localStorage, maybe we are fine?
+                    // No, if the server says 401 even with the token, it's invalid.
                     logout();
                     setLoading(false);
                 }
@@ -170,18 +238,6 @@ export function TicketProvider({ children }: { children: ReactNode }) {
 
         restoreSession();
     }, []);
-
-    const fetchSettings = async () => {
-        try {
-            const res = await fetch('/api/settings');
-            if (res.ok) {
-                const data = await res.json();
-                setSystemSettings(data);
-            }
-        } catch (error) {
-            console.error('Error fetching settings:', error);
-        }
-    };
 
     const updateSystemSettings = async (newSettings: Record<string, string>) => {
         try {

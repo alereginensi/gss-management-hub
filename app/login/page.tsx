@@ -49,7 +49,7 @@ export default function Login() {
                     department: data.user.department,
                     role: data.user.role as any,
                     rubro: data.user.rubro
-                });
+                }, data.token);
 
                 router.push('/tickets');
             } else {
