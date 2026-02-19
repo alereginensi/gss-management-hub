@@ -85,13 +85,14 @@ export async function middleware(request: NextRequest) {
         }
 
         return NextResponse.next();
-    } catch (e) {
+    } catch (e: any) {
         // Clear invalid session cookie
         const response = NextResponse.redirect(new URL('/login', request.url));
         response.cookies.delete('session');
 
         if (pathname.startsWith('/api/')) {
-            const response = NextResponse.json({ error: `Unauthorized: Invalid session (${e.message})` }, { status: 401 });
+            const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+            const response = NextResponse.json({ error: `Unauthorized: Invalid session (${errorMessage})` }, { status: 401 });
             response.headers.set('X-Auth-Reason', 'invalid_token');
             return response;
         }
