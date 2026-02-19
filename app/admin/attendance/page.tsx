@@ -34,7 +34,7 @@ export default function AttendancePage() {
     const [roles, setRoles] = useState<any[]>([]);
 
     useEffect(() => {
-        if (currentUser.id) {
+        if (currentUser?.id) {
             fetchAttendance();
             fetchFilters();
         }
