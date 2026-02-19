@@ -31,10 +31,10 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 
 # Set the correct permission for prerender cache
-RUN mkdir .next
+RUN mkdir -p .next
+# Create /app/data directory - Railway should mount a persistent volume here
 RUN mkdir -p /app/data
 RUN chown nextjs:nodejs .next
-# Ensure /app/data is owned by nextjs user
 RUN chown -R nextjs:nodejs /app/data
 
 # Automatically leverage output traces to reduce image size
@@ -44,11 +44,16 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Ensure better-sqlite3 is handled correctly in standalone mode
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 
-# USER nextjs
+# Copy startup script and make it executable
+COPY --chown=nextjs:nodejs startup.sh ./startup.sh
+RUN chmod +x ./startup.sh
+
+USER nextjs
 
 EXPOSE 3000
 
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 
-CMD ["node", "server.js"]
+# Use startup.sh to verify persistent volume before starting
+CMD ["sh", "./startup.sh"]
