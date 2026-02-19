@@ -70,7 +70,7 @@ export default function Sidebar() {
         }
     };
 
-    if (!isAuthenticated) return null;
+    if (!currentUser) return null;
 
     const initials = currentUser.name ? currentUser.name.split(' ').map(n => n[0]).join('') : 'DU';
 
