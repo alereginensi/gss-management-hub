@@ -35,9 +35,11 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
         }
     };
 
-    const formatTimestamp = (timestamp: Date) => {
+    const formatTimestamp = (timestamp: Date | string) => {
         const now = new Date();
-        const diff = Math.floor((now.getTime() - timestamp.getTime()) / 1000);
+        const ts = timestamp instanceof Date ? timestamp : new Date(timestamp);
+        if (isNaN(ts.getTime())) return 'Fecha desconocida';
+        const diff = Math.floor((now.getTime() - ts.getTime()) / 1000);
 
         if (diff < 60) return 'Hace unos segundos';
         if (diff < 3600) return `Hace ${Math.floor(diff / 60)} min`;
