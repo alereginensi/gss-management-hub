@@ -10,27 +10,22 @@ DB_FILE="$DATA_DIR/tickets.db"
 echo "=== GSS Management Hub Startup ==="
 echo "DATA_DIR: $DATA_DIR"
 
-# Ensure /app/data directory exists
-mkdir -p "$DATA_DIR"
+# Ensure /app/data directory exists (in case volume isn't mounted)
+mkdir -p "$DATA_DIR" 2>/dev/null || true
 
-# Check if the volume is properly mounted (Railway persistent volume)
+# Check if the volume is properly mounted
 if df "$DATA_DIR" | grep -q "overlay"; then
-  echo "⚠️  WARNING: /app/data appears to be on overlay filesystem (not a persistent volume)."
-  echo "   Deploy will work but data may be lost on redeploy."
+  echo "⚠️  WARNING: /app/data is on overlay filesystem (ephemeral - data will be lost on redeploy)"
   echo "   Please configure a Railway volume mounted at /app/data"
 else
-  echo "✅ /app/data is on a persistent filesystem."
+  echo "✅ /app/data is on a persistent filesystem"
 fi
-
-# Ensure correct permissions
-chown -R nextjs:nodejs "$DATA_DIR" 2>/dev/null || true
-chmod 755 "$DATA_DIR"
 
 echo "DB path: $DB_FILE"
 if [ -f "$DB_FILE" ]; then
   echo "✅ Database file exists ($(du -sh "$DB_FILE" | cut -f1))"
 else
-  echo "ℹ️  Database file does not exist yet - will be created on first request."
+  echo "ℹ️  Database will be created on first request"
 fi
 
 echo "=== Starting Next.js server ==="
