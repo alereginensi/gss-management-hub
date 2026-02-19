@@ -37,7 +37,9 @@ export default function Login() {
                 body: JSON.stringify({ ...formData, isAdminLogin })
             });
 
+            console.log('Login Response Status:', res.status);
             const data = await res.json();
+            console.log('Login Response Data:', data);
 
             if (res.ok) {
                 login({
