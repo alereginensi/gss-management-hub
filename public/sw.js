@@ -1,9 +1,5 @@
-const CACHE_NAME = 'gss-hub-v4';
+const CACHE_NAME = 'gss-hub-v5';
 const urlsToCache = [
-    '/',
-    '/login',
-    '/manifest.webmanifest',
-    '/icon.svg',
     '/offline.html'
 ];
 
@@ -35,11 +31,29 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    // Exclude API calls and non-GET requests from caching strategies
+    // Exclude API calls and non-GET requests
     if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
         return;
     }
 
+    // IMPORTANT: Never cache Next.js static chunks (_next/static/)
+    // These have content-hashed filenames, but new deployments generate new hashes.
+    // The SW should always let these through to the network so new chunks are loaded correctly.
+    if (event.request.url.includes('/_next/')) {
+        return;
+    }
+
+    // For navigation requests (page loads), use network-first strategy
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request).catch(() => {
+                return caches.match('/offline.html');
+            })
+        );
+        return;
+    }
+
+    // For other static assets (icons, etc.), use cache-first
     event.respondWith(
         caches.match(event.request)
             .then((response) => {
@@ -47,10 +61,6 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 }
                 return fetch(event.request).catch((error) => {
-                    // Check if it's a navigation request (for a page)
-                    if (event.request.mode === 'navigate') {
-                        return caches.match('/offline.html');
-                    }
                     throw error;
                 });
             })
