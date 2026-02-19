@@ -59,6 +59,7 @@ export default function LogbookPage() {
     const [entries, setEntries] = useState<LogEntry[]>([]);
     const [columns, setColumns] = useState<Column[]>([]);
     const [loading, setLoading] = useState(true);
+    const [funcionarios, setFuncionarios] = useState<string[]>([]);
 
     // Modals
     const [showReportModal, setShowReportModal] = useState(false);
@@ -131,19 +132,24 @@ export default function LogbookPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [res, locRes] = await Promise.all([
+            const [res, locRes, usersRes] = await Promise.all([
                 fetch('/api/logbook'),
-                fetch('/api/config/locations')
+                fetch('/api/config/locations'),
+                fetch('/api/admin/users?role=funcionario')
             ]);
 
             if (res.ok) {
                 const data = await res.json();
                 setEntries(data.entries);
                 setColumns(data.columns);
-                setSelectedIds(new Set()); // Reset selection on new data
+                setSelectedIds(new Set());
             }
             if (locRes.ok) {
                 setLocations(await locRes.json());
+            }
+            if (usersRes.ok) {
+                const users = await usersRes.json();
+                setFuncionarios(users.map((u: any) => u.name));
             }
         } catch (error) {
             console.error('Error fetching logbook:', error);
@@ -648,7 +654,10 @@ export default function LogbookPage() {
                                     </select>
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
-                                    <input placeholder="Funcionario" value={inlineData.staff_member} onChange={e => setInlineData({ ...inlineData, staff_member: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} />
+                                    <select value={inlineData.staff_member} onChange={e => setInlineData({ ...inlineData, staff_member: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
+                                        <option value="">Seleccionar funcionario</option>
+                                        {funcionarios.map(f => <option key={f} value={f}>{f}</option>)}
+                                    </select>
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
                                     <select value={inlineData.uniform} onChange={e => setInlineData({ ...inlineData, uniform: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
@@ -656,7 +665,14 @@ export default function LogbookPage() {
                                     </select>
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
-                                    <input placeholder="Reporte..." value={inlineData.report} onChange={e => setInlineData({ ...inlineData, report: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} />
+                                    <textarea
+                                        placeholder="Reporte..."
+                                        value={inlineData.report}
+                                        onChange={e => setInlineData({ ...inlineData, report: e.target.value })}
+                                        className="input"
+                                        rows={2}
+                                        style={{ padding: '0.4rem', fontSize: '0.85rem', resize: 'vertical', minHeight: '60px' }}
+                                    />
                                 </td>
                                 {columns.map(col => (
                                     <td key={col.id} style={{ padding: '0.5rem' }}>
@@ -671,8 +687,18 @@ export default function LogbookPage() {
                                     </td>
                                 ))}
                                 <td style={{ padding: '0.5rem' }}>
-                                    <button onClick={() => handleCreateReport(null, inlineData)} className="btn btn-primary" style={{ padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <Plus size={16} />
+                                    <button
+                                        onClick={() => {
+                                            if (!inlineData.location || !inlineData.staff_member || !inlineData.report?.trim()) {
+                                                alert('Completa al menos: Cliente, Funcionario y Reporte');
+                                                return;
+                                            }
+                                            handleCreateReport(null, inlineData);
+                                        }}
+                                        className="btn btn-primary"
+                                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                                    >
+                                        Agregar
                                     </button>
                                 </td>
                             </tr>
@@ -895,12 +921,15 @@ export default function LogbookPage() {
                                                     </div>
                                                     <div>
                                                         <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Funcionario / Personal</label>
-                                                        <input
+                                                        <select
                                                             required
                                                             value={item.staff_member}
                                                             onChange={e => updateReportItem(idx, 'staff_member', e.target.value)}
                                                             className="input"
-                                                        />
+                                                        >
+                                                            <option value="">Seleccionar funcionario</option>
+                                                            {funcionarios.map(f => <option key={f} value={f}>{f}</option>)}
+                                                        </select>
                                                     </div>
                                                     <div>
                                                         <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Uniforme</label>
@@ -915,11 +944,13 @@ export default function LogbookPage() {
                                                     </div>
                                                     <div>
                                                         <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Reporte / Novedad</label>
-                                                        <input
+                                                        <textarea
                                                             required
                                                             value={item.report}
                                                             onChange={e => updateReportItem(idx, 'report', e.target.value)}
                                                             className="input"
+                                                            rows={4}
+                                                            style={{ resize: 'vertical', minHeight: '90px', lineHeight: '1.5' }}
                                                         />
                                                     </div>
                                                 </div>

@@ -1,0 +1,930 @@
+﻿[
+    {
+        "cliente":  "AMEC",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Arcanus",
+        "lugar":  "Durazno"
+    },
+    {
+        "cliente":  "Automotora Carrica",
+        "lugar":  "Bulevar Artigas"
+    },
+    {
+        "cliente":  "Automotora Carrica",
+        "lugar":  "Av. Millan"
+    },
+    {
+        "cliente":  "Banco de Seguro",
+        "lugar":  "Casa Central"
+    },
+    {
+        "cliente":  "Banco de Seguro",
+        "lugar":  "Bulevar Artigas"
+    },
+    {
+        "cliente":  "Banco de Seguro",
+        "lugar":  "Casa Central - Garaje"
+    },
+    {
+        "cliente":  "Bas",
+        "lugar":  "Melo (506)"
+    },
+    {
+        "cliente":  "Bas",
+        "lugar":  "Florida (509)"
+    },
+    {
+        "cliente":  "Bas",
+        "lugar":  "San Jose (531)"
+    },
+    {
+        "cliente":  "Bas",
+        "lugar":  "Fray Bentos (532)"
+    },
+    {
+        "cliente":  "Bas",
+        "lugar":  "Durazno (515)"
+    },
+    {
+        "cliente":  "Bas",
+        "lugar":  "Minas (520)"
+    },
+    {
+        "cliente":  "Bas",
+        "lugar":  "Colonia (523)"
+    },
+    {
+        "cliente":  "Bas",
+        "lugar":  "Mercedes (518)"
+    },
+    {
+        "cliente":  "Bas",
+        "lugar":  "Trinidad (517)"
+    },
+    {
+        "cliente":  "Bas",
+        "lugar":  "8 de octubre (511)"
+    },
+    {
+        "cliente":  "Berdick",
+        "lugar":  "Planta"
+    },
+    {
+        "cliente":  "Berdick",
+        "lugar":  "Portero"
+    },
+    {
+        "cliente":  "Berdick",
+        "lugar":  "Planta Nueva"
+    },
+    {
+        "cliente":  "Berdick",
+        "lugar":  "Oficina"
+    },
+    {
+        "cliente":  "Capacitación Limpieza",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Carolina Mangarelli",
+        "lugar":  "Lagomar"
+    },
+    {
+        "cliente":  "Carrica automotores",
+        "lugar":  "Puente de las Americas"
+    },
+    {
+        "cliente":  "Carrica automotores",
+        "lugar":  "Prado"
+    },
+    {
+        "cliente":  "Casa Valentin",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Casas Lagomar",
+        "lugar":  "Graciela Garcia"
+    },
+    {
+        "cliente":  "Casas Lagomar",
+        "lugar":  "Carolina Mangarelli"
+    },
+    {
+        "cliente":  "Casas Lagomar",
+        "lugar":  "Martha Garcia"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 1 Piso 6"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2 Piso 2"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2 Urgencia"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Policlinico"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 1 Piso 4"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 1 Piso 3"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 1 Piso 5"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 1 Piso 2"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Ropería"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Asilo"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 1 Piso 1"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2 Urgencia Ginecológica"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 1"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2 Cuartos Medicos"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 1 Punta"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Centro Mamario"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2 Abreu"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2 PB y Sub"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Local 8"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Asilo Almacenes"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Policlinico Tomógrafo"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2 Urgencia Pediátrica"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2 Piso 5"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Local 8 Lavado de Móviles"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2 Piso 1"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2 SOE"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Asilo Pañol"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Asilo Contact Center"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2 Cocina"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Asilo Medicamentos"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Piscina"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2 Piso 3"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Policlínico Tomógrafo"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Taller Veracierto"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Cabina Abreu"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Portones"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 1 Odontología"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 4"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 1"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Maldonado"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Punta Carretas"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "1727 Bv Artigas 1910"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Paso de la Arena"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 4 Oncologia"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "1727 Agraciada"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Colon"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "1727 Malvin Norte"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 4 Centro Medico"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Solymar"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Taller Central Veracierto"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "1727 Solymar"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Cerro"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Guana"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Cordon"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 1 Salud Mental"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Paso Carrasco"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Agraciada"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Piriapolis"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Piedras Blancas"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Parque Posadas"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca UAM"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Parque Batlle"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Centro Oftalmologico"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "1727 Colon"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Tres cruces"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 1 Vacunacion"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "1727 Piedras Blancas"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Sur y Palermo"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 1 Farmacia"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Malvin Norte"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 1 - Adicional Upeca Cordon"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "1727 Paso de la arena"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 4 Hemodialisis"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Referente Vigilante Auxiliar"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 2"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Monitoreo"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Local 8"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Deposito Cerro Adicional"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 1 Cabina"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio Torre 1"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Guana Centro Oftalmologico"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Solymar (movil 15)"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "1727 Bv. Artigas"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Salud Mental"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Cabina Asilo"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Policlínico"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Policlinico"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Punta Carretas"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 CTI"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Centro Mamario"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Upeca Barrio Sur y Palermo"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Malvin Alto (movil 1)"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Encuesta"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Capacitacion Administrativo"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Colon (movil 9)"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Piedras Blancas (movil 7)"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Paso de la Arena (movil 8)"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Tres Cruces (movil 2)"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Tres Cruces (movil 5)"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Tres Cruces (movil 3)"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Prado (movil 30)"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Centro Oftalmologico Guana"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Prado (movil 4)"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2 Torre 1"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Solymar (movil 40)"
+    },
+    {
+        "cliente":  "Casmu",
+        "lugar":  "Sanatorio 2"
+    },
+    {
+        "cliente":  "Celia",
+        "lugar":  "Limpieza"
+    },
+    {
+        "cliente":  "CES Seguridad",
+        "lugar":  "Grito de Gloria"
+    },
+    {
+        "cliente":  "Ciudad Pinturas",
+        "lugar":  "Giannatassio"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "CAC Paso Molino"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Mini CAC Las Piedras"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Mini CAC Minas"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "CAC Costa Urbana"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Isla Shopping Geant"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Mini CAC Mercedes"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Mini CAC Rivera"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Mini CAC Florida"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "CAC 18 De Julio"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Mini CAC Tacuarembo"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Mini CAC Artigas"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "CAC Paysandù"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "CAC Salto"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "CAC Uniòn"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Isla Nuevo Centro"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Isla Tres Cruces"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "CAC Maldonado"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "San Martin Edificio Corporativo"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Mini CAC Pando"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Isla Punta Carretas"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Isla Portones Shopping"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Atlántida"
+    },
+    {
+        "cliente":  "Claro",
+        "lugar":  "Isla Montevideo Shopping"
+    },
+    {
+        "cliente":  "Clinica Lura",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Cooke Uruguay",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Decosol",
+        "lugar":  "Via Disegno"
+    },
+    {
+        "cliente":  "Decosol",
+        "lugar":  "Bagno \u0026 Company Av. Italia"
+    },
+    {
+        "cliente":  "Edificio Amezaga",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Edificio Charrua",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Edificio Charrua",
+        "lugar":  "Barbacoa"
+    },
+    {
+        "cliente":  "Edificio Paullier",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Edificio San Martin",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Edificio Thays",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Glic Global",
+        "lugar":  "Tienda Online"
+    },
+    {
+        "cliente":  "Hif Global",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Hora de Lactancia",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Hospital BSE",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Hotel Ibis",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Indian",
+        "lugar":  "Atlantico"
+    },
+    {
+        "cliente":  "Indian",
+        "lugar":  "Punta Market Punta del Este"
+    },
+    {
+        "cliente":  "Indian",
+        "lugar":  "Fragata"
+    },
+    {
+        "cliente":  "Indian",
+        "lugar":  "Punta Shopping"
+    },
+    {
+        "cliente":  "Indian",
+        "lugar":  "Gorlero"
+    },
+    {
+        "cliente":  "Indian",
+        "lugar":  "Ariel"
+    },
+    {
+        "cliente":  "Indian",
+        "lugar":  "Portones"
+    },
+    {
+        "cliente":  "Indian",
+        "lugar":  "Maldonado"
+    },
+    {
+        "cliente":  "Indian",
+        "lugar":  "Montevideo Shopping"
+    },
+    {
+        "cliente":  "INDIAN Chic Parisien",
+        "lugar":  "Salto"
+    },
+    {
+        "cliente":  "INDIAN Chic Parisien",
+        "lugar":  "Tacuarembo"
+    },
+    {
+        "cliente":  "Indian Fragata",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Indian Gorlero",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Indian Punta Market",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "L\u0026G",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "La Molienda",
+        "lugar":  "Sarandi"
+    },
+    {
+        "cliente":  "La Molienda",
+        "lugar":  "Ejido"
+    },
+    {
+        "cliente":  "La Molienda",
+        "lugar":  "Rondeau Cocina"
+    },
+    {
+        "cliente":  "La Molienda",
+        "lugar":  "18 de Julio"
+    },
+    {
+        "cliente":  "La Molienda",
+        "lugar":  "Rondeau Oficina"
+    },
+    {
+        "cliente":  "La Molienda",
+        "lugar":  "Uruguay"
+    },
+    {
+        "cliente":  "La Molienda Colonia",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Lactosan",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Logitech",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "LUGAR DE PRUEBA",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Mayorista el As",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Microlab",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Mundo Mac",
+        "lugar":  "Punta Shopping"
+    },
+    {
+        "cliente":  "Nedabal",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "No convocado",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Nutriem Latam",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Obra GSS",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Oficina",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Plaza Correo",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Porto vanila",
+        "lugar":  "Planta elaboradora"
+    },
+    {
+        "cliente":  "Proyecto Medishop",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Rawer Ltda",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Riven SRL",
+        "lugar":  "Clínica Dental Br. Artigas"
+    },
+    {
+        "cliente":  "Schmidt Premoldeados",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Schmidt Premoldeados",
+        "lugar":  "Obra"
+    },
+    {
+        "cliente":  "Silber Studio",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Tata",
+        "lugar":  "Young (152)"
+    },
+    {
+        "cliente":  "Tata",
+        "lugar":  "Trinidad (145)"
+    },
+    {
+        "cliente":  "Tata",
+        "lugar":  "Trinidad (335)"
+    },
+    {
+        "cliente":  "Tata",
+        "lugar":  "San Jose (121)"
+    },
+    {
+        "cliente":  "Tata",
+        "lugar":  "Florida (315)"
+    },
+    {
+        "cliente":  "Tata",
+        "lugar":  "Mercedes (317)"
+    },
+    {
+        "cliente":  "Teyma",
+        "lugar":  "Fac. Enfermería"
+    },
+    {
+        "cliente":  "Tort Itda",
+        "lugar":  ""
+    },
+    {
+        "cliente":  "Tort Itda",
+        "lugar":  "2do Local"
+    },
+    {
+        "cliente":  "UDE",
+        "lugar":  "Punta Del Este"
+    },
+    {
+        "cliente":  "Veiga Ventos",
+        "lugar":  "Via Disegno"
+    },
+    {
+        "cliente":  "Viavip",
+        "lugar":  "Smart Parking"
+    },
+    {
+        "cliente":  "Wine Select",
+        "lugar":  "Vinos del Mundo"
+    }
+]
