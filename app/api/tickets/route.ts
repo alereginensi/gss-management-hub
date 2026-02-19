@@ -23,24 +23,25 @@ export async function GET() {
         if (userRole === 'admin') {
             // Admins see all tickets
             tickets = db.prepare('SELECT * FROM tickets ORDER BY date DESC').all();
-        } else if (userRole === 'supervisor' || userRole === 'funcionario') {
-            // Supervisors and Staff see tickets:
-            // 1. Assigned to their department
-            // 2. Assigned to them personally (by name)
-            // 3. Where they are collaborators
+        } else if (userRole === 'supervisor') {
+            // Supervisors see tickets:
+            // 1. Where they are assigned as supervisor (by name)
+            // 2. Where they are a collaborator
+            // 3. Where they are the requester (created by them)
             const userName = session.user.name;
-            const userDept = session.user.department;
+            const userEmail = session.user.email;
 
             tickets = db.prepare(`
                 SELECT DISTINCT t.* FROM tickets t
                 LEFT JOIN ticket_collaborators tc ON t.id = tc.ticket_id
-                WHERE (t.department = ? OR t.department = 'General') 
-                   OR (t.supervisor = ? AND t.supervisor IS NOT NULL)
+                WHERE (t.supervisor = ? AND t.supervisor IS NOT NULL AND t.supervisor != '')
                    OR tc.user_id = ?
+                   OR t.requesterEmail = ?
                 ORDER BY t.date DESC
-            `).all(userDept, userName, userId);
+            `).all(userName, userId, userEmail);
         } else {
-            // Regular users see tickets they created or where they are collaborators
+            // Funcionarios and regular users see only tickets they created or are collaborators of
+            const userEmail = session.user.email;
             tickets = db.prepare(`
                 SELECT DISTINCT t.* FROM tickets t
                 LEFT JOIN ticket_collaborators tc ON t.id = tc.ticket_id AND tc.user_id = ?
