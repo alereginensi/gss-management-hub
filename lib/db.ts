@@ -144,10 +144,12 @@ if (db) {
     FOREIGN KEY (location_id) REFERENCES locations(id),
     UNIQUE(name, location_id)
   );
-`);
+  `);
 
 
   // Initialize Locations & Sectors from CSV data (Clientes y Lugares)
+  // MOVED TO /api/admin/seed to prevent startup timeouts
+  /*
   // Initialize Locations & Sectors from CSV data (Clientes y Lugares)
   try {
     // Check if we need to seed
@@ -274,6 +276,7 @@ if (db) {
   } catch (e) {
     console.error('NON-FATAL ERROR initializing locations:', e);
   }
+  */
 
   if (db) {
     console.log('DEBUG: Starting DB migrations...');
