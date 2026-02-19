@@ -50,8 +50,8 @@ export async function POST(request: Request) {
             }
         }
 
-        // Create the session
-        await createSession({
+        // Create the session (returns token)
+        const sessionToken = await createSession({
             id: user.id,
             name: user.name,
             email: user.email,
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
             rubro: user.rubro
         });
 
-        return NextResponse.json({
+        const response = NextResponse.json({
             success: true,
             user: {
                 id: user.id,
@@ -71,6 +71,18 @@ export async function POST(request: Request) {
                 rubro: user.rubro
             }
         });
+
+        // FORCE cookie on the response object to ensure it is sent
+        response.cookies.set('session', sessionToken, {
+            maxAge: 2 * 60 * 60, // 2 hours
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            priority: 'high'
+        });
+
+        return response;
     } catch (error) {
         console.error('Login error:', error);
         return NextResponse.json({ error: 'Error al iniciar sesión' }, { status: 500 });
