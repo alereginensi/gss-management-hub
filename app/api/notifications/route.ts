@@ -11,12 +11,12 @@ export async function GET() {
     try {
         const userId = session.user.id;
 
-        // Get unread notifications for the user
+        // Get ALL notifications for the user (read and unread)
         const notifications = db.prepare(`
             SELECT * FROM notifications 
-            WHERE user_id = ? AND read = 0
+            WHERE user_id = ?
             ORDER BY created_at DESC
-            LIMIT 50
+            LIMIT 100
         `).all(userId);
 
         return NextResponse.json(notifications);
@@ -49,5 +49,38 @@ export async function POST(request: Request) {
     } catch (error: any) {
         console.error('Error updating notifications:', error);
         return NextResponse.json({ error: 'Failed to update notifications', details: error.message }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    const session = await getSession();
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+        const { searchParams } = new URL(request.url);
+        const notificationId = searchParams.get('id');
+        const deleteAll = searchParams.get('all');
+
+        if (deleteAll === 'true') {
+            // Delete all notifications for this user
+            db.prepare('DELETE FROM notifications WHERE user_id = ?').run(session.user.id);
+            return NextResponse.json({ success: true, message: 'All notifications deleted' });
+        }
+
+        if (!notificationId) {
+            return NextResponse.json({ error: 'Notification ID required' }, { status: 400 });
+        }
+
+        // Ensure the notification belongs to the current user
+        db.prepare('DELETE FROM notifications WHERE id = ? AND user_id = ?').run(
+            parseInt(notificationId),
+            session.user.id
+        );
+        return NextResponse.json({ success: true });
+    } catch (error: any) {
+        console.error('Error deleting notification:', error);
+        return NextResponse.json({ error: 'Failed to delete notification', details: error.message }, { status: 500 });
     }
 }

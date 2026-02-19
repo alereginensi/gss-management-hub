@@ -77,6 +77,7 @@ interface TicketContextType {
     notifications: Notification[];
     addNotification: (ticketId: string, ticketSubject: string, message: string) => void;
     markNotificationRead: (notificationId: number) => void;
+    deleteNotification: (notificationId: number) => void;
     clearAllNotifications: () => void;
     unreadCount: number;
     getAverageResolutionTime: () => string;
@@ -504,6 +505,13 @@ Ingrese al portal para responder.`.trim();
     };
 
     const markNotificationRead = (notificationId: number) => {
+        // Persist to DB
+        fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notificationId, action: 'mark_read' })
+        }).catch(err => console.error('Error marking notification read:', err));
+
         setNotifications(prev =>
             prev.map(notif =>
                 notif.id === notificationId ? { ...notif, read: 1 } : notif
@@ -511,7 +519,20 @@ Ingrese al portal para responder.`.trim();
         );
     };
 
+    const deleteNotification = (notificationId: number) => {
+        // Delete from DB
+        fetch(`/api/notifications?id=${notificationId}`, {
+            method: 'DELETE'
+        }).catch(err => console.error('Error deleting notification:', err));
+
+        // Optimistic update
+        setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
+    };
+
     const clearAllNotifications = () => {
+        // Delete all from DB
+        fetch('/api/notifications?all=true', { method: 'DELETE' })
+            .catch(err => console.error('Error clearing notifications:', err));
         setNotifications([]);
     };
 
@@ -540,8 +561,8 @@ Ingrese al portal para responder.`.trim();
             return { ...ticket, ...updates };
         }));
 
-        // Add activity log
-        addActivity(ticketId, 'Sistema', `Estado cambiado a: ${newStatus}`);
+        // Add activity log with the actual user name
+        addActivity(ticketId, currentUser.name || 'Sistema', `Estado cambiado a: ${newStatus}`);
 
         // Send notification with status color
         const ticket = tickets.find(t => t.id === ticketId);
@@ -555,7 +576,7 @@ Ingrese al portal para responder.`.trim();
                 id: Date.now(),
                 user_id: currentUser.id,
                 ticket_id: ticketId,
-                message: `El estado cambió a: ${newStatus}`,
+                message: `Ticket #${ticketId} - "${ticket.subject}": estado cambiado a ${newStatus} por ${currentUser.name}`,
                 type: 'status_change',
                 read: 0,
                 created_at: new Date().toISOString(),
@@ -775,6 +796,7 @@ Gracias por utilizar el sistema de tickets GSS.`.trim();
             notifications,
             addNotification,
             markNotificationRead,
+            deleteNotification,
             clearAllNotifications,
             unreadCount,
             getAverageResolutionTime,
