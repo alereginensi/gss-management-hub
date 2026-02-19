@@ -1,4 +1,4 @@
-# GSS Ticket Portal - Demo
+# GSS Management Hub - Deployment v2 (Fixes applied)al - Demo
 
 Este es un prototipo funcional de la aplicación web para el sistema de tickets de **GSS Facility Services**.
 
