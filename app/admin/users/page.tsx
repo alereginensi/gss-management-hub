@@ -16,7 +16,7 @@ export default function UserManagement() {
     const [userSearchQuery, setUserSearchQuery] = useState('');
 
     useEffect(() => {
-        if (currentUser.role === 'admin') {
+        if (currentUser?.role === 'admin') {
             fetchAllUsers();
         }
     }, [currentUser]);
