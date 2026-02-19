@@ -11,6 +11,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Email es obligatorio' }, { status: 400 });
         }
 
+
+        if (!db) {
+            console.error('Database not initialized');
+            return NextResponse.json({ error: 'Error de conexión con la base de datos' }, { status: 500 });
+        }
+
         const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
 
         if (!user) {
