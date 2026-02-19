@@ -115,7 +115,7 @@ export default function UserManagement() {
         setEditForm({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '' });
     };
 
-    if (currentUser.role !== 'admin') {
+    if (currentUser?.role !== 'admin') {
         return <div style={{ padding: '2rem', textAlign: 'center' }}>Acceso denegado</div>;
     }
 
