@@ -156,6 +156,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             fetchSettings();
             fetchTickets(); // Load tickets on mount
             fetchNotifications(); // Load notifications on mount
+            fetchAllUsers(); // Load users on mount (needed for supervisor dropdown)
         };
 
         restoreSession();
@@ -560,6 +561,13 @@ Ingrese al portal para responder.`.trim();
 
             return { ...ticket, ...updates };
         }));
+
+        // Persist status change to database
+        fetch(`/api/tickets/${ticketId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        }).catch(err => console.error('Error persisting ticket status to DB:', err));
 
         // Add activity log with the actual user name
         addActivity(ticketId, currentUser.name || 'Sistema', `Estado cambiado a: ${newStatus}`);
