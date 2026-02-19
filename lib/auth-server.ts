@@ -20,7 +20,7 @@ export async function createSession(user: any) {
 
     const cookieStore = await cookies();
     cookieStore.set('session', sessionToken, {
-        expires,
+        maxAge: 2 * 60 * 60, // 2 hours in seconds
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
