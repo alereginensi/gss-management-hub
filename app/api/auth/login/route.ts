@@ -69,7 +69,8 @@ export async function POST(request: Request) {
                 department: user.department,
                 role: user.role,
                 rubro: user.rubro
-            }
+            },
+            token: sessionToken // Return token for client-side storage (fallback)
         });
 
         // FORCE cookie on the response object to ensure it is sent
