@@ -33,12 +33,21 @@ export async function middleware(request: NextRequest) {
     }
 
     // 2. Check for session cookie
-    const session = request.cookies.get('session')?.value;
+    // 2. Check for session cookie OR Authorization header
+    let session = request.cookies.get('session')?.value;
+
+    if (!session) {
+        // Fallback: Check Authorization header (Bearer token)
+        const authHeader = request.headers.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            session = authHeader.substring(7);
+        }
+    }
 
     if (!session) {
         if (pathname.startsWith('/api/')) {
             const response = NextResponse.json({ error: 'Unauthorized: No session found' }, { status: 401 });
-            response.headers.set('X-Auth-Reason', 'missing_cookie');
+            response.headers.set('X-Auth-Reason', 'missing_cookie_and_header');
             return response;
         }
         return NextResponse.redirect(new URL('/login', request.url));
