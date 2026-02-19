@@ -20,6 +20,8 @@ export async function middleware(request: NextRequest) {
         '/api/admin/debug', // NEW: Allow debug without auth
         '/api/admin/debug-auth', // NEW: Auth debug
         '/api/admin/debug-edge', // NEW: Edge debug
+        '/api/admin/debug-cookies', // NEW: Cookie debug
+        '/api/admin/debug-decrypt', // NEW: Decrypt debug
         '/api/admin/seed',  // NEW: Allow manual seed without auth (or maybe require secret? keeping public for now as requested)
     ];
 
