@@ -437,50 +437,10 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
                 console.error('Failed to save activity');
             }
 
-            // Send notification to ticket owner/supervisor
+            // Send in-app notification only (no email on comments)
             const ticket = tickets.find(t => t.id === ticketId);
             if (ticket && currentUser.id > 0) {
-                // In-App Notification
-                addNotification(ticketId, ticket.subject, `${user}: ${message.substring(0, 50)}...`);
-
-                // Email Notification logic
-                const recipients = [];
-                // Notify requester if comment is not from them
-                if (ticket.requesterEmail && ticket.requesterEmail !== currentUser.email) {
-                    recipients.push(ticket.requesterEmail);
-                }
-                // Notify supervisor/admin if comment is not from them (simplified logic: notify admin/supervisor emails)
-                // For now, we rely on the specific `notification_emails` setting or department emails if the user is the requester
-                if (currentUser.email === ticket.requesterEmail) {
-                    const deptEmailKey = `notification_emails_${ticket.department}`.replace(/\s+/g, '_');
-                    const deptEmails = systemSettings[deptEmailKey] || systemSettings.notification_emails || '';
-                    const admins = deptEmails.split(',').map(e => e.trim()).filter(e => e);
-                    recipients.push(...admins);
-                }
-
-                if (recipients.length > 0) {
-                    const emailBody = `
-Nuevo comentario en el Ticket #${ticket.id}:
-
-"${message}"
-
-- Autor: ${user}
-- Ticket: ${ticket.subject}
-- Estado: ${ticket.status}
-
-Ingrese al portal para responder.`.trim();
-
-                    fetch('/api/notify', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            to: [...new Set(recipients)], // Unique emails
-                            subject: `[COMENTARIO] Ticket #${ticket.id} - ${ticket.subject}`,
-                            body: emailBody,
-                            ticketData: { ...ticket, id: ticket.id }
-                        })
-                    }).catch(err => console.error('Error sending comment notification:', err));
-                }
+                addNotification(ticketId, ticket.subject, `${user}: ${message.substring(0, 60)}`);
             }
         } catch (error) {
             console.error('Error adding activity:', error);

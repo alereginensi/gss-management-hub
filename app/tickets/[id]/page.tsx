@@ -287,25 +287,28 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                             </div>
                         )}
 
-                        {/* Collaborators Section */}
+                        {/* Collaborators Section - visible to all, add/remove only for admin/supervisor */}
                         <div className="card">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                 <h3 style={{ fontSize: '0.875rem', textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0 }}>Colaboradores</h3>
-                                <button
-                                    onClick={() => setShowAddCollaboratorModal(true)}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        color: 'var(--accent-color)',
-                                        cursor: 'pointer',
-                                        padding: '0.25rem',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem'
-                                    }}
-                                >
-                                    <UserPlus size={16} />
-                                </button>
+                                {(isAdmin || currentUser.role === 'supervisor') && (
+                                    <button
+                                        onClick={() => setShowAddCollaboratorModal(true)}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: 'var(--accent-color)',
+                                            cursor: 'pointer',
+                                            padding: '0.25rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.25rem'
+                                        }}
+                                        title="Agregar colaborador"
+                                    >
+                                        <UserPlus size={16} />
+                                    </button>
+                                )}
                             </div>
 
                             {collaborators.length === 0 ? (
@@ -331,21 +334,25 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                                 </div>
                                                 <div>
                                                     <div style={{ fontSize: '0.875rem', fontWeight: 500 }}>{collab.name}</div>
-                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{collab.role}</div>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{collab.role}</div>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => handleRemoveCollaborator(collab.user_id, collab.name)}
-                                                style={{
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    color: 'var(--text-secondary)',
-                                                    cursor: 'pointer',
-                                                    padding: '0.25rem'
-                                                }}
-                                            >
-                                                <X size={16} />
-                                            </button>
+                                            {(isAdmin || currentUser.role === 'supervisor') && (
+                                                <button
+                                                    onClick={() => handleRemoveCollaborator(collab.user_id, collab.name)}
+                                                    title="Remover colaborador"
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        color: 'var(--text-secondary)',
+                                                        cursor: 'pointer',
+                                                        padding: '0.25rem',
+                                                        opacity: 0.6
+                                                    }}
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
