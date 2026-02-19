@@ -240,10 +240,13 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                 // Merge with existing activities, avoiding duplicates
                 setActivities(prev => {
                     const otherActivities = prev.filter(a => a.ticketId !== ticketId);
-                    // Standardize dates
+                    // Standardize dates — ensure timestamp is always a real Date object
                     const newActivities = data.map((a: any) => ({
                         ...a,
-                        timestamp: new Date(a.timestamp)
+                        timestamp: (() => {
+                            const d = new Date(a.timestamp);
+                            return isNaN(d.getTime()) ? new Date(0) : d;
+                        })()
                     }));
                     return [...otherActivities, ...newActivities];
                 });
@@ -484,8 +487,20 @@ Ingrese al portal para responder.`.trim();
         }
     };
 
+    // Helper: safely convert any timestamp value to a Date object
+    const toDate = (value: any): Date => {
+        if (value instanceof Date) return value;
+        if (typeof value === 'string' || typeof value === 'number') {
+            const d = new Date(value);
+            return isNaN(d.getTime()) ? new Date(0) : d;
+        }
+        return new Date(0);
+    };
+
     const getActivitiesByTicket = (ticketId: string): Activity[] => {
-        return activities.filter(a => a.ticketId === ticketId).sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+        return activities
+            .filter(a => a.ticketId === ticketId)
+            .sort((a, b) => toDate(b.timestamp).getTime() - toDate(a.timestamp).getTime());
     };
 
     const addNotification = (ticketId: string, ticketSubject: string, message: string, statusColor?: string) => {
