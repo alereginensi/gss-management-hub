@@ -40,14 +40,14 @@ export default function Settings() {
                                 fontWeight: 'bold',
                                 color: 'white'
                             }}>
-                                {currentUser.name ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U'}
+                                {currentUser?.name ? currentUser.name.split(' ').map(n => n[0]).join('') : 'U'}
                             </div>
                             <div>
                                 <div style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                                    {currentUser.name}
+                                    {currentUser?.name}
                                 </div>
                                 <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                                    {currentUser.department} • {currentUser.role === 'admin' ? 'Administrador' : 'Usuario'}
+                                    {currentUser?.department} • {currentUser?.role === 'admin' ? 'Administrador' : 'Usuario'}
                                 </div>
                             </div>
                         </div>
@@ -58,7 +58,7 @@ export default function Settings() {
                                     Departamento
                                 </label>
                                 <div style={{ fontSize: '0.875rem' }}>
-                                    {currentUser.department}
+                                    {currentUser?.department}
                                 </div>
                             </div>
                             <div>
@@ -66,14 +66,14 @@ export default function Settings() {
                                     Rol
                                 </label>
                                 <div style={{ fontSize: '0.875rem' }}>
-                                    {currentUser.role === 'admin' ? 'Administrador' : 'Usuario'}
+                                    {currentUser?.role === 'admin' ? 'Administrador' : 'Usuario'}
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Admin Settings - System Config */}
-                    {currentUser.role === 'admin' && (
+                    {currentUser?.role === 'admin' && (
                         <div className="card">
                             <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1.5rem' }}>Configuración del Sistema</h2>
 

@@ -27,12 +27,12 @@ export default function TicketList() {
     // Apply filters
     const filteredTickets = tickets.filter(ticket => {
         // 1. Visibility: Requesters ONLY see their own tickets
-        if (currentUser.role === 'user' && ticket.requesterEmail && ticket.requesterEmail !== currentUser.email) {
+        if (currentUser?.role === 'user' && ticket.requesterEmail && ticket.requesterEmail !== currentUser?.email) {
             return false;
         }
 
         // 2. Admin Department Filter
-        if (currentUser.role === 'admin' && departmentFilter !== 'Todos' && ticket.department !== departmentFilter) {
+        if (currentUser?.role === 'admin' && departmentFilter !== 'Todos' && ticket.department !== departmentFilter) {
             return false;
         }
 
@@ -64,7 +64,7 @@ export default function TicketList() {
                 padding: '2rem',
                 backgroundColor: 'var(--bg-color)'
             }}>
-                <Header title={currentUser.role === 'admin' ? "Panel de Control de Tickets" : "Mis Tickets"} />
+                <Header title={currentUser?.role === 'admin' ? "Panel de Control de Tickets" : "Mis Tickets"} />
 
                 <div className="card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -92,7 +92,7 @@ export default function TicketList() {
                             </button>
                         </div>
 
-                        {currentUser.role === 'admin' && (
+                        {currentUser?.role === 'admin' && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Filtrar por Departamento:</span>
                                 <select
@@ -120,7 +120,7 @@ export default function TicketList() {
                             onClick={() => {
                                 const params = new URLSearchParams();
                                 params.append('filter', filter);
-                                if (currentUser.role === 'admin') {
+                                if (currentUser?.role === 'admin') {
                                     params.append('department', departmentFilter);
                                 }
                                 window.open(`/api/tickets/export?${params.toString()}`, '_blank');

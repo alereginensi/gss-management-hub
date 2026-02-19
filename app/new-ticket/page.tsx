@@ -13,11 +13,11 @@ export default function NewTicket() {
     const router = useRouter();
 
     const [formData, setFormData] = useState({
-        name: currentUser.id > 0 ? currentUser.name : '',
-        email: currentUser.email || '',
+        name: (currentUser?.id ?? 0) > 0 ? currentUser?.name : '',
+        email: currentUser?.email || '',
         subject: '',
         description: '',
-        department: currentUser.department || '',
+        department: currentUser?.department || '',
         priority: 'Media' as 'Alta' | 'Media' | 'Baja',
         affectedWorker: '',
         supervisor: '',
@@ -27,16 +27,16 @@ export default function NewTicket() {
     const [files, setFiles] = useState<File[]>([]);
 
     useEffect(() => {
-        if (currentUser.id > 0) {
-            setFormData(prev => ({ ...prev, name: currentUser.name }));
+        if ((currentUser?.id ?? 0) > 0) {
+            setFormData(prev => ({ ...prev, name: currentUser?.name || '' }));
         }
-        if (currentUser.email) {
-            setFormData(prev => ({ ...prev, email: currentUser.email || '' }));
+        if (currentUser?.email) {
+            setFormData(prev => ({ ...prev, email: currentUser?.email || '' }));
         }
-        if (currentUser.department && currentUser.department !== 'Sin Asignar') {
+        if (currentUser?.department && currentUser.department !== 'Sin Asignar') {
             setFormData(prev => ({ ...prev, department: currentUser.department }));
         }
-        if (currentUser.role === 'supervisor' && currentUser.name) {
+        if (currentUser?.role === 'supervisor' && currentUser?.name) {
             setFormData(prev => ({ ...prev, supervisor: currentUser.name }));
         }
     }, [currentUser]);
@@ -82,7 +82,7 @@ export default function NewTicket() {
         }
 
         // Update current user email if not set
-        if (!currentUser.email) {
+        if (currentUser && !currentUser.email) {
             currentUser.email = formData.email;
         }
 
@@ -146,7 +146,7 @@ export default function NewTicket() {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Supervisor</label>
-                                    {currentUser.role === 'admin' ? (
+                                    {currentUser?.role === 'admin' ? (
                                         <select
                                             name="supervisor"
                                             value={formData.supervisor}
@@ -212,7 +212,7 @@ export default function NewTicket() {
                                     />
                                 </div>
 
-                                {currentUser.role !== 'supervisor' && (
+                                {currentUser?.role !== 'supervisor' && (
                                     <div style={{ gridColumn: '1 / -1' }}>
                                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Nombre Completo *</label>
                                         <input
