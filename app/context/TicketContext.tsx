@@ -377,8 +377,8 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             date: dateStr,
             priorityColor: priorityColors[ticketData.priority],
             statusColor: statusColors[ticketData.status],
-            requester: ticketData.requester || currentUser.name || 'Anónimo',
-            requesterEmail: ticketData.requesterEmail || currentUser.email,
+            requester: ticketData.requester || currentUser?.name || 'Anónimo',
+            requesterEmail: ticketData.requesterEmail || currentUser?.email,
             affectedWorker: ticketData.affectedWorker,
             supervisor: ticketData.supervisor,
             createdAt: now
@@ -412,7 +412,7 @@ Se ha registrado una nueva solicitud en el portal:
 
 - Colaborador: ${newTicket.requester}
 ${newTicket.affectedWorker ? `- Funcionario Afectado: ${newTicket.affectedWorker}` : ''}
-- Email: ${currentUser.email}
+- Email: ${currentUser?.email}
 - Sector/Departamento: ${newTicket.department}
 - Asunto: ${newTicket.subject}
 - Descripción: ${newTicket.description}
@@ -431,7 +431,7 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
                     ticketData: {
                         id: newTicket.id,
                         requester: newTicket.requester,
-                        requesterEmail: currentUser.email,
+                        requesterEmail: currentUser?.email,
                         affectedWorker: newTicket.affectedWorker,
                         department: newTicket.department,
                         subject: newTicket.subject,
@@ -469,7 +469,7 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
 
             // Send in-app notification only (no email on comments)
             const ticket = tickets.find(t => t.id === ticketId);
-            if (ticket && currentUser.id > 0) {
+            if (ticket && (currentUser?.id ?? 0) > 0) {
                 addNotification(ticketId, ticket.subject, `${user}: ${message.substring(0, 60)}`);
             }
         } catch (error) {
@@ -496,7 +496,7 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
     const addNotification = (ticketId: string, ticketSubject: string, message: string, statusColor?: string) => {
         const newNotification: Notification = {
             id: Date.now(),
-            user_id: currentUser.id,
+            user_id: currentUser?.id || 0,
             ticket_id: ticketId,
             message,
             type: 'info',
@@ -575,7 +575,7 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
         }).catch(err => console.error('Error persisting ticket status to DB:', err));
 
         // Add activity log with the actual user name
-        addActivity(ticketId, currentUser.name || 'Sistema', `Estado cambiado a: ${newStatus}`);
+        addActivity(ticketId, currentUser?.name || 'Sistema', `Estado cambiado a: ${newStatus}`);
 
         // Send notification with status color
         const ticket = tickets.find(t => t.id === ticketId);
@@ -587,9 +587,9 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
             };
             const notification: Notification = {
                 id: Date.now(),
-                user_id: currentUser.id,
+                user_id: currentUser?.id || 0,
                 ticket_id: ticketId,
-                message: `Ticket #${ticketId} - "${ticket.subject}": estado cambiado a ${newStatus} por ${currentUser.name}`,
+                message: `Ticket #${ticketId} - "${ticket.subject}": estado cambiado a ${newStatus} por ${currentUser?.name || 'Sistema'}`,
                 type: 'status_change',
                 read: 0,
                 created_at: new Date().toISOString(),
@@ -602,8 +602,8 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
 
             // Send email notification when ticket is resolved
             if (newStatus === 'Resuelto') {
-                const resolvedBy = currentUser.name;
-                const resolvedByEmail = currentUser.email || '';
+                const resolvedBy = currentUser?.name || 'Sistema';
+                const resolvedByEmail = currentUser?.email || '';
                 const requesterEmail = ticket.requesterEmail || '';
                 const requesterName = ticket.requester || 'Usuario';
 
