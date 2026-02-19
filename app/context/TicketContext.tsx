@@ -676,8 +676,8 @@ Gracias por utilizar el sistema de tickets GSS.`.trim();
         }
 
         const totalMinutes = resolvedTicketsWithTime.reduce((sum, ticket) => {
-            const start = ticket.startedAt!.getTime();
-            const end = ticket.resolvedAt!.getTime();
+            const start = new Date(ticket.startedAt!).getTime();
+            const end = new Date(ticket.resolvedAt!).getTime();
             const minutes = Math.floor((end - start) / (1000 * 60));
             return sum + minutes;
         }, 0);
