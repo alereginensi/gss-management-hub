@@ -18,6 +18,8 @@ export async function middleware(request: NextRequest) {
         '/api/config/roles',
         '/api/diagnose', // Diagnostic tool
         '/api/admin/debug', // NEW: Allow debug without auth
+        '/api/admin/debug-auth', // NEW: Auth debug
+        '/api/admin/debug-edge', // NEW: Edge debug
         '/api/admin/seed',  // NEW: Allow manual seed without auth (or maybe require secret? keeping public for now as requested)
     ];
 

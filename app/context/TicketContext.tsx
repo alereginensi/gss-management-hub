@@ -318,7 +318,8 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         setCurrentUser(userData);
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('user', JSON.stringify(userData));
-        refreshData(); // Load data immediately
+        // Give time for the cookie to be set in the browser jar
+        setTimeout(() => refreshData(), 500);
     };
 
     const logout = () => {
