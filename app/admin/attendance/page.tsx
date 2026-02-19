@@ -201,7 +201,7 @@ export default function AttendancePage() {
         return location?.sectors || [];
     };
 
-    if (currentUser.role !== 'admin' && currentUser.role !== 'supervisor') {
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'supervisor') {
         return <div style={{ padding: '2rem', textAlign: 'center' }}>Acceso denegado</div>;
     }
 
