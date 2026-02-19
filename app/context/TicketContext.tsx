@@ -133,6 +133,17 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
 
+    const refreshData = async () => {
+        setLoading(true);
+        await Promise.all([
+            fetchTickets(),
+            fetchNotifications(),
+            fetchAllUsers(),
+            fetchSettings()
+        ]);
+        setLoading(false);
+    };
+
     // Restore session on mount
     React.useEffect(() => {
         const restoreSession = async () => {
@@ -143,20 +154,18 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                     if (data.user) {
                         setIsAuthenticated(true);
                         setCurrentUser(data.user);
+                        // Fetch data ONLY if authenticated
+                        refreshData();
                     }
                 } else {
                     // If cookie is invalid/expired, ensure we are logged out locally
                     logout();
+                    setLoading(false);
                 }
             } catch (e) {
                 console.error("Error restoring session", e);
-            } finally {
                 setLoading(false);
             }
-            fetchSettings();
-            fetchTickets(); // Load tickets on mount
-            fetchNotifications(); // Load notifications on mount
-            fetchAllUsers(); // Load users on mount (needed for supervisor dropdown)
         };
 
         restoreSession();
@@ -309,6 +318,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         setCurrentUser(userData);
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('user', JSON.stringify(userData));
+        refreshData(); // Load data immediately
     };
 
     const logout = () => {
