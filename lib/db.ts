@@ -292,7 +292,7 @@ if (db) {
 // Separate block for Admin User to ensure it runs
 if (db) {
   try {
-    const adminPass = '$2b$10$ms9LTCqoDe5zRtwxnMZZ1.ZlQKcOdjBeZD.scyLnG0vkOpnt/ouAq';
+    const adminPass = '$2b$10$A8RCT0E4YCsaaPttIs6l8.ALRz57EBSWPGhrE7OSn.csFLL6a2lx.';
     const checkAdmin = db.prepare('SELECT * FROM users WHERE email = ?').get('admin@gss.com');
 
     if (!checkAdmin) {
