@@ -583,10 +583,10 @@ export default function LogbookPage() {
                                     />
                                 </th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Fecha</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Superviso</th>
+                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Supervisado por</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Supervisor</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Sector</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Lugar</th>
+                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Cliente</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Funcionario</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Uniforme</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Reporte</th>
