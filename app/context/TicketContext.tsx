@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 
 export const DEPARTMENTS = [
     'Mantenimiento',
@@ -154,6 +155,9 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    // Initialize useRouter
+    // const router = useRouter(); // Already initialized above
+
     const fetchAllUsers = async () => {
         try {
             const res = await fetch('/api/admin/users', { headers: getAuthHeaders() });
@@ -254,48 +258,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const fetchAllUsers = async () => {
-        try {
-            const res = await fetch('/api/admin/users');
-            if (res.ok) {
-                const data = await res.json();
-                // API returns array directly, not { users: [] }
-                const pending = data.filter((u: User) => !u.approved);
-                const approved = data.filter((u: User) => u.approved);
-                setPendingUsers(pending);
-                setAllUsers(approved);
-                console.log('✅ Users loaded - Approved:', approved.length, 'Pending:', pending.length);
-            }
-        } catch (error) {
-            console.error('Error fetching users:', error);
-        }
-    };
 
-    const fetchTickets = async () => {
-        try {
-            const res = await fetch('/api/tickets');
-            if (res.ok) {
-                const data = await res.json();
-                setTickets(data);
-                console.log('✅ Tickets loaded:', data.length);
-            }
-        } catch (error) {
-            console.error('Error fetching tickets:', error);
-        }
-    };
-
-    const fetchNotifications = async () => {
-        try {
-            const res = await fetch('/api/notifications');
-            if (res.ok) {
-                const data = await res.json();
-                setNotifications(data);
-                console.log('✅ Notifications loaded:', data.length);
-            }
-        } catch (error) {
-            console.error('Error fetching notifications:', error);
-        }
-    };
 
     const loadTicketActivities = async (ticketId: string) => {
         try {
