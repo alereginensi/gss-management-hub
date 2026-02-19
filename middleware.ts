@@ -4,7 +4,7 @@ import { verifyJWT } from '@/lib/auth-edge';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-at-least-32-chars-long';
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // 1. Define public paths that DON'T require authentication
@@ -15,9 +15,10 @@ export async function proxy(request: NextRequest) {
         '/api/auth/login',
         '/api/auth/register',
         '/api/validate-email',
-        '/api/validate-email',
         '/api/config/roles',
         '/api/diagnose', // Diagnostic tool
+        '/api/admin/debug', // NEW: Allow debug without auth
+        '/api/admin/seed',  // NEW: Allow manual seed without auth (or maybe require secret? keeping public for now as requested)
     ];
 
     const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith('/api/auth'));
@@ -49,6 +50,11 @@ export async function proxy(request: NextRequest) {
 
         // Admin & Supervisor areas
         if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+            // Exception for debug/seed if they fell through here (though publicPaths should catch them if exact match)
+            // But publicPaths logic above uses 'some', so exact match or startsWith /api/auth.
+            // /api/admin/debug needs to be in publicPaths to avoid this check if we want it completely public.
+            // It IS in publicPaths now.
+
             if (user.role !== 'admin' && user.role !== 'supervisor') {
                 if (pathname.startsWith('/api/')) {
                     return NextResponse.json({ error: 'Forbidden: Admin/Supervisor access required' }, { status: 403 });

@@ -2,20 +2,28 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const dbPath = process.env.NODE_ENV === 'production'
+let dbPath = process.env.NODE_ENV === 'production'
   ? path.resolve('/app/data/tickets.db')
   : path.resolve(process.cwd(), 'tickets.db');
 
-// Ensure directory exists in production
+// Fallback Strategy for Production
 if (process.env.NODE_ENV === 'production') {
   const dbDir = path.dirname(dbPath);
-  if (!fs.existsSync(dbDir)) {
-    try {
+
+  // 1. Try to create the intended directory
+  try {
+    if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
       console.log(`Created database directory: ${dbDir}`);
-    } catch (err) {
-      console.error(`Failed to create database directory ${dbDir}:`, err);
     }
+    // Test write permissions
+    fs.accessSync(dbDir, fs.constants.W_OK);
+  } catch (err) {
+    console.error(`Primary DB path ${dbPath} not writable:`, err);
+
+    // 2. Fallback to /tmp (Ephemeral but writable in most containers)
+    console.log('Falling back to /tmp/tickets.db');
+    dbPath = '/tmp/tickets.db';
   }
 }
 
@@ -29,8 +37,11 @@ try {
 } catch (error) {
   console.error('CRITICAL: Failed to connect to database at', dbPath);
   console.error(error);
-  // @ts-ignore
-  db = null;
+
+  // 3. Ultimate Fallback: In-Memory DB (App runs but data is lost on restart)
+  // This is better than a 500 Error for the user interface
+  console.warn('Falling back to IN-MEMORY database. Data will not persist.');
+  db = new Database(':memory:');
 }
 
 // Initialize tables
