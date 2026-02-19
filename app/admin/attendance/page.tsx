@@ -54,6 +54,7 @@ export default function AttendancePage() {
     };
 
     const fetchAttendance = async () => {
+        if (!currentUser) return;
         setLoading(true);
         try {
             const res = await fetch(`/api/admin/attendance?requesterId=${currentUser.id}&requesterRole=${currentUser.role}&startDate=${filterDate}&endDate=${filterDate}&location=${encodeURIComponent(filterLocation)}&rubro=${encodeURIComponent(filterRubro)}&sector=${encodeURIComponent(filterSector)}`);
