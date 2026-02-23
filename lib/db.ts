@@ -2,26 +2,31 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
+const PRODUCTION_DB_PATH = '/app/tickets.db';
 let dbPath = process.env.NODE_ENV === 'production'
-  ? path.resolve('/app/tickets.db')
+  ? path.resolve(PRODUCTION_DB_PATH)
   : path.resolve(process.cwd(), 'tickets.db');
 
-// Fallback Strategy for Production
+// Fallback & Directory Strategy for Production
 if (process.env.NODE_ENV === 'production') {
-  const dbDir = path.dirname(dbPath);
-
-  // In Railway, /app is usually writable or has a volume mounted.
-  // We remove the complex fallback to /tmp to ensure we either hit the volume or fail visibly.
   try {
-    if (!fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true });
+    if (fs.existsSync(dbPath) && fs.lstatSync(dbPath).isDirectory()) {
+      // If the mount point is a directory (standard Railway behavior),
+      // we put the actual database file INSIDE it.
+      console.log(`ℹ️ Detected DB path is a directory (Volume mount). Using file inside: ${dbPath}/gss.db`);
+      dbPath = path.join(dbPath, 'gss.db');
+    } else {
+      const dbDir = path.dirname(dbPath);
+      if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+      }
     }
   } catch (err) {
-    console.error(`Warning: Could not verify/create directory ${dbDir}:`, err);
+    console.error(`Warning: Could not verify directory/file at ${dbPath}:`, err);
   }
 }
 
-console.log(`Using database at: ${dbPath}`);
+console.log(`🚀 Database target path: ${dbPath}`);
 
 let db: Database.Database;
 
