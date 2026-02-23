@@ -27,6 +27,7 @@ export interface Ticket {
     requesterEmail?: string;
     affectedWorker?: string;
     supervisor?: string;
+    collaboratorIds?: number[];
     createdAt?: Date;
     startedAt?: Date;
     resolvedAt?: Date;
