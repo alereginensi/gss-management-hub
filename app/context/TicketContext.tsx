@@ -121,6 +121,8 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     const [currentUser, setCurrentUser] = useState<User | null>(null); // Updated initial state to null
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+    // Ref to track auth state without stale closures in callbacks/timeouts
+    const isAuthenticatedRef = React.useRef(false);
     const [systemSettings, setSystemSettings] = useState<Record<string, string>>({
         notification_emails: 'admin@gss-facility.com'
     });
@@ -202,6 +204,9 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     };
 
     const refreshData = async () => {
+        // Guard: never call APIs when not authenticated (prevents 401 flood on initial load)
+        // Use ref to avoid stale closure issues with setTimeout/async calls
+        if (!isAuthenticatedRef.current) return;
         setLoading(true);
         await Promise.all([
             fetchTickets(),
@@ -230,6 +235,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                     const data = await res.json();
                     if (data.user) {
                         setIsAuthenticated(true);
+                        isAuthenticatedRef.current = true;
                         setCurrentUser(data.user);
                         // Fetch data ONLY if authenticated
                         refreshData();
@@ -342,15 +348,15 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         if (token) {
             localStorage.setItem('authToken', token);
             // Also set as a regular browser cookie so it's sent automatically in ALL requests
-            // (httpOnly cookies set by the server may not always work in production proxies)
             const expires = new Date(Date.now() + 2 * 60 * 60 * 1000).toUTCString(); // 2 hours
             document.cookie = `auth_token=${token}; path=/; expires=${expires}; SameSite=Lax`;
         }
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('user', JSON.stringify(userData));
+        isAuthenticatedRef.current = true; // Sync ref BEFORE setTimeout fires
         setIsAuthenticated(true);
         setCurrentUser(userData);
-        // Give time for cookies to propagate before fetching data
+        // Give time for cookies to propagate
         setTimeout(() => refreshData(), 300);
     };
 
@@ -360,6 +366,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('authToken');
         // Clear the client-set auth cookie
         document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        isAuthenticatedRef.current = false;
         setIsAuthenticated(false);
         setCurrentUser(null);
     };
