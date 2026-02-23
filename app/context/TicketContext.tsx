@@ -216,8 +216,15 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     React.useEffect(() => {
         const restoreSession = async () => {
             try {
+                // CRITICAL: Re-set the auth_token cookie from localStorage on every page load
+                // This ensures the cookie is present for all requests even after a full page refresh
+                const storedToken = localStorage.getItem('authToken');
+                if (storedToken) {
+                    const expires = new Date(Date.now() + 2 * 60 * 60 * 1000).toUTCString();
+                    document.cookie = `auth_token=${storedToken}; path=/; expires=${expires}; SameSite=Lax`;
+                }
+
                 // Try to restore from server (cookie OR header)
-                // We send the header if we have one from a previous session
                 const res = await fetch('/api/auth/me', { headers: getAuthHeaders() });
                 if (res.ok) {
                     const data = await res.json();
@@ -228,9 +235,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                         refreshData();
                     }
                 } else {
-                    // Only logout if we REALLY fail.
-                    // But if we have a token in localStorage, maybe we are fine?
-                    // No, if the server says 401 even with the token, it's invalid.
+                    // Server says 401 even with the token - clear everything
                     logout();
                     setLoading(false);
                 }
@@ -336,19 +341,25 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         // CRITICAL: Save token BEFORE calling refreshData so getAuthHeaders() works
         if (token) {
             localStorage.setItem('authToken', token);
+            // Also set as a regular browser cookie so it's sent automatically in ALL requests
+            // (httpOnly cookies set by the server may not always work in production proxies)
+            const expires = new Date(Date.now() + 2 * 60 * 60 * 1000).toUTCString(); // 2 hours
+            document.cookie = `auth_token=${token}; path=/; expires=${expires}; SameSite=Lax`;
         }
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('user', JSON.stringify(userData));
         setIsAuthenticated(true);
         setCurrentUser(userData);
-        // Give time for the cookie to be set in the browser jar before fetching data
-        setTimeout(() => refreshData(), 500);
+        // Give time for cookies to propagate before fetching data
+        setTimeout(() => refreshData(), 300);
     };
 
     const logout = () => {
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('user');
         localStorage.removeItem('authToken');
+        // Clear the client-set auth cookie
+        document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         setIsAuthenticated(false);
         setCurrentUser(null);
     };
