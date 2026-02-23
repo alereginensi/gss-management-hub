@@ -3,27 +3,21 @@ import path from 'path';
 import fs from 'fs';
 
 let dbPath = process.env.NODE_ENV === 'production'
-  ? path.resolve('/app/data/tickets.db')
+  ? path.resolve('/app/tickets.db')
   : path.resolve(process.cwd(), 'tickets.db');
 
 // Fallback Strategy for Production
 if (process.env.NODE_ENV === 'production') {
   const dbDir = path.dirname(dbPath);
 
-  // 1. Try to create the intended directory
+  // In Railway, /app is usually writable or has a volume mounted.
+  // We remove the complex fallback to /tmp to ensure we either hit the volume or fail visibly.
   try {
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
-      console.log(`Created database directory: ${dbDir}`);
     }
-    // Test write permissions
-    fs.accessSync(dbDir, fs.constants.W_OK);
   } catch (err) {
-    console.error(`Primary DB path ${dbPath} not writable:`, err);
-
-    // 2. Fallback to /tmp (Ephemeral but writable in most containers)
-    console.log('Falling back to /tmp/tickets.db');
-    dbPath = '/tmp/tickets.db';
+    console.error(`Warning: Could not verify/create directory ${dbDir}:`, err);
   }
 }
 

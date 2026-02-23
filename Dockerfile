@@ -32,10 +32,8 @@ COPY --from=builder /app/public ./public
 
 # Set the correct permission for prerender cache
 RUN mkdir -p .next
-# Create /app/data directory - Railway should mount a persistent volume here
-RUN mkdir -p /app/data
-RUN chown nextjs:nodejs .next
-RUN chown -R nextjs:nodejs /app/data
+# Ensure /app is writable by nextjs (required for SQLite if volume is not used or for journals)
+RUN chown -R nextjs:nodejs /app
 
 # Automatically leverage output traces to reduce image size
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
