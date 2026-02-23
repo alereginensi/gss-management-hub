@@ -248,10 +248,20 @@ class DbWrapper {
         await client.query('BEGIN');
         // Small wrapper for the transaction client
         const txDb = {
-          query: (t: string, p: any[] = []) => client.query(t.replace(/\?/g, (_, i) => `$${i + 1}`), p),
-          run: (t: string, p: any[] = []) => client.query(t.replace(/\?/g, (_, i) => `$${i + 1}`), p),
+          query: (t: string, p: any[] = []) => {
+            let count = 1;
+            const pgText = t.replace(/\?/g, () => `$${count++}`);
+            return client.query(pgText, p);
+          },
+          run: (t: string, p: any[] = []) => {
+            let count = 1;
+            const pgText = t.replace(/\?/g, () => `$${count++}`);
+            return client.query(pgText, p);
+          },
           get: async (t: string, p: any[] = []) => {
-            const res = await client.query(t.replace(/\?/g, (_, i) => `$${i + 1}`), p);
+            let count = 1;
+            const pgText = t.replace(/\?/g, () => `$${count++}`);
+            const res = await client.query(pgText, p);
             return res.rows[0];
           }
         };

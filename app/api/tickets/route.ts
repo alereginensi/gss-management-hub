@@ -144,11 +144,22 @@ export async function POST(request: Request) {
         // Generate ID using a transaction and the counters table
         let newId = '';
         await db.transaction(async (tx) => {
-            // Increment counter
-            await tx.run("UPDATE counters SET value = value + 1 WHERE key = 'ticket_id'");
-            // Get new value
-            const counter = await tx.get("SELECT value FROM counters WHERE key = 'ticket_id'") as { value: number };
-            newId = counter.value.toString();
+            // Check if counter exists
+            let counter = await tx.get("SELECT value FROM counters WHERE key = 'ticket_id'") as { value: number };
+
+            if (!counter) {
+                // Try to initialize from existing tickets max ID or default to 1000
+                const maxTicket = await tx.get("SELECT id FROM tickets WHERE id ~ '^[0-9]+$' ORDER BY id::integer DESC LIMIT 1") as { id: string };
+                const startVal = maxTicket ? parseInt(maxTicket.id) + 1 : 1000;
+                await tx.run("INSERT INTO counters (key, value) VALUES ('ticket_id', ?)", [startVal]);
+                newId = startVal.toString();
+            } else {
+                // Increment counter
+                await tx.run("UPDATE counters SET value = value + 1 WHERE key = 'ticket_id'");
+                // Get new value
+                const updatedCounter = await tx.get("SELECT value FROM counters WHERE key = 'ticket_id'") as { value: number };
+                newId = updatedCounter.value.toString();
+            }
         });
 
         const stmt = db.prepare(`
