@@ -22,6 +22,15 @@ export default function TasksPage() {
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
     useEffect(() => {
         if (currentUser && currentUser.id !== undefined && currentUser.id !== null) {
             fetchTasks();
@@ -94,9 +103,10 @@ export default function TasksPage() {
             <Sidebar />
             <div className="main-content" style={{
                 flex: 1,
-                marginLeft: isSidebarOpen ? '260px' : '0',
+                marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
-                padding: '2rem'
+                padding: isMobile ? '1rem' : '2rem',
+                paddingTop: isMobile ? '5rem' : '2rem'
             }}>
                 <Header title="Registro de Tareas" />
 
