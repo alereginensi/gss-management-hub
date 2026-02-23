@@ -1,129 +1,47 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyJWT } from '@/lib/auth-edge';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-at-least-32-chars-long';
-
+/**
+ * Middleware is now minimal - it only handles page-level redirects
+ * for unauthenticated users trying to access protected PAGE routes.
+ * 
+ * API route auth is handled INSIDE each route handler via getSession(request).
+ * This avoids issues with Railway's proxy potentially interfering with
+ * cookie or Authorization header forwarding at the Edge runtime level.
+ */
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
-    // 1. Define public paths that DON'T require authentication
-    const publicPaths = [
-        '/login',
-        '/register',
-        '/',
-        '/api/auth/login',
-        '/api/auth/register',
-        '/api/validate-email',
-        '/api/config/roles',
-        '/api/diagnose', // Diagnostic tool
-        '/api/admin/debug', // NEW: Allow debug without auth
-        '/api/admin/debug-auth', // NEW: Auth debug
-        '/api/admin/debug-edge', // NEW: Edge debug
-        '/api/admin/debug-cookies', // NEW: Cookie debug
-        '/api/admin/debug-decrypt', // NEW: Decrypt debug
-        '/api/admin/seed',  // NEW: Allow manual seed without auth (or maybe require secret? keeping public for now as requested)
-    ];
-
-    const isPublicPath = publicPaths.some(path => pathname === path || pathname.startsWith('/api/auth'));
-    const isAsset = pathname.startsWith('/_next') || pathname.includes('.');
-
-    if (isPublicPath || isAsset) {
+    // Only handle page routes (not API routes, not static assets)
+    // API routes handle their own authentication
+    if (pathname.startsWith('/api/') || pathname.startsWith('/_next') || pathname.includes('.')) {
         return NextResponse.next();
     }
 
-    // 2. Check for session cookie
-    // 2. Check for session cookie OR auth_token cookie (client-set) OR Authorization header
-    let session = request.cookies.get('session')?.value;
+    // For page routes: check if there's any auth token available
+    const publicPages = ['/login', '/register'];
+    const isPublicPage = publicPages.includes(pathname);
 
-    if (!session) {
-        // Also check for client-set auth_token cookie (set via document.cookie after login)
-        session = request.cookies.get('auth_token')?.value;
+    if (isPublicPage) {
+        return NextResponse.next();
     }
 
-    if (!session) {
-        // Fallback: Check Authorization header (Bearer token)
-        const authHeader = request.headers.get('Authorization');
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            session = authHeader.substring(7);
-        }
-    }
+    // For protected pages, check if any auth token exists
+    // (The actual validation happens server-side in route handlers)
+    const sessionCookie = request.cookies.get('session')?.value;
+    const authTokenCookie = request.cookies.get('auth_token')?.value;
+    const authHeader = request.headers.get('Authorization');
 
-    if (!session) {
-        // Log all cookies for debugging
-        const allCookies = request.cookies.getAll();
-        console.log(`[Middleware] No auth found for ${pathname}. Cookies: ${JSON.stringify(allCookies.map(c => c.name))}, Auth-header: ${!!request.headers.get('Authorization')}`);
-        if (pathname.startsWith('/api/')) {
-            const response = NextResponse.json({ error: 'Unauthorized: No session found' }, { status: 401 });
-            response.headers.set('X-Auth-Reason', 'missing_cookie_and_header');
-            return response;
-        }
+    const hasAnyToken = !!(sessionCookie || authTokenCookie || authHeader);
+
+    if (!hasAnyToken) {
+        // No token at all - redirect to login
         return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    // 3. Verify JWT
-    try {
-        const result = await verifyJWT(session, JWT_SECRET);
-        if (!result) throw new Error('Invalid token');
-
-        const { payload } = result;
-        const user = (payload as any).user;
-
-        // 4. Role-based Route Protection
-
-        // Admin & Supervisor areas
-        if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-            // Exception for debug/seed if they fell through here (though publicPaths should catch them if exact match)
-            // But publicPaths logic above uses 'some', so exact match or startsWith /api/auth.
-            // /api/admin/debug needs to be in publicPaths to avoid this check if we want it completely public.
-            // It IS in publicPaths now.
-
-            if (user.role !== 'admin' && user.role !== 'supervisor') {
-                if (pathname.startsWith('/api/')) {
-                    return NextResponse.json({ error: 'Forbidden: Admin/Supervisor access required' }, { status: 403 });
-                }
-                return NextResponse.redirect(new URL('/dashboard', request.url));
-            }
-        }
-
-        // Logbook is for staff only (Admin, Supervisor, Funcionario - with different levels of access, but here we block Solicitante)
-        if (pathname.startsWith('/logbook') || pathname.startsWith('/api/logbook')) {
-            if (user.role === 'user') {
-                if (pathname.startsWith('/api/')) {
-                    return NextResponse.json({ error: 'Forbidden: Staff access required' }, { status: 403 });
-                }
-                return NextResponse.redirect(new URL('/dashboard', request.url));
-            }
-        }
-
-        // Worker tasks page
-        if (pathname.startsWith('/tasks')) {
-            if (user.role === 'user') {
-                return NextResponse.redirect(new URL('/dashboard', request.url));
-            }
-        }
-
-        return NextResponse.next();
-    } catch (e: any) {
-        // Clear invalid session cookie
-        const response = NextResponse.redirect(new URL('/login', request.url));
-        response.cookies.delete('session');
-
-        if (pathname.startsWith('/api/')) {
-            const errorMessage = e instanceof Error ? e.message : 'Unknown error';
-            const response = NextResponse.json({ error: `Unauthorized: Invalid session (${errorMessage})` }, { status: 401 });
-            response.headers.set('X-Auth-Reason', 'invalid_token');
-            return response;
-        }
-        return response;
-    }
+    return NextResponse.next();
 }
 
-// Match all request paths except for the ones starting with:
-// - api/auth (handled inside)
-// - _next/static (static files)
-// - _next/image (image optimization files)
-// - favicon.ico (favicon file)
 export const config = {
-    matcher: ['/((?!api/auth|_next/static|_next/image|favicon.ico).*)'],
+    matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
