@@ -21,10 +21,18 @@ export async function GET(request: NextRequest) {
 
         // Admins see all tickets
         if (userRole === 'admin') {
-            const rawTickets = await db.prepare('SELECT * FROM tickets ORDER BY createdAt DESC').all() as any[];
+            const rawTickets = await db.prepare('SELECT * FROM tickets ORDER BY created_at DESC').all() as any[];
             const tickets = await Promise.all(rawTickets.map(async (ticket) => {
                 const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
-                return { ...ticket, collaboratorIds: collaborators.map(c => c.user_id) };
+                return {
+                    ...ticket,
+                    collaboratorIds: collaborators.map(c => c.user_id),
+                    statusColor: ticket.status_color,
+                    createdAt: ticket.created_at,
+                    startedAt: ticket.started_at,
+                    resolvedAt: ticket.resolved_at,
+                    affectedWorker: ticket.affected_worker
+                };
             }));
             return NextResponse.json(tickets);
         }
@@ -51,10 +59,18 @@ export async function GET(request: NextRequest) {
         }
 
         if (hasGlobalAccess) {
-            const rawTickets = await db.prepare('SELECT * FROM tickets ORDER BY createdAt DESC').all() as any[];
+            const rawTickets = await db.prepare('SELECT * FROM tickets ORDER BY created_at DESC').all() as any[];
             const tickets = await Promise.all(rawTickets.map(async (ticket) => {
                 const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
-                return { ...ticket, collaboratorIds: collaborators.map(c => c.user_id) };
+                return {
+                    ...ticket,
+                    collaboratorIds: collaborators.map(c => c.user_id),
+                    statusColor: ticket.status_color,
+                    createdAt: ticket.created_at,
+                    startedAt: ticket.started_at,
+                    resolvedAt: ticket.resolved_at,
+                    affectedWorker: ticket.affected_worker
+                };
             }));
             return NextResponse.json(tickets);
         }
@@ -74,6 +90,7 @@ export async function GET(request: NextRequest) {
             // Map snake_case to camelCase
             const mappedTickets = tickets.map((t: any) => ({
                 ...t,
+                requesterEmail: t.requester_email,
                 statusColor: t.status_color,
                 createdAt: t.created_at,
                 startedAt: t.started_at,
@@ -99,6 +116,7 @@ export async function GET(request: NextRequest) {
             return {
                 ...ticket,
                 collaboratorIds: collaborators.map(c => c.user_id),
+                requesterEmail: ticket.requester_email,
                 statusColor: ticket.status_color,
                 createdAt: ticket.created_at,
                 startedAt: ticket.started_at,
