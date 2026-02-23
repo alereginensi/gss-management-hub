@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const roleFilter = searchParams.get('role');
         const users = roleFilter
-            ? db.prepare('SELECT id, name, email, department, role, rubro, approved FROM users WHERE role = ? ORDER BY name ASC').all(roleFilter)
-            : db.prepare('SELECT id, name, email, department, role, rubro, approved FROM users ORDER BY name ASC').all();
+            ? await db.prepare('SELECT id, name, email, department, role, rubro, approved FROM users WHERE role = ? ORDER BY name ASC').all(roleFilter)
+            : await db.prepare('SELECT id, name, email, department, role, rubro, approved FROM users ORDER BY name ASC').all();
         return NextResponse.json(users);
     } catch (error) {
         return NextResponse.json({ error: 'Error fetching users' }, { status: 500 });
@@ -30,23 +30,23 @@ export async function POST(request: NextRequest) {
         const { email, action, name, password, department, role } = await request.json();
 
         if (action === 'approve') {
-            db.prepare('UPDATE users SET approved = 1 WHERE email = ?').run(email);
+            await db.prepare('UPDATE users SET approved = 1 WHERE email = ?').run(email);
             return NextResponse.json({ success: true });
         }
 
         if (action === 'reject') {
-            db.prepare('DELETE FROM users WHERE email = ? AND approved = 0').run(email);
+            await db.prepare('DELETE FROM users WHERE email = ? AND approved = 0').run(email);
             return NextResponse.json({ success: true });
         }
 
         if (action === 'delete') {
-            db.prepare('DELETE FROM users WHERE email = ?').run(email);
+            await db.prepare('DELETE FROM users WHERE email = ?').run(email);
             return NextResponse.json({ success: true });
         }
 
         if (action === 'create_admin') {
             const hashedPassword = await hashPassword(password);
-            db.prepare('INSERT INTO users (name, email, password, department, role, approved) VALUES (?, ?, ?, ?, ?, ?)')
+            await db.prepare('INSERT INTO users (name, email, password, department, role, approved) VALUES (?, ?, ?, ?, ?, ?)')
                 .run(name, email, hashedPassword, department, 'admin', 1);
             return NextResponse.json({ success: true });
         }

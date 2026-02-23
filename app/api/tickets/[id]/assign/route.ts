@@ -14,25 +14,25 @@ export async function POST(
         }
 
         // Verify the new supervisor exists
-        const newSupervisor = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(newSupervisorId) as { id: number; name: string; email: string } | undefined;
+        const newSupervisor = await db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(newSupervisorId) as { id: number; name: string; email: string } | undefined;
         if (!newSupervisor) {
             return NextResponse.json({ error: 'Supervisor not found' }, { status: 404 });
         }
 
         // Get current ticket info
-        const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(ticketId);
+        const ticket = await db.prepare('SELECT * FROM tickets WHERE id = ?').get(ticketId);
         if (!ticket) {
             return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
         }
 
         // Update ticket supervisor
-        db.prepare('UPDATE tickets SET supervisor = ? WHERE id = ?').run(newSupervisor.name, ticketId);
+        await db.prepare('UPDATE tickets SET supervisor = ? WHERE id = ?').run(newSupervisor.name, ticketId);
 
         // Create notification for the new supervisor
         try {
-            db.prepare(`
+            await db.prepare(`
                 INSERT INTO notifications (user_id, ticket_id, message, type, created_at)
-                VALUES (?, ?, ?, ?, datetime('now'))
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
             `).run(
                 newSupervisorId,
                 ticketId,

@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     }
 
     try {
-        const tasks = db.prepare('SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+        const tasks = await db.prepare('SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC').all(userId);
         return NextResponse.json(tasks);
     } catch (error) {
         return NextResponse.json({ error: 'Error fetching tasks' }, { status: 500 });
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         const descValue = description || (taskType === 'check_in' ? `Ingreso registrado en ${location}${sector ? ' - ' + sector : ''}` : (taskType === 'check_out' ? 'Salida registrada' : 'Tarea sin descripción'));
 
         const stmt = db.prepare('INSERT INTO tasks (user_id, description, type, created_at, location, sector) VALUES (?, ?, ?, ?, ?, ?)');
-        const result = stmt.run(userId, descValue, taskType, timestamp, location || null, sector || null);
+        const result = await stmt.run(userId, descValue, taskType, timestamp, location || null, sector || null);
 
         return NextResponse.json({
             success: true,

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     try {
         const { id } = await params;
-        const activities = db.prepare('SELECT * FROM ticket_activities WHERE ticket_id = ? ORDER BY created_at DESC').all(id);
+        const activities = await db.prepare('SELECT * FROM ticket_activities WHERE ticket_id = ? ORDER BY created_at DESC').all(id);
 
         // Map to frontend model
         const mappedActivities = activities.map((a: any) => ({
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         }
 
         const stmt = db.prepare('INSERT INTO ticket_activities (ticket_id, user_name, user_email, message, type) VALUES (?, ?, ?, ?, ?)');
-        const result = stmt.run(
+        const result = await stmt.run(
             id,
             session.user.name,
             session.user.email,

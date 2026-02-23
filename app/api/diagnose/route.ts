@@ -108,11 +108,14 @@ export async function GET() {
         // Try importing DB
         try {
             const dbModule = require('@/lib/db');
+            const dbInstance = dbModule.default;
             debugInfo.dbStatus = 'Imported successfully';
+            debugInfo.dbType = dbInstance?.type || 'unknown';
+
             // basic query
-            if (dbModule.default) {
+            if (dbInstance) {
                 try {
-                    const count = dbModule.default.prepare('SELECT count(*) as c FROM locations').get();
+                    const count = await dbInstance.prepare('SELECT count(*) as c FROM locations').get();
                     debugInfo.dbQuery = 'Success';
                     debugInfo.rowCount = count;
                 } catch (qError: any) {
@@ -121,7 +124,7 @@ export async function GET() {
 
                 // Check if admin exists
                 try {
-                    const admin = dbModule.default.prepare('SELECT id, email, role, approved FROM users WHERE email = ?').get('admin@gss.com');
+                    const admin = await dbInstance.prepare('SELECT id, email, role, approved FROM users WHERE email = ?').get('admin@gss.com');
                     debugInfo.adminUser = admin || 'Not Found';
                 } catch (uError: any) {
                     debugInfo.adminCheckError = uError.message;
@@ -129,8 +132,13 @@ export async function GET() {
 
                 // List tables
                 try {
-                    const tables = dbModule.default.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
-                    debugInfo.tables = tables.map((t: any) => t.name);
+                    const isPg = dbInstance.type === 'pg';
+                    const tablesQuery = isPg
+                        ? "SELECT table_name as name FROM information_schema.tables WHERE table_schema = 'public'"
+                        : "SELECT name FROM sqlite_master WHERE type='table'";
+
+                    const tables = await dbInstance.prepare(tablesQuery).all();
+                    debugInfo.tables = tables.map((t: any) => t.name || t.table_name);
                 } catch (tError: any) {
                     debugInfo.tableListError = tError.message;
                 }

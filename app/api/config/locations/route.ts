@@ -4,8 +4,8 @@ import db from '@/lib/db';
 // GET all active locations with their sectors
 export async function GET() {
     try {
-        const locations = db.prepare('SELECT * FROM locations WHERE active = 1 ORDER BY name ASC').all();
-        const sectors = db.prepare('SELECT * FROM sectors WHERE active = 1').all();
+        const locations = await db.prepare('SELECT * FROM locations WHERE active = 1 ORDER BY name ASC').all();
+        const sectors = await db.prepare('SELECT * FROM sectors WHERE active = 1').all();
 
         const locationsWithSectors = locations.map((loc: any) => ({
             ...loc,
@@ -27,11 +27,11 @@ export async function POST(request: Request) {
         }
 
         const stmt = db.prepare('INSERT INTO locations (name) VALUES (?)');
-        const info = stmt.run(name.trim());
+        const info = await stmt.run(name.trim());
 
         return NextResponse.json({ id: info.lastInsertRowid, name: name.trim(), active: 1 });
     } catch (error: any) {
-        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === '23505') {
             return NextResponse.json({ error: 'Location already exists' }, { status: 409 });
         }
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -49,7 +49,7 @@ export async function DELETE(request: Request) {
         }
 
         const stmt = db.prepare('UPDATE locations SET active = 0 WHERE id = ?');
-        stmt.run(id);
+        await stmt.run(id);
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

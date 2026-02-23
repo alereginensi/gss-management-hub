@@ -7,7 +7,7 @@ export async function GET() {
             console.error('Database not initialized');
             return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
         }
-        const settingsRows = db.prepare('SELECT * FROM settings').all() as any[];
+        const settingsRows = await db.prepare('SELECT * FROM settings').all() as any[];
         const settings: Record<string, string> = {};
         settingsRows.forEach(row => {
             settings[row.key] = row.value;
@@ -24,15 +24,17 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
 
-        const upsert = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
+        // Use a transaction for multiple updates
+        await db.transaction(async (tx) => {
+            for (const [key, value] of Object.entries(body as Record<string, string>)) {
+                // Determine upsert syntax
+                const sql = (db as any).type === 'pg'
+                    ? 'INSERT INTO settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2'
+                    : 'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)';
 
-        const transaction = db.transaction((data: Record<string, string>) => {
-            for (const [key, value] of Object.entries(data)) {
-                upsert.run(key, value);
+                await tx.run(sql, [key, value]);
             }
         });
-
-        transaction(body);
 
         return NextResponse.json({ success: true });
     } catch (error) {

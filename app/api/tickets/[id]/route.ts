@@ -28,7 +28,7 @@ export async function PATCH(
         }
 
         // Verify ticket exists
-        const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(ticketId) as any;
+        const ticket = await db.prepare('SELECT * FROM tickets WHERE id = ?').get(ticketId) as any;
         if (!ticket) {
             return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
         }
@@ -41,21 +41,21 @@ export async function PATCH(
         };
 
         // Build dynamic update query based on new status
-        let updateQuery = 'UPDATE tickets SET status = ?, statusColor = ?';
+        let updateQuery = 'UPDATE tickets SET status = ?, status_color = ?';
         const updateParams: any[] = [status, statusColors[status]];
 
-        if (status === 'En Progreso' && !ticket.startedAt) {
-            updateQuery += ', startedAt = ?';
+        if (status === 'En Progreso' && !ticket.started_at) {
+            updateQuery += ', started_at = ?';
             updateParams.push(now);
-        } else if (status === 'Resuelto' && !ticket.resolvedAt) {
-            updateQuery += ', resolvedAt = ?';
+        } else if (status === 'Resuelto' && !ticket.resolved_at) {
+            updateQuery += ', resolved_at = ?';
             updateParams.push(now);
         }
 
         updateQuery += ' WHERE id = ?';
         updateParams.push(ticketId);
 
-        db.prepare(updateQuery).run(...updateParams);
+        await db.prepare(updateQuery).run(...updateParams);
 
         return NextResponse.json({ success: true, status, ticketId });
     } catch (error: any) {

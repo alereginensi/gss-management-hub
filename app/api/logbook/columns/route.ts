@@ -9,7 +9,7 @@ export async function POST(req: Request) {
         // name should be alphanumeric for safety in JSON keys
         const safeName = name.replace(/[^a-zA-Z0-9_]/g, '_').toLowerCase();
 
-        db.prepare(`
+        await db.prepare(`
             INSERT INTO logbook_columns (name, label, type, options)
             VALUES (?, ?, ?, ?)
         `).run(safeName, label, type, JSON.stringify(options || []));
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true });
     } catch (error: any) {
         console.error('Logbook Columns POST Error:', error);
-        if (error.code === 'SQLITE_CONSTRAINT') {
+        if (error.code === 'SQLITE_CONSTRAINT' || error.code === '23505') {
             return NextResponse.json({ error: 'El nombre de la columna ya existe' }, { status: 400 });
         }
         return NextResponse.json({ error: 'Failed to create column' }, { status: 500 });
@@ -33,7 +33,7 @@ export async function DELETE(req: Request) {
             return NextResponse.json({ error: 'Column name is required' }, { status: 400 });
         }
 
-        db.prepare('DELETE FROM logbook_columns WHERE name = ?').run(name);
+        await db.prepare('DELETE FROM logbook_columns WHERE name = ?').run(name);
 
         // Note: Data in logbook table remains in extra_data JSON but won't be displayed
 

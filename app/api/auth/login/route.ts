@@ -17,7 +17,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Error de conexión con la base de datos' }, { status: 500 });
         }
 
-        const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
+        const user = await db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
 
         if (!user) {
             return NextResponse.json({ error: 'El usuario no existe o no ha sido aprobado' }, { status: 401 });

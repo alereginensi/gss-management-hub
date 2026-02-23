@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
         const userId = session.user.id;
 
         // Get ALL notifications for the user (read and unread)
-        const notifications = db.prepare(`
+        const notifications = await db.prepare(`
             SELECT * FROM notifications 
             WHERE user_id = ?
             ORDER BY created_at DESC
@@ -37,12 +37,12 @@ export async function POST(request: NextRequest) {
         const { notificationId, action } = await request.json();
 
         if (action === 'mark_read') {
-            db.prepare('UPDATE notifications SET read = 1 WHERE id = ?').run(notificationId);
+            await db.prepare('UPDATE notifications SET read = 1 WHERE id = ?').run(notificationId);
             return NextResponse.json({ success: true });
         }
 
         if (action === 'mark_all_read') {
-            db.prepare('UPDATE notifications SET read = 1 WHERE user_id = ?').run(session.user.id);
+            await db.prepare('UPDATE notifications SET read = 1 WHERE user_id = ?').run(session.user.id);
             return NextResponse.json({ success: true });
         }
 
@@ -66,7 +66,7 @@ export async function DELETE(request: NextRequest) {
 
         if (deleteAll === 'true') {
             // Delete all notifications for this user
-            db.prepare('DELETE FROM notifications WHERE user_id = ?').run(session.user.id);
+            await db.prepare('DELETE FROM notifications WHERE user_id = ?').run(session.user.id);
             return NextResponse.json({ success: true, message: 'All notifications deleted' });
         }
 
@@ -75,7 +75,7 @@ export async function DELETE(request: NextRequest) {
         }
 
         // Ensure the notification belongs to the current user
-        db.prepare('DELETE FROM notifications WHERE id = ? AND user_id = ?').run(
+        await db.prepare('DELETE FROM notifications WHERE id = ? AND user_id = ?').run(
             parseInt(notificationId),
             session.user.id
         );

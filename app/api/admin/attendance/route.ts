@@ -68,7 +68,7 @@ export async function GET(request: Request) {
 
         query += ` ORDER BY t.created_at ASC`;
 
-        const rawTasks = db.prepare(query).all(...params) as any[];
+        const rawTasks = await db.prepare(query).all(...params) as any[];
 
         // Group by Date and User
         const workdaySummary: Record<string, any> = {};
