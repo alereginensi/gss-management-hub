@@ -209,12 +209,17 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         // Use ref to avoid stale closure issues with setTimeout/async calls
         if (!isAuthenticatedRef.current) return;
         setLoading(true);
-        await Promise.all([
+        const promises = [
             fetchTickets(),
             fetchNotifications(),
-            fetchAllUsers(),
             fetchSettings()
-        ]);
+        ];
+
+        if (currentUser?.role === 'admin' || currentUser?.role === 'supervisor') {
+            promises.push(fetchAllUsers());
+        }
+
+        await Promise.all(promises);
         setLoading(false);
     };
 
@@ -239,6 +244,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                         isAuthenticatedRef.current = true;
                         setCurrentUser(data.user);
                         // Fetch data ONLY if authenticated
+                        // Note: refreshData will internally check roles for sensitive APIs
                         refreshData();
                     }
                 } else {
