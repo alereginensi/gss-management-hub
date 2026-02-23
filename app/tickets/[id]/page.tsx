@@ -21,16 +21,16 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
     const ticket = tickets.find(t => t.id === ticketId);
     const activities = getActivitiesByTicket(ticketId);
 
-    const isOwner = ticket?.requesterEmail === currentUser.email;
-    const isAdmin = currentUser.role === 'admin';
-    const isSupervisor = ticket?.supervisor === currentUser.name;
-    const isCollaborator = collaborators.some(c => c.user_id === currentUser.id);
+    const isOwner = ticket?.requesterEmail === currentUser?.email;
+    const isAdmin = currentUser?.role === 'admin';
+    const isSupervisor = ticket?.supervisor === currentUser?.name;
+    const isCollaborator = collaborators.some(c => c.user_id === currentUser?.id);
     const canSeeTicket = ticket && (isAdmin || isOwner || isSupervisor || isCollaborator);
 
     const handleSubmitComment = (e: React.FormEvent) => {
         e.preventDefault();
         if (comment.trim()) {
-            addActivity(ticketId, currentUser.name, comment);
+            addActivity(ticketId, currentUser?.name || 'Usuario', comment);
             setComment('');
         }
     };
@@ -76,7 +76,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
         console.log('🔄 Transferring ticket:', ticketId, 'to:', supervisorUser.name, 'ID:', supervisorUser.id);
 
         try {
-            const success = await transferTicket(ticketId, supervisorUser.id, currentUser.id);
+            const success = await transferTicket(ticketId, supervisorUser.id, currentUser?.id ?? 0);
             console.log('Transfer result:', success);
             if (success) {
                 setShowTransferModal(false);
@@ -97,7 +97,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
         const collaboratorUser = allUsers.find(u => u.name === selectedCollaborator);
         if (!collaboratorUser) return;
 
-        const success = await addCollaborator(ticketId, collaboratorUser.id, currentUser.id);
+        const success = await addCollaborator(ticketId, collaboratorUser.id, currentUser?.id ?? 0);
         if (success) {
             setShowAddCollaboratorModal(false);
             setSelectedCollaborator('');
@@ -169,15 +169,15 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                             width: '32px',
                                             height: '32px',
                                             borderRadius: '50%',
-                                            backgroundColor: activity.user === currentUser.name ? 'var(--accent-color)' : 'var(--border-color)',
-                                            color: activity.user === currentUser.name ? 'white' : 'var(--text-primary)',
+                                            backgroundColor: activity.user === currentUser?.name ? 'var(--accent-color)' : 'var(--border-color)',
+                                            color: activity.user === currentUser?.name ? 'white' : 'var(--text-primary)',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             fontSize: '0.75rem',
                                             fontWeight: 'bold'
                                         }}>
-                                            {activity.user === currentUser.name ? getUserInitials(activity.user) : <User size={16} />}
+                                            {activity.user === currentUser?.name ? getUserInitials(activity.user) : <User size={16} />}
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
@@ -274,7 +274,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                         </div>
 
                         {/* Transfer Ticket Section - Admin/Supervisor only */}
-                        {(isAdmin || currentUser.role === 'supervisor') && (
+                        {(isAdmin || currentUser?.role === 'supervisor') && (
                             <div className="card">
                                 <h3 style={{ fontSize: '0.875rem', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '1rem' }}>Transferir Ticket</h3>
                                 <button
@@ -291,7 +291,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                         <div className="card">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                 <h3 style={{ fontSize: '0.875rem', textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0 }}>Colaboradores</h3>
-                                {(isAdmin || currentUser.role === 'supervisor') && (
+                                {(isAdmin || currentUser?.role === 'supervisor') && (
                                     <button
                                         onClick={() => setShowAddCollaboratorModal(true)}
                                         style={{
@@ -337,7 +337,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                                     <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{collab.role}</div>
                                                 </div>
                                             </div>
-                                            {(isAdmin || currentUser.role === 'supervisor') && (
+                                            {(isAdmin || currentUser?.role === 'supervisor') && (
                                                 <button
                                                     onClick={() => handleRemoveCollaborator(collab.user_id, collab.name)}
                                                     title="Remover colaborador"

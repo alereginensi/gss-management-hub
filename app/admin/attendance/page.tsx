@@ -295,15 +295,15 @@ export default function AttendancePage() {
                         ) : attendance.length === 0 ? (
                             <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                                 <p>No se encontró actividad para esta fecha.</p>
-                                {currentUser.role === 'supervisor' && (
+                                {currentUser?.role === 'supervisor' && (
                                     <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', opacity: 0.7 }}>
                                         Nota: Solo verás la actividad de los funcionarios asignados a tu supervisión.
                                         <br />
-                                        <span style={{ fontSize: '0.7rem', color: '#999' }}>Debug: ID {currentUser.id} ({currentUser.role}) | Fecha: {filterDate}</span>
+                                        <span style={{ fontSize: '0.7rem', color: '#999' }}>Debug: ID {currentUser?.id} ({currentUser?.role}) | Fecha: {filterDate}</span>
                                     </p>
                                 )}
-                                {currentUser.role === 'admin' && (
-                                    <p style={{ fontSize: '0.7rem', color: '#999', marginTop: '0.5rem' }}>Debug: ID {currentUser.id} (admin) | Fecha: {filterDate}</p>
+                                {currentUser?.role === 'admin' && (
+                                    <p style={{ fontSize: '0.7rem', color: '#999', marginTop: '0.5rem' }}>Debug: ID {currentUser?.id} (admin) | Fecha: {filterDate}</p>
                                 )}
                             </div>
                         ) : (
