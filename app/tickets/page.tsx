@@ -13,6 +13,16 @@ export default function TicketList() {
     const [departmentFilter, setDepartmentFilter] = useState<string>('Todos');
     const [selectedTicket, setSelectedTicket] = useState<any>(null);
     const router = useRouter();
+    const [adminView, setAdminView] = useState<'personal' | 'all'>('personal');
+
+    // Handle view param from URL
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const viewParam = params.get('view');
+        if (viewParam === 'all' && currentUser?.role === 'admin') {
+            setAdminView('all');
+        }
+    }, [currentUser]);
 
     useEffect(() => {
         if (currentUser && currentUser.role === 'funcionario') {
@@ -26,17 +36,38 @@ export default function TicketList() {
 
     // Apply filters
     const filteredTickets = tickets.filter(ticket => {
-        // 1. Visibility: Requesters ONLY see their own tickets
-        if (currentUser?.role === 'user' && ticket.requesterEmail && ticket.requesterEmail !== currentUser?.email) {
-            return false;
+        // 1. Visibility & Filter for Admins vs Users
+        if (currentUser?.role === 'admin') {
+            // If personal view is active, only show tickets where admin is creator, supervisor or collaborator
+            if (adminView === 'personal') {
+                const isCreator = ticket.requesterEmail === currentUser.email;
+                const isSupervisor = ticket.supervisor === currentUser.name;
+                const isCollaborator = ticket.collaboratorIds?.includes(currentUser.id);
+
+                if (!isCreator && !isSupervisor && !isCollaborator) {
+                    return false;
+                }
+            }
+
+            // Apply department filter for admins in any view
+            if (departmentFilter !== 'Todos' && ticket.department !== departmentFilter) {
+                return false;
+            }
+        } else {
+            // Requesters ONLY see their own tickets
+            if (ticket.requesterEmail !== currentUser?.email) {
+                // Check if collaborator
+                const isCollaborator = ticket.collaboratorIds?.includes(currentUser?.id || 0);
+                // Check if supervisor
+                const isSupervisor = ticket.supervisor === currentUser?.name;
+
+                if (!isCollaborator && !isSupervisor) {
+                    return false;
+                }
+            }
         }
 
-        // 2. Admin Department Filter
-        if (currentUser?.role === 'admin' && departmentFilter !== 'Todos' && ticket.department !== departmentFilter) {
-            return false;
-        }
-
-        // 3. Status filter
+        // 2. Status filter
         let matchesStatus = true;
         if (filter === 'Abiertos') {
             matchesStatus = ticket.status === 'Nuevo' || ticket.status === 'En Progreso';
@@ -64,9 +95,57 @@ export default function TicketList() {
                 padding: '2rem',
                 backgroundColor: 'var(--bg-color)'
             }}>
-                <Header title={currentUser?.role === 'admin' ? "Panel de Control de Tickets" : "Mis Tickets"} />
+                <Header title={
+                    currentUser?.role === 'admin'
+                        ? (adminView === 'all' ? "Panel de Control de Tickets" : "Mis Tickets (Personal)")
+                        : "Mis Tickets"
+                } />
 
                 <div className="card">
+                    {currentUser?.role === 'admin' && (
+                        <div style={{
+                            display: 'flex',
+                            backgroundColor: 'var(--bg-color)',
+                            borderRadius: 'var(--radius)',
+                            padding: '0.25rem',
+                            marginBottom: '1.5rem',
+                            border: '1px solid var(--border-color)',
+                            width: 'fit-content'
+                        }}>
+                            <button
+                                onClick={() => setAdminView('personal')}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: 'calc(var(--radius) - 2px)',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 500,
+                                    backgroundColor: adminView === 'personal' ? 'var(--accent-color)' : 'transparent',
+                                    color: adminView === 'personal' ? 'white' : 'var(--text-secondary)',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                Mis Tickets
+                            </button>
+                            <button
+                                onClick={() => setAdminView('all')}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: 'calc(var(--radius) - 2px)',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 500,
+                                    backgroundColor: adminView === 'all' ? 'var(--accent-color)' : 'transparent',
+                                    color: adminView === 'all' ? 'white' : 'var(--text-secondary)',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                Todos los Tickets (Control)
+                            </button>
+                        </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <button

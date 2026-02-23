@@ -21,7 +21,11 @@ export async function GET(request: NextRequest) {
 
         // Admins see all tickets
         if (userRole === 'admin') {
-            const tickets = db.prepare('SELECT * FROM tickets ORDER BY createdAt DESC').all();
+            const rawTickets = db.prepare('SELECT * FROM tickets ORDER BY createdAt DESC').all() as any[];
+            const tickets = rawTickets.map(ticket => {
+                const collaborators = db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
+                return { ...ticket, collaboratorIds: collaborators.map(c => c.user_id) };
+            });
             return NextResponse.json(tickets);
         }
 
@@ -47,7 +51,11 @@ export async function GET(request: NextRequest) {
         }
 
         if (hasGlobalAccess) {
-            const tickets = db.prepare('SELECT * FROM tickets ORDER BY createdAt DESC').all();
+            const rawTickets = db.prepare('SELECT * FROM tickets ORDER BY createdAt DESC').all() as any[];
+            const tickets = rawTickets.map(ticket => {
+                const collaborators = db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
+                return { ...ticket, collaboratorIds: collaborators.map(c => c.user_id) };
+            });
             return NextResponse.json(tickets);
         }
 
@@ -66,14 +74,19 @@ export async function GET(request: NextRequest) {
         }
 
         // Default: user sees only tickets they created, are collaborators on, or are assigned supervisor
-        const tickets = db.prepare(`
+        const rawTickets = db.prepare(`
             SELECT DISTINCT t.* FROM tickets t
             LEFT JOIN ticket_collaborators tc ON t.id = tc.ticket_id
             WHERE t.requesterEmail = ?
                OR tc.user_id = ?
                OR (t.supervisor = ? AND t.supervisor IS NOT NULL AND t.supervisor != '')
             ORDER BY t.createdAt DESC
-        `).all(userEmail, userId, session.user.name);
+        `).all(userEmail, userId, session.user.name) as any[];
+
+        const tickets = rawTickets.map(ticket => {
+            const collaborators = db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
+            return { ...ticket, collaboratorIds: collaborators.map(c => c.user_id) };
+        });
 
         return NextResponse.json(tickets);
     } catch (error: any) {
