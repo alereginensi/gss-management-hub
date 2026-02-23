@@ -322,6 +322,17 @@ async function migrate() {
             );
         }
 
+        // Ensure ticket_id exists if not migrated
+        const checkTicketCounter = await pg.query('SELECT * FROM counters WHERE key = $1', ['ticket_id']);
+        if (checkTicketCounter.rows.length === 0) {
+            console.log('ℹ️ ticket_id counter not found, initializing...');
+            // Try to find max ticket ID if numeric
+            const maxTicket = await pg.query('SELECT id FROM tickets WHERE id ~ \'^[0-9]+$\' ORDER BY id::integer DESC LIMIT 1');
+            const startVal = maxTicket.rows.length > 0 ? parseInt(maxTicket.rows[0].id) + 1 : 1000;
+            await pg.query('INSERT INTO counters (key, value) VALUES ($1, $2)', ['ticket_id', startVal]);
+            console.log(`✅ ticket_id counter set to ${startVal}`);
+        }
+
         // 14. Migrate Logbook Columns
         console.log('📊 Migrating logbook columns...');
         const logCols = sqlite.prepare('SELECT * FROM logbook_columns').all();
