@@ -431,7 +431,7 @@ if (db) {
         console.log(`🔄 Migrating ${ticketsWithNoCreatedAt.length} tickets with missing createdAt...`);
         const updateStmt = db.prepare("UPDATE tickets SET createdAt = ? WHERE id = ?");
 
-        const migrateTransaction = db.transaction((tickets) => {
+        const migrateTransaction = db.transaction((tickets: any) => {
           for (const t of tickets) {
             try {
               // date format: "DD/MM/YYYY HH:mm"
