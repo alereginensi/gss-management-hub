@@ -14,8 +14,8 @@ export async function GET() {
                 PWD: process.cwd(),
             },
             paths: {
-                mountPoint: '/app/tickets.db',
-                mountPointExists: fs.existsSync('/app/tickets.db'),
+                mountPoint: '/app/data',
+                mountPointExists: fs.existsSync('/app/data'),
                 cwd: process.cwd(),
                 activeDbPath: activeDbPath
             },
@@ -89,8 +89,8 @@ export async function GET() {
             };
             debugInfo.foundDatabases = findDatabases('/app');
 
-            if (fs.existsSync('/app/tickets.db')) {
-                const stats = fs.statSync('/app/tickets.db');
+            if (fs.existsSync('/app/data')) {
+                const stats = fs.statSync('/app/data');
                 debugInfo.fs.mountStats = {
                     uid: stats.uid,
                     gid: stats.gid,
@@ -98,7 +98,7 @@ export async function GET() {
                     isDir: stats.isDirectory()
                 };
                 if (stats.isDirectory()) {
-                    debugInfo.fs.mountDetailed = listDirDetailed('/app/tickets.db');
+                    debugInfo.fs.mountDetailed = listDirDetailed('/app/data');
                 }
             }
         } catch (e: any) {
