@@ -179,7 +179,7 @@ export default function AttendancePage() {
             worksheet.columns = [
                 { header: 'Funcionario', key: 'userName', width: 25 },
                 { header: 'Departamento', key: 'department', width: 20 },
-                { header: 'Lugar', key: 'location', width: 20 },
+                { header: 'Cliente', key: 'location', width: 20 },
                 { header: 'Sector', key: 'sector', width: 20 },
                 { header: 'Fecha', key: 'date', width: 15 },
                 { header: 'Hora Ingreso', key: 'checkIn', width: 15 },

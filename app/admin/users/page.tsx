@@ -12,6 +12,8 @@ export default function UserManagement() {
     const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', department: 'Administración' });
     const [editingUser, setEditingUser] = useState<any>(null);
     const [editForm, setEditForm] = useState({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '' });
+    const [assignedWorkers, setAssignedWorkers] = useState<number[]>([]);
+    const [funcionarios, setFuncionarios] = useState<any[]>([]);
     const [showApprovedUsers, setShowApprovedUsers] = useState(false);
     const [userSearchQuery, setUserSearchQuery] = useState('');
 
@@ -54,7 +56,7 @@ export default function UserManagement() {
         }
     };
 
-    const handleEditUser = (user: any) => {
+    const handleEditUser = async (user: any) => {
         setEditingUser(user);
         setEditForm({
             name: user.name || '',
@@ -65,6 +67,22 @@ export default function UserManagement() {
             password: '',
             confirmPassword: ''
         });
+
+        // Always reset assigned workers first
+        setAssignedWorkers([]);
+
+        // Fetch existing assigned workers if supervisor (or role in form is supervisor)
+        if (user.role === 'supervisor') {
+            try {
+                const workersRes = await fetch(`/api/admin/users/${user.id}/workers`);
+                if (workersRes.ok) {
+                    const data = await workersRes.json();
+                    setAssignedWorkers(data.workerIds || []);
+                }
+            } catch (error) {
+                console.error('Error loading supervisor workers:', error);
+            }
+        }
     };
 
     const handleUpdateUser = async (e: React.FormEvent) => {
@@ -98,6 +116,14 @@ export default function UserManagement() {
 
             const success = await updateUser(editingUser.id, updateData);
             if (success) {
+                // If supervisor: sync assigned workers
+                if (editForm.role === 'supervisor') {
+                    await fetch(`/api/admin/users/${editingUser.id}/workers`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ workerIds: assignedWorkers, department: editForm.rubro })
+                    });
+                }
                 alert('Usuario actualizado correctamente');
                 setEditingUser(null);
             } else {
@@ -112,6 +138,8 @@ export default function UserManagement() {
 
     const handleCloseEdit = () => {
         setEditingUser(null);
+        setAssignedWorkers([]);
+        setFuncionarios([]);
         setEditForm({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '' });
     };
 
@@ -453,6 +481,56 @@ export default function UserManagement() {
                                         style={{ width: '100%', padding: '0.6rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }}
                                         placeholder="Ej: Limpieza, Seguridad, etc."
                                     />
+                                </div>
+                            )}
+
+                            {editForm.role === 'supervisor' && (
+                                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--accent-color)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Asignación de Supervisor</p>
+
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Departamento supervisado (rubro)</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.rubro}
+                                            onChange={(e) => setEditForm({ ...editForm, rubro: e.target.value })}
+                                            className="input"
+                                            style={{ width: '100%', padding: '0.6rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }}
+                                            placeholder="Ej: Limpieza, Seguridad, Vigilancia..."
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                                            Funcionarios asignados
+                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 400, marginLeft: '0.4rem' }}>(selección múltiple)</span>
+                                        </label>
+                                        <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                            {allUsers.filter(u => u.role === 'funcionario').length === 0 ? (
+                                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', padding: '0.5rem' }}>No hay funcionarios registrados.</p>
+                                            ) : (
+                                                allUsers.filter(u => u.role === 'funcionario').map((func: any) => (
+                                                    <label key={func.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.35rem 0.5rem', borderRadius: '6px', cursor: 'pointer', backgroundColor: assignedWorkers.includes(Number(func.id)) ? 'rgba(59,130,246,0.08)' : 'transparent' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={assignedWorkers.includes(Number(func.id))}
+                                                            onChange={(e) => {
+                                                                const id = Number(func.id);
+                                                                if (e.target.checked) {
+                                                                    setAssignedWorkers(prev => [...prev, id]);
+                                                                } else {
+                                                                    setAssignedWorkers(prev => prev.filter(w => w !== id));
+                                                                }
+                                                            }}
+                                                            style={{ cursor: 'pointer' }}
+                                                        />
+                                                        <span style={{ fontSize: '0.875rem' }}>{func.name}</span>
+                                                        {func.rubro && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>({func.rubro})</span>}
+                                                    </label>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 

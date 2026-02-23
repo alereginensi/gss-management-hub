@@ -150,7 +150,7 @@ const CLIENT_SECTOR_MAP: Record<string, string[]> = {
 };
 
 export default function LogbookPage() {
-    const { isSidebarOpen } = useTicketContext();
+    const { isSidebarOpen, currentUser } = useTicketContext();
     const [entries, setEntries] = useState<LogEntry[]>([]);
     const [columns, setColumns] = useState<Column[]>([]);
     const [loading, setLoading] = useState(true);
@@ -168,6 +168,11 @@ export default function LogbookPage() {
         CLIENT_SECTOR_MAP[clientName] || [];
 
     const availableLocations = Object.keys(CLIENT_SECTOR_MAP).sort();
+
+    // Supervisors only see entries they personally supervised
+    const visibleEntries = currentUser?.role === 'supervisor'
+        ? entries.filter(e => e.supervised_by === currentUser.name)
+        : entries;
 
     // Form States
     const [newReportHeader, setNewReportHeader] = useState({
@@ -567,13 +572,13 @@ export default function LogbookPage() {
 
     // Prepare data for rendering (Sort and Color) - Optimized with useMemo
     const sortedEntries = useMemo(() => {
-        return [...entries].sort((a, b) => {
+        return [...visibleEntries].sort((a, b) => {
             if (a.sector !== b.sector) {
                 return a.sector.localeCompare(b.sector);
             }
             return new Date(b.date).getTime() - new Date(a.date).getTime();
         });
-    }, [entries]);
+    }, [visibleEntries]);
 
     const sectorColorMap = useMemo(() => {
         const colors = [
@@ -658,7 +663,7 @@ export default function LogbookPage() {
                                 <th style={{ padding: '1rem', width: '40px' }}>
                                     <input
                                         type="checkbox"
-                                        checked={entries.length > 0 && selectedIds.size === entries.length}
+                                        checked={visibleEntries.length > 0 && selectedIds.size === visibleEntries.length}
                                         onChange={toggleAll}
                                         style={{ cursor: 'pointer' }}
                                     />
@@ -779,7 +784,7 @@ export default function LogbookPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {entries.length === 0 ? (
+                            {visibleEntries.length === 0 ? (
                                 <tr>
                                     <td colSpan={10 + columns.length} style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
@@ -844,7 +849,7 @@ export default function LogbookPage() {
                 {/* Mobile Card View */}
                 {/* Mobile Card View (Compact) */}
                 <div className="mobile-view">
-                    {entries.length === 0 ? (
+                    {visibleEntries.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                             <BookOpen size={48} opacity={0.2} />
                             <p style={{ marginTop: '1rem' }}>No hay registros. Usa el botón + para agregar uno.</p>

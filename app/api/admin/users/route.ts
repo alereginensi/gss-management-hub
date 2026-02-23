@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const roleFilter = searchParams.get('role');
         const users = roleFilter
-            ? db.prepare('SELECT id, name, email, department, role, approved FROM users WHERE role = ? ORDER BY name ASC').all(roleFilter)
-            : db.prepare('SELECT id, name, email, department, role, approved FROM users ORDER BY name ASC').all();
+            ? db.prepare('SELECT id, name, email, department, role, rubro, approved FROM users WHERE role = ? ORDER BY name ASC').all(roleFilter)
+            : db.prepare('SELECT id, name, email, department, role, rubro, approved FROM users ORDER BY name ASC').all();
         return NextResponse.json(users);
     } catch (error) {
         return NextResponse.json({ error: 'Error fetching users' }, { status: 500 });

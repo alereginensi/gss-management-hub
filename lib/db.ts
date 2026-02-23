@@ -169,6 +169,11 @@ if (db) {
     FOREIGN KEY (location_id) REFERENCES locations(id),
     UNIQUE(name, location_id)
   );
+
+  CREATE TABLE IF NOT EXISTS counters (
+    key TEXT PRIMARY KEY,
+    value INTEGER NOT NULL
+  );
   `);
 
 
@@ -350,7 +355,7 @@ if (db) {
     CREATE INDEX IF NOT EXISTS idx_logbook_created_at ON logbook(createdAt);
     
     CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
-    CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(date);
+    CREATE INDEX IF NOT EXISTS idx_tickets_created_at ON tickets(createdAt);
     
     CREATE TABLE IF NOT EXISTS ticket_activities (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -379,6 +384,57 @@ if (db) {
       }
     } catch (e) {
       console.error("Error cleaning tickets:", e);
+    }
+
+    // Migration: Fill missing createdAt from the Spanish 'date' field
+    try {
+      const ticketsWithNoCreatedAt = db.prepare("SELECT id, date FROM tickets WHERE createdAt IS NULL").all() as { id: string, date: string }[];
+      if (ticketsWithNoCreatedAt.length > 0) {
+        console.log(`🔄 Migrating ${ticketsWithNoCreatedAt.length} tickets with missing createdAt...`);
+        const updateStmt = db.prepare("UPDATE tickets SET createdAt = ? WHERE id = ?");
+
+        const migrateTransaction = db.transaction((tickets) => {
+          for (const t of tickets) {
+            try {
+              // date format: "DD/MM/YYYY HH:mm"
+              const parts = t.date.split(' ');
+              const dateParts = parts[0].split('/');
+              const timeParts = parts[1].split(':');
+
+              const isoDate = new Date(
+                parseInt(dateParts[2]), // YYYY
+                parseInt(dateParts[1]) - 1, // MM (0-indexed)
+                parseInt(dateParts[0]), // DD
+                parseInt(timeParts[0]), // HH
+                parseInt(timeParts[1]) // mm
+              ).toISOString();
+
+              updateStmt.run(isoDate, t.id);
+            } catch (e) {
+              // Fallback to current time if parse fails
+              updateStmt.run(new Date().toISOString(), t.id);
+            }
+          }
+        });
+
+        migrateTransaction(ticketsWithNoCreatedAt);
+        console.log("✅ Successfully migrated ticket timestamps.");
+      }
+    } catch (e) {
+      console.error("Error migrating ticket timestamps:", e);
+    }
+    // Initialize counters
+    try {
+      const initCounter = db.prepare('INSERT OR IGNORE INTO counters (key, value) VALUES (?, ?)');
+
+      // Get current max ticket ID to initialize the counter
+      const maxTicketId = db.prepare("SELECT MAX(CAST(id AS INTEGER)) as maxId FROM tickets").get() as { maxId: number | null };
+      const currentMax = maxTicketId?.maxId || 99;
+
+      initCounter.run('ticket_id', currentMax);
+      console.log(`Counter 'ticket_id' initialized to ${currentMax}`);
+    } catch (e) {
+      console.error('Error initializing counters:', e);
     }
   } catch (e) {
     console.error('Error creating database indexes:', e);
