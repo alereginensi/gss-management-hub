@@ -19,6 +19,15 @@ else
 fi
 
 echo "DB path: $DB_FILE"
+
+# List files to help debug where the actual data is
+echo "--- Directory contents ---"
+echo "Files in /app:"
+ls -F /app
+echo "Files in /app/tickets.db:"
+ls -F /app/tickets.db 2>/dev/null || echo "(Directory does not exist or empty)"
+echo "--------------------------"
+
 if [ -f "$DB_FILE" ]; then
   echo "✅ Database file exists ($(du -sh "$DB_FILE" | cut -f1))"
 else
