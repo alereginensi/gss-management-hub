@@ -50,6 +50,16 @@ interface ReportItem {
 
 const SUPERVISO_OPTIONS = ['Limpieza', 'Seguridad Fisica', 'Seguridad Electronica', 'Tercerizados', 'Administrativos'];
 const UNIFORMS = ['Completo', 'Parcial', 'Sin Uniforme', 'Otro'];
+const INCIDENT_CATEGORIES = [
+    'Operativa',
+    'Calidad',
+    'Incidentes & Seguridad',
+    'Recursos Humanos',
+    'Materiales, Insumos & Equipos',
+    'Infraestructura',
+    'Comunicación & Coordinación',
+    'Otros'
+];
 
 // Clientes y sectores extraídos del CSV (Cliente;Lugar)
 const CLIENT_SECTOR_MAP: Record<string, string[]> = {
@@ -492,7 +502,7 @@ export default function LogbookPage() {
             { header: 'Lugar', key: 'location', width: 20 },
             { header: 'Funcionario', key: 'staff_member', width: 20 },
             { header: 'Uniforme', key: 'uniform', width: 15 },
-            { header: 'Reporte', key: 'report', width: 50 },
+            { header: 'Incidencia', key: 'report', width: 50 },
         ];
 
         columns.forEach(col => {
@@ -674,7 +684,7 @@ export default function LogbookPage() {
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Sector</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Funcionario</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Uniforme</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Reporte</th>
+                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Incidencia</th>
                                 {columns.map(col => (
                                     <th key={col.id} style={{ padding: '1rem', fontSize: '0.85rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -745,14 +755,30 @@ export default function LogbookPage() {
                                     </select>
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
-                                    <textarea
-                                        placeholder="Reporte..."
-                                        value={inlineData.report}
-                                        onChange={e => setInlineData({ ...inlineData, report: e.target.value })}
-                                        className="input"
-                                        rows={2}
-                                        style={{ padding: '0.4rem', fontSize: '0.85rem', resize: 'vertical', minHeight: '60px' }}
-                                    />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <select
+                                            value={INCIDENT_CATEGORIES.includes(inlineData.report || '') ? inlineData.report : 'Otros'}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setInlineData({ ...inlineData, report: val === 'Otros' ? '' : val });
+                                            }}
+                                            className="input"
+                                            style={{ padding: '0.4rem', fontSize: '0.85rem' }}
+                                        >
+                                            <option value="">Seleccionar...</option>
+                                            {INCIDENT_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                        </select>
+                                        {(!INCIDENT_CATEGORIES.includes(inlineData.report || '') || inlineData.report === 'Otros') && (
+                                            <textarea
+                                                placeholder="Especifique..."
+                                                value={inlineData.report === 'Otros' ? '' : inlineData.report}
+                                                onChange={e => setInlineData({ ...inlineData, report: e.target.value })}
+                                                className="input"
+                                                rows={2}
+                                                style={{ padding: '0.4rem', fontSize: '0.85rem', resize: 'vertical', minHeight: '60px' }}
+                                            />
+                                        )}
+                                    </div>
                                 </td>
                                 {columns.map(col => (
                                     <td key={col.id} style={{ padding: '0.5rem' }}>
@@ -1015,15 +1041,33 @@ export default function LogbookPage() {
                                                         </select>
                                                     </div>
                                                     <div>
-                                                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Reporte / Novedad</label>
-                                                        <textarea
-                                                            required
-                                                            value={item.report}
-                                                            onChange={e => updateReportItem(idx, 'report', e.target.value)}
-                                                            className="input"
-                                                            rows={4}
-                                                            style={{ resize: 'vertical', minHeight: '90px', lineHeight: '1.5' }}
-                                                        />
+                                                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Incidencia</label>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                            <select
+                                                                required
+                                                                value={INCIDENT_CATEGORIES.includes(item.report || '') ? item.report : 'Otros'}
+                                                                onChange={e => {
+                                                                    const val = e.target.value;
+                                                                    updateReportItem(idx, 'report', val === 'Otros' ? '' : val);
+                                                                }}
+                                                                className="input"
+                                                                style={{ width: '100%', padding: '0.6rem' }}
+                                                            >
+                                                                <option value="">Seleccionar...</option>
+                                                                {INCIDENT_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                                            </select>
+                                                            {(!INCIDENT_CATEGORIES.includes(item.report || '') || item.report === 'Otros') && (
+                                                                <textarea
+                                                                    placeholder="Especifique el detalle..."
+                                                                    required
+                                                                    value={item.report === 'Otros' ? '' : item.report}
+                                                                    onChange={e => updateReportItem(idx, 'report', e.target.value)}
+                                                                    className="input"
+                                                                    rows={3}
+                                                                    style={{ resize: 'vertical', minHeight: '80px', lineHeight: '1.5' }}
+                                                                />
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -1151,7 +1195,7 @@ export default function LogbookPage() {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', opacity: 0.6, marginBottom: '0.25rem' }}>Reporte / Novedad</label>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', opacity: 0.6, marginBottom: '0.25rem' }}>Incidencia</label>
                                     <div style={{ backgroundColor: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: '8px', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
                                         {selectedReport.report}
                                     </div>
