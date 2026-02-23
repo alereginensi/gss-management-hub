@@ -3,61 +3,69 @@ import path from 'path';
 import fs from 'fs';
 
 const PRODUCTION_DB_PATH = '/app/tickets.db';
-let dbPath = process.env.NODE_ENV === 'production'
-  ? path.resolve(PRODUCTION_DB_PATH)
-  : path.resolve(process.cwd(), 'tickets.db');
+const IS_PROD = process.env.NODE_ENV === 'production';
+let dbPath = IS_PROD ? '/app/data/tickets.db' : path.join(process.cwd(), 'tickets.db');
 
-// Fallback & Directory Strategy for Production
-if (process.env.NODE_ENV === 'production') {
-  console.log(`🔍 Current User: ${require('os').userInfo().username} (UID: ${process.getuid?.()})`);
+if (IS_PROD) {
+  console.log(`🔍 CURRENT USER: ${require('os').userInfo().username} (UID: ${process.getuid?.()})`);
 
   try {
-    // 1. Check if the path is a directory (Railway volume mount)
-    if (fs.existsSync(dbPath) && fs.lstatSync(dbPath).isDirectory()) {
-      const files = fs.readdirSync(dbPath);
-      const dbFiles = files.filter(f => f.endsWith('.db'));
-
-      let targetFile = '';
-      if (dbFiles.includes('tickets.db')) {
-        targetFile = 'tickets.db';
-      } else if (dbFiles.includes('gss.db')) {
-        targetFile = 'gss.db';
-      } else if (dbFiles.length > 0) {
-        targetFile = dbFiles[0];
-      } else {
-        targetFile = 'tickets.db';
-      }
-
-      console.log(`ℹ️ Detected DB mount is a directory (${dbPath}). Files found: [${files.join(', ')}]. Choosing: ${targetFile}`);
-      dbPath = path.join(dbPath, targetFile);
-    } else {
-      // 2. Ensure parent directory exists for single-file mount or default path
-      const dbDir = path.dirname(dbPath);
-      if (!fs.existsSync(dbDir)) {
-        console.log(`📁 Creating missing directory: ${dbDir}`);
-        fs.mkdirSync(dbDir, { recursive: true });
+    // 1. Recursive Search: If the expected DB doesn't exist, search for ANY existing .db file
+    // This helps if the volume was mounted at a different subpath
+    if (!fs.existsSync(dbPath)) {
+      console.log(`📡 DB not found at ${dbPath}, searching recursively in /app...`);
+      const searchForDb = (dir: string): string | null => {
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+          const fullPath = path.join(dir, file);
+          if (fullPath.includes('node_modules')) continue;
+          const stats = fs.statSync(fullPath);
+          if (stats.isDirectory()) {
+            const found = searchForDb(fullPath);
+            if (found) return found;
+          } else if (file.endsWith('.db') && stats.size > 0) {
+            return fullPath;
+          }
+        }
+        return null;
+      };
+      const discoveredDb = searchForDb('/app');
+      if (discoveredDb) {
+        console.log(`✨ DISCOVERED existing database at: ${discoveredDb}`);
+        dbPath = discoveredDb;
       }
     }
 
-    // 3. Robust Write Check: Verify we can actually write to the target file's location
-    const testFile = `${dbPath}.test`;
+    // 2. Standardize Directory
+    const dbDir = path.dirname(dbPath);
+    if (!fs.existsSync(dbDir)) {
+      console.log(`📁 Creating missing directory: ${dbDir}`);
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+
+    // 3. Robust Write Check
+    const testFile = path.join(dbDir, `.write_test_${Date.now()}`);
     try {
       fs.writeFileSync(testFile, 'write test');
       fs.unlinkSync(testFile);
-      console.log(`✅ Write check passed for ${dbPath}`);
+      console.log(`✅ Write check passed for directory: ${dbDir}`);
     } catch (writeErr: any) {
-      console.error(`❌ CRITICAL: No write permissions at ${dbPath}. Error: ${writeErr.message}`);
-      // We don't throw here yet, better-sqlite3 will throw if it can't open anyway,
-      // but we've logged a clear reason.
+      console.error(`❌ CRITICAL: No write permissions at ${dbDir}. Error: ${writeErr.message}`);
+    }
+
+    // 4. Inode Tracking
+    if (fs.existsSync(dbPath)) {
+      const stats = fs.statSync(dbPath);
+      console.log(`📄 Database Inode: ${stats.ino} | Size: ${stats.size} bytes`);
     }
   } catch (err: any) {
     console.error(`⚠️ Warning during path discovery: ${err.message}`);
   }
 }
 
-console.log(`🚀 Database target path: ${dbPath}`);
+console.log(`🚀 Final Database Path: ${dbPath}`);
 
-let db: Database.Database;
+let db: any;
 
 try {
   db = new Database(dbPath, { verbose: console.log });
@@ -66,9 +74,7 @@ try {
   console.error('❌ FATAL: Failed to connect to database at', dbPath);
   console.error('Error details:', error.message);
 
-  if (process.env.NODE_ENV === 'production') {
-    // In production, we MUST NOT use :memory: if persistent DB fails.
-    // It's better to crash so Railway shows the error in logs.
+  if (IS_PROD) {
     throw new Error(`Persistence failure: Could not open database at ${dbPath}. ${error.message}`);
   } else {
     console.warn('Falling back to IN-MEMORY database (Development mode only).');

@@ -29,8 +29,20 @@ export async function GET() {
 
         // Check root and mount point with detailed stats
         try {
+            // 3. Deep System Auditing (Railway/Linux specific)
+            try {
+                if (fs.existsSync('/proc/mounts')) {
+                    debugInfo.fs.mounts = fs.readFileSync('/proc/mounts', 'utf8')
+                        .split('\n')
+                        .filter(line => line.includes('/app') || line.includes('/data') || line.includes('tickets.db'));
+                }
+            } catch (e: any) {
+                debugInfo.fs.mounts = `Error reading mounts: ${e.message}`;
+            }
+
             const listDirDetailed = (dir: string) => {
                 try {
+                    if (!fs.existsSync(dir)) return `Directory ${dir} does not exist`;
                     return fs.readdirSync(dir).map(file => {
                         const fullPath = path.join(dir, file);
                         const stats = fs.statSync(fullPath);
@@ -40,6 +52,7 @@ export async function GET() {
                             uid: stats.uid,
                             gid: stats.gid,
                             mode: stats.mode.toString(8),
+                            ino: stats.ino,
                             isDir: stats.isDirectory()
                         };
                     });
@@ -49,6 +62,32 @@ export async function GET() {
             };
 
             debugInfo.fs.rootDetailed = listDirDetailed('/app');
+            debugInfo.fs.appDir = listDirDetailed('/app');
+            debugInfo.fs.dataDir = listDirDetailed('/app/data');
+
+            // 4. Try to find ANY database file in the entire /app tree
+            const findDatabases = (dir: string, results: any[] = []) => {
+                try {
+                    const files = fs.readdirSync(dir);
+                    for (const file of files) {
+                        const fullPath = path.join(dir, file);
+                        if (fullPath.includes('node_modules')) continue;
+                        const stats = fs.statSync(fullPath);
+                        if (stats.isDirectory()) {
+                            findDatabases(fullPath, results);
+                        } else if (file.endsWith('.db') && stats.size > 0) {
+                            results.push({
+                                path: fullPath,
+                                size: stats.size,
+                                mtime: stats.mtime,
+                                ino: stats.ino
+                            });
+                        }
+                    }
+                } catch (e) { }
+                return results;
+            };
+            debugInfo.foundDatabases = findDatabases('/app');
 
             if (fs.existsSync('/app/tickets.db')) {
                 const stats = fs.statSync('/app/tickets.db');
