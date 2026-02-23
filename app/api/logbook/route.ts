@@ -37,8 +37,8 @@ export async function POST(req: Request) {
         const items = Array.isArray(body) ? body : [body];
 
         const insertSql = `
-            INSERT INTO logbook (date, sector, supervisor, location, report, staff_member, uniform, extra_data, supervised_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO logbook (date, sector, supervisor, location, incident, report, staff_member, uniform, extra_data, supervised_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         // Use a transaction for multiple inserts
@@ -49,6 +49,7 @@ export async function POST(req: Request) {
                     entry.sector,
                     entry.supervisor,
                     entry.location,
+                    entry.incident || '',
                     entry.report || '',
                     entry.staff_member || '',
                     entry.uniform || '',
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
-        const { id, date, sector, supervisor, location, report, staff_member, uniform, extra_data, supervised_by } = body;
+        const { id, date, sector, supervisor, location, incident, report, staff_member, uniform, extra_data, supervised_by } = body;
 
         if (!id) {
             return NextResponse.json({ error: 'ID is required' }, { status: 400 });
@@ -76,7 +77,7 @@ export async function PUT(req: Request) {
 
         const update = db.prepare(`
             UPDATE logbook 
-            SET date = ?, sector = ?, supervisor = ?, location = ?, report = ?, staff_member = ?, uniform = ?, extra_data = ?, supervised_by = ?
+            SET date = ?, sector = ?, supervisor = ?, location = ?, incident = ?, report = ?, staff_member = ?, uniform = ?, extra_data = ?, supervised_by = ?
             WHERE id = ?
         `);
 
@@ -85,6 +86,7 @@ export async function PUT(req: Request) {
             sector,
             supervisor,
             location,
+            incident || '',
             report || '',
             staff_member || '',
             uniform || '',
