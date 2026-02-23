@@ -4,21 +4,18 @@
 
 set -e
 
-DATA_DIR="/app/data"
-DB_FILE="$DATA_DIR/tickets.db"
+DATA_DIR="/app"
+DB_FILE="/app/tickets.db"
 
 echo "=== GSS Management Hub Startup ==="
-echo "DATA_DIR: $DATA_DIR"
+echo "Working directory: $DATA_DIR"
 
-# Ensure /app/data directory exists (in case volume isn't mounted)
-mkdir -p "$DATA_DIR" 2>/dev/null || true
-
-# Check if the volume is properly mounted
-if df "$DATA_DIR" | grep -q "overlay"; then
-  echo "⚠️  WARNING: /app/data is on overlay filesystem (ephemeral - data will be lost on redeploy)"
-  echo "   Please configure a Railway volume mounted at /app/data"
+# Check if the DB file is on a persistent volume (or the directory containing it)
+if df "$DB_FILE" 2>/dev/null | grep -q "overlay" || df "$DATA_DIR" | grep -q "overlay"; then
+  echo "⚠️  WARNING: Database location is on overlay filesystem (ephemeral)"
+  echo "   Please ensure a Railway volume is mounted at /app/tickets.db"
 else
-  echo "✅ /app/data is on a persistent filesystem"
+  echo "✅ Database location is on a persistent filesystem"
 fi
 
 echo "DB path: $DB_FILE"
