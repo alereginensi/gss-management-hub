@@ -33,8 +33,13 @@ export async function middleware(request: NextRequest) {
     }
 
     // 2. Check for session cookie
-    // 2. Check for session cookie OR Authorization header
+    // 2. Check for session cookie OR auth_token cookie (client-set) OR Authorization header
     let session = request.cookies.get('session')?.value;
+
+    if (!session) {
+        // Also check for client-set auth_token cookie (set via document.cookie after login)
+        session = request.cookies.get('auth_token')?.value;
+    }
 
     if (!session) {
         // Fallback: Check Authorization header (Bearer token)
@@ -45,6 +50,9 @@ export async function middleware(request: NextRequest) {
     }
 
     if (!session) {
+        // Log all cookies for debugging
+        const allCookies = request.cookies.getAll();
+        console.log(`[Middleware] No auth found for ${pathname}. Cookies: ${JSON.stringify(allCookies.map(c => c.name))}, Auth-header: ${!!request.headers.get('Authorization')}`);
         if (pathname.startsWith('/api/')) {
             const response = NextResponse.json({ error: 'Unauthorized: No session found' }, { status: 401 });
             response.headers.set('X-Auth-Reason', 'missing_cookie_and_header');
