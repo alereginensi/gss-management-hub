@@ -7,13 +7,13 @@ export async function DELETE(req: Request) {
         const action = searchParams.get('action'); // 'clear_entries' or 'reset_all'
 
         if (action === 'clear_entries') {
-            db.prepare('DELETE FROM logbook').run();
+            await db.prepare('DELETE FROM logbook').run();
             return NextResponse.json({ success: true, message: 'All entries cleared' });
         }
 
         if (action === 'reset_all') {
-            db.prepare('DELETE FROM logbook').run();
-            db.prepare('DELETE FROM logbook_columns').run();
+            await db.prepare('DELETE FROM logbook').run();
+            await db.prepare('DELETE FROM logbook_columns').run();
             return NextResponse.json({ success: true, message: 'List reset completely' });
         }
 

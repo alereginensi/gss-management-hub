@@ -4,7 +4,7 @@ import db from '@/lib/db';
 // GET all active roles
 export async function GET() {
     try {
-        const roles = db.prepare('SELECT * FROM job_roles WHERE active = 1 ORDER BY name ASC').all();
+        const roles = await db.prepare('SELECT * FROM job_roles WHERE active = 1 ORDER BY name ASC').all();
         // Parse tasks JSON
         const parsedRoles = roles.map((r: any) => ({
             ...r,
@@ -30,16 +30,16 @@ export async function POST(request: Request) {
         if (id) {
             // Update existing
             const stmt = db.prepare('UPDATE job_roles SET name = ?, tasks = ? WHERE id = ?');
-            stmt.run(name.trim(), tasksJson, id);
+            await stmt.run(name.trim(), tasksJson, id);
             return NextResponse.json({ id, name, tasks, active: 1 });
         } else {
             // Create new
             const stmt = db.prepare('INSERT INTO job_roles (name, tasks) VALUES (?, ?)');
-            const info = stmt.run(name.trim(), tasksJson);
+            const info = await stmt.run(name.trim(), tasksJson);
             return NextResponse.json({ id: info.lastInsertRowid, name: name.trim(), tasks, active: 1 });
         }
     } catch (error: any) {
-        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === '23505') {
             return NextResponse.json({ error: 'Role already exists' }, { status: 409 });
         }
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -57,7 +57,7 @@ export async function DELETE(request: Request) {
         }
 
         const stmt = db.prepare('UPDATE job_roles SET active = 0 WHERE id = ?');
-        stmt.run(id);
+        await stmt.run(id);
 
         return NextResponse.json({ success: true });
     } catch (error: any) {

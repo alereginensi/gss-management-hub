@@ -7,20 +7,21 @@ export async function GET(request: Request) {
     const offset = parseInt(searchParams.get('offset') || '0');
 
     try {
-        const entries = db.prepare('SELECT * FROM logbook ORDER BY createdAt DESC LIMIT ? OFFSET ?').all(limit, offset);
-        const columns = db.prepare('SELECT * FROM logbook_columns').all();
-        const totalCount = db.prepare('SELECT count(*) as count FROM logbook').get() as { count: number };
+        const entries = await db.prepare('SELECT * FROM logbook ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
+        const columns = await db.prepare('SELECT * FROM logbook_columns').all();
+        const totalCount = await db.prepare('SELECT count(*) as count FROM logbook').get() as { count: number };
 
         return NextResponse.json({
             entries: entries.map((e: any) => ({
                 ...e,
+                createdAt: e.created_at,
                 extra_data: e.extra_data ? JSON.parse(e.extra_data) : {}
             })),
             columns: columns.map((c: any) => ({
                 ...c,
                 options: c.options ? JSON.parse(c.options) : []
             })),
-            totalCount: totalCount.count
+            totalCount: totalCount?.count || 0
         });
     } catch (error) {
         console.error('Logbook GET Error:', error);
@@ -35,15 +36,15 @@ export async function POST(req: Request) {
         // Handle both single object and array of objects
         const items = Array.isArray(body) ? body : [body];
 
-        const insert = db.prepare(`
+        const insertSql = `
             INSERT INTO logbook (date, sector, supervisor, location, report, staff_member, uniform, extra_data, supervised_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
+        `;
 
         // Use a transaction for multiple inserts
-        const transaction = db.transaction((entries: any[]) => {
-            for (const entry of entries) {
-                insert.run(
+        await db.transaction(async (tx) => {
+            for (const entry of items) {
+                await tx.run(insertSql, [
                     entry.date,
                     entry.sector,
                     entry.supervisor,
@@ -53,11 +54,9 @@ export async function POST(req: Request) {
                     entry.uniform || '',
                     JSON.stringify(entry.extra_data || {}),
                     entry.supervised_by
-                );
+                ]);
             }
         });
-
-        transaction(items);
 
         return NextResponse.json({ success: true, count: items.length });
     } catch (error) {
@@ -81,7 +80,7 @@ export async function PUT(req: Request) {
             WHERE id = ?
         `);
 
-        update.run(
+        await update.run(
             date,
             sector,
             supervisor,

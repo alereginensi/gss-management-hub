@@ -11,7 +11,7 @@ export async function POST(request: Request) {
         }
 
         // 1. Try Power Automate Webhook first (Check DB settings then Env)
-        const settingsRows = db.prepare('SELECT * FROM settings WHERE key = ?').get('power_automate_url') as any;
+        const settingsRows = await db.prepare('SELECT * FROM settings WHERE key = ?').get('power_automate_url') as any;
         const powerAutomateUrl = settingsRows?.value || process.env.POWER_AUTOMATE_URL;
 
         console.log('Attempting notification. Power Automate URL:', powerAutomateUrl ? 'Found' : 'Not found');

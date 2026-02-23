@@ -21,16 +21,16 @@ export async function GET(request: NextRequest) {
 
         // Admins see all tickets
         if (userRole === 'admin') {
-            const rawTickets = db.prepare('SELECT * FROM tickets ORDER BY createdAt DESC').all() as any[];
-            const tickets = rawTickets.map(ticket => {
-                const collaborators = db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
+            const rawTickets = await db.prepare('SELECT * FROM tickets ORDER BY createdAt DESC').all() as any[];
+            const tickets = await Promise.all(rawTickets.map(async (ticket) => {
+                const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
                 return { ...ticket, collaboratorIds: collaborators.map(c => c.user_id) };
-            });
+            }));
             return NextResponse.json(tickets);
         }
 
         // Check if this user's email is in any department notification settings
-        const allSettings = db.prepare('SELECT key, value FROM settings WHERE key LIKE ?').all('notification_emails%') as { key: string; value: string }[];
+        const allSettings = await db.prepare('SELECT key, value FROM settings WHERE key LIKE ?').all('notification_emails%') as { key: string; value: string }[];
 
         const departmentsForUser: string[] = [];
         let hasGlobalAccess = false;
@@ -51,42 +51,61 @@ export async function GET(request: NextRequest) {
         }
 
         if (hasGlobalAccess) {
-            const rawTickets = db.prepare('SELECT * FROM tickets ORDER BY createdAt DESC').all() as any[];
-            const tickets = rawTickets.map(ticket => {
-                const collaborators = db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
+            const rawTickets = await db.prepare('SELECT * FROM tickets ORDER BY createdAt DESC').all() as any[];
+            const tickets = await Promise.all(rawTickets.map(async (ticket) => {
+                const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
                 return { ...ticket, collaboratorIds: collaborators.map(c => c.user_id) };
-            });
+            }));
             return NextResponse.json(tickets);
         }
 
         if (departmentsForUser.length > 0) {
             const placeholders = departmentsForUser.map(() => '?').join(', ');
-            const tickets = db.prepare(`
+            const tickets = await db.prepare(`
                 SELECT DISTINCT t.* FROM tickets t
                 LEFT JOIN ticket_collaborators tc ON t.id = tc.ticket_id
                 WHERE t.department IN (${placeholders})
                    OR tc.user_id = ?
-                   OR t.requesterEmail = ?
+                   OR t.requester_email = ?
                    OR (t.supervisor = ? AND t.supervisor IS NOT NULL AND t.supervisor != '')
-                ORDER BY t.createdAt DESC
+                ORDER BY t.created_at DESC
             `).all(...departmentsForUser, userId, userEmail, session.user.name);
-            return NextResponse.json(tickets);
+
+            // Map snake_case to camelCase
+            const mappedTickets = tickets.map((t: any) => ({
+                ...t,
+                statusColor: t.status_color,
+                createdAt: t.created_at,
+                startedAt: t.started_at,
+                resolvedAt: t.resolved_at,
+                affectedWorker: t.affected_worker
+            }));
+
+            return NextResponse.json(mappedTickets);
         }
 
         // Default: user sees only tickets they created, are collaborators on, or are assigned supervisor
-        const rawTickets = db.prepare(`
+        const rawTickets = await db.prepare(`
             SELECT DISTINCT t.* FROM tickets t
             LEFT JOIN ticket_collaborators tc ON t.id = tc.ticket_id
-            WHERE t.requesterEmail = ?
+            WHERE t.requester_email = ?
                OR tc.user_id = ?
                OR (t.supervisor = ? AND t.supervisor IS NOT NULL AND t.supervisor != '')
-            ORDER BY t.createdAt DESC
+            ORDER BY t.created_at DESC
         `).all(userEmail, userId, session.user.name) as any[];
 
-        const tickets = rawTickets.map(ticket => {
-            const collaborators = db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
-            return { ...ticket, collaboratorIds: collaborators.map(c => c.user_id) };
-        });
+        const tickets = await Promise.all(rawTickets.map(async (ticket) => {
+            const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
+            return {
+                ...ticket,
+                collaboratorIds: collaborators.map(c => c.user_id),
+                statusColor: ticket.status_color,
+                createdAt: ticket.created_at,
+                startedAt: ticket.started_at,
+                resolvedAt: ticket.resolved_at,
+                affectedWorker: ticket.affected_worker
+            };
+        }));
 
         return NextResponse.json(tickets);
     } catch (error: any) {
@@ -105,19 +124,20 @@ export async function POST(request: Request) {
         }
 
         // Generate ID using a transaction and the counters table
-        const newId = db.transaction(() => {
+        let newId = '';
+        await db.transaction(async (tx) => {
             // Increment counter
-            db.prepare("UPDATE counters SET value = value + 1 WHERE key = 'ticket_id'").run();
+            await tx.run("UPDATE counters SET value = value + 1 WHERE key = 'ticket_id'");
             // Get new value
-            const counter = db.prepare("SELECT value FROM counters WHERE key = 'ticket_id'").get() as { value: number };
-            return counter.value.toString();
-        })();
+            const counter = await tx.get("SELECT value FROM counters WHERE key = 'ticket_id'") as { value: number };
+            newId = counter.value.toString();
+        });
 
         const stmt = db.prepare(`
             INSERT INTO tickets (
                 id, subject, description, department, priority, status,
-                requester, requesterEmail, affected_worker, date,
-                supervisor, statusColor, createdAt
+                requester, requester_email, affected_worker, date,
+                supervisor, status_color, created_at
             ) VALUES (
                 ?, ?, ?, ?, ?, ?,
                 ?, ?, ?, ?,
@@ -126,7 +146,7 @@ export async function POST(request: Request) {
         `);
 
         try {
-            stmt.run(
+            await stmt.run(
                 newId,
                 ticket.subject,
                 ticket.description || '',
@@ -145,8 +165,7 @@ export async function POST(request: Request) {
             console.error('Database Insertion Error:', insertError);
             return NextResponse.json({
                 error: 'Database error during ticket creation',
-                details: insertError.message,
-                sql: stmt.source
+                details: insertError.message
             }, { status: 500 });
         }
 
