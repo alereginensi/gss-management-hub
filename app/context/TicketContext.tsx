@@ -66,7 +66,7 @@ export interface User {
 
 interface TicketContextType {
     tickets: Ticket[];
-    addTicket: (ticket: Omit<Ticket, 'id' | 'date' | 'priorityColor' | 'statusColor'>) => void;
+    addTicket: (ticket: Omit<Ticket, 'id' | 'date' | 'priorityColor' | 'statusColor'>) => Promise<void>;
     updateTicketStatus: (ticketId: string, newStatus: 'Nuevo' | 'En Progreso' | 'Resuelto') => void;
     searchQuery: string;
     setSearchQuery: (query: string) => void;
@@ -371,14 +371,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         setCurrentUser(null);
     };
 
-    const addTicket = (ticketData: Omit<Ticket, 'id' | 'date' | 'priorityColor' | 'statusColor'>) => {
-        // Safe ID generation
-        const numericIds = tickets
-            .map(t => parseInt(t.id))
-            .filter(id => !isNaN(id) && isFinite(id));
-
-        const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 99; // Start at 100 if empty
-        const newId = (maxId + 1).toString();
+    const addTicket = async (ticketData: Omit<Ticket, 'id' | 'date' | 'priorityColor' | 'statusColor'>): Promise<void> => {
         const now = new Date();
         const dateStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
@@ -394,9 +387,9 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             'Resuelto': 'var(--status-resolved)'
         };
 
-        const newTicket: Ticket = {
+        // Build ticket without ID — the server will assign it
+        const ticketPayload = {
             ...ticketData,
-            id: newId,
             date: dateStr,
             priorityColor: priorityColors[ticketData.priority],
             statusColor: statusColors[ticketData.status],
@@ -407,30 +400,35 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             createdAt: now
         };
 
-        setTickets(prev => [newTicket, ...prev]);
+        try {
+            // Save to Database — server returns the real sequential ID
+            const res = await fetch('/api/tickets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(ticketPayload)
+            });
 
-        // Save to Database
-        fetch('/api/tickets', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newTicket)
-        }).catch(err => console.error('Error saving ticket:', err));
+            const result = await res.json();
+            if (!res.ok) {
+                console.error('Error saving ticket:', result);
+                return;
+            }
 
-        // Add In-App Notification
-        addNotification(newId, newTicket.subject, `Ticket creado exitosamente: ${newTicket.subject}`);
+            const newId: string = result.id;
+            const newTicket: Ticket = { ...ticketPayload, id: newId };
 
-        // Trigger real email notification via API
-        // Determine recipient emails: priority to department-specific setting, then global fallback
-        const deptEmailKey = `notification_emails_${newTicket.department}`.replace(/\s+/g, '_');
-        const emailString = systemSettings[deptEmailKey] || systemSettings.notification_emails || systemSettings.notification_email || '';
+            setTickets(prev => [newTicket, ...prev]);
 
-        const emailList = emailString
-            .split(',')
-            .map(e => e.trim())
-            .filter(e => e.length > 0);
+            // In-App Notification
+            addNotification(newId, newTicket.subject, `Ticket creado exitosamente: ${newTicket.subject}`);
 
-        if (emailList.length > 0) {
-            const emailBody = `
+            // Email notification
+            const deptEmailKey = `notification_emails_${newTicket.department}`.replace(/\s+/g, '_');
+            const emailString = systemSettings[deptEmailKey] || systemSettings.notification_emails || systemSettings.notification_email || '';
+            const emailList = emailString.split(',').map((e: string) => e.trim()).filter((e: string) => e.length > 0);
+
+            if (emailList.length > 0) {
+                const emailBody = `
 Se ha registrado una nueva solicitud en el portal:
 
 - Colaborador: ${newTicket.requester}
@@ -444,26 +442,29 @@ ${newTicket.affectedWorker ? `- Funcionario Afectado: ${newTicket.affectedWorker
 
 Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim();
 
-            fetch('/api/notify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    to: emailList,
-                    subject: `[NUEVO TICKET] ${newTicket.subject}`,
-                    body: emailBody,
-                    ticketData: {
-                        id: newTicket.id,
-                        requester: newTicket.requester,
-                        requesterEmail: currentUser?.email,
-                        affectedWorker: newTicket.affectedWorker,
-                        department: newTicket.department,
-                        subject: newTicket.subject,
-                        description: newTicket.description,
-                        priority: newTicket.priority,
-                        date: newTicket.date
-                    }
-                })
-            }).catch(err => console.error('Error triggering notification:', err));
+                fetch('/api/notify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        to: emailList,
+                        subject: `[NUEVO TICKET] ${newTicket.subject}`,
+                        body: emailBody,
+                        ticketData: {
+                            id: newId,
+                            requester: newTicket.requester,
+                            requesterEmail: currentUser?.email,
+                            affectedWorker: newTicket.affectedWorker,
+                            department: newTicket.department,
+                            subject: newTicket.subject,
+                            description: newTicket.description,
+                            priority: newTicket.priority,
+                            date: newTicket.date
+                        }
+                    })
+                }).catch(err => console.error('Error triggering notification:', err));
+            }
+        } catch (err) {
+            console.error('Error creating ticket:', err);
         }
     };
 
