@@ -332,20 +332,25 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const login = (userData: User) => {
-        setIsAuthenticated(true);
-        setCurrentUser(userData);
+    const login = (userData: User, token?: string) => {
+        // CRITICAL: Save token BEFORE calling refreshData so getAuthHeaders() works
+        if (token) {
+            localStorage.setItem('authToken', token);
+        }
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('user', JSON.stringify(userData));
-        // Give time for the cookie to be set in the browser jar
+        setIsAuthenticated(true);
+        setCurrentUser(userData);
+        // Give time for the cookie to be set in the browser jar before fetching data
         setTimeout(() => refreshData(), 500);
     };
 
     const logout = () => {
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('user');
+        localStorage.removeItem('authToken');
         setIsAuthenticated(false);
-        setCurrentUser({ id: 0, name: '', department: '', role: 'user' });
+        setCurrentUser(null);
     };
 
     const addTicket = (ticketData: Omit<Ticket, 'id' | 'date' | 'priorityColor' | 'statusColor'>) => {
