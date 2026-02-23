@@ -9,18 +9,20 @@ const DATABASE_URL = process.env.DATABASE_URL;
 class DbWrapper {
   private pgPool: Pool | null = null;
   private sqliteDb: any | null = null;
-  private type: 'pg' | 'sqlite' = 'sqlite';
+  public type: 'pg' | 'sqlite' = 'sqlite';
 
   constructor() {
-    if (DATABASE_URL) {
-      console.log('🐘 Connecting to PostgreSQL...');
+    const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+
+    if (dbUrl) {
+      console.log('🐘 PostgreSQL URL detected, connecting...');
       this.pgPool = new Pool({
-        connectionString: DATABASE_URL,
+        connectionString: dbUrl,
         ssl: { rejectUnauthorized: false }
       });
       this.type = 'pg';
     } else {
-      console.log('📂 Connecting to SQLite...');
+      console.log('⚠️ No DATABASE_URL found. Falling back to SQLite.');
       const dbPath = IS_PROD ? '/app/data/tickets.db' : path.join(process.cwd(), 'tickets.db');
 
       // Ensure directory exists for SQLite
