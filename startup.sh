@@ -14,13 +14,15 @@ echo "Working directory: $(pwd)"
 # Create data directory if it doesn't exist
 mkdir -p "$DATA_DIR"
 
-# Check if the DB file is on a persistent volume
-if mount | grep -q "$DATA_DIR"; then
-  echo "✅ Database location ($DATA_DIR) is a MOUNTED volume"
+# Check if the DB file is on a persistent volume (Only relevant for SQLite)
+if [ -z "$DATABASE_URL" ]; then
+  if mount | grep -q "$DATA_DIR"; then
+    echo "✅ Database location ($DATA_DIR) is a MOUNTED volume"
+  else
+    echo "⚠️  WARNING: $DATA_DIR is NOT a mounted volume. Data will be LOST on redeploy (SQLite fallback)."
+  fi
 else
-  echo "⚠️  WARNING: $DATA_DIR is NOT a mounted volume. Data will be LOST on redeploy."
-  echo "Current mounts:"
-  mount | grep " /"
+  echo "🐘 Using PostgreSQL (DATABASE_URL found). SQLite persistence is optional."
 fi
 
 echo "DB target path: $DB_FILE"
