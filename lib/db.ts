@@ -130,6 +130,7 @@ class DbWrapper {
         sector TEXT,
         supervisor TEXT,
         location TEXT,
+        incident TEXT,
         report TEXT,
         staff_member TEXT,
         uniform TEXT,
