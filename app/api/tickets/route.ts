@@ -149,7 +149,12 @@ export async function POST(request: Request) {
 
             if (!counter) {
                 // Try to initialize from existing tickets max ID or default to 1000
-                const maxTicket = await tx.get("SELECT id FROM tickets WHERE id ~ '^[0-9]+$' ORDER BY id::integer DESC LIMIT 1") as { id: string };
+                const isPg = (db as any).type === 'pg';
+                const maxIdQuery = isPg
+                    ? "SELECT id FROM tickets WHERE id ~ '^[0-9]+$' ORDER BY id::integer DESC LIMIT 1"
+                    : "SELECT id FROM tickets WHERE id GLOB '[0-9]*' ORDER BY CAST(id AS INTEGER) DESC LIMIT 1";
+
+                const maxTicket = await tx.get(maxIdQuery) as { id: string };
                 const startVal = maxTicket ? parseInt(maxTicket.id) + 1 : 1000;
                 await tx.run("INSERT INTO counters (key, value) VALUES ('ticket_id', ?)", [startVal]);
                 newId = startVal.toString();
