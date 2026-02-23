@@ -27,14 +27,39 @@ export async function GET() {
             }
         };
 
-        // Check root and mount point
+        // Check root and mount point with detailed stats
         try {
-            debugInfo.fs.rootContent = fs.readdirSync('/app');
+            const listDirDetailed = (dir: string) => {
+                try {
+                    return fs.readdirSync(dir).map(file => {
+                        const fullPath = path.join(dir, file);
+                        const stats = fs.statSync(fullPath);
+                        return {
+                            name: file,
+                            size: stats.size,
+                            uid: stats.uid,
+                            gid: stats.gid,
+                            mode: stats.mode.toString(8),
+                            isDir: stats.isDirectory()
+                        };
+                    });
+                } catch (e: any) {
+                    return `Error: ${e.message}`;
+                }
+            };
+
+            debugInfo.fs.rootDetailed = listDirDetailed('/app');
+
             if (fs.existsSync('/app/tickets.db')) {
                 const stats = fs.statSync('/app/tickets.db');
-                debugInfo.fs.mountIsDirectory = stats.isDirectory();
+                debugInfo.fs.mountStats = {
+                    uid: stats.uid,
+                    gid: stats.gid,
+                    mode: stats.mode.toString(8),
+                    isDir: stats.isDirectory()
+                };
                 if (stats.isDirectory()) {
-                    debugInfo.fs.mountContent = fs.readdirSync('/app/tickets.db');
+                    debugInfo.fs.mountDetailed = listDirDetailed('/app/tickets.db');
                 }
             }
         } catch (e: any) {
