@@ -30,8 +30,107 @@ export default function AttendancePage() {
     const [filterLocation, setFilterLocation] = useState('');
     const [filterRubro, setFilterRubro] = useState('');
     const [filterSector, setFilterSector] = useState('');
-    const [locations, setLocations] = useState<any[]>([]);
     const [roles, setRoles] = useState<any[]>([]);
+
+    // Mismos clientes y sectores que la bitácora
+    const CLIENT_SECTOR_MAP: Record<string, string[]> = {
+        'AMEC': [],
+        'Arcanus': ['Durazno'],
+        'Automotora Carrica': ['Bulevar Artigas', 'Av. Millan'],
+        'Banco de Seguro': ['Casa Central', 'Bulevar Artigas', 'Casa Central - Garaje'],
+        'Bas': ['Melo (506)', 'Florida (509)', 'San Jose (531)', 'Fray Bentos (532)', 'Durazno (515)', 'Minas (520)', 'Colonia (523)', 'Mercedes (518)', 'Trinidad (517)', '8 de octubre (511)'],
+        'Berdick': ['Planta', 'Portero', 'Planta Nueva', 'Oficina'],
+        'Capacitación Limpieza': [],
+        'Carolina Mangarelli': ['Lagomar'],
+        'Carrica automotores': ['Puente de las Americas', 'Prado'],
+        'Casa Valentin': [],
+        'Casas Lagomar': ['Graciela Garcia', 'Carolina Mangarelli', 'Martha Garcia'],
+        'Casmu': [
+            'Sanatorio 2 Torre 1 Piso 6', 'Sanatorio 2 Torre 2 Piso 2', 'Sanatorio 2 Torre 2 Urgencia',
+            'Sanatorio 2 Policlinico', 'Sanatorio 2 Torre 1 Piso 4', 'Sanatorio 2 Torre 1 Piso 3',
+            'Sanatorio 2 Torre 1 Piso 5', 'Sanatorio 2 Torre 2', 'Sanatorio 2 Torre 1 Piso 2',
+            'Sanatorio 2 Ropería', 'Sanatorio 2 Asilo', 'Sanatorio 2 Torre 1 Piso 1',
+            'Sanatorio 2', 'Sanatorio 2 Torre 2 Urgencia Ginecológica', 'Sanatorio 2 Torre 1',
+            'Sanatorio 2 Torre 2 Cuartos Medicos', 'Sanatorio 2 Torre 1 Punta', 'Sanatorio 2 Centro Mamario',
+            'Sanatorio 2 Torre 2 Abreu', 'Sanatorio 2 Torre 2 PB y Sub', 'Sanatorio 2 Local 8',
+            'Sanatorio 2 Asilo Almacenes', 'Sanatorio 2 Policlinico Tomógrafo',
+            'Sanatorio 2 Torre 2 Urgencia Pediátrica', 'Sanatorio 2 Torre 2 Piso 5',
+            'Sanatorio 2 Local 8 Lavado de Móviles', 'Sanatorio 2 Torre 2 Piso 1', 'Sanatorio 2 Torre 2 SOE',
+            'Sanatorio 2 Asilo Pañol', 'Sanatorio 2 Asilo Contact Center', 'Sanatorio 2 Torre 2 Cocina',
+            'Sanatorio 2 Asilo Medicamentos', 'Sanatorio 2 Piscina', 'Sanatorio 2 Torre 2 Piso 3',
+            'Sanatorio 2 Taller Veracierto', 'Sanatorio 2 Cabina Abreu',
+            'Upeca Portones', 'Sanatorio 1 Odontología', 'Sanatorio 4', 'Sanatorio 1',
+            'Upeca Maldonado', 'Upeca Punta Carretas', '1727 Bv Artigas 1910', 'Upeca Paso de la Arena',
+            'Sanatorio 4 Oncologia', '1727 Agraciada', 'Upeca Colon', '1727 Malvin Norte',
+            'Sanatorio 4 Centro Medico', 'Upeca Solymar', 'Taller Central Veracierto', '1727 Solymar',
+            'Upeca Cerro', 'Upeca Guana', 'Upeca Cordon', 'Sanatorio 1 Salud Mental',
+            'Upeca Paso Carrasco', 'Upeca Agraciada', 'Upeca Piriapolis', 'Upeca Piedras Blancas',
+            'Upeca Parque Posadas', 'Upeca UAM', 'Upeca Parque Batlle', 'Centro Oftalmologico',
+            '1727 Colon', 'Upeca Tres cruces', 'Sanatorio 1 Vacunacion', '1727 Piedras Blancas',
+            'Upeca Sur y Palermo', 'Sanatorio 1 Farmacia', 'Upeca Malvin Norte',
+            'Sanatorio 1 - Adicional Upeca Cordon', '1727 Paso de la arena',
+            'Sanatorio 4 Hemodialisis', 'Referente Vigilante Auxiliar', 'Monitoreo',
+            'Deposito Cerro Adicional', 'Sanatorio 1 Cabina', 'Sanatorio Torre 1',
+            'Guana Centro Oftalmologico', 'Solymar (movil 15)', '1727 Bv. Artigas',
+            'Sanatorio 2 Salud Mental', 'Sanatorio 2 Cabina Asilo', 'Punta Carretas',
+            'Sanatorio 2 CTI', 'Centro Mamario', 'Upeca Barrio Sur y Palermo',
+            'Malvin Alto (movil 1)', 'Colon (movil 9)', 'Piedras Blancas (movil 7)',
+            'Paso de la Arena (movil 8)', 'Tres Cruces (movil 2)', 'Tres Cruces (movil 5)',
+            'Tres Cruces (movil 3)', 'Prado (movil 30)', 'Centro Oftalmologico Guana',
+            'Prado (movil 4)', 'Solymar (movil 40)'
+        ],
+        'Celia': ['Limpieza'],
+        'CES Seguridad': ['Grito de Gloria'],
+        'Ciudad Pinturas': ['Giannatassio'],
+        'Claro': [
+            'CAC Paso Molino', 'Mini CAC Las Piedras', 'Mini CAC Minas', 'CAC Costa Urbana',
+            'Isla Shopping Geant', 'Mini CAC Mercedes', 'Mini CAC Rivera', 'Mini CAC Florida',
+            'CAC 18 De Julio', 'Mini CAC Tacuarembo', 'Mini CAC Artigas', 'CAC Paysandú',
+            'CAC Salto', 'CAC Unión', 'Isla Nuevo Centro', 'Isla Tres Cruces', 'CAC Maldonado',
+            'San Martin Edificio Corporativo', 'Mini CAC Pando', 'Isla Punta Carretas',
+            'Isla Portones Shopping', 'Atlántida', 'Isla Montevideo Shopping'
+        ],
+        'Clinica Lura': [],
+        'Cooke Uruguay': [],
+        'Decosol': ['Via Disegno', 'Bagno & Company Av. Italia'],
+        'Edificio Amezaga': [],
+        'Edificio Charrua': ['Barbacoa'],
+        'Edificio Paullier': [],
+        'Edificio San Martin': [],
+        'Edificio Thays': [],
+        'Glic Global': ['Tienda Online'],
+        'Hif Global': [],
+        'Hospital BSE': [],
+        'Hotel Ibis': [],
+        'Indian': ['Atlantico', 'Punta Market Punta del Este', 'Fragata', 'Punta Shopping', 'Gorlero', 'Ariel', 'Portones', 'Maldonado', 'Montevideo Shopping'],
+        'INDIAN Chic Parisien': ['Salto', 'Tacuarembo'],
+        'L&G': [],
+        'La Molienda': ['Sarandi', 'Ejido', 'Rondeau Cocina', '18 de Julio', 'Rondeau Oficina', 'Uruguay'],
+        'La Molienda Colonia': [],
+        'Lactosan': [],
+        'Logitech': [],
+        'Mayorista el As': [],
+        'Microlab': [],
+        'Mundo Mac': ['Punta Shopping'],
+        'Nedabal': [],
+        'Nutriem Latam': [],
+        'Obra GSS': [],
+        'Plaza Correo': [],
+        'Porto vanila': ['Planta elaboradora'],
+        'Rawer Ltda': [],
+        'Riven SRL': ['Clínica Dental Br. Artigas'],
+        'Schmidt Premoldeados': ['Obra'],
+        'Silber Studio': [],
+        'Tata': ['Young (152)', 'Trinidad (145)', 'Trinidad (335)', 'San Jose (121)', 'Florida (315)', 'Mercedes (317)'],
+        'Teyma': ['Fac. Enfermería'],
+        'Tort Itda': ['2do Local'],
+        'UDE': ['Punta Del Este'],
+        'Veiga Ventos': ['Via Disegno'],
+        'Viavip': ['Smart Parking'],
+        'Wine Select': ['Vinos del Mundo'],
+    };
+    const availableClients = Object.keys(CLIENT_SECTOR_MAP).sort();
+    const getSectorsForClient = (client: string): string[] => CLIENT_SECTOR_MAP[client] || [];
 
     useEffect(() => {
         if (currentUser?.id) {
@@ -42,11 +141,7 @@ export default function AttendancePage() {
 
     const fetchFilters = async () => {
         try {
-            const [locRes, roleRes] = await Promise.all([
-                fetch('/api/config/locations'),
-                fetch('/api/config/roles')
-            ]);
-            if (locRes.ok) setLocations(await locRes.json());
+            const roleRes = await fetch('/api/config/roles');
             if (roleRes.ok) setRoles(await roleRes.json());
         } catch (error) {
             console.error('Error fetching filters:', error);
@@ -195,12 +290,6 @@ export default function AttendancePage() {
         setExpandedRow(expandedRow === id ? null : id);
     };
 
-    // Helper to get sectors for selected location
-    const getSectorsForLocation = (locName: string) => {
-        const location = locations.find(l => l.name === locName);
-        return location?.sectors || [];
-    };
-
     if (currentUser?.role !== 'admin' && currentUser?.role !== 'supervisor') {
         return <div style={{ padding: '2rem', textAlign: 'center' }}>Acceso denegado</div>;
     }
@@ -233,6 +322,7 @@ export default function AttendancePage() {
 
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                             <Filter size={20} color="var(--accent-color)" />
+                            <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>Cliente:</label>
                             <select
                                 value={filterLocation}
                                 onChange={(e) => {
@@ -241,23 +331,24 @@ export default function AttendancePage() {
                                 }}
                                 style={{ padding: '0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)' }}
                             >
-                                <option value="">Todos los Lugares</option>
-                                {locations.map(loc => (
-                                    <option key={loc.id} value={loc.name}>{loc.name}</option>
+                                <option value="">Todos los Clientes</option>
+                                {availableClients.map(cl => (
+                                    <option key={cl} value={cl}>{cl}</option>
                                 ))}
                             </select>
                         </div>
 
-                        {filterLocation && getSectorsForLocation(filterLocation).length > 0 && (
+                        {filterLocation && getSectorsForClient(filterLocation).length > 0 && (
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                <label style={{ fontWeight: 600, fontSize: '0.85rem' }}>Sector:</label>
                                 <select
                                     value={filterSector}
                                     onChange={(e) => setFilterSector(e.target.value)}
                                     style={{ padding: '0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)' }}
                                 >
                                     <option value="">Todos los Sectores</option>
-                                    {getSectorsForLocation(filterLocation).map((sec: any) => (
-                                        <option key={sec.id} value={sec.name}>{sec.name}</option>
+                                    {getSectorsForClient(filterLocation).map((sec: string) => (
+                                        <option key={sec} value={sec}>{sec}</option>
                                     ))}
                                 </select>
                             </div>
