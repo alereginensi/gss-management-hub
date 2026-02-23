@@ -313,13 +313,17 @@ async function migrate() {
 
         // 13. Migrate Counters
         console.log('🔢 Migrating counters...');
-        const counters = sqlite.prepare('SELECT * FROM counters').all();
-        for (const count of counters) {
-            const { key, value } = count as any;
-            await pg.query(
-                'INSERT INTO counters (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
-                [key, value]
-            );
+        try {
+            const counters = sqlite.prepare('SELECT * FROM counters').all();
+            for (const count of counters) {
+                const { key, value } = count as any;
+                await pg.query(
+                    'INSERT INTO counters (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value',
+                    [key, value]
+                );
+            }
+        } catch (e) {
+            console.log('ℹ️ No counters table found in SQLite, skipping migration (will initialize in Postgres).');
         }
 
         // Ensure ticket_id exists if not migrated

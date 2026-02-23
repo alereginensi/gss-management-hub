@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
+import db from '@/lib/db';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
 export async function GET() {
     try {
-        const dbModule = require('@/lib/db');
-        const activeDbPath = (dbModule.default as any)?.name || 'Unknown';
+        const activeDbPath = (db as any)?.name || 'Unknown';
 
         const debugInfo: any = {
             env: {
@@ -107,24 +107,23 @@ export async function GET() {
 
         // Try importing DB
         try {
-            const dbModule = require('@/lib/db');
-            const dbInstance = dbModule.default;
             debugInfo.dbStatus = 'Imported successfully';
-            debugInfo.dbType = dbInstance?.type || 'unknown';
+            debugInfo.dbType = db?.type || 'unknown';
+            debugInfo.dbUrlFound = !!(process.env.DATABASE_URL || process.env.POSTGRES_URL);
 
             // basic query
-            if (dbInstance) {
+            if (db) {
                 try {
-                    const count = await dbInstance.prepare('SELECT count(*) as c FROM locations').get();
+                    const count = await db.prepare('SELECT count(*) as c FROM locations').get() as any;
                     debugInfo.dbQuery = 'Success';
-                    debugInfo.rowCount = count;
+                    debugInfo.rowCount = count?.c || 0;
                 } catch (qError: any) {
                     debugInfo.dbQueryError = qError.message;
                 }
 
                 // Check if admin exists
                 try {
-                    const admin = await dbInstance.prepare('SELECT id, email, role, approved FROM users WHERE email = ?').get('admin@gss.com');
+                    const admin = await db.prepare('SELECT id, email, role, approved FROM users WHERE email = ?').get('admin@gss.com');
                     debugInfo.adminUser = admin || 'Not Found';
                 } catch (uError: any) {
                     debugInfo.adminCheckError = uError.message;
@@ -132,12 +131,12 @@ export async function GET() {
 
                 // List tables
                 try {
-                    const isPg = dbInstance.type === 'pg';
+                    const isPg = db.type === 'pg';
                     const tablesQuery = isPg
                         ? "SELECT table_name as name FROM information_schema.tables WHERE table_schema = 'public'"
                         : "SELECT name FROM sqlite_master WHERE type='table'";
 
-                    const tables = await dbInstance.prepare(tablesQuery).all();
+                    const tables = await db.prepare(tablesQuery).all();
                     debugInfo.tables = tables.map((t: any) => t.name || t.table_name);
                 } catch (tError: any) {
                     debugInfo.tableListError = tError.message;
