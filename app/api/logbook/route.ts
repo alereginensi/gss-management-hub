@@ -41,7 +41,7 @@ export async function POST(req: Request) {
         `);
 
         // Use a transaction for multiple inserts
-        const transaction = db.transaction((entries) => {
+        const transaction = db.transaction((entries: any[]) => {
             for (const entry of entries) {
                 insert.run(
                     entry.date,
