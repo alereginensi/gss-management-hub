@@ -19,6 +19,7 @@ export async function GET() {
         db_dir_exists: fs.existsSync(dbDir),
         db_file_exists: fs.existsSync(dbPath),
         db_connection_status: db ? 'Connected' : 'NULL (Failed)',
+        db_type: (db as any).type || 'unknown',
         directory_contents: {},
         write_test: 'Not attempted'
     };

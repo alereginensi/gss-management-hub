@@ -10,11 +10,11 @@ export async function POST(request: Request) {
         }
 
         const stmt = db.prepare('INSERT INTO sectors (name, location_id) VALUES (?, ?)');
-        const info = stmt.run(name.trim(), location_id);
+        const info = await stmt.run(name.trim(), location_id);
 
         return NextResponse.json({ id: info.lastInsertRowid, name: name.trim(), location_id });
     } catch (error: any) {
-        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === '23505') {
             return NextResponse.json({ error: 'Sector already exists for this location' }, { status: 409 });
         }
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -30,10 +30,10 @@ export async function DELETE(request: Request) {
 
         if (id) {
             const stmt = db.prepare('UPDATE sectors SET active = 0 WHERE id = ?');
-            stmt.run(id);
+            await stmt.run(id);
         } else if (location_id && name) {
             const stmt = db.prepare('UPDATE sectors SET active = 0 WHERE location_id = ? AND name = ?');
-            stmt.run(location_id, name);
+            await stmt.run(location_id, name);
         } else {
             return NextResponse.json({ error: 'ID or (Location ID + Name) required' }, { status: 400 });
         }

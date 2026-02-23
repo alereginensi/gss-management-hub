@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
             conditions.push("(department = ? OR supervisor = ?)");
             params.push(session.user.department, session.user.name);
         } else if (session.user.role === 'user') {
-            conditions.push("requesterEmail = ?");
+            conditions.push("requester_email = ?");
             params.push(session.user.email);
         }
 
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
         console.log(`[Export] Query: ${query}`);
         console.log(`[Export] Params:`, params);
 
-        const tickets = db.prepare(query).all(...params) as any[];
+        const tickets = await db.prepare(query).all(...params) as any[];
 
         // 3. Sort by Priority (Alta > Media > Baja) then Date DESC
         const priorityOrder: Record<string, number> = { 'Alta': 1, 'Media': 2, 'Baja': 3 };

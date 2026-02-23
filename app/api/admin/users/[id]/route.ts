@@ -21,14 +21,14 @@ export async function PUT(
         const { email, name, department, role, rubro, password } = body;
 
         // Verify user exists
-        const existingUser = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+        const existingUser = await db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
         if (!existingUser) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
         // If email is being changed, verify it's not already in use
         if (email && email !== (existingUser as any).email) {
-            const emailExists = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, userId);
+            const emailExists = await db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, userId);
             if (emailExists) {
                 return NextResponse.json({ error: 'Email already in use' }, { status: 400 });
             }
@@ -74,7 +74,7 @@ export async function PUT(
 
         // Execute update
         const query = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
-        db.prepare(query).run(...values);
+        await db.prepare(query).run(...values);
 
         return NextResponse.json({
             success: true,

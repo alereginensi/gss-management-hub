@@ -24,7 +24,7 @@ export async function POST(request: Request) {
         const hashedPassword = password ? await hashPassword(password) : '';
 
         const stmt = db.prepare('INSERT INTO users (name, email, password, department, role, approved, rubro) VALUES (?, ?, ?, ?, ?, ?, ?)');
-        const result = stmt.run(name, email, hashedPassword, department, userRole, approved, userRubro);
+        const result = await stmt.run(name, email, hashedPassword, department, userRole, approved, userRubro);
 
         return NextResponse.json({
             message: 'Usuario registrado exitosamente',
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
             user: { name, email, department, role: userRole, approved, rubro: userRubro }
         });
     } catch (error: any) {
-        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === '23505') {
             return NextResponse.json({ error: 'El email ya está registrado' }, { status: 400 });
         }
         console.error('Registration error:', error);

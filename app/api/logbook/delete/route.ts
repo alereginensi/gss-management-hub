@@ -14,7 +14,7 @@ export async function DELETE(req: Request) {
         const placeholders = ids.map(() => '?').join(',');
         const deleteStmt = db.prepare(`DELETE FROM logbook WHERE id IN (${placeholders})`);
 
-        deleteStmt.run(...ids);
+        await deleteStmt.run(...ids);
 
         return NextResponse.json({ success: true, deleted: ids.length });
     } catch (error) {
