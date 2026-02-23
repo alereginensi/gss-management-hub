@@ -4,13 +4,14 @@ import { getSession } from '@/lib/auth-server';
 import { NextRequest } from 'next/server';
 
 // GET /api/admin/users/[id]/workers — get workers assigned to a supervisor
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const session = await getSession(request);
     if (!session || session.user.role !== 'admin') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     try {
-        const supervisorId = parseInt(params.id);
+        const { id } = await params;
+        const supervisorId = parseInt(id);
         const rows = db.prepare(
             'SELECT worker_id FROM supervisor_worker WHERE supervisor_id = ?'
         ).all(supervisorId) as { worker_id: number }[];
@@ -21,13 +22,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 }
 
 // PUT /api/admin/users/[id]/workers — replace supervisor's assigned workers + department
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const session = await getSession(request);
     if (!session || session.user.role !== 'admin') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     try {
-        const supervisorId = parseInt(params.id);
+        const { id } = await params;
+        const supervisorId = parseInt(id);
         const { workerIds, department } = await request.json();
 
         // Sync supervisor_worker table
