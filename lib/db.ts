@@ -12,9 +12,23 @@ if (process.env.NODE_ENV === 'production') {
   try {
     if (fs.existsSync(dbPath) && fs.lstatSync(dbPath).isDirectory()) {
       // If the mount point is a directory (standard Railway behavior),
-      // we put the actual database file INSIDE it.
-      console.log(`ℹ️ Detected DB path is a directory (Volume mount). Using file inside: ${dbPath}/gss.db`);
-      dbPath = path.join(dbPath, 'gss.db');
+      // we search for the best candidate for the database file.
+      const files = fs.readdirSync(dbPath);
+      const dbFiles = files.filter(f => f.endsWith('.db'));
+
+      let targetFile = '';
+      if (dbFiles.includes('tickets.db')) {
+        targetFile = 'tickets.db';
+      } else if (dbFiles.includes('gss.db')) {
+        targetFile = 'gss.db';
+      } else if (dbFiles.length > 0) {
+        targetFile = dbFiles[0]; // Pick the first .db file found
+      } else {
+        targetFile = 'tickets.db'; // Default if empty
+      }
+
+      console.log(`ℹ️ Detected DB mount is a directory. Found ${dbFiles.length} .db files. Choosing: ${targetFile}`);
+      dbPath = path.join(dbPath, targetFile);
     } else {
       const dbDir = path.dirname(dbPath);
       if (!fs.existsSync(dbDir)) {

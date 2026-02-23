@@ -5,18 +5,19 @@ import os from 'os';
 
 export async function GET() {
     try {
+        const dbModule = require('@/lib/db');
+        const activeDbPath = (dbModule.default as any)?.name || 'Unknown';
+
         const debugInfo: any = {
             env: {
                 NODE_ENV: process.env.NODE_ENV,
                 PWD: process.cwd(),
             },
             paths: {
-                appData: '/app/data',
-                appDataExists: fs.existsSync('/app/data'),
+                mountPoint: '/app/tickets.db',
+                mountPointExists: fs.existsSync('/app/tickets.db'),
                 cwd: process.cwd(),
-                dbPath: process.env.NODE_ENV === 'production'
-                    ? path.resolve('/app/data/tickets.db')
-                    : path.resolve(process.cwd(), 'tickets.db')
+                activeDbPath: activeDbPath
             },
             fs: {},
             system: {
@@ -26,25 +27,18 @@ export async function GET() {
             }
         };
 
-        // Check /app/data permissions and content
-        if (fs.existsSync('/app/data')) {
-            try {
-                // @ts-ignore
-                debugInfo.fs.appDataStats = fs.statSync('/app/data');
-                // @ts-ignore
-                debugInfo.fs.appDataFiles = fs.readdirSync('/app/data');
-
-                // Try writing a test file
-                const testFile = '/app/data/write_test.txt';
-                fs.writeFileSync(testFile, 'test ' + new Date().toISOString());
-                debugInfo.fs.canWrite = true;
-                fs.unlinkSync(testFile);
-            } catch (e: any) {
-                debugInfo.fs.error = e.message;
-                debugInfo.fs.canWrite = false;
+        // Check root and mount point
+        try {
+            debugInfo.fs.rootContent = fs.readdirSync('/app');
+            if (fs.existsSync('/app/tickets.db')) {
+                const stats = fs.statSync('/app/tickets.db');
+                debugInfo.fs.mountIsDirectory = stats.isDirectory();
+                if (stats.isDirectory()) {
+                    debugInfo.fs.mountContent = fs.readdirSync('/app/tickets.db');
+                }
             }
-        } else {
-            debugInfo.fs.error = '/app/data does not exist';
+        } catch (e: any) {
+            debugInfo.fs.error = e.message;
         }
 
         // Try importing DB
