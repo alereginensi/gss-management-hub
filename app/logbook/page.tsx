@@ -948,7 +948,7 @@ export default function LogbookPage() {
                                                 type="button"
                                                 onClick={() => {
                                                     const sectors = getSectorsForLocation(newReportHeader.location);
-                                                    setReportItems([...reportItems, { sector: sectors[0]?.name || '', staff_member: '', uniform: UNIFORMS[0], report: '', extra_data: {} }]);
+                                                    setReportItems([...reportItems, { sector: sectors[0] || '', staff_member: '', uniform: UNIFORMS[0], report: '', extra_data: {} }]);
                                                 }}
                                                 className="btn btn-secondary"
                                                 style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
