@@ -224,6 +224,13 @@ class DbWrapper {
           );
           console.log('✅ Default admin created in Postgres');
         }
+
+        // Ensure ticket counter exists
+        const checkCounter = await this.pgPool!.query('SELECT * FROM counters WHERE key = $1', ['ticket_id']);
+        if (checkCounter.rows.length === 0) {
+          await this.pgPool!.query('INSERT INTO counters (key, value) VALUES ($1, $2)', ['ticket_id', 1000]);
+          console.log('✅ Ticket ID counter initialized in Postgres at 1000');
+        }
       } catch (err) {
         console.error('❌ Error initializing Postgres:', err);
       }
