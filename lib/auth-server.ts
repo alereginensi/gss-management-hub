@@ -36,23 +36,42 @@ export async function deleteSession() {
     cookieStore.set('session', '', { expires: new Date(0), path: '/' });
 }
 
-// getSession now checks both Cookie and Authorization Header
-export async function getSession() {
-    const cookieStore = await cookies();
-    let session = cookieStore.get('session')?.value;
+/**
+ * getSession - reads auth from cookie OR Authorization header.
+ *
+ * Pass the NextRequest object when calling from a route handler so the
+ * Authorization header can be read reliably (avoids dynamic import issues).
+ *
+ * Usage:
+ *   export async function GET(request: NextRequest) {
+ *     const session = await getSession(request);
+ *     ...
+ *   }
+ */
+export async function getSession(request?: NextRequest | Request): Promise<any> {
+    // 1. Try cookie first (works in both middleware and route handlers)
+    try {
+        const cookieStore = await cookies();
+        const cookieToken = cookieStore.get('session')?.value;
+        if (cookieToken) {
+            return await decrypt(cookieToken);
+        }
+    } catch {
+        // cookies() only works in certain server contexts; fall through to header check
+    }
 
-    if (!session) {
-        const headersList = await import('next/headers').then(mod => mod.headers());
-        const authHeader = headersList.get('Authorization');
+    // 2. Try Authorization header from the passed-in request object
+    if (request) {
+        const authHeader = request.headers.get('Authorization');
         if (authHeader && authHeader.startsWith('Bearer ')) {
-            session = authHeader.substring(7);
+            const token = authHeader.substring(7);
+            try {
+                return await decrypt(token);
+            } catch {
+                return null;
+            }
         }
     }
 
-    if (!session) return null;
-    try {
-        return await decrypt(session);
-    } catch (e) {
-        return null;
-    }
+    return null;
 }

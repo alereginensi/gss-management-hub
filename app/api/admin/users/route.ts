@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
-
 import { getSession } from '@/lib/auth-server';
+import { NextRequest } from 'next/server';
 
-export async function GET(request: Request) {
-    const session = await getSession();
+export async function GET(request: NextRequest) {
+    const session = await getSession(request);
     if (!session || (session.user.role !== 'admin' && session.user.role !== 'supervisor')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -21,8 +21,8 @@ export async function GET(request: Request) {
     }
 }
 
-export async function POST(request: Request) {
-    const session = await getSession();
+export async function POST(request: NextRequest) {
+    const session = await getSession(request);
     if (!session || (session.user.role !== 'admin' && session.user.role !== 'supervisor')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
