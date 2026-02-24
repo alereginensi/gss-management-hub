@@ -108,6 +108,7 @@ interface TicketContextType {
     deleteTicket: (ticketId: string) => Promise<boolean>;
     isSidebarOpen: boolean;
     toggleSidebar: () => void;
+    isMobile: boolean;
     pendingUsers: User[];
     fetchAllUsers: () => Promise<void>;
     loading: boolean;
@@ -140,6 +141,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     const [pendingUsers, setPendingUsers] = useState<User[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
+    const [isMobile, setIsMobile] = useState<boolean>(false);
 
     const router = useRouter(); // Initialize useRouter
 
@@ -234,8 +236,14 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         setLoading(false);
     };
 
-    // Restore session on mount
+    // Mobile detection and restoration session on mount
     React.useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+
         const restoreSession = async () => {
             console.log('🔄 TicketContext: Attempting session restoration...');
             try {
@@ -283,6 +291,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         };
 
         restoreSession();
+        return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
     const updateSystemSettings = async (newSettings: Record<string, string>) => {
@@ -907,6 +916,7 @@ Gracias por utilizar el sistema de tickets GSS.`.trim();
             pendingUsers,
             fetchAllUsers,
             loading,
+            isMobile,
             allUsers,
             transferTicket,
             addCollaborator,
