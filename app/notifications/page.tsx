@@ -8,7 +8,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 
 export default function NotificationsPage() {
-    const { notifications, unreadCount, markNotificationRead, clearAllNotifications, loading, isSidebarOpen } = useTicketContext();
+    const { notifications, unreadCount, markNotificationRead, clearAllNotifications, loading, isSidebarOpen, isMobile } = useTicketContext();
 
     const handleNotificationClick = (notificationId: number) => {
         markNotificationRead(notificationId);
@@ -30,13 +30,12 @@ export default function NotificationsPage() {
             <Sidebar />
             <main style={{
                 flex: 1,
-                marginLeft: isSidebarOpen ? '260px' : '0',
+                marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
-                padding: '2rem'
+                padding: isMobile ? '1rem' : '2rem',
+                backgroundColor: 'var(--bg-color)'
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <Header title="Notificaciones" />
-                </div>
+                <Header title="Notificaciones" />
 
                 <div className="container" style={{ maxWidth: '800px', margin: '0 auto' }}>
                     {/* Push Notifications Settings */}
