@@ -271,6 +271,34 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                     </div>
                                 </div>
                             )}
+
+                            {ticket.attachmentUrl && (
+                                <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Adjuntos</label>
+                                    <a
+                                        href={ticket.attachmentUrl}
+                                        download
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            padding: '0.75rem',
+                                            backgroundColor: 'var(--bg-color)',
+                                            borderRadius: 'var(--radius)',
+                                            border: '1px solid var(--border-color)',
+                                            color: 'var(--accent-color)',
+                                            textDecoration: 'none',
+                                            fontSize: '0.875rem',
+                                            fontWeight: 500
+                                        }}
+                                    >
+                                        <Paperclip size={16} />
+                                        Descargar Adjunto
+                                    </a>
+                                </div>
+                            )}
                         </div>
 
                         {/* Transfer Ticket Section - Admin/Supervisor only */}

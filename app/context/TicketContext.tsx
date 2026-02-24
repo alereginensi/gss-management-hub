@@ -31,6 +31,7 @@ export interface Ticket {
     createdAt?: Date;
     startedAt?: Date;
     resolvedAt?: Date;
+    attachmentUrl?: string;
 }
 
 export interface Activity {
@@ -418,6 +419,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             requesterEmail: ticketData.requesterEmail || currentUser?.email,
             affectedWorker: ticketData.affectedWorker,
             supervisor: ticketData.supervisor,
+            attachmentUrl: (ticketData as any).attachmentUrl,
             createdAt: now
         };
 
