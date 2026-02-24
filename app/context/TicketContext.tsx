@@ -13,6 +13,14 @@ export const DEPARTMENTS = [
     'Logística'
 ];
 
+export const RUBROS = [
+    'Limpieza',
+    'Seguridad Física',
+    'Seguridad Electrónica',
+    'Tercerizados',
+    'Administrativos'
+];
+
 export interface Ticket {
     id: string;
     subject: string;
