@@ -1,15 +1,31 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 
-export async function GET(request: Request) {
+import { getSession } from '@/lib/auth-server';
+import { NextRequest } from 'next/server';
+
+export async function GET(request: NextRequest) {
+    const session = await getSession(request);
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
     try {
-        const entries = await db.prepare('SELECT * FROM logbook ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
+        let entriesSql = 'SELECT * FROM logbook';
+        let countSql = 'SELECT count(*) as count FROM logbook';
+        const params: any[] = [];
+
+        if (session?.user?.role === 'supervisor') {
+            entriesSql += ' WHERE sector = ?';
+            countSql += ' WHERE sector = ?';
+            params.push(session.user.rubro);
+        }
+
+        entriesSql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+
+        const entries = await db.prepare(entriesSql).all(...params, limit, offset);
         const columns = await db.prepare('SELECT * FROM logbook_columns').all();
-        const totalCount = await db.prepare('SELECT count(*) as count FROM logbook').get() as { count: number };
+        const totalCount = await db.prepare(countSql).get(...params) as { count: number };
 
         return NextResponse.json({
             entries: entries.map((e: any) => ({
@@ -29,7 +45,8 @@ export async function GET(request: Request) {
     }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+    const session = await getSession(req);
     try {
         const body = await req.json();
 

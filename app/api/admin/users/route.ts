@@ -12,9 +12,18 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const roleFilter = searchParams.get('role');
-        const users = roleFilter
-            ? await db.prepare('SELECT id, name, email, department, role, rubro, approved FROM users WHERE role = ? ORDER BY name ASC').all(roleFilter)
-            : await db.prepare('SELECT id, name, email, department, role, rubro, approved FROM users ORDER BY name ASC').all();
+        const rubroFilter = searchParams.get('rubro');
+
+        let users;
+        if (roleFilter && rubroFilter) {
+            users = await db.prepare('SELECT id, name, email, department, role, rubro, approved FROM users WHERE role = ? AND rubro = ? ORDER BY name ASC').all(roleFilter, rubroFilter);
+        } else if (roleFilter) {
+            users = await db.prepare('SELECT id, name, email, department, role, rubro, approved FROM users WHERE role = ? ORDER BY name ASC').all(roleFilter);
+        } else if (rubroFilter) {
+            users = await db.prepare('SELECT id, name, email, department, role, rubro, approved FROM users WHERE rubro = ? ORDER BY name ASC').all(rubroFilter);
+        } else {
+            users = await db.prepare('SELECT id, name, email, department, role, rubro, approved FROM users ORDER BY name ASC').all();
+        }
         return NextResponse.json(users);
     } catch (error) {
         return NextResponse.json({ error: 'Error fetching users' }, { status: 500 });
@@ -48,6 +57,14 @@ export async function POST(request: NextRequest) {
             const hashedPassword = await hashPassword(password);
             await db.prepare('INSERT INTO users (name, email, password, department, role, approved) VALUES (?, ?, ?, ?, ?, ?)')
                 .run(name, email, hashedPassword, department, 'admin', 1);
+            return NextResponse.json({ success: true });
+        }
+
+        if (action === 'create_supervisor') {
+            const { rubro } = await request.json();
+            const hashedPassword = await hashPassword(password);
+            await db.prepare('INSERT INTO users (name, email, password, department, role, rubro, approved) VALUES (?, ?, ?, ?, ?, ?, ?)')
+                .run(name, email, hashedPassword, department, 'supervisor', rubro, 1);
             return NextResponse.json({ success: true });
         }
 

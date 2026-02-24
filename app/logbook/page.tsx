@@ -240,9 +240,10 @@ export default function LogbookPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
+            const rubroParam = currentUser?.role === 'supervisor' ? `&rubro=${encodeURIComponent(currentUser.rubro || '')}` : '';
             const [res, usersRes] = await Promise.all([
                 fetch('/api/logbook'),
-                fetch('/api/admin/users?role=funcionario')
+                fetch(`/api/admin/users?role=funcionario${rubroParam}`)
             ]);
 
             if (res.ok) {
