@@ -1,10 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
+import fs from 'fs';
+import path from 'path';
+import { hashPassword } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
         const force = searchParams.get('force') === 'true';
+        const type = searchParams.get('type');
+
+        if (type === 'supervisors') {
+            const CSV_PATH = path.join(process.cwd(), 'data', 'func_bitacora(Hoja2).csv');
+            if (!fs.existsSync(CSV_PATH)) {
+                return NextResponse.json({ error: 'CSV file not found at ' + CSV_PATH }, { status: 404 });
+            }
+
+            const content = fs.readFileSync(CSV_PATH, 'latin1');
+            const lines = content.split('\n');
+            const rows = lines.slice(1); // skip header
+
+            let createdCount = 0;
+            let skippedCount = 0;
+            let alreadyExistsCount = 0;
+
+            for (const line of rows) {
+                if (!line.trim()) continue;
+                const cols = line.split(';');
+                if (cols.length < 9) continue;
+
+                const area = cols[0].trim();       // department
+                const sector = cols[1].trim();     // rubro
+                const funcionarioRaw = cols[2].trim(); // "NAME - PASSWORD"
+                const email = cols[3].trim();
+                const rol = cols[8].trim();        // "Comun" or "Administrador 2"
+
+                if (rol === 'Administrador 2') {
+                    skippedCount++;
+                    continue;
+                }
+
+                const nameParts = funcionarioRaw.split(' - ');
+                const name = nameParts[0].trim();
+                const password = nameParts[1] ? nameParts[1].trim() : '1234';
+
+                if (!email || !name) continue;
+
+                const existing = await db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+                if (existing) {
+                    alreadyExistsCount++;
+                    continue;
+                }
+
+                const hashedPassword = await hashPassword(password);
+                await db.prepare(`
+                    INSERT INTO users (name, email, password, department, role, rubro, approved)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                `).run(name, email, hashedPassword, area, 'supervisor', sector, 1);
+
+                createdCount++;
+            }
+
+            return NextResponse.json({
+                message: 'Supervisor seeding complete',
+                created: createdCount,
+                skippedAdmins: skippedCount,
+                alreadyExists: alreadyExistsCount
+            });
+        }
 
         // Initialize Locations & Sectors from CSV data (Clientes y Lugares)
         const countLocs = await db.prepare('SELECT count(*) as count FROM locations').get() as { count: number };
