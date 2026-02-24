@@ -97,6 +97,7 @@ interface TicketContextType {
     approveUser: (email: string) => Promise<boolean>;
     rejectUser: (email: string) => Promise<boolean>;
     deleteUser: (email: string) => Promise<boolean>;
+    deleteTicket: (ticketId: string) => Promise<boolean>;
     isSidebarOpen: boolean;
     toggleSidebar: () => void;
     pendingUsers: User[];
@@ -776,6 +777,23 @@ Gracias por utilizar el sistema de tickets GSS.`.trim();
     const unreadCount = notifications.filter(n => !n.read).length;
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+    const deleteTicket = async (ticketId: string) => {
+        try {
+            const res = await fetch(`/api/tickets/${ticketId}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            if (res.ok) {
+                setTickets(prev => prev.filter(t => t.id !== ticketId));
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error deleting ticket:', error);
+            return false;
+        }
+    };
     const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
     const transferTicket = async (ticketId: string, newSupervisorId: number, transferredBy: number, reason?: string) => {
@@ -873,6 +891,7 @@ Gracias por utilizar el sistema de tickets GSS.`.trim();
             approveUser,
             rejectUser,
             deleteUser,
+            deleteTicket,
             updateUser,
             isSidebarOpen,
             toggleSidebar,

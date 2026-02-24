@@ -63,3 +63,38 @@ export async function PATCH(
         return NextResponse.json({ error: 'Failed to update ticket status', details: error.message }, { status: 500 });
     }
 }
+
+export async function DELETE(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const session = await getSession(request);
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Only admins can delete tickets
+    if (session.user.role !== 'admin') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    try {
+        const { id: ticketId } = await params;
+
+        // Verify ticket exists
+        const ticket = await db.prepare('SELECT id FROM tickets WHERE id = ?').get(ticketId);
+        if (!ticket) {
+            return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+        }
+
+        // Delete ticket and its activities
+        await db.prepare('DELETE FROM ticket_activities WHERE ticket_id = ?').run(ticketId);
+        await db.prepare('DELETE FROM ticket_collaborators WHERE ticket_id = ?').run(ticketId);
+        await db.prepare('DELETE FROM tickets WHERE id = ?').run(ticketId);
+
+        return NextResponse.json({ success: true, message: 'Ticket deleted successfully' });
+    } catch (error: any) {
+        console.error('Error deleting ticket:', error);
+        return NextResponse.json({ error: 'Failed to delete ticket', details: error.message }, { status: 500 });
+    }
+}

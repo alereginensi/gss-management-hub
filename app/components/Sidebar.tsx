@@ -13,8 +13,7 @@ import {
     Menu,
     X,
     Bell,
-    Clock,
-    UserMinus
+    Clock
 } from 'lucide-react';
 import { useTicketContext } from '../context/TicketContext';
 import { useRouter, usePathname } from 'next/navigation';
@@ -27,19 +26,6 @@ export default function Sidebar() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
 
-    const handleDeleteUser = async () => {
-        const email = prompt('Ingrese el correo electrónico del usuario que desea eliminar:');
-        if (!email) return;
-
-        if (confirm(`¿Estás seguro de que deseas eliminar permanentemente al usuario "${email}"? Esta acción no se puede deshacer.`)) {
-            const success = await deleteUser(email);
-            if (success) {
-                alert('Usuario eliminado con éxito.');
-            } else {
-                alert('No se pudo eliminar al usuario. Verifique el correo electrónico e intente nuevamente.');
-            }
-        }
-    };
 
     useEffect(() => {
         const checkMobile = () => {
@@ -151,35 +137,6 @@ export default function Sidebar() {
                         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: 0, margin: 0 }}>
                             <li>
                                 <NavItem href="/admin/users" icon={<Users size={18} />} label="Usuarios" active={pathname === '/admin/users'} />
-                            </li>
-                            <li>
-                                <button
-                                    onClick={handleDeleteUser}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.75rem',
-                                        padding: '0.75rem 1rem',
-                                        borderRadius: 'var(--radius)',
-                                        color: 'var(--text-inverse)',
-                                        backgroundColor: 'transparent',
-                                        textDecoration: 'none',
-                                        transition: 'all 0.2s',
-                                        position: 'relative',
-                                        opacity: 0.8,
-                                        fontSize: '0.9rem',
-                                        minHeight: '44px',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        width: '100%',
-                                        textAlign: 'left'
-                                    }}
-                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
-                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                                >
-                                    <UserMinus size={18} />
-                                    <span>Eliminar Usuario</span>
-                                </button>
                             </li>
                             <li>
                                 <NavItem href="/admin/config" icon={<Settings size={18} />} label="Configuración" active={pathname === '/admin/config'} />
