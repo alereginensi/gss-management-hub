@@ -214,6 +214,15 @@ class DbWrapper {
         key TEXT PRIMARY KEY,
         value INTEGER NOT NULL
       );
+      
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        endpoint TEXT UNIQUE NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        user_email TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `;
 
     if (this.type === 'pg') {
@@ -249,6 +258,18 @@ class DbWrapper {
             console.log('🐘 Migrating tickets: adding attachment_url column');
             await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN attachment_url TEXT');
           }
+          if (!existingTicketCols.includes('requester_email')) {
+            console.log('🐘 Migrating tickets: adding requester_email column');
+            await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN requester_email TEXT');
+          }
+          if (!existingTicketCols.includes('status_color')) {
+            console.log('🐘 Migrating tickets: adding status_color column');
+            await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN status_color TEXT');
+          }
+          if (!existingTicketCols.includes('created_at')) {
+            console.log('🐘 Migrating tickets: adding created_at column');
+            await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN created_at TIMESTAMP');
+          }
 
           const logbookCols = await this.pgPool!.query(`
             SELECT column_name FROM information_schema.columns WHERE table_name = 'logbook'
@@ -280,6 +301,15 @@ class DbWrapper {
         const existingTicketCols = ticketInfo.map((c: any) => c.name);
         if (!existingTicketCols.includes('attachment_url')) {
           this.sqliteDb.exec('ALTER TABLE tickets ADD COLUMN attachment_url TEXT');
+        }
+        if (!existingTicketCols.includes('requester_email')) {
+          this.sqliteDb.exec('ALTER TABLE tickets ADD COLUMN requester_email TEXT');
+        }
+        if (!existingTicketCols.includes('status_color')) {
+          this.sqliteDb.exec('ALTER TABLE tickets ADD COLUMN status_color TEXT');
+        }
+        if (!existingTicketCols.includes('created_at')) {
+          this.sqliteDb.exec('ALTER TABLE tickets ADD COLUMN created_at DATETIME');
         }
 
         const tableInfo = this.sqliteDb.prepare("PRAGMA table_info(logbook)").all();

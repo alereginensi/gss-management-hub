@@ -77,8 +77,18 @@ export default function PushManager() {
         if (!registration) return;
         const sub = await registration.pushManager.getSubscription();
         if (sub) {
+            // Call API to remove from DB
+            try {
+                await fetch('/api/notifications/unsubscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: sub.endpoint })
+                });
+            } catch (err) {
+                console.error('Failed to notify server of unsubscription', err);
+            }
+
             await sub.unsubscribe();
-            // TODO: Call API to remove from DB if needed
             setIsSubscribed(false);
         }
     };

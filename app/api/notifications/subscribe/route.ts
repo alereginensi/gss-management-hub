@@ -9,18 +9,36 @@ import webpush from 'web-push';
 //     process.env.VAPID_PRIVATE_KEY!
 // );
 
-// In-memory storage for subscriptions (Replace with DB in production)
-// Note: In a real app, store this in `tickets.db` (users table or subscriptions table)
-// For now, we'll try to store it in a global variable, but it will be lost on restart.
-// TODO: Store in SQLite
-let subscriptions: any[] = [];
+import db from '@/lib/db';
+
+// VAPID details will be set during individual notification sends if keys are present
 
 export async function POST(request: Request) {
-    const subscription = await request.json();
+    const { subscription, email } = await request.json();
 
-    // Save subscription
-    subscriptions.push(subscription);
-    console.log('New Subscription registered:', subscription.endpoint);
+    if (!subscription || !subscription.endpoint) {
+        return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 });
+    }
+
+    // Save subscription to DB
+    try {
+        const query = db.type === 'pg'
+            ? 'INSERT INTO push_subscriptions (endpoint, p256dh, auth, user_email) VALUES (?, ?, ?, ?) ON CONFLICT (endpoint) DO NOTHING'
+            : 'INSERT OR IGNORE INTO push_subscriptions (endpoint, p256dh, auth, user_email) VALUES (?, ?, ?, ?)';
+
+        await db.run(
+            query,
+            [
+                subscription.endpoint,
+                subscription.keys?.p256dh || '',
+                subscription.keys?.auth || '',
+                email || null
+            ]
+        );
+        console.log('New Subscription registered in DB:', subscription.endpoint);
+    } catch (dbError) {
+        console.error('Error saving subscription to DB:', dbError);
+    }
 
     // Send a test notification
     const payload = JSON.stringify({ title: 'GSS Hub', body: 'Subscripción exitosa a notificaciones.' });
