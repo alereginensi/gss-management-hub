@@ -77,9 +77,9 @@ export default function PushManager() {
 
             setIsSubscribed(true);
             alert('Notificaciones activadas!');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Subscription failed', error);
-            alert('Error al activar notificaciones. Verifica permisos del navegador.');
+            alert(`Error al activar notificaciones: ${error.message || 'Desconocido'}. Por favor, revisa los permisos del navegador.`);
         }
     };
 
