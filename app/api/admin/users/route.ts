@@ -49,7 +49,22 @@ export async function POST(request: NextRequest) {
         }
 
         if (action === 'delete') {
-            await db.prepare('DELETE FROM users WHERE email = ?').run(email);
+            const user = await db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+            if (user) {
+                const userId = user.id;
+                // Cleanup related records to avoid foreign key violations
+                await db.prepare('DELETE FROM tasks WHERE user_id = ?').run(userId);
+                await db.prepare('DELETE FROM supervisor_worker WHERE supervisor_id = ? OR worker_id = ?').run(userId, userId);
+                await db.prepare('DELETE FROM ticket_collaborators WHERE user_id = ? OR added_by = ?').run(userId, userId);
+                await db.prepare('DELETE FROM notifications WHERE user_id = ?').run(userId);
+
+                // Only allow admin to delete users
+                if (session.user.role === 'admin') {
+                    await db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+                } else {
+                    return NextResponse.json({ error: 'Only administrators can delete users' }, { status: 403 });
+                }
+            }
             return NextResponse.json({ success: true });
         }
 

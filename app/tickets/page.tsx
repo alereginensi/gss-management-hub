@@ -37,7 +37,7 @@ export default function TicketList() {
     // Apply filters
     const filteredTickets = tickets.filter(ticket => {
         // 1. Visibility & Filter for Admins vs Users
-        if (currentUser?.role === 'admin') {
+        if (currentUser?.role?.toLowerCase() === 'admin') {
             // If personal view is active, only show tickets where admin is creator, supervisor or collaborator
             if (adminView === 'personal') {
                 const isCreator = ticket.requesterEmail === currentUser.email;
@@ -210,7 +210,7 @@ export default function TicketList() {
                             onClick={() => {
                                 const params = new URLSearchParams();
                                 params.append('filter', filter);
-                                if (currentUser?.role === 'admin') {
+                                if (currentUser?.role?.toLowerCase() === 'admin') {
                                     params.append('department', departmentFilter);
                                 }
                                 window.open(`/api/tickets/export?${params.toString()}`, '_blank');
@@ -246,7 +246,7 @@ export default function TicketList() {
                                             <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>{ticket.date}</td>
                                             <td style={{ padding: '1rem 0.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                                 <Link href={`/tickets/${ticket.id}`} style={{ color: 'var(--accent-color)', fontWeight: 500 }}>Ver Detalle</Link>
-                                                {currentUser?.role === 'admin' && (
+                                                {currentUser?.role?.toLowerCase() === 'admin' && (
                                                     <button
                                                         onClick={() => handleDeleteTicket(ticket.id, ticket.subject)}
                                                         style={{
@@ -310,7 +310,7 @@ export default function TicketList() {
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <div style={{ fontWeight: 600, fontSize: '1rem' }}>{ticket.subject}</div>
-                                            {currentUser?.role === 'admin' && (
+                                            {currentUser?.role?.toLowerCase() === 'admin' && (
                                                 <button
                                                     onClick={() => handleDeleteTicket(ticket.id, ticket.subject)}
                                                     style={{
