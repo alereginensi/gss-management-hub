@@ -37,9 +37,11 @@ class DbWrapper {
   }
 
   async query(text: string, params: any[] = []): Promise<any[]> {
+    const safeParams = params.map(p => p === undefined ? null : p);
+
     // Convert ? to $1, $2, etc for PG if needed, or vice-versa
     const normalizedText = this.type === 'pg'
-      ? text.replace(/\?/g, (_, i) => `$${params.indexOf(params[i]) + 1}`) // This is a simplified placeholder conversion
+      ? text.replace(/\?/g, (_, i) => `$${safeParams.indexOf(safeParams[i]) + 1}`) // This is a simplified placeholder conversion
       : text;
 
     // Better placeholder conversion for PG
@@ -50,10 +52,10 @@ class DbWrapper {
     }
 
     if (this.type === 'pg') {
-      const res = await this.pgPool!.query(pgText, params);
+      const res = await this.pgPool!.query(pgText, safeParams);
       return res.rows;
     } else {
-      return this.sqliteDb.prepare(text).all(...params);
+      return this.sqliteDb.prepare(text).all(...safeParams);
     }
   }
 
@@ -63,16 +65,17 @@ class DbWrapper {
   }
 
   async run(text: string, params: any[] = []): Promise<{ lastInsertRowid?: number | string, changes: number }> {
+    const safeParams = params.map(p => p === undefined ? null : p);
     let pgText = text;
     if (this.type === 'pg') {
       let count = 1;
       pgText = text.replace(/\?/g, () => `$${count++}`);
       // For PG, if it's an INSERT, we might want the ID. 
       // But for a generic 'run', we'll just execute.
-      const res = await this.pgPool!.query(pgText, params);
+      const res = await this.pgPool!.query(pgText, safeParams);
       return { changes: res.rowCount || 0 };
     } else {
-      const info = this.sqliteDb.prepare(text).run(...params);
+      const info = this.sqliteDb.prepare(text).run(...safeParams);
       return { lastInsertRowid: info.lastInsertRowid, changes: info.changes };
     }
   }
@@ -254,17 +257,20 @@ class DbWrapper {
           query: (t: string, p: any[] = []) => {
             let count = 1;
             const pgText = t.replace(/\?/g, () => `$${count++}`);
-            return client.query(pgText, p);
+            const safeParams = p.map(v => v === undefined ? null : v);
+            return client.query(pgText, safeParams);
           },
           run: (t: string, p: any[] = []) => {
             let count = 1;
             const pgText = t.replace(/\?/g, () => `$${count++}`);
-            return client.query(pgText, p);
+            const safeParams = p.map(v => v === undefined ? null : v);
+            return client.query(pgText, safeParams);
           },
           get: async (t: string, p: any[] = []) => {
             let count = 1;
             const pgText = t.replace(/\?/g, () => `$${count++}`);
-            const res = await client.query(pgText, p);
+            const safeParams = p.map(v => v === undefined ? null : v);
+            const res = await client.query(pgText, safeParams);
             return res.rows[0];
           }
         };
