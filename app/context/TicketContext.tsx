@@ -217,7 +217,8 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             fetchSettings()
         ];
 
-        if (currentUser?.role === 'admin' || currentUser?.role === 'supervisor') {
+        const role = currentUser?.role?.toLowerCase();
+        if (role === 'admin' || role === 'supervisor') {
             promises.push(fetchAllUsers());
         }
 
