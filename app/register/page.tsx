@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldCheck, UserPlus, Mail, Lock, Building } from 'lucide-react';
+import { ShieldCheck, UserPlus, Mail, Lock, Building, Check } from 'lucide-react';
+import { RUBROS } from '../context/TicketContext';
 
 
 export default function Register() {
@@ -178,7 +179,10 @@ export default function Register() {
                             <select
                                 required
                                 value={formData.role}
-                                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                                onChange={(e) => {
+                                    const newRole = e.target.value;
+                                    setFormData({ ...formData, role: newRole, rubro: '' });
+                                }}
                                 style={{
                                     width: '100%',
                                     padding: '0.75rem',
@@ -198,31 +202,57 @@ export default function Register() {
                         </div>
                     </div>
 
-                    {formData.role === 'funcionario' && (
+                    {(formData.role === 'funcionario' || formData.role === 'supervisor') && (
                         <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Rubro / Área</label>
-                            <div style={{ position: 'relative' }}>
-                                <select
-                                    required
-                                    value={formData.rubro}
-                                    onChange={(e) => setFormData({ ...formData, rubro: e.target.value })}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.75rem',
-                                        borderRadius: 'var(--radius)',
-                                        border: '1px solid var(--border-color)',
-                                        backgroundColor: 'var(--surface-color)',
-                                        color: 'var(--text-primary)',
-                                        fontSize: '0.875rem',
-                                        appearance: 'none',
-                                        boxSizing: 'border-box'
-                                    }}
-                                >
-                                    <option value="">Seleccione un rubro...</option>
-                                    {roles.map(role => (
-                                        <option key={role.id} value={role.name}>{role.name}</option>
-                                    ))}
-                                </select>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
+                                {formData.role === 'supervisor' ? 'Categorías a Supervisar' : 'Rubro / Área (múltiple)'}
+                            </label>
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gap: '0.5rem',
+                                padding: '1rem',
+                                backgroundColor: 'var(--surface-color)',
+                                borderRadius: 'var(--radius)',
+                                border: '1px solid var(--border-color)'
+                            }}>
+                                {RUBROS.map(r => {
+                                    const selectedRubros = formData.rubro ? formData.rubro.split(',').map(s => s.trim()) : [];
+                                    const isSelected = selectedRubros.includes(r);
+
+                                    return (
+                                        <label key={r} style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            fontSize: '0.875rem',
+                                            cursor: 'pointer',
+                                            padding: '0.25rem',
+                                            borderRadius: '4px',
+                                            backgroundColor: isSelected ? 'rgba(59,130,246,0.1)' : 'transparent',
+                                            color: isSelected ? 'var(--accent-color)' : 'var(--text-primary)',
+                                            transition: 'all 0.2s'
+                                        }}>
+                                            <div style={{ position: 'relative', width: '18px', height: '18px' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={(e) => {
+                                                        let newRubros;
+                                                        if (e.target.checked) {
+                                                            newRubros = [...selectedRubros, r];
+                                                        } else {
+                                                            newRubros = selectedRubros.filter(item => item !== r);
+                                                        }
+                                                        setFormData({ ...formData, rubro: newRubros.join(', ') });
+                                                    }}
+                                                    style={{ cursor: 'pointer', margin: 0 }}
+                                                />
+                                            </div>
+                                            {r}
+                                        </label>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
