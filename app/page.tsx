@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function Home() {
-  const { tickets, getAverageResolutionTime, currentUser, isSidebarOpen, deleteTicket } = useTicketContext();
+  const { tickets, getAverageResolutionTime, currentUser, isSidebarOpen, deleteTicket, isMobile } = useTicketContext();
   const router = useRouter();
 
   useEffect(() => {
@@ -49,9 +49,9 @@ export default function Home() {
 
       <main style={{
         flex: 1,
-        marginLeft: isSidebarOpen ? '260px' : '0',
+        marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
         transition: 'margin-left 0.3s ease-in-out',
-        padding: '2rem',
+        padding: isMobile ? '1rem' : '2rem',
         backgroundColor: 'var(--bg-color)'
       }}>
         <Header title="Dashboard" />
@@ -175,16 +175,40 @@ export default function Home() {
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>#{ticket.id}</span>
-                    <span style={{
-                      fontSize: '0.75rem',
-                      padding: '0.2rem 0.5rem',
-                      borderRadius: '12px',
-                      backgroundColor: ticket.statusColor,
-                      color: '#fff',
-                      fontWeight: 600
-                    }}>
-                      {ticket.status}
-                    </span>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: '12px',
+                        backgroundColor: ticket.statusColor,
+                        color: '#fff',
+                        fontWeight: 600
+                      }}>
+                        {ticket.status}
+                      </span>
+                      {currentUser?.role?.toLowerCase() === 'admin' && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDeleteTicket(ticket.id, ticket.subject);
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#ef4444',
+                            padding: '0.25rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            borderRadius: '4px'
+                          }}
+                          title="Eliminar Ticket"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{ticket.subject}</div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.25rem' }}>

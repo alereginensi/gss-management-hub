@@ -16,20 +16,11 @@ interface Task {
 }
 
 export default function TasksPage() {
-    const { currentUser, isSidebarOpen } = useTicketContext();
+    const { currentUser, isSidebarOpen, isMobile } = useTicketContext();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [description, setDescription] = useState('');
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-
-    const [isMobile, setIsMobile] = useState(false);
-
-    useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768);
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
 
     useEffect(() => {
         if (currentUser && currentUser.id !== undefined && currentUser.id !== null) {
@@ -106,7 +97,7 @@ export default function TasksPage() {
                 marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
                 padding: isMobile ? '1rem' : '2rem',
-                paddingTop: isMobile ? '5rem' : '2rem'
+                paddingTop: isMobile ? '4.5rem' : '2rem'
             }}>
                 <Header title="Registro de Tareas" />
 

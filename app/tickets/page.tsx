@@ -9,7 +9,7 @@ import { useTicketContext } from '../context/TicketContext';
 import { X, ArrowRight, Eye, Trash2 } from 'lucide-react';
 
 export default function TicketList() {
-    const { tickets, searchQuery, filter, setFilter, currentUser, isSidebarOpen, deleteTicket } = useTicketContext();
+    const { tickets, searchQuery, filter, setFilter, currentUser, isSidebarOpen, deleteTicket, isMobile } = useTicketContext();
     const [departmentFilter, setDepartmentFilter] = useState<string>('Todos');
     const [selectedTicket, setSelectedTicket] = useState<any>(null);
     const router = useRouter();
@@ -91,9 +91,9 @@ export default function TicketList() {
 
             <main style={{
                 flex: 1,
-                marginLeft: isSidebarOpen ? '260px' : '0',
+                marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
-                padding: '2rem',
+                padding: isMobile ? '1rem' : '2rem',
                 backgroundColor: 'var(--bg-color)'
             }}>
                 <Header title={

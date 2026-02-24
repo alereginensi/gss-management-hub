@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 
 export default function NewTicket() {
     const [submitted, setSubmitted] = useState(false);
-    const { addTicket, currentUser, isSidebarOpen, allUsers } = useTicketContext();
+    const { addTicket, currentUser, isSidebarOpen, allUsers, isMobile } = useTicketContext();
     const router = useRouter();
 
     const [formData, setFormData] = useState({
@@ -147,9 +147,9 @@ export default function NewTicket() {
 
             <main style={{
                 flex: 1,
-                marginLeft: isSidebarOpen ? '260px' : '0',
+                marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
-                padding: '2rem',
+                padding: isMobile ? '1rem' : '2rem',
                 backgroundColor: 'var(--bg-color)'
             }}>
                 <Header title="Nuevo Ticket" />

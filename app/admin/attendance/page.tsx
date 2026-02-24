@@ -22,7 +22,7 @@ interface Workday {
 }
 
 export default function AttendancePage() {
-    const { currentUser, isSidebarOpen } = useTicketContext();
+    const { currentUser, isSidebarOpen, isMobile } = useTicketContext();
     const [attendance, setAttendance] = useState<Workday[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -299,9 +299,9 @@ export default function AttendancePage() {
             <Sidebar />
             <div className="main-content" style={{
                 flex: 1,
-                marginLeft: isSidebarOpen ? '260px' : '0',
+                marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
-                padding: '1rem'
+                padding: isMobile ? '0.5rem' : '1rem'
             }}>
                 <Header title="Reporte de Asistencia" />
 
