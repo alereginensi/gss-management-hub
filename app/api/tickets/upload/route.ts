@@ -20,8 +20,9 @@ export async function POST(request: NextRequest) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        // Define upload directory
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+        // Define upload directory - sync with db.ts logic
+        const IS_PROD = process.env.NODE_ENV === 'production';
+        const uploadDir = IS_PROD ? '/app/data/uploads' : path.join(process.cwd(), 'data', 'uploads');
 
         // Ensure directory exists
         try {
@@ -35,10 +36,10 @@ export async function POST(request: NextRequest) {
         const filePath = path.join(uploadDir, filename);
 
         await writeFile(filePath, buffer);
-        console.log(`📁 File uploaded: ${filePath}`);
+        console.log(`📁 File uploaded to persistent storage: ${filePath}`);
 
-        // Return the public URL
-        const fileUrl = `/uploads/${filename}`;
+        // Return the download API URL instead of direct public URL
+        const fileUrl = `/api/tickets/download?filename=${filename}`;
         return NextResponse.json({ success: true, url: fileUrl });
     } catch (error: any) {
         console.error('Upload Error:', error);
