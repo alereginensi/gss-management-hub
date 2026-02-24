@@ -83,7 +83,7 @@ export default function Header({ title, actions }: { title: string, actions?: Re
                 )}
 
                 {/* Notification Bell */}
-                <div style={{ position: 'relative' }}>
+                <div style={{ position: 'relative', marginLeft: 'auto' }}>
                     <button
                         onClick={() => setShowNotifications(!showNotifications)}
                         style={{

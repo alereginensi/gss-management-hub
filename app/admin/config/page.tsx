@@ -105,20 +105,12 @@ const LocationItem = ({ location, onDelete, onRefresh }: { location: any, onDele
 };
 
 export default function ConfigPage() {
-    const { currentUser, systemSettings, updateSystemSettings, isSidebarOpen } = useTicketContext();
+    const { currentUser, systemSettings, updateSystemSettings, isSidebarOpen, isMobile } = useTicketContext();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'locations' | 'roles' | 'integrations'>('locations');
     const [locations, setLocations] = useState<any[]>([]);
     const [roles, setRoles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isMobile, setIsMobile] = useState(false);
-
-    useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768);
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
 
     // Form States
     const [newLocation, setNewLocation] = useState('');
@@ -247,9 +239,10 @@ export default function ConfigPage() {
             <Sidebar />
             <div className="main-content" style={{
                 flex: 1,
-                marginLeft: isSidebarOpen && !isMobile ? '260px' : '0',
+                marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
-                padding: '2rem',
+                padding: isMobile ? '1rem' : '2rem',
+                backgroundColor: 'var(--bg-color)',
                 width: '100%',
                 overflowX: 'hidden'
             }}>

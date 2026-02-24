@@ -6,7 +6,7 @@ import { Sun, Moon, User as UserIcon, Mail, Zap } from 'lucide-react';
 import { useTicketContext, DEPARTMENTS } from '../context/TicketContext';
 
 export default function Settings() {
-    const { theme, setTheme, currentUser, systemSettings, updateSystemSettings } = useTicketContext();
+    const { theme, setTheme, currentUser, systemSettings, updateSystemSettings, isSidebarOpen, isMobile } = useTicketContext();
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -14,8 +14,9 @@ export default function Settings() {
 
             <main style={{
                 flex: 1,
-                marginLeft: '260px',
-                padding: '2rem',
+                marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
+                transition: 'margin-left 0.3s ease-in-out',
+                padding: isMobile ? '1rem' : '2rem',
                 backgroundColor: 'var(--bg-color)'
             }}>
                 <Header title="Configuración" />
