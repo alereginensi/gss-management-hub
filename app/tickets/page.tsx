@@ -84,16 +84,6 @@ export default function TicketList() {
 
     const departments = ['Todos', 'Mantenimiento', 'Limpieza', 'IT', 'Seguridad', 'RRHH'];
 
-    const handleDeleteTicket = async (ticketId: string, subject: string) => {
-        if (confirm(`¿Estás seguro de que deseas eliminar permanentemente el ticket #${ticketId} - "${subject}"?`)) {
-            const success = await deleteTicket(ticketId);
-            if (success) {
-                alert('Ticket eliminado con éxito');
-            } else {
-                alert('Error al eliminar el ticket');
-            }
-        }
-    };
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -246,27 +236,6 @@ export default function TicketList() {
                                             <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>{ticket.date}</td>
                                             <td style={{ padding: '1rem 0.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                                 <Link href={`/tickets/${ticket.id}`} style={{ color: 'var(--accent-color)', fontWeight: 500 }}>Ver Detalle</Link>
-                                                {currentUser?.role?.toLowerCase() === 'admin' && (
-                                                    <button
-                                                        onClick={() => handleDeleteTicket(ticket.id, ticket.subject)}
-                                                        style={{
-                                                            background: 'none',
-                                                            border: 'none',
-                                                            cursor: 'pointer',
-                                                            color: '#ef4444',
-                                                            padding: '0.25rem',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            borderRadius: '4px',
-                                                            transition: 'background-color 0.2s'
-                                                        }}
-                                                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
-                                                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                                                        title="Eliminar Ticket"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                )}
                                             </td>
                                         </tr>
                                     ))
@@ -310,20 +279,6 @@ export default function TicketList() {
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <div style={{ fontWeight: 600, fontSize: '1rem' }}>{ticket.subject}</div>
-                                            {currentUser?.role?.toLowerCase() === 'admin' && (
-                                                <button
-                                                    onClick={() => handleDeleteTicket(ticket.id, ticket.subject)}
-                                                    style={{
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        cursor: 'pointer',
-                                                        color: '#ef4444',
-                                                        padding: '0.25rem'
-                                                    }}
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            )}
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
                                             <span style={{
