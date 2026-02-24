@@ -86,7 +86,29 @@ export default function NewTicket() {
             currentUser.email = formData.email;
         }
 
-        // Add ticket to global state
+        // Upload file if exists
+        let attachmentUrl = '';
+        if (files.length > 0) {
+            try {
+                const uploadFormData = new FormData();
+                uploadFormData.append('file', files[0]);
+
+                const uploadRes = await fetch('/api/tickets/upload', {
+                    method: 'POST',
+                    body: uploadFormData
+                });
+
+                if (uploadRes.ok) {
+                    const uploadData = await uploadRes.json();
+                    attachmentUrl = uploadData.url;
+                } else {
+                    console.error('File upload failed');
+                }
+            } catch (error) {
+                console.error('Error uploading file:', error);
+            }
+        }
+
         // Add ticket to global state
         addTicket({
             subject: formData.subject,
@@ -96,8 +118,9 @@ export default function NewTicket() {
             status: 'Nuevo',
             requester: formData.name,
             requesterEmail: formData.email,
-            affectedWorker: formData.affectedWorker
-        });
+            affectedWorker: formData.affectedWorker,
+            attachmentUrl: attachmentUrl
+        } as any);
 
         setSubmitted(true);
 
