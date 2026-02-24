@@ -43,9 +43,19 @@ export default function PushManager() {
         if (!registration) return;
 
         try {
-            const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+            let vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
+            // Si no está en el cliente (ej. Railway), pedirla al servidor
             if (!vapidKey) {
-                alert('VAPID Key not found');
+                const res = await fetch('/api/notifications/vapid-key');
+                if (res.ok) {
+                    const data = await res.json();
+                    vapidKey = data.vapidPublicKey;
+                }
+            }
+
+            if (!vapidKey) {
+                alert('VAPID Key no encontrada en el servidor. Configura NEXT_PUBLIC_VAPID_PUBLIC_KEY.');
                 return;
             }
 
