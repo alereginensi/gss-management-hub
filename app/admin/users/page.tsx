@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { UserCheck, UserPlus, Info, Mail, Shield, X, Check, Edit2, Search, Trash2 } from 'lucide-react';
 
 export default function UserManagement() {
-    const { pendingUsers, fetchAllUsers, approveUser, rejectUser, currentUser, isSidebarOpen, allUsers, updateUser, deleteUser } = useTicketContext();
+    const { allUsers, pendingUsers, fetchAllUsers, approveUser, rejectUser, deleteUser, currentUser, isSidebarOpen, updateUser, isMobile } = useTicketContext();
     const [loading, setLoading] = useState(false);
     const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', department: 'Administración' });
     const [editingUser, setEditingUser] = useState<any>(null);
@@ -173,9 +173,9 @@ export default function UserManagement() {
 
             <main style={{
                 flex: 1,
-                marginLeft: isSidebarOpen ? '260px' : '0',
+                marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
-                padding: '2rem',
+                padding: isMobile ? '1rem' : '2rem',
                 backgroundColor: 'var(--bg-color)'
             }}>
                 <Header title="Gestión de Usuarios" />
