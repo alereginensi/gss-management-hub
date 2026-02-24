@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
                     createdAt: ticket.created_at,
                     startedAt: ticket.started_at,
                     resolvedAt: ticket.resolved_at,
-                    affectedWorker: ticket.affected_worker
+                    affectedWorker: ticket.affected_worker,
+                    attachmentUrl: ticket.attachment_url
                 };
             }));
             return NextResponse.json(tickets);
@@ -69,7 +70,8 @@ export async function GET(request: NextRequest) {
                     createdAt: ticket.created_at,
                     startedAt: ticket.started_at,
                     resolvedAt: ticket.resolved_at,
-                    affectedWorker: ticket.affected_worker
+                    affectedWorker: ticket.affected_worker,
+                    attachmentUrl: ticket.attachment_url
                 };
             }));
             return NextResponse.json(tickets);
@@ -95,7 +97,8 @@ export async function GET(request: NextRequest) {
                 createdAt: t.created_at,
                 startedAt: t.started_at,
                 resolvedAt: t.resolved_at,
-                affectedWorker: t.affected_worker
+                affectedWorker: t.affected_worker,
+                attachmentUrl: t.attachment_url
             }));
 
             return NextResponse.json(mappedTickets);
@@ -121,7 +124,8 @@ export async function GET(request: NextRequest) {
                 createdAt: ticket.created_at,
                 startedAt: ticket.started_at,
                 resolvedAt: ticket.resolved_at,
-                affectedWorker: ticket.affected_worker
+                affectedWorker: ticket.affected_worker,
+                attachmentUrl: ticket.attachment_url
             };
         }));
 
@@ -171,11 +175,11 @@ export async function POST(request: Request) {
             INSERT INTO tickets (
                 id, subject, description, department, priority, status,
                 requester, requester_email, affected_worker, date,
-                supervisor, status_color, created_at
+                supervisor, status_color, attachment_url, created_at
             ) VALUES (
                 ?, ?, ?, ?, ?, ?,
                 ?, ?, ?, ?,
-                ?, ?, ?
+                ?, ?, ?, ?
             )
         `);
 
@@ -193,6 +197,7 @@ export async function POST(request: Request) {
                 ticket.date,
                 ticket.supervisor || null,
                 ticket.statusColor || null,
+                ticket.attachmentUrl || null,
                 ticket.createdAt ? new Date(ticket.createdAt).toISOString() : new Date().toISOString()
             );
         } catch (insertError: any) {

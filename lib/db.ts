@@ -118,6 +118,7 @@ class DbWrapper {
         started_at TEXT,
         resolved_at TEXT,
         status_color TEXT,
+        attachment_url TEXT,
         created_at TIMESTAMP
       );
 
@@ -239,6 +240,16 @@ class DbWrapper {
         }
         // Run migrations for logbook table
         try {
+          // Check tickets table for attachment_url
+          const ticketCols = await this.pgPool!.query(`
+            SELECT column_name FROM information_schema.columns WHERE table_name = 'tickets'
+          `);
+          const existingTicketCols = ticketCols.rows.map(r => r.column_name);
+          if (!existingTicketCols.includes('attachment_url')) {
+            console.log('🐘 Migrating tickets: adding attachment_url column');
+            await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN attachment_url TEXT');
+          }
+
           const logbookCols = await this.pgPool!.query(`
             SELECT column_name FROM information_schema.columns WHERE table_name = 'logbook'
           `);
@@ -265,6 +276,12 @@ class DbWrapper {
     } else {
       // For SQLite, we also need to handle missing columns if necessary
       try {
+        const ticketInfo = this.sqliteDb.prepare("PRAGMA table_info(tickets)").all();
+        const existingTicketCols = ticketInfo.map((c: any) => c.name);
+        if (!existingTicketCols.includes('attachment_url')) {
+          this.sqliteDb.exec('ALTER TABLE tickets ADD COLUMN attachment_url TEXT');
+        }
+
         const tableInfo = this.sqliteDb.prepare("PRAGMA table_info(logbook)").all();
         const existingCols = tableInfo.map((c: any) => c.name);
 
