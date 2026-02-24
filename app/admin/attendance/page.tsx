@@ -299,7 +299,7 @@ export default function AttendancePage() {
             <Sidebar />
             <div className="main-content" style={{
                 flex: 1,
-                marginLeft: '0',
+                marginLeft: isSidebarOpen ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
                 padding: '1rem'
             }}>

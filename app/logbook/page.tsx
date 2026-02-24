@@ -633,19 +633,17 @@ export default function LogbookPage() {
                 transition: 'margin-left 0.3s ease-in-out',
                 padding: '2rem'
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <Header
-                        title="Bitácora - Supervisores"
-                        actions={
-                            isMobile ? (
-                                <button onClick={exportToExcel} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', border: '1px solid rgba(34, 197, 94, 0.2)', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
-                                    <Download size={16} />
-                                    <span>Exportar</span>
-                                </button>
-                            ) : undefined
-                        }
-                    />
-                </div>
+                <Header
+                    title="Bitácora - Supervisores"
+                    actions={
+                        isMobile ? (
+                            <button onClick={exportToExcel} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', border: '1px solid rgba(34, 197, 94, 0.2)', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                                <Download size={16} />
+                                <span>Exportar</span>
+                            </button>
+                        ) : undefined
+                    }
+                />
 
                 <div className="desktop-toolbar">
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
