@@ -47,7 +47,7 @@ export async function GET(request: Request) {
 
         // Filter by Supervisor if not Admin
         if (requesterRole === 'supervisor') {
-            query += ` AND u.id IN (SELECT worker_id FROM supervisor_worker WHERE supervisor_id = ?)`;
+            query += ` AND u.rubro = (SELECT rubro FROM users WHERE id = ?) AND u.role = 'funcionario'`;
             params.push(requesterId);
         } else if (requesterRole !== 'admin') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
