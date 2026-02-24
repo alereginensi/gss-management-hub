@@ -3,13 +3,13 @@
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Link from 'next/link';
-import { Clock, CheckCircle2, AlertCircle, FileText } from 'lucide-react';
+import { Clock, CheckCircle2, AlertCircle, FileText, Trash2 } from 'lucide-react';
 import { useTicketContext } from './context/TicketContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function Home() {
-  const { tickets, getAverageResolutionTime, currentUser, isSidebarOpen } = useTicketContext();
+  const { tickets, getAverageResolutionTime, currentUser, isSidebarOpen, deleteTicket } = useTicketContext();
   const router = useRouter();
 
   useEffect(() => {
@@ -31,6 +31,17 @@ export default function Home() {
 
   // Get recent tickets (first 3)
   const recentTickets = tickets.slice(0, 3);
+
+  const handleDeleteTicket = async (ticketId: string, subject: string) => {
+    if (confirm(`¿Estás seguro de que deseas eliminar permanentemente el ticket #${ticketId} - "${subject}"?`)) {
+      const success = await deleteTicket(ticketId);
+      if (success) {
+        alert('Ticket eliminado con éxito');
+      } else {
+        alert('Error al eliminar el ticket');
+      }
+    }
+  };
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -107,6 +118,9 @@ export default function Home() {
                   <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Prioridad</th>
                   <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Estado</th>
                   <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Fecha</th>
+                  {currentUser?.role?.toLowerCase() === 'admin' && (
+                    <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Acción</th>
+                  )}
                 </tr>
               </thead>
               <tbody style={{ fontSize: '0.875rem' }}>
@@ -118,6 +132,29 @@ export default function Home() {
                     <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.priorityColor }}>{ticket.priority}</span></td>
                     <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.statusColor }}>{ticket.status}</span></td>
                     <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>{ticket.date}</td>
+                    {currentUser?.role?.toLowerCase() === 'admin' && (
+                      <td style={{ padding: '1rem 0.5rem' }}>
+                        <button
+                          onClick={() => handleDeleteTicket(ticket.id, ticket.subject)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#ef4444',
+                            padding: '0.25rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            borderRadius: '4px',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          title="Eliminar Ticket"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
