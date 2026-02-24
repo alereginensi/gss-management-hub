@@ -45,16 +45,16 @@ export async function POST(req: Request) {
         await db.transaction(async (tx) => {
             for (const entry of items) {
                 await tx.run(insertSql, [
-                    entry.date,
-                    entry.sector,
-                    entry.supervisor,
-                    entry.location,
+                    entry.date || null,
+                    entry.sector || null,
+                    entry.supervisor || null,
+                    entry.location || null,
                     entry.incident || '',
                     entry.report || '',
                     entry.staff_member || '',
                     entry.uniform || '',
                     JSON.stringify(entry.extra_data || {}),
-                    entry.supervised_by
+                    entry.supervised_by || null
                 ]);
             }
         });
@@ -82,16 +82,16 @@ export async function PUT(req: Request) {
         `);
 
         await update.run(
-            date,
-            sector,
-            supervisor,
-            location,
+            date || null,
+            sector || null,
+            supervisor || null,
+            location || null,
             incident || '',
             report || '',
             staff_member || '',
             uniform || '',
             JSON.stringify(extra_data || {}),
-            supervised_by,
+            supervised_by || null,
             id
         );
 
