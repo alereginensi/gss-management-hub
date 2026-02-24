@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sendEmail } from '@/lib/mail';
 import db from '@/lib/db';
+import webpush from 'web-push';
 
 export async function POST(request: Request) {
     try {
@@ -44,6 +45,51 @@ export async function POST(request: Request) {
                 console.error('Power Automate fetch exception:', webhookError);
             }
             console.log('Falling back to SMTP due to Power Automate failure/skip');
+        }
+
+        // 2. Try Push Notifications (Non-blocking ideally, but we await for reliability)
+        const emails = Array.isArray(to) ? to : [to];
+        try {
+            const subsList = await db.query(
+                `SELECT * FROM push_subscriptions WHERE user_email IN (${emails.map(() => '?').join(',')})`,
+                emails
+            ) as any[];
+
+            if (subsList.length > 0 && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+                webpush.setVapidDetails(
+                    process.env.VAPID_SUBJECT || 'mailto:admin@gss.com',
+                    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+                    process.env.VAPID_PRIVATE_KEY
+                );
+
+                const payload = JSON.stringify({
+                    title: subject,
+                    body: body,
+                    url: ticketData?.id ? `/tickets/${ticketData.id}` : '/'
+                });
+
+                const pushPromises = subsList.map(async (sub) => {
+                    const pushSubscription = {
+                        endpoint: sub.endpoint,
+                        keys: {
+                            p256dh: sub.p256dh,
+                            auth: sub.auth
+                        }
+                    };
+                    try {
+                        await webpush.sendNotification(pushSubscription, payload);
+                    } catch (pushErr: any) {
+                        if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
+                            console.log('Removing expired push subscription:', sub.id);
+                            await db.run('DELETE FROM push_subscriptions WHERE id = ?', [sub.id]);
+                        }
+                    }
+                });
+                await Promise.all(pushPromises);
+                console.log(`Push notifications sent to ${subsList.length} devices`);
+            }
+        } catch (pushError) {
+            console.error('Error broadcasting push notifications:', pushError);
         }
 
         // 2. Fallback to SMTP/Nodemailer
