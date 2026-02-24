@@ -237,10 +237,50 @@ class DbWrapper {
           await this.pgPool!.query('INSERT INTO counters (key, value) VALUES ($1, $2)', ['ticket_id', 1000]);
           console.log('✅ Ticket ID counter initialized in Postgres at 1000');
         }
+        // Run migrations for logbook table
+        try {
+          const logbookCols = await this.pgPool!.query(`
+            SELECT column_name FROM information_schema.columns WHERE table_name = 'logbook'
+          `);
+          const existingCols = logbookCols.rows.map(r => r.column_name);
+
+          if (!existingCols.includes('incident')) {
+            console.log('🐘 Migrating logbook: adding incident column');
+            await this.pgPool!.query('ALTER TABLE logbook ADD COLUMN incident TEXT');
+          }
+          if (!existingCols.includes('report')) {
+            console.log('🐘 Migrating logbook: adding report column');
+            await this.pgPool!.query('ALTER TABLE logbook ADD COLUMN report TEXT');
+          }
+          if (!existingCols.includes('supervised_by')) {
+            console.log('🐘 Migrating logbook: adding supervised_by column');
+            await this.pgPool!.query('ALTER TABLE logbook ADD COLUMN supervised_by TEXT');
+          }
+        } catch (migErr) {
+          console.error('❌ Error migrating logbook table in Postgres:', migErr);
+        }
       } catch (err) {
         console.error('❌ Error initializing Postgres:', err);
       }
     } else {
+      // For SQLite, we also need to handle missing columns if necessary
+      try {
+        const tableInfo = this.sqliteDb.prepare("PRAGMA table_info(logbook)").all();
+        const existingCols = tableInfo.map((c: any) => c.name);
+
+        if (!existingCols.includes('incident')) {
+          this.sqliteDb.exec('ALTER TABLE logbook ADD COLUMN incident TEXT');
+        }
+        if (!existingCols.includes('report')) {
+          this.sqliteDb.exec('ALTER TABLE logbook ADD COLUMN report TEXT');
+        }
+        if (!existingCols.includes('supervised_by')) {
+          this.sqliteDb.exec('ALTER TABLE logbook ADD COLUMN supervised_by TEXT');
+        }
+      } catch (e) {
+        // Table might not exist yet if initialize just ran, but sanitize anyway
+      }
+
       this.sqliteDb.exec(schema.replace(/SERIAL/g, 'INTEGER').replace(/TIMESTAMP/g, 'DATETIME').replace(/REFERENCES\s+\w+\(\w+\)/g, ''));
       console.log('✅ SQLite tables verified/created');
     }
