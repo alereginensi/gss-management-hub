@@ -4,10 +4,10 @@ import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import { useTicketContext } from '../../context/TicketContext';
 import { useEffect, useState } from 'react';
-import { UserCheck, UserPlus, Info, Mail, Shield, X, Check, Edit2, Search } from 'lucide-react';
+import { UserCheck, UserPlus, Info, Mail, Shield, X, Check, Edit2, Search, Trash2 } from 'lucide-react';
 
 export default function UserManagement() {
-    const { pendingUsers, fetchAllUsers, approveUser, rejectUser, currentUser, isSidebarOpen, allUsers, updateUser } = useTicketContext();
+    const { pendingUsers, fetchAllUsers, approveUser, rejectUser, currentUser, isSidebarOpen, allUsers, updateUser, deleteUser } = useTicketContext();
     const [loading, setLoading] = useState(false);
     const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', department: 'Administración' });
     const [editingUser, setEditingUser] = useState<any>(null);
@@ -129,10 +129,29 @@ export default function UserManagement() {
             } else {
                 alert('Error al actualizar usuario');
             }
-        } catch (error) {
-            alert('Error al actualizar usuario');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteUser = async () => {
+        if (!editingUser || !editingUser.email) return;
+
+        if (confirm(`¿Estás seguro de que deseas eliminar permanentemente al usuario "${editingUser.name} (${editingUser.email})"? Esta acción no se puede deshacer.`)) {
+            setLoading(true);
+            try {
+                const success = await deleteUser(editingUser.email);
+                if (success) {
+                    alert('Usuario eliminado con éxito');
+                    handleCloseEdit();
+                } else {
+                    alert('Error al eliminar usuario');
+                }
+            } catch (error) {
+                alert('Error al eliminar usuario');
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -562,24 +581,44 @@ export default function UserManagement() {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <button
                                     type="button"
-                                    onClick={handleCloseEdit}
-                                    className="btn btn-secondary"
-                                    style={{ padding: '0.75rem 1.5rem' }}
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
+                                    onClick={handleDeleteUser}
                                     disabled={loading}
-                                    className="btn btn-primary"
-                                    style={{ padding: '0.75rem 1.5rem' }}
+                                    className="btn"
+                                    style={{
+                                        padding: '0.75rem 1rem',
+                                        backgroundColor: '#fee2e2',
+                                        color: '#b91c1c',
+                                        border: '1px solid #fecaca',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem'
+                                    }}
                                 >
-                                    <Check size={16} style={{ marginRight: '0.5rem' }} />
-                                    Guardar Cambios
+                                    <Trash2 size={16} />
+                                    Eliminar Usuario
                                 </button>
+                                <div style={{ display: 'flex', gap: '1rem' }}>
+                                    <button
+                                        type="button"
+                                        onClick={handleCloseEdit}
+                                        className="btn btn-secondary"
+                                        style={{ padding: '0.75rem 1.5rem' }}
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="btn btn-primary"
+                                        style={{ padding: '0.75rem 1.5rem' }}
+                                    >
+                                        <Check size={16} style={{ marginRight: '0.5rem' }} />
+                                        Guardar Cambios
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>
