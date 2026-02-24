@@ -226,34 +226,47 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     // Restore session on mount
     React.useEffect(() => {
         const restoreSession = async () => {
+            console.log('🔄 TicketContext: Attempting session restoration...');
             try {
                 // CRITICAL: Re-set the auth_token cookie from localStorage on every page load
                 // This ensures the cookie is present for all requests even after a full page refresh
                 const storedToken = localStorage.getItem('authToken');
                 if (storedToken) {
+                    console.log('🎫 TicketContext: Found stored token, setting cookie');
                     const expires = new Date(Date.now() + 2 * 60 * 60 * 1000).toUTCString();
                     document.cookie = `auth_token=${storedToken}; path=/; expires=${expires}; SameSite=Lax`;
                 }
 
                 // Try to restore from server (cookie OR header)
+                console.log('🔍 TicketContext: Fetching /api/auth/me');
                 const res = await fetch('/api/auth/me', { headers: getAuthHeaders() });
                 if (res.ok) {
                     const data = await res.json();
                     if (data.user) {
+                        console.log('✅ TicketContext: Session restored for', data.user.email);
                         setIsAuthenticated(true);
                         isAuthenticatedRef.current = true;
                         setCurrentUser(data.user);
                         // Fetch data ONLY if authenticated
                         // Note: refreshData will internally check roles for sensitive APIs
                         refreshData();
+                    } else {
+                        console.log('⚠️ TicketContext: /api/auth/me returned ok but no user');
+                        logout();
                     }
+                } else if (res.status === 401) {
+                    console.log('❌ TicketContext: Session unauthorized (401)');
+                    // Only call logout if we actually had a reason to believe we were logged in
+                    if (storedToken || isAuthenticatedRef.current) {
+                        logout();
+                    }
+                    setLoading(false);
                 } else {
-                    // Server says 401 even with the token - clear everything
-                    logout();
+                    console.log('❌ TicketContext: Session restore failed with status', res.status);
                     setLoading(false);
                 }
             } catch (e) {
-                console.error("Error restoring session", e);
+                console.error("❌ TicketContext: Error restoring session", e);
                 setLoading(false);
             }
         };
@@ -368,11 +381,12 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     };
 
     const logout = () => {
+        console.log('🔐 TicketContext: Logging out, clearing session data');
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('user');
         localStorage.removeItem('authToken');
         // Clear the client-set auth cookie
-        document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
         isAuthenticatedRef.current = false;
         setIsAuthenticated(false);
         setCurrentUser(null);
