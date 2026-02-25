@@ -124,7 +124,7 @@ export default function Home() {
         <section className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Tickets Recientes</h3>
-            <Link href={currentUser?.role === 'admin' ? "/tickets?view=all" : "/tickets"}>
+            <Link href="/tickets?view=all">
               <button className="btn" style={{ fontSize: '0.875rem', color: 'var(--accent-color)' }}>Ver todos</button>
             </Link>
           </div>
