@@ -85,11 +85,6 @@ export default function Sidebar() {
                             <li>
                                 <NavItem href="/tickets" icon={<TicketIcon size={18} />} label="Mis Tickets" active={pathname === '/tickets' && !new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').has('view')} />
                             </li>
-                            {(currentUser?.role === 'admin' || currentUser?.role === 'supervisor') && (
-                                <li>
-                                    <NavItem href="/tickets?view=all" icon={<TicketIcon size={18} />} label="Todos los Tickets" active={pathname === '/tickets' && new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('view') === 'all'} />
-                                </li>
-                            )}
                             <li>
                                 <NavItem href="/new-ticket" icon={<PlusCircle size={18} />} label="Nuevo Ticket" active={pathname === '/new-ticket'} />
                             </li>
