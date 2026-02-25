@@ -929,7 +929,6 @@ export default function LogbookPage() {
                     </table>
                 </div>
 
-                {/* Mobile Card View */}
                 {/* Mobile Card View (Compact) */}
                 <div className="mobile-view">
                     {visibleEntries.length === 0 ? (
@@ -943,28 +942,58 @@ export default function LogbookPage() {
                                 borderLeft: `4px solid ${sectorColorMap[entry.sector]?.replace('0.02', '0.6') || 'var(--border-color)'}`,
                                 padding: '1rem',
                                 display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                gap: '1rem'
+                                flexDirection: 'column',
+                                gap: '0.75rem',
+                                backgroundColor: 'var(--surface-color)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '12px',
+                                marginBottom: '1rem'
                             }}>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem', textTransform: 'uppercase' }}>
-                                        {entry.sector} • {entry.date}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            {entry.date} • {entry.sector}
+                                        </div>
+                                        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
+                                            {entry.location}
+                                        </div>
                                     </div>
-                                    <div style={{ fontWeight: 600, fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {entry.location}
+                                    <span style={{
+                                        fontSize: '0.7rem',
+                                        padding: '0.25rem 0.6rem',
+                                        borderRadius: '20px',
+                                        backgroundColor: entry.uniform === 'Completo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                        color: entry.uniform === 'Completo' ? '#22c55e' : '#ef4444',
+                                        fontWeight: 600,
+                                        border: '1px solid currentColor'
+                                    }}>
+                                        {entry.uniform}
+                                    </span>
+                                </div>
+
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                    <div>
+                                        <span style={{ opacity: 0.6, display: 'block', fontSize: '0.7rem' }}>Responsable</span>
+                                        <strong>{entry.supervisor || '-'}</strong>
                                     </div>
-                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        Resp: {entry.supervisor || '-'} • Func: {entry.staff_member || 'Sin funcionario'}
+                                    <div>
+                                        <span style={{ opacity: 0.6, display: 'block', fontSize: '0.7rem' }}>Personal</span>
+                                        <strong>{entry.staff_member}</strong>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => setSelectedReport(entry)}
-                                    className="btn btn-secondary"
-                                    style={{ fontSize: '0.8rem', padding: '0.5rem 0.8rem', whiteSpace: 'nowrap' }}
-                                >
-                                    Ver Reporte
-                                </button>
+
+                                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 600 }}>
+                                        {entry.incident || 'Sin incidencia'}
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedReport(entry)}
+                                        className="btn btn-secondary"
+                                        style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem', borderRadius: '8px' }}
+                                    >
+                                        Ver Detalles
+                                    </button>
+                                </div>
                             </div>
                         ))
                     )}
@@ -1082,7 +1111,7 @@ export default function LogbookPage() {
                                                     </button>
                                                 )}
 
-                                                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
                                                     <div>
                                                         <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Lugar</label>
                                                         {(() => {
@@ -1155,7 +1184,7 @@ export default function LogbookPage() {
                                                             onChange={e => updateReportItem(idx, 'report', e.target.value)}
                                                             className="input"
                                                             rows={4}
-                                                            style={{ resize: 'vertical', minHeight: '90px', lineHeight: '1.5', width: '100%' }}
+                                                            style={{ resize: 'vertical', minHeight: isMobile ? '120px' : '90px', lineHeight: '1.5', width: '100%' }}
                                                         />
                                                     </div>
                                                 </div>

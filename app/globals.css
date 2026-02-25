@@ -145,7 +145,7 @@ textarea {
   main {
     margin-left: 0 !important;
     padding: 1rem !important;
-    padding-top: 4rem !important;
+    padding-top: 5rem !important;
     /* Space for hamburger button */
   }
 
@@ -189,9 +189,9 @@ textarea {
 }
 
 /* Tablet: 768px - 1024px */
+/* Remove fixed margin-left to allow sidebar state to control it via inline styles */
 @media (min-width: 768px) and (max-width: 1024px) {
   main {
-    margin-left: 260px;
     padding: 1.5rem;
   }
 
