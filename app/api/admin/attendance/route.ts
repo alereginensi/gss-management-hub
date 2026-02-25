@@ -33,16 +33,16 @@ export async function GET(request: Request) {
         if (filterLocation || filterSector) {
             query += ` AND t.user_id IN (
                 SELECT DISTINCT user_id FROM tasks 
-                WHERE type = 'check_in' 
+                WHERE 1=1 
                 ${filterLocation ? 'AND location = ?' : ''} 
                 ${filterSector ? 'AND sector = ?' : ''}
-                ${startDate ? 'AND DATE(created_at) >= ?' : ''}
-                ${endDate ? 'AND DATE(created_at) <= ?' : ''}
+                ${startDate ? 'AND created_at >= ?' : ''}
+                ${endDate ? 'AND created_at <= ?' : ''}
             )`;
             if (filterLocation) params.push(filterLocation);
             if (filterSector) params.push(filterSector);
-            if (startDate) params.push(startDate);
-            if (endDate) params.push(endDate);
+            if (startDate) params.push(`${startDate}T00:00:00.000Z`);
+            if (endDate) params.push(`${endDate}T23:59:59.999Z`);
         }
 
         // Filter by Supervisor if not Admin
@@ -54,12 +54,12 @@ export async function GET(request: Request) {
         }
 
         if (startDate) {
-            query += ` AND DATE(t.created_at) >= ?`;
-            params.push(startDate);
+            query += ` AND t.created_at >= ?`;
+            params.push(`${startDate}T00:00:00.000Z`);
         }
         if (endDate) {
-            query += ` AND DATE(t.created_at) <= ?`;
-            params.push(endDate);
+            query += ` AND t.created_at <= ?`;
+            params.push(`${endDate}T23:59:59.999Z`);
         }
         if (filterRubro) {
             query += ` AND u.rubro = ?`;
@@ -93,17 +93,31 @@ export async function GET(request: Request) {
 
             const current = workdaySummary[key];
             const time = new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+            const taskTimeMs = new Date(task.created_at).getTime();
 
-            if (task.type === 'check_in' && !current.checkIn) {
-                current.checkIn = time;
-                current.checkInFull = task.created_at;
-                current.location = task.taskLocation; // Capture location from check-in
-                current.sector = task.sector; // Capture sector from check-in
-            } else if (task.type === 'check_out') {
-                current.checkOut = time;
-                current.checkOutFull = task.created_at;
-            } else if (task.type === 'task') {
-                current.tasks.push({ time, description: task.description });
+            // Ignore old check_in/check_out types, just treat everything as a task for time tracking
+            if (task.type === 'task' || task.type === 'check_in' || task.type === 'check_out') {
+                if (task.type === 'task') {
+                    current.tasks.push({ time, description: task.description, location: task.taskLocation, sector: task.sector });
+                }
+
+                // Update Earliest (CheckIn)
+                if (!current.earliestMs || taskTimeMs < current.earliestMs) {
+                    current.earliestMs = taskTimeMs;
+                    current.checkInFull = task.created_at;
+                }
+
+                // Update Latest (CheckOut)
+                if (!current.latestMs || taskTimeMs > current.latestMs) {
+                    current.latestMs = taskTimeMs;
+                    current.checkOutFull = task.created_at;
+                }
+
+                // Capture location/sector if not already set (prefer first task with location data)
+                if (!current.location && task.taskLocation) {
+                    current.location = task.taskLocation;
+                    current.sector = task.sector;
+                }
             }
 
             current.rawEvents.push(task);
@@ -112,7 +126,7 @@ export async function GET(request: Request) {
         // Convert to array and calculate durations
         const result = Object.values(workdaySummary).map((day: any) => {
             let totalHours = "00:00";
-            if (day.checkInFull && day.checkOutFull) {
+            if (day.checkInFull && day.checkOutFull && day.checkInFull !== day.checkOutFull) {
                 const start = new Date(day.checkInFull).getTime();
                 const end = new Date(day.checkOutFull).getTime();
                 const diffMs = end - start;
@@ -122,6 +136,10 @@ export async function GET(request: Request) {
                     totalHours = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                 }
             }
+
+            // Cleanup temp fields used for calculation
+            delete day.earliestMs;
+            delete day.latestMs;
 
             return {
                 ...day,

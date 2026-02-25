@@ -5,7 +5,7 @@ import React from 'react';
 import { useTicketContext } from '../../context/TicketContext';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
-import { Calendar, Clock, ChevronDown, ChevronUp, Download, LogIn, LogOut, Filter } from 'lucide-react';
+import { Calendar, Clock, ChevronDown, ChevronUp, Download, Filter } from 'lucide-react';
 
 interface Workday {
     date: string;
@@ -21,6 +21,8 @@ interface Workday {
     tasks: { time: string; description: string }[];
 }
 
+import { CLIENT_SECTOR_MAP, getAvailableClients, getSectorsForClient } from '../../config/clients';
+
 export default function AttendancePage() {
     const { currentUser, isSidebarOpen, isMobile } = useTicketContext();
     const [attendance, setAttendance] = useState<Workday[]>([]);
@@ -32,105 +34,7 @@ export default function AttendancePage() {
     const [filterSector, setFilterSector] = useState('');
     const [roles, setRoles] = useState<any[]>([]);
 
-    // Mismos clientes y sectores que la bitácora
-    const CLIENT_SECTOR_MAP: Record<string, string[]> = {
-        'AMEC': [],
-        'Arcanus': ['Durazno'],
-        'Automotora Carrica': ['Bulevar Artigas', 'Av. Millan'],
-        'Banco de Seguro': ['Casa Central', 'Bulevar Artigas', 'Casa Central - Garaje'],
-        'Bas': ['Melo (506)', 'Florida (509)', 'San Jose (531)', 'Fray Bentos (532)', 'Durazno (515)', 'Minas (520)', 'Colonia (523)', 'Mercedes (518)', 'Trinidad (517)', '8 de octubre (511)'],
-        'Berdick': ['Planta', 'Portero', 'Planta Nueva', 'Oficina'],
-        'Capacitación Limpieza': [],
-        'Carolina Mangarelli': ['Lagomar'],
-        'Carrica automotores': ['Puente de las Americas', 'Prado'],
-        'Casa Valentin': [],
-        'Casas Lagomar': ['Graciela Garcia', 'Carolina Mangarelli', 'Martha Garcia'],
-        'Casmu': [
-            'Sanatorio 2 Torre 1 Piso 6', 'Sanatorio 2 Torre 2 Piso 2', 'Sanatorio 2 Torre 2 Urgencia',
-            'Sanatorio 2 Policlinico', 'Sanatorio 2 Torre 1 Piso 4', 'Sanatorio 2 Torre 1 Piso 3',
-            'Sanatorio 2 Torre 1 Piso 5', 'Sanatorio 2 Torre 2', 'Sanatorio 2 Torre 1 Piso 2',
-            'Sanatorio 2 Ropería', 'Sanatorio 2 Asilo', 'Sanatorio 2 Torre 1 Piso 1',
-            'Sanatorio 2', 'Sanatorio 2 Torre 2 Urgencia Ginecológica', 'Sanatorio 2 Torre 1',
-            'Sanatorio 2 Torre 2 Cuartos Medicos', 'Sanatorio 2 Torre 1 Punta', 'Sanatorio 2 Centro Mamario',
-            'Sanatorio 2 Torre 2 Abreu', 'Sanatorio 2 Torre 2 PB y Sub', 'Sanatorio 2 Local 8',
-            'Sanatorio 2 Asilo Almacenes', 'Sanatorio 2 Policlinico Tomógrafo',
-            'Sanatorio 2 Torre 2 Urgencia Pediátrica', 'Sanatorio 2 Torre 2 Piso 5',
-            'Sanatorio 2 Local 8 Lavado de Móviles', 'Sanatorio 2 Torre 2 Piso 1', 'Sanatorio 2 Torre 2 SOE',
-            'Sanatorio 2 Asilo Pañol', 'Sanatorio 2 Asilo Contact Center', 'Sanatorio 2 Torre 2 Cocina',
-            'Sanatorio 2 Asilo Medicamentos', 'Sanatorio 2 Piscina', 'Sanatorio 2 Torre 2 Piso 3',
-            'Sanatorio 2 Taller Veracierto', 'Sanatorio 2 Cabina Abreu',
-            'Upeca Portones', 'Sanatorio 1 Odontología', 'Sanatorio 4', 'Sanatorio 1',
-            'Upeca Maldonado', 'Upeca Punta Carretas', '1727 Bv Artigas 1910', 'Upeca Paso de la Arena',
-            'Sanatorio 4 Oncologia', '1727 Agraciada', 'Upeca Colon', '1727 Malvin Norte',
-            'Sanatorio 4 Centro Medico', 'Upeca Solymar', 'Taller Central Veracierto', '1727 Solymar',
-            'Upeca Cerro', 'Upeca Guana', 'Upeca Cordon', 'Sanatorio 1 Salud Mental',
-            'Upeca Paso Carrasco', 'Upeca Agraciada', 'Upeca Piriapolis', 'Upeca Piedras Blancas',
-            'Upeca Parque Posadas', 'Upeca UAM', 'Upeca Parque Batlle', 'Centro Oftalmologico',
-            '1727 Colon', 'Upeca Tres cruces', 'Sanatorio 1 Vacunacion', '1727 Piedras Blancas',
-            'Upeca Sur y Palermo', 'Sanatorio 1 Farmacia', 'Upeca Malvin Norte',
-            'Sanatorio 1 - Adicional Upeca Cordon', '1727 Paso de la arena',
-            'Sanatorio 4 Hemodialisis', 'Referente Vigilante Auxiliar', 'Monitoreo',
-            'Deposito Cerro Adicional', 'Sanatorio 1 Cabina', 'Sanatorio Torre 1',
-            'Guana Centro Oftalmologico', 'Solymar (movil 15)', '1727 Bv. Artigas',
-            'Sanatorio 2 Salud Mental', 'Sanatorio 2 Cabina Asilo', 'Punta Carretas',
-            'Sanatorio 2 CTI', 'Centro Mamario', 'Upeca Barrio Sur y Palermo',
-            'Malvin Alto (movil 1)', 'Colon (movil 9)', 'Piedras Blancas (movil 7)',
-            'Paso de la Arena (movil 8)', 'Tres Cruces (movil 2)', 'Tres Cruces (movil 5)',
-            'Tres Cruces (movil 3)', 'Prado (movil 30)', 'Centro Oftalmologico Guana',
-            'Prado (movil 4)', 'Solymar (movil 40)'
-        ],
-        'Celia': ['Limpieza'],
-        'CES Seguridad': ['Grito de Gloria'],
-        'Ciudad Pinturas': ['Giannatassio'],
-        'Claro': [
-            'CAC Paso Molino', 'Mini CAC Las Piedras', 'Mini CAC Minas', 'CAC Costa Urbana',
-            'Isla Shopping Geant', 'Mini CAC Mercedes', 'Mini CAC Rivera', 'Mini CAC Florida',
-            'CAC 18 De Julio', 'Mini CAC Tacuarembo', 'Mini CAC Artigas', 'CAC Paysandú',
-            'CAC Salto', 'CAC Unión', 'Isla Nuevo Centro', 'Isla Tres Cruces', 'CAC Maldonado',
-            'San Martin Edificio Corporativo', 'Mini CAC Pando', 'Isla Punta Carretas',
-            'Isla Portones Shopping', 'Atlántida', 'Isla Montevideo Shopping'
-        ],
-        'Clinica Lura': [],
-        'Cooke Uruguay': [],
-        'Decosol': ['Via Disegno', 'Bagno & Company Av. Italia'],
-        'Edificio Amezaga': [],
-        'Edificio Charrua': ['Barbacoa'],
-        'Edificio Paullier': [],
-        'Edificio San Martin': [],
-        'Edificio Thays': [],
-        'Glic Global': ['Tienda Online'],
-        'Hif Global': [],
-        'Hospital BSE': [],
-        'Hotel Ibis': [],
-        'Indian': ['Atlantico', 'Punta Market Punta del Este', 'Fragata', 'Punta Shopping', 'Gorlero', 'Ariel', 'Portones', 'Maldonado', 'Montevideo Shopping'],
-        'INDIAN Chic Parisien': ['Salto', 'Tacuarembo'],
-        'L&G': [],
-        'La Molienda': ['Sarandi', 'Ejido', 'Rondeau Cocina', '18 de Julio', 'Rondeau Oficina', 'Uruguay'],
-        'La Molienda Colonia': [],
-        'Lactosan': [],
-        'Logitech': [],
-        'Mayorista el As': [],
-        'Microlab': [],
-        'Mundo Mac': ['Punta Shopping'],
-        'Nedabal': [],
-        'Nutriem Latam': [],
-        'Obra GSS': [],
-        'Plaza Correo': [],
-        'Porto vanila': ['Planta elaboradora'],
-        'Rawer Ltda': [],
-        'Riven SRL': ['Clínica Dental Br. Artigas'],
-        'Schmidt Premoldeados': ['Obra'],
-        'Silber Studio': [],
-        'Tata': ['Young (152)', 'Trinidad (145)', 'Trinidad (335)', 'San Jose (121)', 'Florida (315)', 'Mercedes (317)'],
-        'Teyma': ['Fac. Enfermería'],
-        'Tort Itda': ['2do Local'],
-        'UDE': ['Punta Del Este'],
-        'Veiga Ventos': ['Via Disegno'],
-        'Viavip': ['Smart Parking'],
-        'Wine Select': ['Vinos del Mundo'],
-    };
-    const availableClients = Object.keys(CLIENT_SECTOR_MAP).sort();
-    const getSectorsForClient = (client: string): string[] => CLIENT_SECTOR_MAP[client] || [];
+    const availableClients = getAvailableClients();
 
     useEffect(() => {
         if (currentUser?.id) {
@@ -182,8 +86,6 @@ export default function AttendancePage() {
                 { header: 'Cliente', key: 'location', width: 20 },
                 { header: 'Sector', key: 'sector', width: 20 },
                 { header: 'Fecha', key: 'date', width: 15 },
-                { header: 'Hora Ingreso', key: 'checkIn', width: 15 },
-                { header: 'Hora Salida', key: 'checkOut', width: 15 },
                 { header: 'Total Horas', key: 'totalHours', width: 15 },
                 { header: 'Hora Tarea', key: 'taskTime', width: 15 },
                 { header: 'Descripción Tarea', key: 'taskDesc', width: 40 }
@@ -205,16 +107,8 @@ export default function AttendancePage() {
             });
 
             // CUSTOM COLORS FOR METRICS
-            // 1. Hora Ingreso (Col 6) -> Green
-            const checkInCell = headerRow.getCell(6);
-            checkInCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF22C55E' } };
-
-            // 2. Hora Salida (Col 7) -> Red
-            const checkOutCell = headerRow.getCell(7);
-            checkOutCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEF4444' } };
-
-            // 3. Total Horas (Col 8) -> Yellow (with dark text for visibility)
-            const totalHoursCell = headerRow.getCell(8);
+            // Total Horas (Col 6) -> Yellow (with dark text for visibility)
+            const totalHoursCell = headerRow.getCell(6);
             totalHoursCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
             totalHoursCell.font = { bold: true, color: { argb: 'FF000000' } };
 
@@ -227,8 +121,6 @@ export default function AttendancePage() {
                         location: day.location || '-',
                         sector: day.sector || '-',
                         date: day.date,
-                        checkIn: day.checkIn,
-                        checkOut: day.checkOut,
                         totalHours: day.totalHours,
                         taskTime: '--',
                         taskDesc: '(Sin tareas registradas)'
@@ -241,8 +133,6 @@ export default function AttendancePage() {
                             location: day.location || '-',
                             sector: day.sector || '-',
                             date: day.date,
-                            checkIn: day.checkIn,
-                            checkOut: day.checkOut,
                             totalHours: day.totalHours,
                             taskTime: t.time,
                             taskDesc: t.description
@@ -269,7 +159,7 @@ export default function AttendancePage() {
             // Auto-filters
             worksheet.autoFilter = {
                 from: { row: 1, column: 1 },
-                to: { row: 1, column: 10 }
+                to: { row: 1, column: 8 }
             };
 
             const buffer = await workbook.xlsx.writeBuffer();
@@ -404,11 +294,9 @@ export default function AttendancePage() {
                                         <tr style={{ backgroundColor: 'var(--surface-color)', borderBottom: '1px solid var(--border-color)' }}>
                                             <th style={{ padding: '1rem' }}>Funcionario</th>
                                             <th style={{ padding: '1rem' }}>Departamento</th>
-                                            <th style={{ padding: '1rem' }}>Lugar</th>
+                                            <th style={{ padding: '1rem' }}>Cliente</th>
                                             <th style={{ padding: '1rem' }}>Sector</th>
-                                            <th style={{ padding: '1rem' }}><LogIn size={14} style={{ marginRight: '0.4rem' }} /> Ingreso</th>
-                                            <th style={{ padding: '1rem' }}><LogOut size={14} style={{ marginRight: '0.4rem' }} /> Salida</th>
-                                            <th style={{ padding: '1rem' }}><Clock size={14} style={{ marginRight: '0.4rem' }} /> Total</th>
+                                            <th style={{ padding: '1rem' }}><Clock size={14} style={{ marginRight: '0.4rem' }} /> Total Horas</th>
                                             <th style={{ padding: '1rem', textAlign: 'center' }}>Tareas</th>
                                         </tr>
                                     </thead>
@@ -428,8 +316,6 @@ export default function AttendancePage() {
                                                         </td>
                                                         <td style={{ padding: '1rem', fontSize: '0.85rem' }}>{day.location || '-'}</td>
                                                         <td style={{ padding: '1rem', fontSize: '0.85rem' }}>{day.sector || '-'}</td>
-                                                        <td style={{ padding: '1rem', color: '#16a34a', fontWeight: 600 }}>{day.checkIn || '--:--'}</td>
-                                                        <td style={{ padding: '1rem', color: '#dc2626', fontWeight: 600 }}>{day.checkOut || '--:--'}</td>
                                                         <td style={{ padding: '1rem', fontWeight: 700 }}>{day.totalHours} hs</td>
                                                         <td style={{ padding: '1rem', textAlign: 'center' }}>
                                                             <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-color)', display: 'flex', alignItems: 'center', gap: '0.25rem', margin: '0 auto' }}>
@@ -439,7 +325,7 @@ export default function AttendancePage() {
                                                     </tr>
                                                     {isExpanded && (
                                                         <tr style={{ backgroundColor: '#f9fafb' }}>
-                                                            <td colSpan={8} style={{ padding: '1.5rem' }}>
+                                                            <td colSpan={6} style={{ padding: '1.5rem' }}>
                                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderLeft: '2px solid #e5e7eb', paddingLeft: '1.5rem' }}>
                                                                     <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Detalle de Actividades</h4>
                                                                     {day.tasks.length === 0 ? (
