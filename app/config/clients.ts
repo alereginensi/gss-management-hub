@@ -96,4 +96,9 @@ export const CLIENT_SECTOR_MAP: Record<string, string[]> = {
 };
 
 export const getAvailableClients = () => Object.keys(CLIENT_SECTOR_MAP).sort();
-export const getSectorsForClient = (client: string): string[] => CLIENT_SECTOR_MAP[client] || [];
+export const getSectorsForClient = (client: string): string[] => {
+    if (!client) return [];
+    const sectors = CLIENT_SECTOR_MAP[client];
+    if (!sectors || sectors.length === 0) return ['Sector Único'];
+    return sectors;
+};

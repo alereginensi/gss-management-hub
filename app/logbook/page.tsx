@@ -167,6 +167,7 @@ export default function LogbookPage() {
     const [columns, setColumns] = useState<Column[]>([]);
     const [loading, setLoading] = useState(true);
     const [funcionarios, setFuncionarios] = useState<string[]>([]);
+    const [supervisores, setSupervisores] = useState<{ name: string, rubro: string }[]>([]);
 
     // Modals
     const [showReportModal, setShowReportModal] = useState(false);
@@ -176,8 +177,12 @@ export default function LogbookPage() {
     const [editData, setEditData] = useState<Partial<LogEntry>>({});
 
     // Helpers using the static CSV-based CLIENT_SECTOR_MAP
-    const getSectorsForLocation = (clientName: string): string[] =>
-        CLIENT_SECTOR_MAP[clientName] || [];
+    const getSectorsForLocation = (clientName: string): string[] => {
+        if (!clientName) return [];
+        const sectors = CLIENT_SECTOR_MAP[clientName];
+        if (!sectors || sectors.length === 0) return ['Sector Único'];
+        return sectors;
+    };
 
     const availableLocations = Object.keys(CLIENT_SECTOR_MAP).sort();
 
@@ -192,6 +197,7 @@ export default function LogbookPage() {
         location: '',
         sector: '',
         supervised_by: SUPERVISO_OPTIONS[0],
+        supervisor: currentUser?.role === 'supervisor' ? currentUser.name : '',
     });
 
     const [reportItems, setReportItems] = useState<ReportItem[]>([
@@ -218,6 +224,7 @@ export default function LogbookPage() {
         sector: '',
         location: '',
         supervised_by: SUPERVISO_OPTIONS[0],
+        supervisor: currentUser?.role === 'supervisor' ? currentUser.name : '',
         incident: '',
         report: '',
         staff_member: '',
@@ -241,9 +248,10 @@ export default function LogbookPage() {
         setLoading(true);
         try {
             const rubroParam = currentUser?.role === 'supervisor' ? `&rubro=${encodeURIComponent(currentUser.rubro || '')}` : '';
-            const [res, usersRes] = await Promise.all([
+            const [res, usersRes, supRes] = await Promise.all([
                 fetch('/api/logbook'),
-                fetch(`/api/admin/users?role=funcionario${rubroParam}`)
+                fetch(`/api/admin/users?role=funcionario${rubroParam}`),
+                fetch(`/api/admin/users?role=supervisor`)
             ]);
 
             if (res.ok) {
@@ -255,6 +263,10 @@ export default function LogbookPage() {
             if (usersRes.ok) {
                 const users = await usersRes.json();
                 setFuncionarios(users.map((u: any) => u.name));
+            }
+            if (supRes.ok) {
+                const sups = await supRes.json();
+                setSupervisores(sups.map((u: any) => ({ name: u.name, rubro: u.rubro })));
             }
         } catch (error) {
             console.error('Error fetching logbook:', error);
@@ -317,12 +329,12 @@ export default function LogbookPage() {
                 fetchData();
 
                 // Reset states
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 setNewReportHeader({
                     date: new Date().toISOString().split('T')[0],
                     location: '',
                     sector: '',
                     supervised_by: SUPERVISO_OPTIONS[0],
+                    supervisor: currentUser?.role === 'supervisor' ? currentUser.name : '',
                 });
                 setReportItems([{
                     sector: '',
@@ -338,6 +350,7 @@ export default function LogbookPage() {
                     location: '',
                     sector: '',
                     supervised_by: SUPERVISO_OPTIONS[0],
+                    supervisor: currentUser?.role === 'supervisor' ? currentUser.name : '',
                     incident: '',
                     report: '',
                     staff_member: '',
@@ -464,8 +477,10 @@ export default function LogbookPage() {
 
         // Sort entries by sector first, then by date (newest first)
         const sortedEntries = [...entriesToExport].sort((a, b) => {
-            if (a.sector !== b.sector) {
-                return a.sector.localeCompare(b.sector);
+            const sectorA = a.sector || '';
+            const sectorB = b.sector || '';
+            if (sectorA !== sectorB) {
+                return sectorA.localeCompare(sectorB);
             }
             return new Date(b.date).getTime() - new Date(a.date).getTime();
         });
@@ -503,8 +518,8 @@ export default function LogbookPage() {
         const excelCols = [
             { header: 'ID', key: 'id', width: 10 },
             { header: 'Fecha', key: 'date', width: 15 },
-            { header: 'Superviso', key: 'supervised_by', width: 15 },
-            { header: 'Supervisor', key: 'supervisor', width: 20 },
+            { header: 'Tipo de Servicio', key: 'supervised_by', width: 15 }, // changed from Superviso
+            { header: 'Responsable', key: 'supervisor', width: 20 }, // changed from Supervisor
             { header: 'Sector', key: 'sector', width: 20 },
             { header: 'Lugar', key: 'location', width: 20 },
             { header: 'Funcionario', key: 'staff_member', width: 20 },
@@ -592,8 +607,10 @@ export default function LogbookPage() {
     // Prepare data for rendering (Sort and Color) - Optimized with useMemo
     const sortedEntries = useMemo(() => {
         return [...visibleEntries].sort((a, b) => {
-            if (a.sector !== b.sector) {
-                return a.sector.localeCompare(b.sector);
+            const sectorA = a.sector || '';
+            const sectorB = b.sector || '';
+            if (sectorA !== sectorB) {
+                return sectorA.localeCompare(sectorB);
             }
             return new Date(b.date).getTime() - new Date(a.date).getTime();
         });
@@ -661,10 +678,6 @@ export default function LogbookPage() {
                             <Download size={18} />
                             Exportar Excel
                         </button>
-                        <button onClick={() => setShowColumnModal(true)} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-color)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                            <Layout size={18} />
-                            Agregar columna
-                        </button>
                         <button onClick={() => setShowReportModal(true)} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <Plus size={18} />
                             Nuevo Reporte
@@ -686,7 +699,8 @@ export default function LogbookPage() {
                                     />
                                 </th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Fecha</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Superviso</th>
+                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Tipo de Servicio</th>
+                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Responsable</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Cliente</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Sector</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Funcionario</th>
@@ -713,11 +727,30 @@ export default function LogbookPage() {
                             </tr>
                             <tr style={{ borderBottom: '2px solid var(--accent-color)', backgroundColor: 'rgba(59, 130, 246, 0.05)' }}>
                                 <td style={{ padding: '0.5rem' }}></td>
-                                <td style={{ padding: '0.5rem' }}><input type="date" value={inlineData.date} onChange={e => setInlineData({ ...inlineData, date: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} /></td>
                                 <td style={{ padding: '0.5rem' }}>
-                                    <select value={inlineData.supervised_by} onChange={e => setInlineData({ ...inlineData, supervised_by: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
+                                    <input type="date" value={inlineData.date} onChange={e => setInlineData({ ...inlineData, date: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} />
+                                </td>
+                                <td style={{ padding: '0.5rem' }}>
+                                    <select value={inlineData.supervised_by} onChange={e => setInlineData({ ...inlineData, supervised_by: e.target.value, supervisor: '' })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
                                         {SUPERVISO_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                     </select>
+                                </td>
+                                <td style={{ padding: '0.5rem' }}>
+                                    {currentUser?.role === 'supervisor' ? (
+                                        <input type="text" readOnly value={currentUser.name} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem', backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)' }} />
+                                    ) : (
+                                        <select
+                                            value={inlineData.supervisor || ''}
+                                            onChange={e => setInlineData({ ...inlineData, supervisor: e.target.value })}
+                                            className="input"
+                                            style={{ padding: '0.4rem', fontSize: '0.85rem' }}
+                                        >
+                                            <option value="">Seleccionar Responsable</option>
+                                            {supervisores
+                                                .filter(s => !inlineData.supervised_by || inlineData.supervised_by === 'Administrativos' || s.rubro === inlineData.supervised_by)
+                                                .map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+                                        </select>
+                                    )}
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
                                     <select
@@ -739,17 +772,30 @@ export default function LogbookPage() {
                                     </select>
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
-                                    <select
-                                        value={inlineData.sector}
-                                        onChange={e => setInlineData({ ...inlineData, sector: e.target.value })}
-                                        className="input"
-                                        style={{ padding: '0.4rem', fontSize: '0.85rem' }}
-                                    >
-                                        <option value="">Seleccionar Sector</option>
-                                        {getSectorsForLocation(inlineData.location || '').map((s: string) => (
-                                            <option key={s} value={s}>{s}</option>
-                                        ))}
-                                    </select>
+                                    {(() => {
+                                        const sectors = getSectorsForLocation(inlineData.location || '');
+                                        return sectors.length === 1 && sectors[0] === 'Sector Único' ? (
+                                            <input
+                                                type="text"
+                                                readOnly
+                                                value="Sector Único"
+                                                className="input"
+                                                style={{ padding: '0.4rem', fontSize: '0.85rem', backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)' }}
+                                            />
+                                        ) : (
+                                            <select
+                                                value={inlineData.sector}
+                                                onChange={e => setInlineData({ ...inlineData, sector: e.target.value })}
+                                                className="input"
+                                                style={{ padding: '0.4rem', fontSize: '0.85rem' }}
+                                            >
+                                                <option value="">Seleccionar Sector</option>
+                                                {sectors.map((s: string) => (
+                                                    <option key={s} value={s}>{s}</option>
+                                                ))}
+                                            </select>
+                                        );
+                                    })()}
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
                                     <select value={inlineData.staff_member} onChange={e => setInlineData({ ...inlineData, staff_member: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
@@ -815,7 +861,7 @@ export default function LogbookPage() {
                         <tbody>
                             {visibleEntries.length === 0 ? (
                                 <tr>
-                                    <td colSpan={10 + columns.length} style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                    <td colSpan={11 + columns.length} style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
                                             <BookOpen size={48} opacity={0.2} />
                                             <p>Empieza a llenar tu Bitácora directamente arriba o usa el botón Nuevo</p>
@@ -834,7 +880,7 @@ export default function LogbookPage() {
                                         <React.Fragment key={entry.id}>
                                             {isNewSector && index > 0 && (
                                                 <tr style={{ height: '8px', backgroundColor: 'rgba(0,0,0,0.03)' }}>
-                                                    <td colSpan={10 + columns.length} style={{ padding: 0, borderTop: '2px solid var(--border-color)' }}></td>
+                                                    <td colSpan={11 + columns.length} style={{ padding: 0, borderTop: '2px solid var(--border-color)' }}></td>
                                                 </tr>
                                             )}
                                             <tr style={{
@@ -853,6 +899,7 @@ export default function LogbookPage() {
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>{entry.date}</td>
                                                 <td style={{ padding: '1rem' }}>{entry.supervised_by}</td>
+                                                <td style={{ padding: '1rem' }}>{entry.supervisor || '-'}</td>
                                                 <td style={{ padding: '1rem' }}>{entry.location}</td>
                                                 <td style={{ padding: '1rem', fontWeight: isNewSector ? 600 : 400 }}>{entry.sector}</td>
                                                 <td style={{ padding: '1rem' }}>{entry.staff_member}</td>
@@ -902,7 +949,7 @@ export default function LogbookPage() {
                                         {entry.location}
                                     </div>
                                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {entry.staff_member || 'Sin funcionario'}
+                                        Resp: {entry.supervisor || '-'} • Func: {entry.staff_member || 'Sin funcionario'}
                                     </div>
                                 </div>
                                 <button
@@ -937,16 +984,34 @@ export default function LogbookPage() {
                                 <form onSubmit={(e) => handleCreateReport(e, reportItems)}>
                                     <div style={{ backgroundColor: 'rgba(0,0,0,0.02)', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--border-color)' }}>
                                         <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Datos Generales</h3>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem' }}>
                                             <div>
                                                 <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Fecha</label>
                                                 <input type="date" required value={newReportHeader.date} onChange={e => setNewReportHeader({ ...newReportHeader, date: e.target.value })} className="input" />
                                             </div>
                                             <div>
-                                                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Superviso</label>
-                                                <select value={newReportHeader.supervised_by} onChange={e => setNewReportHeader({ ...newReportHeader, supervised_by: e.target.value })} className="input" required>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Tipo de Servicio</label>
+                                                <select value={newReportHeader.supervised_by} onChange={e => setNewReportHeader({ ...newReportHeader, supervised_by: e.target.value, supervisor: '' })} className="input" required>
                                                     {SUPERVISO_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                                 </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Responsable</label>
+                                                {currentUser?.role === 'supervisor' ? (
+                                                    <input type="text" readOnly value={currentUser.name} className="input" style={{ backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)' }} />
+                                                ) : (
+                                                    <select
+                                                        value={newReportHeader.supervisor || ''}
+                                                        onChange={e => setNewReportHeader({ ...newReportHeader, supervisor: e.target.value })}
+                                                        className="input"
+                                                        required
+                                                    >
+                                                        <option value="">Seleccionar Responsable</option>
+                                                        {supervisores
+                                                            .filter(s => !newReportHeader.supervised_by || newReportHeader.supervised_by === 'Administrativos' || s.rubro === newReportHeader.supervised_by)
+                                                            .map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+                                                    </select>
+                                                )}
                                             </div>
                                             <div>
                                                 <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Cliente</label>
@@ -1005,21 +1070,34 @@ export default function LogbookPage() {
                                                     </button>
                                                 )}
 
-                                                <div style={{ display: 'grid', gridTemplateColumns: '200px 200px 150px 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
                                                     <div>
                                                         <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Lugar</label>
-                                                        <select
-                                                            required
-                                                            value={item.sector}
-                                                            onChange={e => updateReportItem(idx, 'sector', e.target.value)}
-                                                            className="input"
-                                                            style={{ width: '100%', padding: '0.6rem' }}
-                                                        >
-                                                            <option value="">Seleccionar Sector</option>
-                                                            {getSectorsForLocation(newReportHeader.location).map((s: string) => (
-                                                                <option key={s} value={s}>{s}</option>
-                                                            ))}
-                                                        </select>
+                                                        {(() => {
+                                                            const sectors = getSectorsForLocation(newReportHeader.location);
+                                                            return sectors.length === 1 && sectors[0] === 'Sector Único' ? (
+                                                                <input
+                                                                    type="text"
+                                                                    readOnly
+                                                                    value="Sector Único"
+                                                                    className="input"
+                                                                    style={{ width: '100%', padding: '0.6rem', backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)' }}
+                                                                />
+                                                            ) : (
+                                                                <select
+                                                                    required
+                                                                    value={item.sector}
+                                                                    onChange={e => updateReportItem(idx, 'sector', e.target.value)}
+                                                                    className="input"
+                                                                    style={{ width: '100%', padding: '0.6rem' }}
+                                                                >
+                                                                    <option value="">Seleccionar Sector</option>
+                                                                    {sectors.map((s: string) => (
+                                                                        <option key={s} value={s}>{s}</option>
+                                                                    ))}
+                                                                </select>
+                                                            );
+                                                        })()}
                                                     </div>
                                                     <div>
                                                         <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Funcionario / Personal</label>
@@ -1057,7 +1135,7 @@ export default function LogbookPage() {
                                                             {INCIDENT_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                                                         </select>
                                                     </div>
-                                                    <div>
+                                                    <div style={{ gridColumn: '1 / -1' }}>
                                                         <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Reporte / Novedad</label>
                                                         <textarea
                                                             required
@@ -1065,7 +1143,7 @@ export default function LogbookPage() {
                                                             onChange={e => updateReportItem(idx, 'report', e.target.value)}
                                                             className="input"
                                                             rows={4}
-                                                            style={{ resize: 'vertical', minHeight: '90px', lineHeight: '1.5' }}
+                                                            style={{ resize: 'vertical', minHeight: '90px', lineHeight: '1.5', width: '100%' }}
                                                         />
                                                     </div>
                                                 </div>
