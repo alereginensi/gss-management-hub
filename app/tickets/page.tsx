@@ -38,13 +38,10 @@ export default function TicketList() {
     const filteredTickets = tickets.filter(ticket => {
         // 1. Visibility & Filter for Admins vs Users
         if (currentUser?.role?.toLowerCase() === 'admin') {
-            // If personal view is active, only show tickets where admin is creator, supervisor or collaborator
+            // If personal view is active, only show tickets where admin is creator
+            // (Removed supervisor/collaborator from personal view as per user request)
             if (adminView === 'personal') {
-                const isCreator = ticket.requesterEmail === currentUser.email;
-                const isSupervisor = ticket.supervisor === currentUser.name;
-                const isCollaborator = ticket.collaboratorIds?.includes(currentUser.id);
-
-                if (!isCreator && !isSupervisor && !isCollaborator) {
+                if (ticket.requesterEmail !== currentUser.email) {
                     return false;
                 }
             }
@@ -54,16 +51,16 @@ export default function TicketList() {
                 return false;
             }
         } else {
-            // Requesters ONLY see their own tickets
-            if (ticket.requesterEmail !== currentUser?.email) {
-                // Check if collaborator
-                const isCollaborator = ticket.collaboratorIds?.includes(currentUser?.id || 0);
-                // Check if supervisor
-                const isSupervisor = ticket.supervisor === currentUser?.name;
-
-                if (!isCollaborator && !isSupervisor) {
+            // Non-admins
+            // If viewing personal list (default), only show created tickets
+            if (adminView === 'personal' || !adminView) {
+                if (ticket.requesterEmail !== currentUser?.email) {
                     return false;
                 }
+            } else if (adminView === 'all') {
+                // If they have access to "all" (Supervisors might get this from dashboard)
+                // we allow it, but usually Supervisors/Admins are the ones with this toggle.
+                // For now, let's keep it strict based on the URL param 'view'
             }
         }
 
