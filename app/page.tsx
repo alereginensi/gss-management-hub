@@ -156,16 +156,38 @@ export default function Home() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>#{`T-${ticket.id}`}</span>
-                    <span style={{
-                      fontSize: '0.75rem',
-                      padding: '0.2rem 0.6rem',
-                      borderRadius: '12px',
-                      backgroundColor: ticket.statusColor,
-                      color: '#fff',
-                      fontWeight: 600
-                    }}>
-                      {ticket.status}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        padding: '0.2rem 0.6rem',
+                        borderRadius: '12px',
+                        backgroundColor: ticket.statusColor,
+                        color: '#fff',
+                        fontWeight: 600
+                      }}>
+                        {ticket.status}
+                      </span>
+                      {currentUser?.role?.toLowerCase() === 'admin' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTicket(ticket.id, ticket.subject);
+                          }}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#ef4444',
+                            padding: '0.3rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            borderRadius: '6px'
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>{ticket.subject}</div>
@@ -185,30 +207,6 @@ export default function Home() {
                       {ticket.priority}
                     </span>
                   </div>
-
-                  {currentUser?.role?.toLowerCase() === 'admin' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteTicket(ticket.id, ticket.subject);
-                      }}
-                      style={{
-                        position: 'absolute',
-                        top: '0.75rem',
-                        right: '0.75rem',
-                        background: 'rgba(239, 68, 68, 0.1)',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: '#ef4444',
-                        padding: '0.4rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        borderRadius: '6px'
-                      }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
 
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-color)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
                     {ticket.date}

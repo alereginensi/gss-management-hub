@@ -8,7 +8,7 @@ import { useTicketContext } from '../../context/TicketContext';
 import { useState, use, useEffect } from 'react';
 
 export default function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
-    const { tickets, getActivitiesByTicket, addActivity, updateTicketStatus, currentUser, transferTicket, addCollaborator, removeCollaborator, getTicketCollaborators, allUsers, fetchAllUsers } = useTicketContext();
+    const { tickets, getActivitiesByTicket, addActivity, updateTicketStatus, currentUser, transferTicket, addCollaborator, removeCollaborator, getTicketCollaborators, allUsers, fetchAllUsers, isSidebarOpen, isMobile } = useTicketContext();
     const [comment, setComment] = useState('');
     const [collaborators, setCollaborators] = useState<any[]>([]);
     const [showTransferModal, setShowTransferModal] = useState(false);
@@ -120,8 +120,9 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                 <Sidebar />
                 <main style={{
                     flex: 1,
-                    marginLeft: '260px',
-                    padding: '2rem',
+                    marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
+                    transition: 'margin-left 0.3s ease-in-out',
+                    padding: isMobile ? '1rem' : '2rem',
                     backgroundColor: 'var(--bg-color)'
                 }}>
                     <Header title="Ticket no encontrado" />
@@ -140,8 +141,9 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
 
             <main style={{
                 flex: 1,
-                marginLeft: '260px',
-                padding: '2rem',
+                marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
+                transition: 'margin-left 0.3s ease-in-out',
+                padding: isMobile ? '1rem' : '2rem',
                 backgroundColor: 'var(--bg-color)'
             }}>
                 <div style={{ marginBottom: '1rem' }}>
@@ -150,8 +152,12 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
 
                 <Header title={`Ticket #T-${ticketId}`} />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr',
+                    gap: isMobile ? '1.5rem' : '2rem'
+                }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '1.5rem' : '2rem' }}>
                         <div className="card">
                             <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem' }}>{ticket.subject}</h2>
                             <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
@@ -437,11 +443,16 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                         bottom: 0,
                         backgroundColor: 'rgba(0, 0, 0, 0.5)',
                         display: 'flex',
-                        alignItems: 'center',
+                        alignItems: isMobile ? 'flex-end' : 'center',
                         justifyContent: 'center',
                         zIndex: 1000
                     }}>
-                        <div className="card" style={{ width: '400px', maxWidth: '90%' }}>
+                        <div className="card" style={{
+                            width: isMobile ? '100%' : '400px',
+                            maxWidth: isMobile ? '100%' : '90%',
+                            borderRadius: isMobile ? '20px 20px 0 0' : 'var(--radius)',
+                            padding: isMobile ? '2rem 1.5rem 3rem' : '2rem'
+                        }}>
                             <h3 style={{ marginBottom: '1rem' }}>Transferir Ticket</h3>
                             <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Supervisor Actual</label>
@@ -498,11 +509,16 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                         bottom: 0,
                         backgroundColor: 'rgba(0, 0, 0, 0.5)',
                         display: 'flex',
-                        alignItems: 'center',
+                        alignItems: isMobile ? 'flex-end' : 'center',
                         justifyContent: 'center',
                         zIndex: 1000
                     }}>
-                        <div className="card" style={{ width: '400px', maxWidth: '90%' }}>
+                        <div className="card" style={{
+                            width: isMobile ? '100%' : '400px',
+                            maxWidth: isMobile ? '100%' : '90%',
+                            borderRadius: isMobile ? '20px 20px 0 0' : 'var(--radius)',
+                            padding: isMobile ? '2rem 1.5rem 3rem' : '2rem'
+                        }}>
                             <h3 style={{ marginBottom: '1rem' }}>Agregar Colaborador</h3>
                             <div style={{ marginBottom: '1.5rem' }}>
                                 <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Seleccionar Usuario</label>
