@@ -8,7 +8,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 
 export default function NotificationsPage() {
-    const { notifications, unreadCount, markNotificationRead, clearAllNotifications, loading, isSidebarOpen, isMobile } = useTicketContext();
+    const { notifications, unreadCount, markNotificationRead, markAllNotificationsRead, deleteNotification, clearAllNotifications, loading, isSidebarOpen, isMobile } = useTicketContext();
 
     const handleNotificationClick = (notificationId: number) => {
         markNotificationRead(notificationId);
@@ -44,17 +44,28 @@ export default function NotificationsPage() {
                     </div>
 
                     <div className="card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Tus Notificaciones</h2>
-                            {notifications.length > 0 && (
-                                <button
-                                    onClick={clearAllNotifications}
-                                    className="btn btn-outline"
-                                    style={{ fontSize: '0.875rem' }}
-                                >
-                                    Limpiar todo
-                                </button>
-                            )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Tus Notificaciones ({unreadCount} sin leer)</h2>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                {notifications.length > 0 && notifications.some(n => !n.read) && (
+                                    <button
+                                        onClick={markAllNotificationsRead}
+                                        className="btn btn-secondary"
+                                        style={{ fontSize: '0.875rem' }}
+                                    >
+                                        Marcar todo como leído
+                                    </button>
+                                )}
+                                {notifications.length > 0 && (
+                                    <button
+                                        onClick={clearAllNotifications}
+                                        className="btn"
+                                        style={{ fontSize: '0.875rem', border: '1px solid #ef4444', color: '#ef4444', backgroundColor: 'transparent' }}
+                                    >
+                                        Limpiar todo
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         {loading ? (
@@ -67,34 +78,71 @@ export default function NotificationsPage() {
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 {notifications.map(notification => (
-                                    <Link
+                                    <div
                                         key={notification.id}
-                                        href={notification.ticket_id ? `/tickets/${notification.ticket_id}` : '#'}
-                                        onClick={() => handleNotificationClick(notification.id)}
                                         style={{
-                                            display: 'block',
+                                            display: 'flex',
                                             padding: '1rem',
                                             borderBottom: '1px solid var(--border-color)',
-                                            borderLeft: '4px solid #3b82f6',
+                                            borderLeft: notification.read ? '4px solid transparent' : '4px solid #3b82f6',
                                             backgroundColor: notification.read ? 'transparent' : 'rgba(59, 130, 246, 0.05)',
-                                            cursor: 'pointer',
-                                            textDecoration: 'none',
-                                            color: 'inherit',
-                                            transition: 'background-color 0.2s'
+                                            transition: 'background-color 0.2s',
+                                            gap: '1rem'
                                         }}
                                     >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                                            <div style={{ fontWeight: notification.read ? 400 : 700, fontSize: '1rem' }}>
-                                                {notification.type === 'ticket_assigned' ? '🎫 Ticket Asignado' : 'Notificación'}
+                                        <Link
+                                            href={notification.ticket_id ? `/tickets/${notification.ticket_id}` : '#'}
+                                            onClick={() => !notification.read && handleNotificationClick(notification.id)}
+                                            style={{
+                                                flex: 1,
+                                                cursor: 'pointer',
+                                                textDecoration: 'none',
+                                                color: 'inherit',
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                                                <div style={{ fontWeight: notification.read ? 400 : 700, fontSize: '1rem' }}>
+                                                    {notification.type === 'ticket_assigned' ? '🎫 Ticket Asignado' : 'Notificación'}
+                                                </div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                                    {formatTimestamp(notification.created_at)}
+                                                </div>
                                             </div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                {formatTimestamp(notification.created_at)}
-                                            </div>
+                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
+                                                {notification.message}
+                                            </p>
+                                        </Link>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
+                                            {!notification.read && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        markNotificationRead(notification.id);
+                                                    }}
+                                                    className="btn"
+                                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: 'var(--accent-color)', color: 'white' }}
+                                                    title="Marcar como leído"
+                                                >
+                                                    Leer
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    if (confirm('¿Eliminar esta notificación?')) {
+                                                        deleteNotification(notification.id);
+                                                    }
+                                                }}
+                                                className="btn"
+                                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: 'transparent', color: '#ef4444', border: '1px solid #ef4444' }}
+                                                title="Eliminar"
+                                            >
+                                                Borrar
+                                            </button>
                                         </div>
-                                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
-                                            {notification.message}
-                                        </p>
-                                    </Link>
+                                    </div>
                                 ))}
                             </div>
                         )}
