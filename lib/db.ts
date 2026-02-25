@@ -191,7 +191,7 @@ class DbWrapper {
       );
 
       CREATE TABLE IF NOT EXISTS notifications (
-        id SERIAL PRIMARY KEY,
+        id BIGSERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id),
         ticket_id TEXT REFERENCES tickets(id),
         message TEXT NOT NULL,
@@ -302,6 +302,15 @@ class DbWrapper {
           if (!existingCols.includes('created_at')) {
             console.log('🐘 Migrating logbook: adding created_at column');
             await this.pgPool!.query('ALTER TABLE logbook ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+          }
+
+          // Migrate notifications ID to BIGINT for Postgres
+          const notifCols = await this.pgPool!.query(`
+            SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'id'
+          `);
+          if (notifCols.rows.length > 0 && notifCols.rows[0].data_type === 'integer') {
+            console.log('🐘 Migrating notifications: changing id to BIGINT');
+            await this.pgPool!.query('ALTER TABLE notifications ALTER COLUMN id TYPE BIGINT');
           }
 
           // Ensure logbook_columns exists (migration for existing DBs)

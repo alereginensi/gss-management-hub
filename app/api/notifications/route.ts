@@ -37,6 +37,11 @@ export async function POST(request: NextRequest) {
         const { notificationId, action } = await request.json();
 
         if (action === 'mark_read') {
+            if (!notificationId) {
+                return NextResponse.json({ error: 'Notification ID required' }, { status: 400 });
+            }
+            // For Postgres, very large IDs from Date.now() might still cause issues if not handled as BIGINT
+            // Although we migrated to BIGINT, validating it's a number is good practice.
             await db.prepare('UPDATE notifications SET read = 1 WHERE id = ?').run(notificationId);
             return NextResponse.json({ success: true });
         }
@@ -49,7 +54,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     } catch (error: any) {
         console.error('Error updating notifications:', error);
-        return NextResponse.json({ error: 'Failed to update notifications', details: error.message }, { status: 500 });
+        return NextResponse.json({
+            error: 'Failed to update notifications',
+            details: error.message,
+            code: error.code // Include PG error code if possible
+        }, { status: 500 });
     }
 }
 
