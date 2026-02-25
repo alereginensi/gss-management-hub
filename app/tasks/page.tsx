@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { useTicketContext } from '../context/TicketContext';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
-import { CheckCircle, FileText, Calendar } from 'lucide-react';
+import { CheckCircle, FileText, Calendar, MapPin } from 'lucide-react';
 import { JOB_ROLES, JobRole } from '../config/rubros';
+import { getAvailableClients, getSectorsForClient } from '../config/clients';
 
 interface Task {
     id: number;
@@ -19,8 +20,13 @@ export default function TasksPage() {
     const { currentUser, isSidebarOpen, isMobile } = useTicketContext();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [description, setDescription] = useState('');
+    const [client, setClient] = useState('');
+    const [sector, setSector] = useState('');
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+
+    const availableClients = getAvailableClients();
+    const availableSectors = client ? getSectorsForClient(client) : [];
 
     useEffect(() => {
         if (currentUser && currentUser.id !== undefined && currentUser.id !== null) {
@@ -57,6 +63,16 @@ export default function TasksPage() {
             return;
         }
 
+        if (!client) {
+            alert('Por favor seleccioná el cliente/lugar donde te encuentras');
+            return;
+        }
+
+        if (availableSectors.length > 0 && !sector) {
+            alert('Por favor seleccioná el sector dentro del cliente');
+            return;
+        }
+
         setSubmitting(true);
         try {
             const res = await fetch('/api/tasks', {
@@ -66,8 +82,8 @@ export default function TasksPage() {
                     userId: currentUser.id,
                     description: description.trim(),
                     type: 'task',
-                    location: null,
-                    sector: null,
+                    location: client,
+                    sector: sector || null,
                     localTimestamp: new Date().toISOString()
                 })
             });
@@ -112,66 +128,121 @@ export default function TasksPage() {
                             Seleccioná una tarea y confirmá para registrar la hora exacta.
                         </p>
 
-                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'stretch' }}>
-                            {hasRubroTasks ? (
-                                <select
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.75rem',
-                                        borderRadius: 'var(--radius)',
-                                        border: '1px solid var(--border-color)',
-                                        backgroundColor: 'var(--surface-color)',
-                                        color: 'var(--text-primary)',
-                                        fontSize: '0.95rem',
-                                        appearance: 'none'
-                                    }}
-                                >
-                                    <option value="">Seleccioná una tarea...</option>
-                                    {JOB_ROLES[currentUser!.rubro as JobRole].map(task => (
-                                        <option key={task} value={task}>{task}</option>
-                                    ))}
-                                    <option value="Otra">Otra / No listada</option>
-                                </select>
-                            ) : (
-                                <input
-                                    type="text"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Describí la tarea realizada..."
-                                    onKeyDown={(e) => e.key === 'Enter' && !submitting && description.trim() && handleRegisterTask()}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.75rem',
-                                        borderRadius: 'var(--radius)',
-                                        border: '1px solid var(--border-color)',
-                                        backgroundColor: 'var(--surface-color)',
-                                        color: 'var(--text-primary)',
-                                        fontSize: '0.95rem'
-                                    }}
-                                />
-                            )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {/* Client & Sector Selection */}
+                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                <div style={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0 0.5rem' }}>
+                                    <MapPin size={18} color="var(--text-secondary)" style={{ marginLeft: '0.5rem' }} />
+                                    <select
+                                        value={client}
+                                        onChange={(e) => {
+                                            setClient(e.target.value);
+                                            setSector(''); // Reset sector when client changes
+                                        }}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            border: 'none',
+                                            backgroundColor: 'transparent',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '0.95rem',
+                                            outline: 'none',
+                                            appearance: 'none'
+                                        }}
+                                    >
+                                        <option value="">Seleccioná el Cliente...</option>
+                                        {availableClients.map(c => (
+                                            <option key={c} value={c}>{c}</option>
+                                        ))}
+                                    </select>
+                                </div>
 
-                            <button
-                                onClick={handleRegisterTask}
-                                disabled={submitting || !description.trim()}
-                                className="btn btn-primary"
-                                style={{
-                                    padding: '0.75rem 1.25rem',
-                                    borderRadius: 'var(--radius)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    fontWeight: 600,
-                                    opacity: (!description.trim() || submitting) ? 0.6 : 1,
-                                    cursor: (!description.trim() || submitting) ? 'not-allowed' : 'pointer'
-                                }}
-                                title="Registrar tarea con hora actual"
-                            >
-                                <CheckCircle size={20} />
-                                {submitting ? 'Guardando...' : 'Confirmar'}
-                            </button>
+                                {availableSectors.length > 0 && (
+                                    <div style={{ flex: '1 1 200px' }}>
+                                        <select
+                                            value={sector}
+                                            onChange={(e) => setSector(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '0.75rem',
+                                                borderRadius: 'var(--radius)',
+                                                border: '1px solid var(--border-color)',
+                                                backgroundColor: 'var(--surface-color)',
+                                                color: 'var(--text-primary)',
+                                                fontSize: '0.95rem',
+                                                appearance: 'none'
+                                            }}
+                                        >
+                                            <option value="">Seleccioná el Sector...</option>
+                                            {availableSectors.map(s => (
+                                                <option key={s} value={s}>{s}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'stretch' }}>
+                                {hasRubroTasks ? (
+                                    <select
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '0.75rem',
+                                            borderRadius: 'var(--radius)',
+                                            border: '1px solid var(--border-color)',
+                                            backgroundColor: 'var(--surface-color)',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '0.95rem',
+                                            appearance: 'none'
+                                        }}
+                                    >
+                                        <option value="">Seleccioná una tarea...</option>
+                                        {JOB_ROLES[currentUser!.rubro as JobRole].map(task => (
+                                            <option key={task} value={task}>{task}</option>
+                                        ))}
+                                        <option value="Otra">Otra / No listada</option>
+                                    </select>
+                                ) : (
+                                    <input
+                                        type="text"
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        placeholder="Describí la tarea realizada..."
+                                        onKeyDown={(e) => e.key === 'Enter' && !submitting && description.trim() && handleRegisterTask()}
+                                        style={{
+                                            flex: 1,
+                                            padding: '0.75rem',
+                                            borderRadius: 'var(--radius)',
+                                            border: '1px solid var(--border-color)',
+                                            backgroundColor: 'var(--surface-color)',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '0.95rem'
+                                        }}
+                                    />
+                                )}
+
+                                <button
+                                    onClick={handleRegisterTask}
+                                    disabled={submitting || !description.trim()}
+                                    className="btn btn-primary"
+                                    style={{
+                                        padding: '0.75rem 1.25rem',
+                                        borderRadius: 'var(--radius)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        fontWeight: 600,
+                                        opacity: (!description.trim() || submitting) ? 0.6 : 1,
+                                        cursor: (!description.trim() || submitting) ? 'not-allowed' : 'pointer'
+                                    }}
+                                    title="Registrar tarea con hora actual"
+                                >
+                                    <CheckCircle size={20} />
+                                    {submitting ? 'Guardando...' : 'Confirmar'}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
