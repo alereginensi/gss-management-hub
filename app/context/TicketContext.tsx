@@ -217,19 +217,24 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const refreshData = async () => {
+    const refreshData = async (userOverride?: User) => {
         // Guard: never call APIs when not authenticated (prevents 401 flood on initial load)
         // Use ref to avoid stale closure issues with setTimeout/async calls
         if (!isAuthenticatedRef.current) return;
         setLoading(true);
+        
+        const activeUser = userOverride || currentUser;
+        console.log('🔄 TicketContext: Refreshing data for', activeUser?.email, 'Role:', activeUser?.role);
+
         const promises = [
             fetchTickets(),
             fetchNotifications(),
             fetchSettings()
         ];
 
-        const role = currentUser?.role?.toLowerCase();
+        const role = activeUser?.role?.toLowerCase();
         if (role === 'admin' || role === 'supervisor') {
+            console.log('👥 TicketContext: Role allows user fetching, calling fetchAllUsers');
             promises.push(fetchAllUsers());
         }
 
@@ -269,7 +274,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                         setCurrentUser(data.user);
                         // Fetch data ONLY if authenticated
                         // Note: refreshData will internally check roles for sensitive APIs
-                        refreshData();
+                        refreshData(data.user);
                     } else {
                         console.log('⚠️ TicketContext: /api/auth/me returned ok but no user');
                         logout();
@@ -398,7 +403,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         setIsAuthenticated(true);
         setCurrentUser(userData);
         // Give time for cookies to propagate
-        setTimeout(() => refreshData(), 300);
+        setTimeout(() => refreshData(userData), 300);
     };
 
     const logout = () => {

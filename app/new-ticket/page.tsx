@@ -126,6 +126,7 @@ export default function NewTicket() {
             requester: formData.name,
             requesterEmail: formData.email,
             affectedWorker: formData.affectedWorker,
+            supervisor: formData.supervisor,
             attachmentUrl: finalAttachmentUrl
         } as any);
 
@@ -201,7 +202,10 @@ export default function NewTicket() {
                                         >
                                             <option value="">Seleccionar Supervisor...</option>
                                             {allUsers
-                                                .filter(u => u.role === 'supervisor' || u.role === 'admin')
+                                                .filter(u => {
+                                                    const r = u.role?.toLowerCase();
+                                                    return r === 'supervisor' || r === 'admin';
+                                                })
                                                 .map(sup => (
                                                     <option key={sup.id} value={sup.name}>{sup.name}</option>
                                                 ))}
