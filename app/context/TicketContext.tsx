@@ -89,6 +89,7 @@ interface TicketContextType {
     addNotification: (ticketId: string, ticketSubject: string, message: string) => void;
     markNotificationRead: (notificationId: number) => void;
     deleteNotification: (notificationId: number) => void;
+    markAllNotificationsRead: () => void;
     clearAllNotifications: () => void;
     unreadCount: number;
     getAverageResolutionTime: () => string;
@@ -601,6 +602,19 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
         setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
     };
 
+    const markAllNotificationsRead = () => {
+        // Persist to DB
+        fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'mark_all_read' })
+        }).catch(err => console.error('Error marking all notifications read:', err));
+
+        setNotifications(prev =>
+            prev.map(notif => ({ ...notif, read: 1 }))
+        );
+    };
+
     const clearAllNotifications = () => {
         // Delete all from DB
         fetch('/api/notifications?all=true', { method: 'DELETE' })
@@ -892,6 +906,7 @@ Gracias por utilizar el sistema de tickets GSS.`.trim();
             notifications,
             addNotification,
             markNotificationRead,
+            markAllNotificationsRead,
             deleteNotification,
             clearAllNotifications,
             unreadCount,
