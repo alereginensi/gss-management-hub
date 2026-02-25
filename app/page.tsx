@@ -26,7 +26,15 @@ export default function Home() {
   // Calculate KPIs from tickets
   const openTickets = tickets.filter(t => t.status === 'Nuevo' || t.status === 'En Progreso').length;
   const resolvedToday = tickets.filter(t => t.status === 'Resuelto').length;
-  const highPriority = tickets.filter(t => t.priority === 'Alta').length;
+
+  // Priority Breakdown
+  const priorityCounts = {
+    Alta: tickets.filter(t => t.priority === 'Alta').length,
+    Media: tickets.filter(t => t.priority === 'Media').length,
+    Baja: tickets.filter(t => t.priority === 'Baja').length
+  };
+  const totalTickets = tickets.length || 1; // Avoid division by zero
+
   const avgResolutionTime = getAverageResolutionTime();
 
   // Get recent tickets (first 3)
@@ -63,7 +71,7 @@ export default function Home() {
               <FileText size={24} />
             </div>
             <div>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Tickets Abiertos</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Tickets Pendientes</p>
               <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{openTickets}</p>
             </div>
           </div>
@@ -78,13 +86,26 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ padding: '0.75rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: '50%', color: 'var(--priority-high)' }}>
-              <AlertCircle size={24} />
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Prioridades</p>
+              <AlertCircle size={16} style={{ color: 'var(--priority-high)' }} />
             </div>
-            <div>
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Prioridad Alta</p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>{highPriority}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {(['Alta', 'Media', 'Baja'] as const).map(p => {
+                const count = priorityCounts[p];
+                const percentage = (count / totalTickets) * 100;
+                const color = p === 'Alta' ? 'var(--priority-high)' : p === 'Media' ? 'var(--priority-medium)' : 'var(--priority-low)';
+                return (
+                  <div key={p} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '0.7rem', width: '35px', fontWeight: 600 }}>{p}</span>
+                    <div style={{ flex: 1, height: '8px', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${percentage}%`, height: '100%', backgroundColor: color, borderRadius: '4px' }} />
+                    </div>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, minWidth: '20px', textAlign: 'right' }}>{count}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -125,16 +146,22 @@ export default function Home() {
               </thead>
               <tbody style={{ fontSize: '0.875rem' }}>
                 {recentTickets.map(ticket => (
-                  <tr key={ticket.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <tr
+                    key={ticket.id}
+                    onClick={() => router.push(`/tickets/${ticket.id}`)}
+                    style={{
+                      borderBottom: '1px solid var(--border-color)',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.02)'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
                     <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>
-                      <Link href={`/tickets/${ticket.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                        #{`T-${ticket.id}`}
-                      </Link>
+                      #{`T-${ticket.id}`}
                     </td>
                     <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>
-                      <Link href={`/tickets/${ticket.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                        {ticket.subject}
-                      </Link>
+                      {ticket.subject}
                     </td>
                     <td style={{ padding: '1rem 0.5rem' }}>{ticket.requester || 'N/A'}</td>
                     <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.priorityColor }}>{ticket.priority}</span></td>
@@ -143,7 +170,10 @@ export default function Home() {
                     {currentUser?.role?.toLowerCase() === 'admin' && (
                       <td style={{ padding: '1rem 0.5rem' }}>
                         <button
-                          onClick={() => handleDeleteTicket(ticket.id, ticket.subject)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTicket(ticket.id, ticket.subject);
+                          }}
                           style={{
                             background: 'none',
                             border: 'none',
