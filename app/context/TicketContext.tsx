@@ -578,12 +578,16 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
     };
 
     const markNotificationRead = (notificationId: number) => {
-        // Persist to DB
-        fetch('/api/notifications', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ notificationId, action: 'mark_read' })
-        }).catch(err => console.error('Error marking notification read:', err));
+        // Persist to DB only if it's not a local ID (local IDs are from Date.now() which are much larger than 1 billion)
+        if (notificationId < 1000000000) {
+            fetch('/api/notifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notificationId, action: 'mark_read' })
+            }).catch(err => console.error('Error marking notification read:', err));
+        } else {
+            console.log('📝 TicketContext: Skipping API call for local notification ID:', notificationId);
+        }
 
         setNotifications(prev =>
             prev.map(notif =>
