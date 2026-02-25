@@ -50,7 +50,7 @@ interface ReportItem {
     extra_data: Record<string, any>;
 }
 
-const SUPERVISO_OPTIONS = ['Limpieza', 'Seguridad Fisica', 'Seguridad Electronica', 'Tercerizados', 'Administrativos'];
+const SUPERVISO_OPTIONS = ['Limpieza', 'Seguridad Física', 'Seguridad Electrónica', 'Tercerizados', 'Administrativos'];
 const UNIFORMS = ['Completo', 'Parcial', 'Sin Uniforme', 'Otro'];
 const INCIDENT_CATEGORIES = [
     'Operativa',
@@ -749,8 +749,10 @@ export default function LogbookPage() {
                                             {supervisores
                                                 .filter(s => {
                                                     if (!inlineData.supervised_by || inlineData.supervised_by === 'Administrativos') return true;
-                                                    const userRubros = s.rubro?.split(',').map(r => r.trim()) || [];
-                                                    return userRubros.includes(inlineData.supervised_by);
+                                                    const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                                                    const target = normalize(inlineData.supervised_by);
+                                                    const userRubros = s.rubro?.split(',').map(r => normalize(r.trim())) || [];
+                                                    return userRubros.includes(target);
                                                 })
                                                 .map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
                                         </select>
@@ -1014,8 +1016,10 @@ export default function LogbookPage() {
                                                         {supervisores
                                                             .filter(s => {
                                                                 if (!newReportHeader.supervised_by || newReportHeader.supervised_by === 'Administrativos') return true;
-                                                                const userRubros = s.rubro?.split(',').map(r => r.trim()) || [];
-                                                                return userRubros.includes(newReportHeader.supervised_by);
+                                                                const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                                                                const target = normalize(newReportHeader.supervised_by);
+                                                                const userRubros = s.rubro?.split(',').map(r => normalize(r.trim())) || [];
+                                                                return userRubros.includes(target);
                                                             })
                                                             .map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
                                                     </select>
