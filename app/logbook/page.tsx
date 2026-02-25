@@ -747,7 +747,11 @@ export default function LogbookPage() {
                                         >
                                             <option value="">Seleccionar Responsable</option>
                                             {supervisores
-                                                .filter(s => !inlineData.supervised_by || inlineData.supervised_by === 'Administrativos' || s.rubro === inlineData.supervised_by)
+                                                .filter(s => {
+                                                    if (!inlineData.supervised_by || inlineData.supervised_by === 'Administrativos') return true;
+                                                    const userRubros = s.rubro?.split(',').map(r => r.trim()) || [];
+                                                    return userRubros.includes(inlineData.supervised_by);
+                                                })
                                                 .map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
                                         </select>
                                     )}
