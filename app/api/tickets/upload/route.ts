@@ -31,15 +31,16 @@ export async function POST(request: NextRequest) {
             // Directory might already exist
         }
 
-        // Generate unique filename
-        const filename = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+        // Generate unique filename, replacing whitespace and dangerous URL chars with underscores
+        const sanitizedName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const filename = `${Date.now()}-${sanitizedName}`;
         const filePath = path.join(uploadDir, filename);
 
         await writeFile(filePath, buffer);
-        console.log(`📁 File uploaded to persistent storage: ${filePath}`);
+        console.log(`📁 File uploaded: ${filePath}`);
 
-        // Return the download API URL instead of direct public URL
-        const fileUrl = `/api/tickets/download?filename=${filename}`;
+        // Return the download API URL encoding the filename to be safe
+        const fileUrl = `/api/tickets/download?filename=${encodeURIComponent(filename)}`;
         return NextResponse.json({ success: true, url: fileUrl });
     } catch (error: any) {
         console.error('Upload Error:', error);

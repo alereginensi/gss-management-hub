@@ -136,8 +136,10 @@ export default function TasksPage() {
                                     <select
                                         value={client}
                                         onChange={(e) => {
-                                            setClient(e.target.value);
-                                            setSector(''); // Reset sector when client changes
+                                            const newClient = e.target.value;
+                                            setClient(newClient);
+                                            const sectors = getSectorsForClient(newClient);
+                                            setSector(sectors.length === 1 && sectors[0] === 'Sector Único' ? 'Sector Único' : '');
                                         }}
                                         style={{
                                             width: '100%',
@@ -159,25 +161,42 @@ export default function TasksPage() {
 
                                 {availableSectors.length > 0 && (
                                     <div style={{ flex: '1 1 200px' }}>
-                                        <select
-                                            value={sector}
-                                            onChange={(e) => setSector(e.target.value)}
-                                            style={{
+                                        {availableSectors.length === 1 && availableSectors[0] === 'Sector Único' ? (
+                                            <div style={{
                                                 width: '100%',
                                                 padding: '0.75rem',
                                                 borderRadius: 'var(--radius)',
                                                 border: '1px solid var(--border-color)',
-                                                backgroundColor: 'var(--surface-color)',
-                                                color: 'var(--text-primary)',
+                                                backgroundColor: 'rgba(0,0,0,0.05)',
+                                                color: 'var(--text-secondary)',
                                                 fontSize: '0.95rem',
-                                                appearance: 'none'
-                                            }}
-                                        >
-                                            <option value="">Seleccioná el Sector...</option>
-                                            {availableSectors.map(s => (
-                                                <option key={s} value={s}>{s}</option>
-                                            ))}
-                                        </select>
+                                                display: 'flex',
+                                                alignItems: 'center'
+                                            }}>
+                                                Sector Único
+                                            </div>
+                                        ) : (
+                                            <select
+                                                value={sector}
+                                                onChange={(e) => setSector(e.target.value)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.75rem',
+                                                    borderRadius: 'var(--radius)',
+                                                    border: '1px solid var(--border-color)',
+                                                    backgroundColor: 'var(--surface-color)',
+                                                    color: 'var(--text-primary)',
+                                                    fontSize: '0.95rem',
+                                                    appearance: 'none',
+                                                    outline: 'none'
+                                                }}
+                                            >
+                                                <option value="">Selecc. Sector...</option>
+                                                {availableSectors.map(s => (
+                                                    <option key={s} value={s}>{s}</option>
+                                                ))}
+                                            </select>
+                                        )}
                                     </div>
                                 )}
                             </div>

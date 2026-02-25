@@ -2,7 +2,7 @@
 
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
-import { UploadCloud, CheckCircle } from 'lucide-react';
+import { UploadCloud, CheckCircle, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTicketContext, DEPARTMENTS } from '../context/TicketContext';
 import { useRouter } from 'next/navigation';
@@ -86,27 +86,34 @@ export default function NewTicket() {
             currentUser.email = formData.email;
         }
 
-        // Upload file if exists
-        let attachmentUrl = '';
+        // Upload files if exists
+        let attachmentUrls: string[] = [];
         if (files.length > 0) {
             try {
-                const uploadFormData = new FormData();
-                uploadFormData.append('file', files[0]);
+                for (const file of files) {
+                    const uploadFormData = new FormData();
+                    uploadFormData.append('file', file);
 
-                const uploadRes = await fetch('/api/tickets/upload', {
-                    method: 'POST',
-                    body: uploadFormData
-                });
+                    const uploadRes = await fetch('/api/tickets/upload', {
+                        method: 'POST',
+                        body: uploadFormData
+                    });
 
-                if (uploadRes.ok) {
-                    const uploadData = await uploadRes.json();
-                    attachmentUrl = uploadData.url;
-                } else {
-                    console.error('File upload failed');
+                    if (uploadRes.ok) {
+                        const uploadData = await uploadRes.json();
+                        attachmentUrls.push(uploadData.url);
+                    } else {
+                        console.error(`File upload failed for ${file.name}`);
+                    }
                 }
             } catch (error) {
-                console.error('Error uploading file:', error);
+                console.error('Error uploading files:', error);
             }
+        } // Close if (files.length > 0)
+
+        let finalAttachmentUrl = '';
+        if (attachmentUrls.length > 0) {
+            finalAttachmentUrl = JSON.stringify(attachmentUrls);
         }
 
         // Add ticket to global state
@@ -119,7 +126,7 @@ export default function NewTicket() {
             requester: formData.name,
             requesterEmail: formData.email,
             affectedWorker: formData.affectedWorker,
-            attachmentUrl: attachmentUrl
+            attachmentUrl: finalAttachmentUrl
         } as any);
 
         setSubmitted(true);
@@ -131,9 +138,17 @@ export default function NewTicket() {
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            setFiles(Array.from(e.target.files));
+        if (e.target.files && e.target.files.length > 0) {
+            // Append incoming files to existing ones without replacing them
+            const newFiles = Array.from(e.target.files);
+            setFiles(prev => [...prev, ...newFiles]);
         }
+        // Reset the input value so the exact same file can be selected again if it was removed
+        e.target.value = '';
+    };
+
+    const handleRemoveFile = (index: number) => {
+        setFiles(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -378,7 +393,8 @@ export default function NewTicket() {
                                             textAlign: 'center',
                                             cursor: 'pointer',
                                             backgroundColor: 'var(--bg-color)',
-                                            transition: 'border-color 0.2s'
+                                            transition: 'border-color 0.2s',
+                                            marginBottom: files.length > 0 ? '1rem' : '0'
                                         }}>
                                         <input
                                             id="file-upload"
@@ -389,14 +405,51 @@ export default function NewTicket() {
                                         />
                                         <UploadCloud size={32} color={files.length > 0 ? 'var(--accent-color)' : 'var(--text-secondary)'} style={{ marginBottom: '0.5rem' }} />
                                         <p style={{ color: 'var(--text-primary)', fontSize: '0.875rem', fontWeight: 500 }}>
-                                            {files.length > 0 ? `${files.length} archivos seleccionados` : 'Haz clic para adjuntar imágenes o documentos'}
+                                            Haz clic para adjuntar imágenes o documentos
                                         </p>
-                                        {files.length > 0 && (
-                                            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                {files.map(f => f.name).join(', ')}
-                                            </div>
-                                        )}
                                     </div>
+
+                                    {files.length > 0 && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                            <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-secondary)' }}>
+                                                {files.length} {files.length === 1 ? 'archivo adjunto' : 'archivos adjuntos'}:
+                                            </p>
+                                            {files.map((f, index) => (
+                                                <div key={index} style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    padding: '0.5rem 0.75rem',
+                                                    backgroundColor: 'var(--surface-color)',
+                                                    border: '1px solid var(--border-color)',
+                                                    borderRadius: 'var(--radius)'
+                                                }}>
+                                                    <span style={{ fontSize: '0.875rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {f.name}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleRemoveFile(index);
+                                                        }}
+                                                        style={{
+                                                            background: 'none',
+                                                            border: 'none',
+                                                            color: 'var(--status-rejected)',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            padding: '0.25rem'
+                                                        }}
+                                                        title="Eliminar archivo"
+                                                    >
+                                                        <X size={16} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
