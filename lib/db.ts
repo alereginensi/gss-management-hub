@@ -223,6 +223,13 @@ class DbWrapper {
         user_email TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS logbook_columns (
+        name TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        type TEXT NOT NULL,
+        options TEXT
+      );
     `;
 
     if (this.type === 'pg') {
@@ -288,6 +295,24 @@ class DbWrapper {
             console.log('🐘 Migrating logbook: adding supervised_by column');
             await this.pgPool!.query('ALTER TABLE logbook ADD COLUMN supervised_by TEXT');
           }
+          if (!existingCols.includes('supervisor')) {
+            console.log('🐘 Migrating logbook: adding supervisor column');
+            await this.pgPool!.query('ALTER TABLE logbook ADD COLUMN supervisor TEXT');
+          }
+          if (!existingCols.includes('created_at')) {
+            console.log('🐘 Migrating logbook: adding created_at column');
+            await this.pgPool!.query('ALTER TABLE logbook ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+          }
+
+          // Ensure logbook_columns exists (migration for existing DBs)
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS logbook_columns (
+              name TEXT PRIMARY KEY,
+              label TEXT NOT NULL,
+              type TEXT NOT NULL,
+              options TEXT
+            )
+          `);
         } catch (migErr) {
           console.error('❌ Error migrating logbook table in Postgres:', migErr);
         }
@@ -323,6 +348,12 @@ class DbWrapper {
         }
         if (!existingCols.includes('supervised_by')) {
           this.sqliteDb.exec('ALTER TABLE logbook ADD COLUMN supervised_by TEXT');
+        }
+        if (!existingCols.includes('supervisor')) {
+          this.sqliteDb.exec('ALTER TABLE logbook ADD COLUMN supervisor TEXT');
+        }
+        if (!existingCols.includes('created_at')) {
+          this.sqliteDb.exec('ALTER TABLE logbook ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
         }
       } catch (e) {
         // Table might not exist yet if initialize just ran, but sanitize anyway

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
             params.push(session.user.rubro);
         }
 
-        entriesSql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+        entriesSql += ' ORDER BY id DESC LIMIT ? OFFSET ?';
 
         const entries = await db.prepare(entriesSql).all(...params, limit, offset);
         const columns = await db.prepare('SELECT * FROM logbook_columns').all();
@@ -39,9 +39,9 @@ export async function GET(request: NextRequest) {
             })),
             totalCount: totalCount?.count || 0
         });
-    } catch (error) {
-        console.error('Logbook GET Error:', error);
-        return NextResponse.json({ error: 'Failed to fetch logbook data' }, { status: 500 });
+    } catch (error: any) {
+        console.error('Logbook GET Error:', error?.stack || error);
+        return NextResponse.json({ error: error?.message || 'Failed to fetch logbook data' }, { status: 500 });
     }
 }
 
@@ -77,9 +77,9 @@ export async function POST(req: NextRequest) {
         });
 
         return NextResponse.json({ success: true, count: items.length });
-    } catch (error) {
-        console.error('Logbook POST Error:', error);
-        return NextResponse.json({ error: 'Failed to create logbook entry' }, { status: 500 });
+    } catch (error: any) {
+        console.error('Logbook POST Error:', error?.stack || error);
+        return NextResponse.json({ error: error?.message || 'Failed to create logbook entry' }, { status: 500 });
     }
 }
 

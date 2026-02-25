@@ -275,28 +275,66 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                             {ticket.attachmentUrl && (
                                 <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Adjuntos</label>
-                                    <a
-                                        href={ticket.attachmentUrl}
-                                        download
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            padding: '0.75rem',
-                                            backgroundColor: 'var(--bg-color)',
-                                            borderRadius: 'var(--radius)',
-                                            border: '1px solid var(--border-color)',
-                                            color: 'var(--accent-color)',
-                                            textDecoration: 'none',
-                                            fontSize: '0.875rem',
-                                            fontWeight: 500
-                                        }}
-                                    >
-                                        <Paperclip size={16} />
-                                        Descargar Adjunto
-                                    </a>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        {(() => {
+                                            let urls: string[] = [];
+                                            try {
+                                                // Try to parse as JSON array (new format)
+                                                urls = JSON.parse(ticket.attachmentUrl);
+                                                if (!Array.isArray(urls)) {
+                                                    urls = [ticket.attachmentUrl];
+                                                }
+                                            } catch (e) {
+                                                // Fallback to single string or comma separated legacy format (mostly single string)
+                                                urls = ticket.attachmentUrl.includes(',')
+                                                    ? ticket.attachmentUrl.split(',')
+                                                    : [ticket.attachmentUrl];
+                                            }
+
+                                            return urls.map((url, i) => {
+                                                const trimmedUrl = url.trim();
+                                                if (!trimmedUrl) return null;
+                                                // Extract original file name if possible
+                                                let fileName = `Archivo adjunto ${i + 1}`;
+                                                const match = trimmedUrl.match(/filename=\d+-(.+)$/);
+                                                if (match && match[1]) {
+                                                    fileName = decodeURIComponent(match[1]);
+                                                } else {
+                                                    const parts = trimmedUrl.split('/');
+                                                    const lastPart = parts[parts.length - 1];
+                                                    if (lastPart && lastPart !== 'download') {
+                                                        fileName = decodeURIComponent(lastPart);
+                                                    }
+                                                }
+
+                                                return (
+                                                    <a
+                                                        key={i}
+                                                        href={trimmedUrl}
+                                                        download
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.5rem',
+                                                            padding: '0.75rem',
+                                                            backgroundColor: 'var(--bg-color)',
+                                                            borderRadius: 'var(--radius)',
+                                                            border: '1px solid var(--border-color)',
+                                                            color: 'var(--accent-color)',
+                                                            textDecoration: 'none',
+                                                            fontSize: '0.875rem',
+                                                            fontWeight: 500
+                                                        }}
+                                                    >
+                                                        <Paperclip size={16} />
+                                                        {fileName}
+                                                    </a>
+                                                );
+                                            });
+                                        })()}
+                                    </div>
                                 </div>
                             )}
                         </div>
