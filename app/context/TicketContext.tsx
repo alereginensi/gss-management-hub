@@ -21,6 +21,18 @@ export const RUBROS = [
     'Administrativos'
 ];
 
+export const PRIORITY_COLORS = {
+    'Alta': 'var(--priority-high)',
+    'Media': 'var(--priority-medium)',
+    'Baja': 'var(--priority-low)'
+};
+
+export const STATUS_COLORS = {
+    'Nuevo': 'var(--status-new)',
+    'En Progreso': 'var(--status-progress)',
+    'Resuelto': 'var(--status-resolved)'
+};
+
 export interface Ticket {
     id: string;
     subject: string;
@@ -196,8 +208,14 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             const res = await fetch('/api/tickets', { headers: getAuthHeaders() });
             if (res.ok) {
                 const data = await res.json();
-                setTickets(data);
-                console.log('✅ Tickets loaded:', data.length);
+                // Derived colors if missing (e.g., from DB refresh)
+                const sanitizedData = data.map((t: any) => ({
+                    ...t,
+                    priorityColor: t.priorityColor || (PRIORITY_COLORS as any)[t.priority] || 'var(--priority-medium)',
+                    statusColor: t.statusColor || (STATUS_COLORS as any)[t.status] || 'var(--status-new)'
+                }));
+                setTickets(sanitizedData);
+                console.log('✅ Tickets loaded:', sanitizedData.length);
             }
         } catch (error) {
             console.error('Error fetching tickets:', error);
@@ -222,7 +240,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         // Use ref to avoid stale closure issues with setTimeout/async calls
         if (!isAuthenticatedRef.current) return;
         setLoading(true);
-        
+
         const activeUser = userOverride || currentUser;
         console.log('🔄 TicketContext: Refreshing data for', activeUser?.email, 'Role:', activeUser?.role);
 
@@ -422,24 +440,12 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         const now = new Date();
         const dateStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
-        const priorityColors = {
-            'Alta': 'var(--priority-high)',
-            'Media': 'var(--priority-medium)',
-            'Baja': 'var(--priority-low)'
-        };
-
-        const statusColors = {
-            'Nuevo': 'var(--status-new)',
-            'En Progreso': 'var(--status-progress)',
-            'Resuelto': 'var(--status-resolved)'
-        };
-
         // Build ticket without ID — the server will assign it
         const ticketPayload = {
             ...ticketData,
             date: dateStr,
-            priorityColor: priorityColors[ticketData.priority],
-            statusColor: statusColors[ticketData.status],
+            priorityColor: PRIORITY_COLORS[ticketData.priority],
+            statusColor: STATUS_COLORS[ticketData.status],
             requester: ticketData.requester || currentUser?.name || 'Anónimo',
             requesterEmail: ticketData.requesterEmail || currentUser?.email,
             affectedWorker: ticketData.affectedWorker,
