@@ -87,10 +87,13 @@ export async function DELETE(
             return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
         }
 
-        // Delete ticket and its activities
-        await db.prepare('DELETE FROM ticket_activities WHERE ticket_id = ?').run(ticketId);
-        await db.prepare('DELETE FROM ticket_collaborators WHERE ticket_id = ?').run(ticketId);
-        await db.prepare('DELETE FROM tickets WHERE id = ?').run(ticketId);
+        // Delete ticket and all its references in a transaction
+        await db.transaction(async (tx) => {
+            await tx.run('DELETE FROM ticket_activities WHERE ticket_id = ?', [ticketId]);
+            await tx.run('DELETE FROM ticket_collaborators WHERE ticket_id = ?', [ticketId]);
+            await tx.run('DELETE FROM notifications WHERE ticket_id = ?', [ticketId]);
+            await tx.run('DELETE FROM tickets WHERE id = ?', [ticketId]);
+        });
 
         return NextResponse.json({ success: true, message: 'Ticket deleted successfully' });
     } catch (error: any) {
