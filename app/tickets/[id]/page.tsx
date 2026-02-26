@@ -8,7 +8,7 @@ import { useTicketContext } from '../../context/TicketContext';
 import { useState, use, useEffect } from 'react';
 
 export default function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
-    const { tickets, getActivitiesByTicket, addActivity, updateTicketStatus, currentUser, transferTicket, addCollaborator, removeCollaborator, getTicketCollaborators, allUsers, fetchAllUsers, isSidebarOpen, isMobile } = useTicketContext();
+    const { tickets, getActivitiesByTicket, addActivity, updateTicketStatus, currentUser, transferTicket, addCollaborator, removeCollaborator, getTicketCollaborators, allUsers, fetchAllUsers, isSidebarOpen, isMobile, loading } = useTicketContext();
     const [comment, setComment] = useState('');
     const [collaborators, setCollaborators] = useState<any[]>([]);
     const [showTransferModal, setShowTransferModal] = useState(false);
@@ -114,6 +114,43 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
         }
     };
 
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', minHeight: '100vh' }}>
+                <Sidebar />
+                <main style={{
+                    flex: 1,
+                    marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
+                    transition: 'margin-left 0.3s ease-in-out',
+                    padding: isMobile ? '1rem' : '2rem',
+                    backgroundColor: 'var(--bg-color)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}>
+                    <div style={{ textAlign: 'center' }}>
+                        <div className="spinner" style={{
+                            width: '40px',
+                            height: '40px',
+                            border: '4px solid var(--border-color)',
+                            borderTop: '4px solid var(--accent-color)',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            margin: '0 auto 1rem'
+                        }}></div>
+                        <p style={{ color: 'var(--text-secondary)' }}>Cargando ticket...</p>
+                        <style jsx>{`
+                            @keyframes spin {
+                                0% { transform: rotate(0deg); }
+                                100% { transform: rotate(360deg); }
+                            }
+                        `}</style>
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
     if (!canSeeTicket) {
         return (
             <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -127,7 +164,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                 }}>
                     <Header title="Ticket no encontrado" />
                     <div className="card">
-                        <p>El ticket #{ticketId} no existe.</p>
+                        <p>El ticket #{ticketId} no existe o no tienes permiso para verlo.</p>
                         <Link href="/tickets" style={{ color: 'var(--accent-color)' }}>← Volver a Mis Tickets</Link>
                     </div>
                 </main>

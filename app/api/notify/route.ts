@@ -11,23 +11,55 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
         }
 
-        // 1. Try Power Automate Webhook first (Check DB settings then Env)
-        const settingsRows = await db.prepare('SELECT * FROM settings WHERE key = ?').get('power_automate_url') as any;
-        const powerAutomateUrl = settingsRows?.value || process.env.POWER_AUTOMATE_URL;
+        const results: any = { powerAutomate: null, push: null, smtp: null };
 
-        console.log('Attempting notification. Power Automate URL:', powerAutomateUrl ? 'Found' : 'Not found');
+        // 1. Try Power Automate Webhook first
+        const settingsRow = await db.prepare('SELECT value FROM settings WHERE key = ?').get('power_automate_url') as any;
+        const powerAutomateUrl = settingsRow?.value || process.env.POWER_AUTOMATE_URL;
 
         if (powerAutomateUrl) {
             try {
+                // Ensure the full email body (body) is transmitted and not overwritten by ticketData.description
+                const {
+                    description: ticketDesc,
+                    deptEmails,
+                    supervisorEmail,
+                    requesterEmail,
+                    affectedWorker,
+                    ...otherTicketData
+                } = ticketData || {};
+
+                // Consolidate all unique emails into a single string separated by semicolons
+                const rawEmails = [
+                    ...(Array.isArray(to) ? to : [to]),
+                    deptEmails,
+                    supervisorEmail,
+                    requesterEmail
+                ];
+
+                const consolidatedEmails = Array.from(new Set(
+                    rawEmails
+                        .filter(Boolean)
+                        .flatMap(e => e.split(/[;,]/))
+                        .map(e => e.trim())
+                        .filter(e => e.length > 0)
+                )).join('; ');
+
                 const payload = {
-                    to: Array.isArray(to) ? to.join(', ') : to,
+                    to: consolidatedEmails,
+                    all_recipients: consolidatedEmails,
                     subject,
+                    body,
                     description: body,
-                    affected_worker: ticketData.affectedWorker,
-                    ...ticketData
+                    ticket_description: ticketDesc || "",
+                    dept_emails: deptEmails || "",
+                    supervisor_email: supervisorEmail || "",
+                    requester_email: requesterEmail || "",
+                    affected_worker: affectedWorker || "",
+                    ...otherTicketData
                 };
 
-                console.log('Sending to Power Automate...');
+                console.log('📤 Sending to Power Automate. Payload:', JSON.stringify(payload, null, 2));
                 const response = await fetch(powerAutomateUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -35,19 +67,20 @@ export async function POST(request: Request) {
                 });
 
                 if (response.ok) {
-                    console.log('Power Automate notification success');
-                    return NextResponse.json({ success: true, message: 'Notificación enviada vía Power Automate' });
+                    console.log('✅ Power Automate notification success');
+                    results.powerAutomate = { success: true };
                 } else {
                     const errorText = await response.text();
-                    console.error('Power Automate returned error:', response.status, errorText);
+                    console.error('❌ Power Automate returned error:', response.status, errorText);
+                    results.powerAutomate = { success: false, status: response.status, error: errorText };
                 }
-            } catch (webhookError) {
-                console.error('Power Automate fetch exception:', webhookError);
+            } catch (webhookError: any) {
+                console.error('❌ Power Automate fetch exception:', webhookError);
+                results.powerAutomate = { success: false, error: webhookError.message };
             }
-            console.log('Falling back to SMTP due to Power Automate failure/skip');
         }
 
-        // 2. Try Push Notifications (Non-blocking ideally, but we await for reliability)
+        // 2. Try Push Notifications (Always attempt)
         const emails = Array.isArray(to) ? to : [to];
         try {
             const subsList = await db.query(
@@ -62,67 +95,69 @@ export async function POST(request: Request) {
                     process.env.VAPID_PRIVATE_KEY
                 );
 
-                const payload = JSON.stringify({
+                // Strip HTML tags for Push Notifications (Browser notifications handle plain text)
+                const stripHtml = (html: string) => {
+                    return html.replace(/<[^>]*>?/gm, '') // Remove tags
+                        .replace(/&nbsp;/g, ' ')  // Replace entities
+                        .replace(/\s+/g, ' ')     // Collapse whitespace
+                        .trim();
+                };
+
+                const pushPayload = JSON.stringify({
                     title: subject,
-                    body: body,
+                    body: stripHtml(body),
                     url: ticketData?.id ? `/tickets/${ticketData.id}` : '/'
                 });
 
                 const pushPromises = subsList.map(async (sub) => {
                     const pushSubscription = {
                         endpoint: sub.endpoint,
-                        keys: {
-                            p256dh: sub.p256dh,
-                            auth: sub.auth
-                        }
+                        keys: { p256dh: sub.p256dh, auth: sub.auth }
                     };
                     try {
-                        await webpush.sendNotification(pushSubscription, payload);
+                        await webpush.sendNotification(pushSubscription, pushPayload);
                     } catch (pushErr: any) {
                         if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
-                            console.log('Removing expired push subscription:', sub.id);
                             await db.run('DELETE FROM push_subscriptions WHERE id = ?', [sub.id]);
                         }
                     }
                 });
                 await Promise.all(pushPromises);
-                console.log(`Push notifications sent to ${subsList.length} devices`);
+                console.log(`✅ Push notifications sent to ${subsList.length} devices`);
+                results.push = { success: true, count: subsList.length };
             }
-        } catch (pushError) {
+        } catch (pushError: any) {
             console.error('Error broadcasting push notifications:', pushError);
+            results.push = { success: false, error: pushError.message };
         }
 
-        // 2. Fallback to SMTP/Nodemailer
-        try {
-            const result = await sendEmail({ to, subject, body });
-
-            if (result.success) {
-                return NextResponse.json({ success: true, message: 'Notificación enviada vía SMTP' });
-            } else {
-                console.error('SMTP Error:', result.error);
-                // Return success anyway to not block the UI, but log the error
-                return NextResponse.json({
-                    success: true,
-                    warning: 'Ticket creado pero falló el envío de correo',
-                    errorDetails: result.error
-                });
+        // 3. Fallback to SMTP only if Power Automate was NOT used or failed
+        if (!results.powerAutomate?.success) {
+            try {
+                console.log('Attempting SMTP delivery to:', to);
+                const result = await sendEmail({ to, subject, body });
+                if (result.success) {
+                    console.log('✅ SMTP notification success');
+                    results.smtp = { success: true };
+                } else {
+                    console.error('❌ SMTP Error:', result.error);
+                    results.smtp = { success: false, error: result.error };
+                }
+            } catch (smtpError: any) {
+                console.error('❌ SMTP Exception:', smtpError);
+                results.smtp = { success: false, error: smtpError.message };
             }
-        } catch (smtpError: any) {
-            console.error('SMTP Exception:', smtpError);
-            return NextResponse.json({
-                success: true,
-                warning: 'Ticket creado pero ocurrió un error al enviar correo',
-                errorDetails: smtpError.message
-            });
         }
-    } catch (error) {
+
+        return NextResponse.json({
+            success: results.powerAutomate?.success || results.smtp?.success || results.push?.success,
+            details: results
+        });
+    } catch (error: any) {
         console.error('Notify API error (General):', error);
-        // Even on general error, if it's just notification, we might want to return 200 or 202 if possible,
-        // but since this is the top-level catch, something went wrong with parsing or logic.
-        // We'll return 500 here but ensure we don't crash.
         return NextResponse.json({
             error: 'Error interno en servicio de notificaciones',
-            details: (error as Error).message
+            details: error.message
         }, { status: 500 });
     }
 }

@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     try {
-        const { email, action, name, password, department, role } = await request.json();
+        const body = await request.json();
+        const { email, action, name, password, department, role, rubro } = body;
 
         if (action === 'approve') {
             await db.prepare('UPDATE users SET approved = 1 WHERE email = ?').run(email);
@@ -76,7 +77,6 @@ export async function POST(request: NextRequest) {
         }
 
         if (action === 'create_supervisor') {
-            const { rubro } = await request.json();
             const hashedPassword = await hashPassword(password);
             await db.prepare('INSERT INTO users (name, email, password, department, role, rubro, approved) VALUES (?, ?, ?, ?, ?, ?, ?)')
                 .run(name, email, hashedPassword, department, 'supervisor', rubro, 1);
