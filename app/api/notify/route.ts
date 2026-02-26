@@ -15,9 +15,9 @@ export async function POST(request: Request) {
 
         // 1. Try Power Automate Webhook first
         const settingsRow = await db.prepare('SELECT value FROM settings WHERE key = ?').get('power_automate_url') as any;
-        const powerAutomateUrl = settingsRow?.value || process.env.POWER_AUTOMATE_URL;
+        const powerAutomateUrl = (settingsRow?.value || process.env.POWER_AUTOMATE_URL || "").trim();
 
-        if (powerAutomateUrl) {
+        if (powerAutomateUrl && powerAutomateUrl.startsWith('http')) {
             try {
                 // Ensure the full email body (body) is transmitted and not overwritten by ticketData.description
                 const {
@@ -40,7 +40,10 @@ export async function POST(request: Request) {
                 const consolidatedEmails = Array.from(new Set(
                     rawEmails
                         .filter(Boolean)
-                        .flatMap(e => e.split(/[;,]/))
+                        .flatMap(e => {
+                            if (Array.isArray(e)) return e;
+                            return (e as string).split(/[;,]/);
+                        })
                         .map(e => e.trim())
                         .filter(e => e.length > 0)
                 )).join('; ');
