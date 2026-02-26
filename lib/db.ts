@@ -279,6 +279,14 @@ class DbWrapper {
             console.log('🐘 Migrating tickets: adding created_at column');
             await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN created_at TIMESTAMP');
           }
+          if (!existingTicketCols.includes('started_at')) {
+            console.log('🐘 Migrating tickets: adding started_at column');
+            await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN started_at TEXT');
+          }
+          if (!existingTicketCols.includes('resolved_at')) {
+            console.log('🐘 Migrating tickets: adding resolved_at column');
+            await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN resolved_at TEXT');
+          }
 
           const logbookCols = await this.pgPool!.query(`
             SELECT column_name FROM information_schema.columns WHERE table_name = 'logbook'
@@ -360,6 +368,12 @@ class DbWrapper {
         }
         if (!existingTicketCols.includes('created_at')) {
           this.sqliteDb.exec('ALTER TABLE tickets ADD COLUMN created_at DATETIME');
+        }
+        if (!existingTicketCols.includes('started_at')) {
+          this.sqliteDb.exec('ALTER TABLE tickets ADD COLUMN started_at TEXT');
+        }
+        if (!existingTicketCols.includes('resolved_at')) {
+          this.sqliteDb.exec('ALTER TABLE tickets ADD COLUMN resolved_at TEXT');
         }
 
         const tableInfo = this.sqliteDb.prepare("PRAGMA table_info(logbook)").all();

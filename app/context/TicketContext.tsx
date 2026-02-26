@@ -487,20 +487,37 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             const emailString = systemSettings[deptEmailKey] || systemSettings.notification_emails || systemSettings.notification_email || '';
             const emailList = emailString.split(',').map((e: string) => e.trim()).filter((e: string) => e.length > 0);
 
+            console.log(`📧 TicketContext: Encontrados ${emailList.length} correos para el departamento ${newTicket.department} (clave: ${deptEmailKey})`);
+
             if (emailList.length > 0) {
                 const emailBody = `
-Se ha registrado una nueva solicitud en el portal:
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #2563eb; margin-bottom: 10px;">🎫 Nuevo Ticket Registrado</h2>
+  <p>Se ha registrado una nueva solicitud en el portal:</p>
+  
+  <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; border-left: 4px solid #2563eb;">
+    <ul style="list-style: none; padding: 0; margin: 0;">
+      <li><strong>📌 Asunto:</strong> ${newTicket.subject}</li>
+      <li><strong>👤 Colaborador:</strong> ${newTicket.requester}</li>
+      ${newTicket.affectedWorker ? `<li><strong>👷 Funcionario Afectado:</strong> ${newTicket.affectedWorker}</li>` : ''}
+      <li><strong>📧 Email:</strong> ${currentUser?.email}</li>
+      <li><strong>🏢 Sector/Departamento:</strong> ${newTicket.department}</li>
+      <li><strong>🚦 Prioridad:</strong> ${newTicket.priority}</li>
+      <li><strong>📅 Fecha/Hora:</strong> ${newTicket.date}</li>
+    </ul>
+  </div>
 
-- Colaborador: ${newTicket.requester}
-${newTicket.affectedWorker ? `- Funcionario Afectado: ${newTicket.affectedWorker}` : ''}
-- Email: ${currentUser?.email}
-- Sector/Departamento: ${newTicket.department}
-- Asunto: ${newTicket.subject}
-- Descripción: ${newTicket.description}
-- Prioridad: ${newTicket.priority}
-- Fecha/Hora: ${newTicket.date}
+  <h3 style="margin-top: 20px; color: #4b5563;">📝 Descripción:</h3>
+  <p style="background-color: #fff; padding: 10px; border: 1px solid #e5e7eb; border-radius: 4px;">
+    ${newTicket.description}
+  </p>
 
-Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim();
+  <p style="margin-top: 20px; font-style: italic; color: #6b7280; font-size: 0.9em;">
+    Por favor, ingrese al portal administrativo para gestionar esta solicitud.
+  </p>
+</div>`.trim();
+
+                const supervisorUser = allUsers.find(u => u.name === newTicket.supervisor);
 
                 fetch('/api/notify', {
                     method: 'POST',
@@ -518,7 +535,9 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
                             subject: newTicket.subject,
                             description: newTicket.description,
                             priority: newTicket.priority,
-                            date: newTicket.date
+                            date: newTicket.date,
+                            deptEmails: emailString,
+                            supervisorEmail: supervisorUser?.email || ''
                         }
                     })
                 }).catch(err => console.error('Error triggering notification:', err));
@@ -718,58 +737,85 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
             };
             setNotifications(prev => [notification, ...prev]);
 
-            // Send email notification when ticket is resolved
-            if (newStatus === 'Resuelto') {
-                const resolvedBy = currentUser?.name || 'Sistema';
-                const resolvedByEmail = currentUser?.email || '';
-                const requesterEmail = ticket.requesterEmail || '';
-                const requesterName = ticket.requester || 'Usuario';
+            // Send email notification for status changes
+            const resolvedBy = currentUser?.name || 'Sistema';
+            const resolvedByEmail = currentUser?.email || '';
+            const requesterEmail = ticket.requesterEmail || '';
+            const requesterName = ticket.requester || 'Usuario';
 
-                // Prepare email recipients: ticket creator and admin who resolved it
-                const recipients = [];
-                if (requesterEmail) recipients.push(requesterEmail);
-                if (resolvedByEmail && resolvedByEmail !== requesterEmail) recipients.push(resolvedByEmail);
+            // Prepare email recipients: always notify the requester
+            const recipients = [];
+            if (requesterEmail) recipients.push(requesterEmail);
 
-                if (recipients.length > 0) {
-                    const emailBody = `
-El ticket ha sido marcado como RESUELTO:
+            // If it's being resolved, also notify the resolver if different
+            if (newStatus === 'Resuelto' && resolvedByEmail && resolvedByEmail !== requesterEmail) {
+                recipients.push(resolvedByEmail);
+            }
 
-- Ticket ID: ${ticket.id}
-- Asunto: ${ticket.subject}
-- Descripción: ${ticket.description || 'N/A'}
-- Departamento: ${ticket.department}
-- Prioridad: ${ticket.priority}
-- Solicitante: ${requesterName} (${requesterEmail})
-- Resuelto por: ${resolvedBy} (${resolvedByEmail})
-- Fecha de creación: ${ticket.date}
-- Fecha de resolución: ${new Date().toLocaleString('es-AR')}
+            if (recipients.length > 0) {
+                const isResolved = newStatus === 'Resuelto';
+                const statusEmoji = isResolved ? '✅' : '🔄';
+                const statusColor = isResolved ? '#059669' : '#2563eb';
+                const emailSubject = isResolved
+                    ? `[TICKET RESUELTO] ${ticket.subject}`
+                    : `[ACTUALIZACIÓN TICKET] ${ticket.subject}`;
 
-Gracias por utilizar el sistema de tickets GSS.`.trim();
+                const emailBody = `
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: ${statusColor}; margin-bottom: 10px;">${statusEmoji} Ticket ${newStatus.toUpperCase()}</h2>
+  <p>El ticket <strong>#${ticket.id}</strong> ha cambiado de estado.</p>
+  
+  <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; border-left: 4px solid ${statusColor};">
+    <ul style="list-style: none; padding: 0; margin: 0;">
+      <li><strong>📌 Asunto:</strong> ${ticket.subject}</li>
+      <li><strong>🏢 Departamento:</strong> ${ticket.department}</li>
+      <li><strong>🚦 Prioridad:</strong> ${ticket.priority}</li>
+      <li><strong>👤 Solicitante:</strong> ${requesterName} (${requesterEmail})</li>
+      <li><strong>✍️ Actualizado por:</strong> ${resolvedBy}</li>
+      <li><strong>📅 Fecha de reporte:</strong> ${ticket.date}</li>
+      <li><strong>🕒 Última actualización:</strong> ${new Date().toLocaleString('es-AR')}</li>
+    </ul>
+  </div>
 
-                    fetch('/api/notify', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            to: recipients,
-                            subject: `[TICKET RESUELTO] ${ticket.subject}`,
-                            body: emailBody,
-                            ticketData: {
-                                id: ticket.id,
-                                requester: requesterName,
-                                requesterEmail: requesterEmail,
-                                department: ticket.department,
-                                subject: ticket.subject,
-                                description: ticket.description,
-                                priority: ticket.priority,
-                                status: 'Resuelto',
-                                resolvedBy: resolvedBy,
-                                resolvedByEmail: resolvedByEmail,
-                                date: ticket.date,
-                                resolvedDate: new Date().toLocaleString('es-AR')
-                            }
-                        })
-                    }).catch(err => console.error('Error sending resolution notification:', err));
-                }
+  <h3 style="margin-top: 20px; color: #4b5563;">📝 Descripción original:</h3>
+  <p style="background-color: #fff; padding: 10px; border: 1px solid #e5e7eb; border-radius: 4px;">
+    ${ticket.description || 'N/A'}
+  </p>
+
+  <p style="margin-top: 20px; font-weight: bold; color: ${statusColor}; text-align: center; border-top: 1px solid #e5e7eb; padding-top: 15px;">
+    Gracias por utilizar el sistema de tickets GSS.
+  </p>
+</div>`.trim();
+
+                const supervisorUser = allUsers.find(u => u.name === ticket.supervisor);
+
+                // Fetch department emails from settings
+                const deptEmailKey = `notification_emails_${ticket.department}`.replace(/\s+/g, '_');
+                const deptEmailString = systemSettings[deptEmailKey] || systemSettings.notification_emails || systemSettings.notification_email || '';
+
+                fetch('/api/notify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        to: recipients,
+                        subject: emailSubject,
+                        body: emailBody,
+                        ticketData: {
+                            id: ticket.id,
+                            subject: ticket.subject,
+                            department: ticket.department,
+                            priority: ticket.priority,
+                            requester: requesterName,
+                            requesterEmail: requesterEmail,
+                            status: newStatus,
+                            description: ticket.description,
+                            affectedWorker: ticket.affectedWorker,
+                            date: ticket.date,
+                            deptEmails: deptEmailString,
+                            supervisorEmail: supervisorUser?.email || ''
+                        }
+                    })
+                }).catch(err => console.error('Error triggering status email:', err));
             }
         }
     };

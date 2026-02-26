@@ -47,7 +47,8 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const { notificationId, action } = await request.json();
+        const body = await request.json();
+        const { notificationId, action } = body;
 
         if (action === 'mark_read') {
             if (!notificationId) {
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (action === 'create') {
-            const { ticketId, ticketSubject, message, type, statusColor } = await request.json();
+            const { ticketId, ticketSubject, message, type, statusColor } = body;
             const stmt = db.prepare(`
                 INSERT INTO notifications (user_id, ticket_id, ticket_subject, message, type, status_color)
                 VALUES (?, ?, ?, ?, ?, ?)

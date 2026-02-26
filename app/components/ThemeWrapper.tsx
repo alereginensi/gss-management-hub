@@ -5,7 +5,7 @@ import { useTicketContext } from '../context/TicketContext';
 import { useRouter, usePathname } from 'next/navigation';
 
 export default function ThemeWrapper({ children }: { children: React.ReactNode }) {
-    const { theme, isAuthenticated, currentUser } = useTicketContext();
+    const { theme, isAuthenticated, currentUser, loading } = useTicketContext();
     const router = useRouter();
     const pathname = usePathname();
     const [isMounted, setIsMounted] = useState(false);
@@ -15,7 +15,7 @@ export default function ThemeWrapper({ children }: { children: React.ReactNode }
     }, []);
 
     useEffect(() => {
-        if (!isMounted) return;
+        if (loading) return;
 
         const publicRoutes = ['/login', '/register'];
         const isPublicRoute = publicRoutes.includes(pathname);
@@ -30,7 +30,7 @@ export default function ThemeWrapper({ children }: { children: React.ReactNode }
         } else if (!isPublicRoute) {
             router.push('/login');
         }
-    }, [isAuthenticated, pathname, isMounted, router, currentUser?.role]);
+    }, [isAuthenticated, pathname, isMounted, router, currentUser?.role, loading]);
 
     if (!isMounted) return null;
 
