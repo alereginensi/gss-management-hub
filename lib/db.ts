@@ -197,6 +197,8 @@ class DbWrapper {
         message TEXT NOT NULL,
         type TEXT DEFAULT 'info',
         read INTEGER DEFAULT 0,
+        ticket_subject TEXT,
+        status_color TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -313,6 +315,20 @@ class DbWrapper {
             await this.pgPool!.query('ALTER TABLE notifications ALTER COLUMN id TYPE BIGINT');
           }
 
+          // Check notifications table for ticket_subject and status_color
+          const nCols = await this.pgPool!.query(`
+            SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications'
+          `);
+          const existingNCols = nCols.rows.map(r => r.column_name);
+          if (!existingNCols.includes('ticket_subject')) {
+            console.log('🐘 Migrating notifications: adding ticket_subject column');
+            await this.pgPool!.query('ALTER TABLE notifications ADD COLUMN ticket_subject TEXT');
+          }
+          if (!existingNCols.includes('status_color')) {
+            console.log('🐘 Migrating notifications: adding status_color column');
+            await this.pgPool!.query('ALTER TABLE notifications ADD COLUMN status_color TEXT');
+          }
+
           // Ensure logbook_columns exists (migration for existing DBs)
           await this.pgPool!.query(`
             CREATE TABLE IF NOT EXISTS logbook_columns (
@@ -363,6 +379,16 @@ class DbWrapper {
         }
         if (!existingCols.includes('created_at')) {
           this.sqliteDb.exec('ALTER TABLE logbook ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP');
+        }
+
+        // Check notifications table for SQLite
+        const notifInfo = this.sqliteDb.prepare("PRAGMA table_info(notifications)").all();
+        const existingNotifCols = notifInfo.map((c: any) => c.name);
+        if (!existingNotifCols.includes('ticket_subject')) {
+          this.sqliteDb.exec('ALTER TABLE notifications ADD COLUMN ticket_subject TEXT');
+        }
+        if (!existingNotifCols.includes('status_color')) {
+          this.sqliteDb.exec('ALTER TABLE notifications ADD COLUMN status_color TEXT');
         }
       } catch (e) {
         // Table might not exist yet if initialize just ran, but sanitize anyway

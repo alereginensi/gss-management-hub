@@ -227,8 +227,14 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             const res = await fetch('/api/notifications', { headers: getAuthHeaders() });
             if (res.ok) {
                 const data = await res.json();
-                setNotifications(data);
-                console.log('✅ Notifications loaded:', data.length);
+                // Ensure proper mapping and legacy support
+                const mappedData = data.map((n: any) => ({
+                    ...n,
+                    ticketId: n.ticketId || n.ticket_id, // ensure camelCase for legacy code
+                    timestamp: new Date(n.created_at) // Legacy support for sorting
+                }));
+                setNotifications(mappedData);
+                console.log('✅ Notifications loaded:', mappedData.length);
             }
         } catch (error) {
             console.error('Error fetching notifications:', error);
@@ -571,40 +577,57 @@ Por favor, ingrese al portal administrativo para gestionar esta solicitud.`.trim
             .sort((a, b) => toDate(b.timestamp).getTime() - toDate(a.timestamp).getTime());
     };
 
-    const addNotification = (ticketId: string, ticketSubject: string, message: string, statusColor?: string) => {
+    const addNotification = async (ticketId: string, ticketSubject: string, message: string, statusColor?: string) => {
+        // Optimistic update
+        const tempId = Date.now();
         const newNotification: Notification = {
-            id: Date.now(),
+            id: tempId,
             user_id: currentUser?.id || 0,
             ticket_id: ticketId,
             message,
             type: 'info',
             read: 0,
             created_at: new Date().toISOString(),
-            ticketId, // Legacy support
-            ticketSubject, // Legacy support
-            timestamp: new Date(), // Legacy support
-            statusColor // Legacy support
+            ticketId,
+            ticketSubject,
+            timestamp: new Date(),
+            statusColor
         };
         setNotifications(prev => [newNotification, ...prev]);
+
+        // Persist to DB
+        try {
+            await fetch('/api/notifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'create',
+                    ticketId,
+                    ticketSubject,
+                    message,
+                    type: 'info',
+                    statusColor
+                })
+            });
+        } catch (err) {
+            console.error('Error persisting notification:', err);
+        }
     };
 
     const markNotificationRead = (notificationId: number) => {
-        // Persist to DB only if it's not a local ID (local IDs are from Date.now() which are much larger than 1 billion)
-        if (notificationId < 1000000000) {
-            fetch('/api/notifications', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notificationId, action: 'mark_read' })
-            }).catch(err => console.error('Error marking notification read:', err));
-        } else {
-            console.log('📝 TicketContext: Skipping API call for local notification ID:', notificationId);
-        }
-
+        // Update local state first (optimistic)
         setNotifications(prev =>
             prev.map(notif =>
                 notif.id === notificationId ? { ...notif, read: 1 } : notif
             )
         );
+
+        // Persist to DB
+        fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notificationId, action: 'mark_read' })
+        }).catch(err => console.error('Error marking notification read:', err));
     };
 
     const deleteNotification = (notificationId: number) => {
