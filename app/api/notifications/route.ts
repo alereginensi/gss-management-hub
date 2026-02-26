@@ -18,9 +18,22 @@ export async function GET(request: NextRequest) {
             WHERE user_id = ?
             ORDER BY created_at DESC
             LIMIT 100
-        `).all(userId);
+        `).all(userId) as any[];
 
-        return NextResponse.json(notifications);
+        // Map snake_case to camelCase
+        const mappedNotifications = notifications.map(n => ({
+            id: n.id,
+            userId: n.user_id,
+            ticketId: n.ticket_id,
+            ticketSubject: n.ticket_subject,
+            message: n.message,
+            type: n.type,
+            read: n.read,
+            statusColor: n.status_color,
+            created_at: n.created_at
+        }));
+
+        return NextResponse.json(mappedNotifications);
     } catch (error: any) {
         console.error('Error fetching notifications:', error);
         return NextResponse.json({ error: 'Failed to fetch notifications', details: error.message }, { status: 500 });
@@ -49,6 +62,23 @@ export async function POST(request: NextRequest) {
         if (action === 'mark_all_read') {
             await db.prepare('UPDATE notifications SET read = 1 WHERE user_id = ?').run(session.user.id);
             return NextResponse.json({ success: true });
+        }
+
+        if (action === 'create') {
+            const { ticketId, ticketSubject, message, type, statusColor } = await request.json();
+            const stmt = db.prepare(`
+                INSERT INTO notifications (user_id, ticket_id, ticket_subject, message, type, status_color)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `);
+            const result = await stmt.run(
+                session.user.id,
+                ticketId || null,
+                ticketSubject || null,
+                message,
+                type || 'info',
+                statusColor || null
+            );
+            return NextResponse.json({ success: true, id: result.lastInsertRowid });
         }
 
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

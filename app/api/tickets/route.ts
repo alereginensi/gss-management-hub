@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
                 return {
                     ...ticket,
                     collaboratorIds: collaborators.map(c => c.user_id),
+                    requesterEmail: ticket.requester_email,
                     statusColor: ticket.status_color,
                     createdAt: ticket.created_at,
                     startedAt: ticket.started_at,
@@ -66,6 +67,7 @@ export async function GET(request: NextRequest) {
                 return {
                     ...ticket,
                     collaboratorIds: collaborators.map(c => c.user_id),
+                    requesterEmail: ticket.requester_email,
                     statusColor: ticket.status_color,
                     createdAt: ticket.created_at,
                     startedAt: ticket.started_at,
