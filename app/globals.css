@@ -18,14 +18,15 @@
   --text-secondary: #64748b;
   --text-inverse: #ffffff;
 
-  /* Status Colors */
+  /* Status Colors (Blue Scale to avoid confusion with Priority) */
   --status-new: #29416b;
-  /* GSS Blue */
-  --status-progress: #f59e0b;
-  /* Amber */
-  --status-resolved: #7DA63A;
-  /* GSS Olive Green */
-  --status-closed: #64748b;
+  /* Navy Blue */
+  --status-progress: #3b82f6;
+  /* Royal Blue */
+  --status-resolved: #60a5fa;
+  /* Sky Blue */
+  --status-closed: #94a3b8;
+  /* Slate Gray */
 
   /* Priority Colors */
   --priority-high: #e04951;

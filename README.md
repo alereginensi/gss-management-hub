@@ -81,7 +81,15 @@ docker compose up -d --build
 
 ---
 
-## 📄 Documentación Adicional
-- [GUIA_SISTEMA.md](./GUIA_SISTEMA.md): Guía para supervisores y registro de usuarios.
-- [BACKUPS.md](./BACKUPS.md): Procedimientos de respaldo de base de datos.
-- [DEPLOYMENT_QUICKSTART.md](./DEPLOYMENT_QUICKSTART.md): Pasos rápidos para despliegue en la nube.
+## 📄 Documentación Detallada
+
+Para facilitar la adopción del sistema, hemos dividido la documentación en módulos específicos:
+
+- [📑 **Guía de Bitácora**](./GUIA_BITACORA.md): Registro de novedades e inspecciones en campo.
+- [🎫 **Guia de Tickets**](./GUIA_TICKETS.md): Gestión de incidentes, adjuntos y colaboración.
+- [⏰ **Asistencia y Tareas**](./GUIA_ASISTENCIA.md): Registro de actividad y cálculo de jornada.
+- [👥 **Usuarios y Roles**](./GUIA_USUARIOS.md): Tipos de acceso, registro y aprobaciones.
+- [🛡️ **Administradores**](./GUIA_ADMINISTRADORES.md): Supervisión global, reportes y gestión de personal.
+- [📊 **Dashboard y Config**](./GUIA_CONFIGURACION.md): Interpretación de KPIs y ajustes del portal.
+- [💾 **Respaldos**](./BACKUPS.md): Procedimientos de backup de base de datos.
+- [🚀 **Despliegue**](./DEPLOYMENT_QUICKSTART.md): Guía rápida para Railway.
