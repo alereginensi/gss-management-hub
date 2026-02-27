@@ -4,11 +4,12 @@ import fs from 'fs';
 import db from '@/lib/db';
 
 export async function GET() {
-    const isProduction = process.env.NODE_ENV === 'production';
-    const dbPath = isProduction
-        ? path.resolve('/app/data/tickets.db')
-        : path.resolve(process.cwd(), 'tickets.db');
+    if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json({ error: 'Not available in production' }, { status: 403 });
+    }
 
+    const isProduction = false;
+    const dbPath = path.resolve(process.cwd(), 'tickets.db');
     const dbDir = path.dirname(dbPath);
 
     const diagnostics = {
@@ -24,7 +25,6 @@ export async function GET() {
         write_test: 'Not attempted'
     };
 
-    // List contents of db dir if it exists
     if (diagnostics.db_dir_exists) {
         try {
             // @ts-ignore
@@ -34,7 +34,6 @@ export async function GET() {
             diagnostics.directory_contents = `Error reading dir: ${e.message}`;
         }
 
-        // Try writing a test file
         try {
             const testFile = path.join(dbDir, 'write_test.txt');
             fs.writeFileSync(testFile, 'test');
@@ -43,15 +42,6 @@ export async function GET() {
         } catch (e: any) {
             diagnostics.write_test = `Failed: ${e.message}`;
         }
-    } else {
-        // Try listing /app/data or /app to see where we are
-        try {
-            const appDir = '/app';
-            if (fs.existsSync(appDir)) {
-                // @ts-ignore
-                diagnostics.app_dir_contents = fs.readdirSync(appDir);
-            }
-        } catch (e) { }
     }
 
     return NextResponse.json(diagnostics);

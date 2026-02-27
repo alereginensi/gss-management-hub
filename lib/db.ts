@@ -1,4 +1,5 @@
-import Database from 'better-sqlite3';
+// better-sqlite3 is loaded dynamically inside fallbackToSqlite() to avoid
+// native module startup errors on Railway (Linux) when using PostgreSQL.
 import path from 'path';
 import fs from 'fs';
 
@@ -46,8 +47,16 @@ class DbWrapper {
       fs.mkdirSync(dbDir, { recursive: true });
     }
 
-    this.sqliteDb = new Database(dbPath);
-    this.type = 'sqlite';
+    try {
+      // Load better-sqlite3 dynamically so Railway doesn't try to load
+      // the native binary when DATABASE_URL is set (PostgreSQL mode).
+      const Database = require('better-sqlite3');
+      this.sqliteDb = new Database(dbPath);
+      this.type = 'sqlite';
+    } catch (err) {
+      console.error('❌ Failed to load better-sqlite3:', err);
+      throw new Error('SQLite is unavailable. Please set DATABASE_URL to use PostgreSQL.');
+    }
   }
 
   async query(text: string, params: any[] = []): Promise<any[]> {
