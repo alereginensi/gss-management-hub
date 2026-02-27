@@ -4,6 +4,7 @@ import './globals.css'
 import { TicketProvider } from './context/TicketContext'
 import ThemeWrapper from './components/ThemeWrapper'
 import SWRegistration from './components/SWRegistration'
+import InactivityGuard from './components/InactivityGuard'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body className={inter.variable}>
         <TicketProvider>
           <ThemeWrapper>
+            <InactivityGuard />
             <SWRegistration />
             {children}
           </ThemeWrapper>

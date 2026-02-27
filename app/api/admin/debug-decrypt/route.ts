@@ -1,11 +1,15 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { verifyJWT } from '@/lib/auth-edge';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
+    if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json({ error: 'Not available in production' }, { status: 403 });
+    }
+
+    const { verifyJWT } = await import('@/lib/auth-edge');
     const secret = process.env.JWT_SECRET || 'fallback-secret-at-least-32-chars-long';
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(_req.url);
     const token = searchParams.get('token');
 
     if (!token) {

@@ -14,7 +14,7 @@ function getSecret(): string {
 }
 
 export async function encrypt(payload: any) {
-    return await signJWT(payload, getSecret(), { expires: '2h' });
+    return await signJWT(payload, getSecret(), { expires: '8h' });
 }
 
 export async function decrypt(input: string): Promise<any> {
@@ -24,12 +24,12 @@ export async function decrypt(input: string): Promise<any> {
 }
 
 export async function createSession(user: any) {
-    const expires = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
+    const expires = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8 hours
     const sessionToken = await encrypt({ user, expires });
 
     const cookieStore = await cookies();
     cookieStore.set('session', sessionToken, {
-        maxAge: 2 * 60 * 60, // 2 hours in seconds
+        maxAge: 8 * 60 * 60, // 8 hours in seconds
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
