@@ -82,37 +82,42 @@ export default function NotificationsPage() {
                                         key={notification.id}
                                         style={{
                                             display: 'flex',
+                                            flexDirection: 'column',
                                             padding: '1rem',
                                             borderBottom: '1px solid var(--border-color)',
                                             borderLeft: notification.read ? '4px solid transparent' : '4px solid #3b82f6',
                                             backgroundColor: notification.read ? 'transparent' : 'rgba(59, 130, 246, 0.05)',
                                             transition: 'background-color 0.2s',
-                                            gap: '1rem'
+                                            gap: '0.75rem'
                                         }}
                                     >
+                                        {/* Top row: title + timestamp */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                            <div style={{ fontWeight: notification.read ? 400 : 700, fontSize: '0.95rem', flex: 1, minWidth: 0 }}>
+                                                {notification.type === 'ticket_assigned' ? '🎫 Ticket Asignado' : '🔔 Notificación'}
+                                            </div>
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                                {formatTimestamp(notification.created_at)}
+                                            </div>
+                                        </div>
+
+                                        {/* Message */}
                                         <Link
                                             href={notification.ticket_id ? `/tickets/${notification.ticket_id}` : '#'}
                                             onClick={() => !notification.read && handleNotificationClick(notification.id)}
                                             style={{
-                                                flex: 1,
                                                 cursor: 'pointer',
                                                 textDecoration: 'none',
                                                 color: 'inherit',
                                             }}
                                         >
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                                                <div style={{ fontWeight: notification.read ? 400 : 700, fontSize: '1rem' }}>
-                                                    {notification.type === 'ticket_assigned' ? '🎫 Ticket Asignado' : 'Notificación'}
-                                                </div>
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                    {formatTimestamp(notification.created_at)}
-                                                </div>
-                                            </div>
-                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
+                                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5, wordBreak: 'break-word' }}>
                                                 {notification.message}
                                             </p>
                                         </Link>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
+
+                                        {/* Action buttons */}
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                             {!notification.read && (
                                                 <button
                                                     onClick={(e) => {
@@ -121,7 +126,7 @@ export default function NotificationsPage() {
                                                         markNotificationRead(notification.id);
                                                     }}
                                                     className="btn"
-                                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: 'var(--accent-color)', color: 'white' }}
+                                                    style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', backgroundColor: 'var(--accent-color)', color: 'white' }}
                                                     title="Marcar como leído"
                                                 >
                                                     Leer
@@ -136,7 +141,7 @@ export default function NotificationsPage() {
                                                     }
                                                 }}
                                                 className="btn"
-                                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', backgroundColor: 'transparent', color: '#ef4444', border: '1px solid #ef4444' }}
+                                                style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', backgroundColor: 'transparent', color: '#ef4444', border: '1px solid #ef4444' }}
                                                 title="Eliminar"
                                             >
                                                 Borrar

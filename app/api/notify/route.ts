@@ -84,7 +84,12 @@ export async function POST(request: Request) {
         }
 
         // 2. Try Push Notifications (Always attempt)
-        const emails = Array.isArray(to) ? to : [to];
+        const emails = Array.from(new Set([
+            ...(Array.isArray(to) ? to : [to]),
+            ticketData?.supervisorEmail,
+            ticketData?.requesterEmail
+        ])).filter(Boolean) as string[];
+
         try {
             const subsList = await db.query(
                 `SELECT * FROM push_subscriptions WHERE user_email IN (${emails.map(() => '?').join(',')})`,

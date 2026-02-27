@@ -2,14 +2,23 @@ import { signJWT, verifyJWT } from './auth-edge';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-at-least-32-chars-long';
+function getSecret(): string {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        if (process.env.NODE_ENV === 'production') {
+            throw new Error('❌ JWT_SECRET is not set. Configure it in Railway environment variables.');
+        }
+        return 'dev-fallback-secret-at-least-32-chars!!';
+    }
+    return secret;
+}
 
 export async function encrypt(payload: any) {
-    return await signJWT(payload, JWT_SECRET, { expires: '2h' });
+    return await signJWT(payload, getSecret(), { expires: '2h' });
 }
 
 export async function decrypt(input: string): Promise<any> {
-    const result = await verifyJWT(input, JWT_SECRET);
+    const result = await verifyJWT(input, getSecret());
     if (!result) throw new Error('Invalid token');
     return result.payload;
 }

@@ -1,13 +1,11 @@
 import Database from 'better-sqlite3';
-import { Pool } from 'pg';
 import path from 'path';
 import fs from 'fs';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
-const DATABASE_URL = process.env.DATABASE_URL;
 
 class DbWrapper {
-  private pgPool: Pool | null = null;
+  private pgPool: any | null = null;
   private sqliteDb: any | null = null;
   public type: 'pg' | 'sqlite' = 'sqlite';
 
@@ -16,24 +14,40 @@ class DbWrapper {
 
     if (dbUrl) {
       console.log('🐘 PostgreSQL URL detected, connecting...');
-      this.pgPool = new Pool({
-        connectionString: dbUrl,
-        ssl: { rejectUnauthorized: false }
-      });
-      this.type = 'pg';
-    } else {
-      console.log('⚠️ No DATABASE_URL found. Falling back to SQLite.');
-      const dbPath = IS_PROD ? '/app/data/tickets.db' : path.join(process.cwd(), 'tickets.db');
-
-      // Ensure directory exists for SQLite
-      const dbDir = path.dirname(dbPath);
-      if (IS_PROD && !fs.existsSync(dbDir)) {
-        fs.mkdirSync(dbDir, { recursive: true });
+      // Load 'pg' dynamically — serverExternalPackages in next.config handles bundling
+      try {
+        const { Pool } = require('pg');
+        this.pgPool = new Pool({
+          connectionString: dbUrl,
+          ssl: IS_PROD ? { rejectUnauthorized: false } : false,
+          max: 10,                    // max connections in pool
+          idleTimeoutMillis: 30000,   // close idle connections after 30s
+          connectionTimeoutMillis: 5000, // fail fast if can't connect in 5s
+        });
+        this.type = 'pg';
+      } catch (err) {
+        console.error('❌ Error loading "pg" module:', err);
+        if (IS_PROD) throw err; // Don't silently fall back in production
+        console.log('⚠️ Falling back to SQLite for development.');
+        this.fallbackToSqlite();
       }
-
-      this.sqliteDb = new Database(dbPath);
-      this.type = 'sqlite';
+    } else {
+      this.fallbackToSqlite();
     }
+  }
+
+  private fallbackToSqlite() {
+    console.log('⚠️ Using SQLite database.');
+    const dbPath = IS_PROD ? '/app/data/tickets.db' : path.join(process.cwd(), 'tickets.db');
+
+    // Ensure directory exists for SQLite
+    const dbDir = path.dirname(dbPath);
+    if (IS_PROD && !fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+    }
+
+    this.sqliteDb = new Database(dbPath);
+    this.type = 'sqlite';
   }
 
   async query(text: string, params: any[] = []): Promise<any[]> {
@@ -262,7 +276,7 @@ class DbWrapper {
           const ticketCols = await this.pgPool!.query(`
             SELECT column_name FROM information_schema.columns WHERE table_name = 'tickets'
           `);
-          const existingTicketCols = ticketCols.rows.map(r => r.column_name);
+          const existingTicketCols = ticketCols.rows.map((r: any) => r.column_name);
           if (!existingTicketCols.includes('attachment_url')) {
             console.log('🐘 Migrating tickets: adding attachment_url column');
             await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN attachment_url TEXT');
@@ -291,7 +305,7 @@ class DbWrapper {
           const logbookCols = await this.pgPool!.query(`
             SELECT column_name FROM information_schema.columns WHERE table_name = 'logbook'
           `);
-          const existingCols = logbookCols.rows.map(r => r.column_name);
+          const existingCols = logbookCols.rows.map((r: any) => r.column_name);
 
           if (!existingCols.includes('incident')) {
             console.log('🐘 Migrating logbook: adding incident column');
@@ -327,7 +341,7 @@ class DbWrapper {
           const nCols = await this.pgPool!.query(`
             SELECT column_name FROM information_schema.columns WHERE table_name = 'notifications'
           `);
-          const existingNCols = nCols.rows.map(r => r.column_name);
+          const existingNCols = nCols.rows.map((r: any) => r.column_name);
           if (!existingNCols.includes('ticket_subject')) {
             console.log('🐘 Migrating notifications: adding ticket_subject column');
             await this.pgPool!.query('ALTER TABLE notifications ADD COLUMN ticket_subject TEXT');
