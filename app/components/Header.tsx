@@ -3,7 +3,7 @@
 import { Bell, Search, X, Trash2, CheckCheck } from 'lucide-react';
 import { useTicketContext } from '../context/TicketContext';
 import { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 export default function Header({ title, actions }: { title: string, actions?: React.ReactNode }) {
     const {
@@ -14,6 +14,7 @@ export default function Header({ title, actions }: { title: string, actions?: Re
     } = useTicketContext();
     const [showNotifications, setShowNotifications] = useState(false);
     const pathname = usePathname();
+    const router = useRouter();
 
     // Show search only on Dashboard and Tickets list
     const showSearch = pathname === '/' || pathname === '/tickets';
@@ -22,8 +23,12 @@ export default function Header({ title, actions }: { title: string, actions?: Re
         setSearchQuery(e.target.value);
     };
 
-    const handleNotificationClick = (notificationId: number) => {
+    const handleNotificationClick = (notificationId: number, ticketId?: string) => {
         markNotificationRead(notificationId);
+        setShowNotifications(false);
+        if (ticketId) {
+            router.push(`/tickets/${ticketId}`);
+        }
     };
 
     const handleDeleteNotification = (e: React.MouseEvent, notificationId: number) => {
@@ -191,7 +196,7 @@ export default function Header({ title, actions }: { title: string, actions?: Re
                                         notifications.map(notif => (
                                             <div
                                                 key={notif.id}
-                                                onClick={() => handleNotificationClick(notif.id)}
+                                                onClick={() => handleNotificationClick(notif.id, notif.ticket_id || notif.ticketId)}
                                                 style={{
                                                     display: 'flex',
                                                     alignItems: 'flex-start',
