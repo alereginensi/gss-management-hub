@@ -82,6 +82,27 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: true, id: result.lastInsertRowid });
         }
 
+        if (action === 'create_for_user') {
+            // Allows admins/supervisors to create a notification for another user (e.g., the assigned supervisor)
+            const { targetUserId, ticketId, ticketSubject, message, type, statusColor } = body;
+            if (!targetUserId) {
+                return NextResponse.json({ error: 'targetUserId is required' }, { status: 400 });
+            }
+            const stmt = db.prepare(`
+                INSERT INTO notifications (user_id, ticket_id, ticket_subject, message, type, status_color)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `);
+            const result = await stmt.run(
+                targetUserId,
+                ticketId || null,
+                ticketSubject || null,
+                message,
+                type || 'info',
+                statusColor || null
+            );
+            return NextResponse.json({ success: true, id: result.lastInsertRowid });
+        }
+
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     } catch (error: any) {
         console.error('Error updating notifications:', error);

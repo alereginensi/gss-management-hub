@@ -50,17 +50,20 @@ export default function TicketList() {
             if (departmentFilter !== 'Todos' && ticket.department !== departmentFilter) {
                 return false;
             }
+        } else if (currentUser?.role?.toLowerCase() === 'supervisor') {
+            // Supervisors
+            if (adminView === 'personal' || !adminView) {
+                // Show tickets created by them OR tickets assigned to them
+                if (ticket.requesterEmail !== currentUser?.email && ticket.supervisor !== currentUser?.name) {
+                    return false;
+                }
+            }
         } else {
-            // Non-admins
-            // If viewing personal list (default), only show created tickets
+            // Other Users (standard users)
             if (adminView === 'personal' || !adminView) {
                 if (ticket.requesterEmail !== currentUser?.email) {
                     return false;
                 }
-            } else if (adminView === 'all') {
-                // If they have access to "all" (Supervisors might get this from dashboard)
-                // we allow it, but usually Supervisors/Admins are the ones with this toggle.
-                // For now, let's keep it strict based on the URL param 'view'
             }
         }
 

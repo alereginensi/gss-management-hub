@@ -11,8 +11,10 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const filter = searchParams.get('filter') || 'Todos'; // Todos, Abiertos, Cerrados
+    const filter = searchParams.get('filter') || 'Todos';
     const departmentFilter = searchParams.get('department') || 'Todos';
+    const statusFilter = searchParams.get('status') || 'Todos';   // Todos | Pendiente | Resuelto
+    const priorityFilter = searchParams.get('priority') || 'Todos'; // Todos | Alta | Media | Baja
 
     try {
         console.log(`[Export] Request params - Filter: ${filter}, Dept: ${departmentFilter}, UserRole: ${session.user.role}`);
@@ -26,11 +28,22 @@ export async function GET(request: NextRequest) {
         const normalizedFilter = filter.toLowerCase().trim();
 
         if (normalizedFilter === 'abiertos') {
-            // Use SQL LOWER() to be case-insensitive against the DB column
             conditions.push("LOWER(status) IN ('nuevo', 'en progreso')");
         } else if (normalizedFilter === 'cerrados') {
-            // Use SQL LOWER() to be case-insensitive against the DB column
             conditions.push("LOWER(status) = 'resuelto'");
+        }
+
+        // 1b. Dashboard status filter (Pendiente / Resuelto)
+        if (statusFilter === 'Pendiente') {
+            conditions.push("LOWER(status) IN ('nuevo', 'en progreso')");
+        } else if (statusFilter === 'Resuelto') {
+            conditions.push("LOWER(status) = 'resuelto'");
+        }
+
+        // 1c. Priority filter
+        if (priorityFilter !== 'Todos') {
+            conditions.push("priority = ?");
+            params.push(priorityFilter);
         }
 
         // 2. Department Filter (if Admin)
@@ -122,7 +135,7 @@ export async function GET(request: NextRequest) {
         return new NextResponse(buffer, {
             headers: {
                 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'Content-Disposition': `attachment; filename="tickets_${filter}_${new Date().toISOString().split('T')[0]}.xlsx"`
+                'Content-Disposition': `attachment; filename="tickets_${statusFilter !== 'Todos' ? statusFilter + '_' : ''}${priorityFilter !== 'Todos' ? priorityFilter + '_' : ''}${new Date().toISOString().split('T')[0]}.xlsx"`
             }
         });
 

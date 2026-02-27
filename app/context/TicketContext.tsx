@@ -479,8 +479,27 @@ export function TicketProvider({ children }: { children: ReactNode }) {
 
             setTickets(prev => [newTicket, ...prev]);
 
-            // In-App Notification
+            // In-App Notification for current user (the admin who created it)
             addNotification(newId, newTicket.subject, `Ticket creado exitosamente: ${newTicket.subject}`);
+
+            // Find supervisor user object early — used in both notification and email
+            const supervisorUser = allUsers.find(u => u.name === newTicket.supervisor);
+
+            // In-App Notification for the assigned supervisor
+            if (supervisorUser?.id) {
+                fetch('/api/notifications', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        action: 'create_for_user',
+                        targetUserId: supervisorUser.id,
+                        ticketId: newId,
+                        ticketSubject: newTicket.subject,
+                        message: `Se te asignó un nuevo ticket: "${newTicket.subject}" (creado por ${currentUser?.name || 'Admin'})`,
+                        type: 'info'
+                    })
+                }).catch(err => console.error('Error creating supervisor notification:', err));
+            }
 
             // Email notification
             const deptEmailKey = `notification_emails_${newTicket.department}`.replace(/\s+/g, '_');
@@ -517,13 +536,17 @@ export function TicketProvider({ children }: { children: ReactNode }) {
   </p>
 </div>`.trim();
 
-                const supervisorUser = allUsers.find(u => u.name === newTicket.supervisor);
+                // Add supervisor email to the recipients list if available
+                const finalTo = [...emailList];
+                if (supervisorUser?.email) {
+                    finalTo.push(supervisorUser.email);
+                }
 
                 fetch('/api/notify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        to: emailList,
+                        to: finalTo,
                         subject: `[NUEVO TICKET] ${newTicket.subject}`,
                         body: emailBody,
                         ticketData: {

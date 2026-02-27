@@ -15,7 +15,8 @@ export async function sendEmail({ to, subject, body }: { to: string | string[], 
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: Array.isArray(to) ? to.join(', ') : to,
         subject: subject,
-        text: body,
+        html: body,
+        text: body.replace(/<[^>]*>/g, ''), // plain text fallback (strip HTML tags)
     };
 
     try {

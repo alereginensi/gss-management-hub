@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Clock, CheckCircle2, AlertCircle, FileText, Trash2 } from 'lucide-react';
 import { useTicketContext } from './context/TicketContext';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function Home() {
   const { tickets, getAverageResolutionTime, currentUser, isSidebarOpen, deleteTicket, isMobile } = useTicketContext();
@@ -37,8 +37,19 @@ export default function Home() {
 
   const avgResolutionTime = getAverageResolutionTime();
 
-  // Get recent tickets (first 3)
-  const recentTickets = tickets.slice(0, 3);
+  const [showAll, setShowAll] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'Todos' | 'Pendiente' | 'Resuelto'>('Todos');
+  const [priorityFilter, setPriorityFilter] = useState<string>('Todos');
+
+  const filteredTickets = tickets.filter(t => {
+    const matchesStatus =
+      statusFilter === 'Todos' ||
+      (statusFilter === 'Pendiente' && (t.status === 'Nuevo' || t.status === 'En Progreso')) ||
+      (statusFilter === 'Resuelto' && t.status === 'Resuelto');
+    const matchesPriority = priorityFilter === 'Todos' || (t.priority || '').trim() === priorityFilter.trim();
+    return matchesStatus && matchesPriority;
+  });
+  const recentTickets = showAll ? filteredTickets : filteredTickets.slice(0, 5);
 
   const handleDeleteTicket = async (ticketId: string, subject: string) => {
     if (confirm(`¿Estás seguro de que deseas eliminar permanentemente el ticket #${ticketId} - "${subject}"?`)) {
@@ -130,9 +141,57 @@ export default function Home() {
         <section className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 600 }}>Tickets Recientes</h3>
-            <Link href="/tickets?view=all">
-              <button className="btn" style={{ fontSize: '0.875rem', color: 'var(--accent-color)' }}>Ver todos</button>
-            </Link>
+            <button
+              className="btn"
+              style={{ fontSize: '0.875rem', color: 'var(--accent-color)' }}
+              onClick={() => setShowAll(prev => !prev)}
+            >
+              {showAll ? 'Ver menos' : 'Ver todos'}
+            </button>
+          </div>
+
+          {/* Filter Row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+            {/* Status buttons */}
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              {(['Todos', 'Pendiente', 'Resuelto'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className="btn"
+                  style={{
+                    fontSize: '0.8rem',
+                    padding: '0.35rem 0.8rem',
+                    backgroundColor: statusFilter === s ? 'var(--accent-color)' : 'transparent',
+                    color: statusFilter === s ? 'white' : 'var(--text-secondary)',
+                    border: '1px solid var(--border-color)',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            {/* Priority dropdown */}
+            <select
+              value={priorityFilter}
+              onChange={e => setPriorityFilter(e.target.value)}
+              style={{
+                padding: '0.35rem 0.75rem',
+                borderRadius: 'var(--radius)',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--surface-color)',
+                color: 'var(--text-primary)',
+                fontSize: '0.8rem',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="Todos">Todas las prioridades</option>
+              <option value="Alta">Alta</option>
+              <option value="Media">Media</option>
+              <option value="Baja">Baja</option>
+            </select>
           </div>
 
           {isMobile ? (
@@ -215,18 +274,35 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+                <button
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    if (statusFilter !== 'Todos') params.set('status', statusFilter);
+                    if (priorityFilter !== 'Todos') params.set('priority', priorityFilter);
+                    const qs = params.toString();
+                    window.open(`/api/tickets/export${qs ? '?' + qs : ''}`, '_blank');
+                  }}
+                  className="btn btn-secondary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                  Exportar Excel
+                </button>
+              </div>
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', overflowY: 'auto', maxHeight: showAll ? '65vh' : '340px', transition: 'max-height 0.3s ease' }}>
               <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', minWidth: '600px' }}>
-                <thead>
+                <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--surface-color)', zIndex: 1 }}>
                   <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                    <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>ID</th>
-                    <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Asunto</th>
-                    <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Solicitante</th>
-                    <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Prioridad</th>
-                    <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Estado</th>
-                    <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Fecha</th>
+                    <th style={{ padding: '0.6rem 0.5rem', fontWeight: 500 }}>ID</th>
+                    <th style={{ padding: '0.6rem 0.5rem', fontWeight: 500 }}>Asunto</th>
+                    <th style={{ padding: '0.6rem 0.5rem', fontWeight: 500 }}>Solicitante</th>
+                    <th style={{ padding: '0.6rem 0.5rem', fontWeight: 500 }}>Prioridad</th>
+                    <th style={{ padding: '0.6rem 0.5rem', fontWeight: 500 }}>Estado</th>
+                    <th style={{ padding: '0.6rem 0.5rem', fontWeight: 500 }}>Fecha</th>
                     {currentUser?.role?.toLowerCase() === 'admin' && (
-                      <th style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>Acción</th>
+                      <th style={{ padding: '0.6rem 0.5rem', fontWeight: 500 }}>Acción</th>
                     )}
                   </tr>
                 </thead>
@@ -243,18 +319,18 @@ export default function Home() {
                       onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.02)'}
                       onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
-                      <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>
+                      <td style={{ padding: '0.6rem 0.5rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                         #{`T-${ticket.id}`}
                       </td>
-                      <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>
+                      <td style={{ padding: '0.6rem 0.5rem', fontWeight: 500, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {ticket.subject}
                       </td>
-                      <td style={{ padding: '1rem 0.5rem' }}>{ticket.requester || 'N/A'}</td>
-                      <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.priorityColor }}>{ticket.priority}</span></td>
-                      <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.statusColor }}>{ticket.status}</span></td>
-                      <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>{ticket.date}</td>
+                      <td style={{ padding: '0.6rem 0.5rem', whiteSpace: 'nowrap' }}>{ticket.requester || 'N/A'}</td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.priorityColor }}>{ticket.priority}</span></td>
+                      <td style={{ padding: '0.6rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.statusColor }}>{ticket.status}</span></td>
+                      <td style={{ padding: '0.6rem 0.5rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{ticket.date}</td>
                       {currentUser?.role?.toLowerCase() === 'admin' && (
-                        <td style={{ padding: '1rem 0.5rem' }}>
+                        <td style={{ padding: '0.6rem 0.5rem' }}>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -284,6 +360,7 @@ export default function Home() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </section>
       </main>
