@@ -804,10 +804,14 @@ export default function LogbookPage() {
                                     })()}
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
-                                    <select value={inlineData.staff_member} onChange={e => setInlineData({ ...inlineData, staff_member: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
-                                        <option value="">Seleccionar funcionario</option>
-                                        {funcionarios.map(f => <option key={f} value={f}>{f}</option>)}
-                                    </select>
+                                    <input
+                                        type="text"
+                                        placeholder="Nombre del funcionario"
+                                        value={inlineData.staff_member}
+                                        onChange={e => setInlineData({ ...inlineData, staff_member: e.target.value })}
+                                        className="input"
+                                        style={{ padding: '0.4rem', fontSize: '0.85rem' }}
+                                    />
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
                                     <select value={inlineData.uniform} onChange={e => setInlineData({ ...inlineData, uniform: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
@@ -1142,15 +1146,15 @@ export default function LogbookPage() {
                                                     </div>
                                                     <div>
                                                         <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Funcionario / Personal</label>
-                                                        <select
+                                                        <input
+                                                            type="text"
                                                             required
+                                                            placeholder="Escribir nombre del funcionario"
                                                             value={item.staff_member}
                                                             onChange={e => updateReportItem(idx, 'staff_member', e.target.value)}
                                                             className="input"
-                                                        >
-                                                            <option value="">Seleccionar funcionario</option>
-                                                            {funcionarios.map(f => <option key={f} value={f}>{f}</option>)}
-                                                        </select>
+                                                            style={{ width: '100%', padding: '0.6rem' }}
+                                                        />
                                                     </div>
                                                     <div>
                                                         <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Uniforme</label>
