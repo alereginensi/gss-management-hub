@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 // exceljs imported dynamically to save bundle size
 import type * as ExcelJS from 'exceljs';
 import Sidebar from '../components/Sidebar';
@@ -62,6 +62,84 @@ const INCIDENT_CATEGORIES = [
     'Comunicación & Coordinación',
     'Otros'
 ];
+
+const SERVICE_TYPE_COLORS: Record<string, { bg: string; border: string; text: string; light: string; argb: string }> = {
+    'Limpieza':              { bg: 'rgba(14,165,233,0.07)',   border: '#0ea5e9', text: '#0284c7',  light: 'rgba(14,165,233,0.15)',   argb: 'FFE0F2FE' },
+    'Seguridad Física':      { bg: 'rgba(239,68,68,0.07)',    border: '#ef4444', text: '#dc2626',  light: 'rgba(239,68,68,0.15)',    argb: 'FFFEE2E2' },
+    'Seguridad Electrónica': { bg: 'rgba(139,92,246,0.07)',   border: '#8b5cf6', text: '#7c3aed',  light: 'rgba(139,92,246,0.15)',   argb: 'FFF5F3FF' },
+    'Tercerizados':          { bg: 'rgba(249,115,22,0.07)',   border: '#f97316', text: '#ea580c',  light: 'rgba(249,115,22,0.15)',   argb: 'FFFFF7ED' },
+    'Administrativos':       { bg: 'rgba(100,116,139,0.07)',  border: '#64748b', text: '#475569',  light: 'rgba(100,116,139,0.15)', argb: 'FFF1F5F9' },
+};
+
+function SearchableSelect({ options, value, onChange, placeholder, style, inputStyle }: {
+    options: string[];
+    value: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+    style?: React.CSSProperties;
+    inputStyle?: React.CSSProperties;
+}) {
+    const [query, setQuery] = useState('');
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    const filtered = query
+        ? options.filter(o => o.toLowerCase().includes(query.toLowerCase()))
+        : options;
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) {
+                setOpen(false);
+                setQuery('');
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    return (
+        <div ref={ref} style={{ position: 'relative', width: '100%', minWidth: '130px', ...style }}>
+            <input
+                type="text"
+                className="input"
+                value={open ? query : value}
+                onChange={e => { setQuery(e.target.value); setOpen(true); }}
+                onFocus={() => { setOpen(true); setQuery(''); }}
+                placeholder={placeholder || 'Buscar...'}
+                autoComplete="off"
+                style={{ width: '100%', paddingRight: '1.5rem', cursor: 'text', ...inputStyle }}
+            />
+            <span style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.35, fontSize: '0.65rem' }}>▼</span>
+            {open && (
+                <div style={{
+                    position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0,
+                    background: 'var(--bg-color, white)', border: '1px solid var(--border-color)',
+                    borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+                    zIndex: 9999, maxHeight: '240px', overflowY: 'auto', minWidth: '180px'
+                }}>
+                    {filtered.length === 0 ? (
+                        <div style={{ padding: '0.6rem 0.75rem', fontSize: '0.85rem', opacity: 0.5 }}>Sin resultados</div>
+                    ) : filtered.map(opt => (
+                        <div
+                            key={opt}
+                            onMouseDown={e => { e.preventDefault(); onChange(opt); setOpen(false); setQuery(''); }}
+                            style={{
+                                padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem',
+                                backgroundColor: opt === value ? 'rgba(59,130,246,0.1)' : undefined,
+                                fontWeight: opt === value ? 600 : 400
+                            }}
+                            onMouseEnter={e => { if (opt !== value) e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.04)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = opt === value ? 'rgba(59,130,246,0.1)' : ''; }}
+                        >
+                            {opt}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
 
 // Clientes y sectores extraídos del CSV (Cliente;Lugar)
 const CLIENT_SECTOR_MAP: Record<string, string[]> = {
@@ -195,6 +273,7 @@ export default function LogbookPage() {
     const today = new Date().toISOString().split('T')[0];
     const [dateFilter, setDateFilter] = useState<string>(today);
     const [dateFilterTo, setDateFilterTo] = useState<string>(today);
+    const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('');
 
     // Supervisors only see entries they personally supervised
     const filteredByUser = currentUser?.role === 'supervisor'
@@ -202,7 +281,7 @@ export default function LogbookPage() {
         : entries;
 
     // Apply date range filter
-    const visibleEntries = (dateFilter || dateFilterTo)
+    const dateFilteredEntries = (dateFilter || dateFilterTo)
         ? filteredByUser.filter(e => {
             const entryDate = e.date;
             if (dateFilter && dateFilterTo) return entryDate >= dateFilter && entryDate <= dateFilterTo;
@@ -211,6 +290,11 @@ export default function LogbookPage() {
             return true;
         })
         : filteredByUser;
+
+    // Apply service type filter
+    const visibleEntries = serviceTypeFilter
+        ? dateFilteredEntries.filter(e => e.supervised_by === serviceTypeFilter)
+        : dateFilteredEntries;
 
     // Form States
     const [newReportHeader, setNewReportHeader] = useState({
@@ -563,27 +647,9 @@ export default function LogbookPage() {
         });
 
         let currentSector = '';
-        const sectorColors = [
-            { argb: 'FFE3F2FD' },  // Light Blue
-            { argb: 'FFE8F5E9' },  // Light Green
-            { argb: 'FFFFF3E0' },  // Light Orange
-            { argb: 'FFF3E5F5' },  // Light Purple
-            { argb: 'FFFCE4EC' }   // Light Pink
-        ];
-        const sectorColorMap: Record<string, { argb: string }> = {};
-        let colorIndex = 0;
-
         sortedEntries.forEach((entry, index) => {
             const isNewSector = entry.sector !== currentSector;
-
-            if (isNewSector) {
-                currentSector = entry.sector;
-                // Assign color to sector if not already assigned
-                if (!sectorColorMap[entry.sector]) {
-                    sectorColorMap[entry.sector] = sectorColors[colorIndex % sectorColors.length];
-                    colorIndex++;
-                }
-            }
+            if (isNewSector) currentSector = entry.sector;
 
             const rowData: any = {
                 id: entry.id,
@@ -609,7 +675,8 @@ export default function LogbookPage() {
                     right: { style: 'thin' }
                 };
                 cell.alignment = { vertical: 'top', wrapText: true };
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: sectorColorMap[entry.sector] };
+                const excelColor = SERVICE_TYPE_COLORS[entry.supervised_by]?.argb || 'FFFAFAFA';
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: excelColor } };
             });
         });
 
@@ -635,25 +702,6 @@ export default function LogbookPage() {
         });
     }, [visibleEntries]);
 
-    const sectorColorMap = useMemo(() => {
-        const colors = [
-            'rgba(59, 130, 246, 0.02)',  // Blue tint
-            'rgba(16, 185, 129, 0.02)',  // Green tint
-            'rgba(245, 158, 11, 0.02)',  // Orange tint
-            'rgba(139, 92, 246, 0.02)',  // Purple tint
-            'rgba(236, 72, 153, 0.02)'   // Pink tint
-        ];
-        const map: Record<string, string> = {};
-        let colorIndex = 0;
-
-        sortedEntries.forEach(entry => {
-            if (!map[entry.sector]) {
-                map[entry.sector] = colors[colorIndex % colors.length];
-                colorIndex++;
-            }
-        });
-        return map;
-    }, [sortedEntries]);
 
     const updateReportItem = (index: number, field: keyof ReportItem, value: any) => {
         const newItems = [...reportItems];
@@ -723,6 +771,34 @@ export default function LogbookPage() {
                         </div>
                     </div>
 
+                    <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flexWrap: 'wrap', marginLeft: '0.5rem' }}>
+                        {SUPERVISO_OPTIONS.map(type => {
+                            const c = SERVICE_TYPE_COLORS[type];
+                            const isActive = serviceTypeFilter === type;
+                            return (
+                                <button
+                                    key={type}
+                                    onClick={() => setServiceTypeFilter(isActive ? '' : type)}
+                                    style={{
+                                        padding: '0.25rem 0.65rem', borderRadius: '20px', fontSize: '0.75rem',
+                                        fontWeight: isActive ? 600 : 400, cursor: 'pointer',
+                                        backgroundColor: isActive ? c?.light : 'transparent',
+                                        color: isActive ? c?.text : 'var(--text-secondary)',
+                                        border: `1px solid ${isActive ? c?.border : 'var(--border-color)'}`,
+                                        transition: 'all 0.15s'
+                                    }}
+                                >
+                                    {type}
+                                </button>
+                            );
+                        })}
+                        {serviceTypeFilter && (
+                            <button onClick={() => setServiceTypeFilter('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: '2px' }} title="Quitar filtro">
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
+
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <button onClick={exportToExcel} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
                             <Download size={18} />
@@ -789,43 +865,34 @@ export default function LogbookPage() {
                                     {currentUser?.role === 'supervisor' ? (
                                         <input type="text" readOnly value={currentUser.name} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem', backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)' }} />
                                     ) : (
-                                        <select
+                                        <SearchableSelect
+                                            options={supervisores.filter(s => {
+                                                if (!inlineData.supervised_by || inlineData.supervised_by === 'Administrativos') return true;
+                                                const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                                                const target = normalize(inlineData.supervised_by);
+                                                const userRubros = s.rubro?.split(',').map(r => normalize(r.trim())) || [];
+                                                return userRubros.includes(target);
+                                            }).map(s => s.name)}
                                             value={inlineData.supervisor || ''}
-                                            onChange={e => setInlineData({ ...inlineData, supervisor: e.target.value })}
-                                            className="input"
-                                            style={{ padding: '0.4rem', fontSize: '0.85rem' }}
-                                        >
-                                            <option value="">Seleccionar Responsable</option>
-                                            {supervisores
-                                                .filter(s => {
-                                                    if (!inlineData.supervised_by || inlineData.supervised_by === 'Administrativos') return true;
-                                                    const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-                                                    const target = normalize(inlineData.supervised_by);
-                                                    const userRubros = s.rubro?.split(',').map(r => normalize(r.trim())) || [];
-                                                    return userRubros.includes(target);
-                                                })
-                                                .map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-                                        </select>
+                                            onChange={v => setInlineData({ ...inlineData, supervisor: v })}
+                                            placeholder="Responsable..."
+                                            style={{ fontSize: '0.85rem' }}
+                                            inputStyle={{ padding: '0.4rem', fontSize: '0.85rem' }}
+                                        />
                                     )}
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
-                                    <select
-                                        value={inlineData.location}
-                                        onChange={e => {
-                                            const newLoc = e.target.value;
+                                    <SearchableSelect
+                                        options={availableLocations}
+                                        value={inlineData.location || ''}
+                                        onChange={newLoc => {
                                             const sectors = getSectorsForLocation(newLoc);
-                                            setInlineData({
-                                                ...inlineData,
-                                                location: newLoc,
-                                                sector: sectors[0] || ''
-                                            });
+                                            setInlineData({ ...inlineData, location: newLoc, sector: sectors[0] || '' });
                                         }}
-                                        className="input"
-                                        style={{ padding: '0.4rem', fontSize: '0.85rem' }}
-                                    >
-                                        <option value="">Seleccionar Cliente</option>
-                                        {availableLocations.map(l => <option key={l} value={l}>{l}</option>)}
-                                    </select>
+                                        placeholder="Cliente..."
+                                        style={{ fontSize: '0.85rem' }}
+                                        inputStyle={{ padding: '0.4rem', fontSize: '0.85rem' }}
+                                    />
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
                                     {(() => {
@@ -839,17 +906,14 @@ export default function LogbookPage() {
                                                 style={{ padding: '0.4rem', fontSize: '0.85rem', backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)' }}
                                             />
                                         ) : (
-                                            <select
-                                                value={inlineData.sector}
-                                                onChange={e => setInlineData({ ...inlineData, sector: e.target.value })}
-                                                className="input"
-                                                style={{ padding: '0.4rem', fontSize: '0.85rem' }}
-                                            >
-                                                <option value="">Seleccionar Sector</option>
-                                                {sectors.map((s: string) => (
-                                                    <option key={s} value={s}>{s}</option>
-                                                ))}
-                                            </select>
+                                            <SearchableSelect
+                                                options={sectors}
+                                                value={inlineData.sector || ''}
+                                                onChange={v => setInlineData({ ...inlineData, sector: v })}
+                                                placeholder="Sector..."
+                                                style={{ fontSize: '0.85rem' }}
+                                                inputStyle={{ padding: '0.4rem', fontSize: '0.85rem' }}
+                                            />
                                         );
                                     })()}
                                 </td>
@@ -931,10 +995,10 @@ export default function LogbookPage() {
                             ) : (
                                 sortedEntries.map((entry, index) => {
                                     const isNewSector = index === 0 || entry.sector !== sortedEntries[index - 1].sector;
-                                    const sectorBgColor = sectorColorMap[entry.sector] || 'transparent';
+                                    const serviceColors = SERVICE_TYPE_COLORS[entry.supervised_by] || { bg: 'transparent', border: 'var(--border-color)' };
                                     const rowBgColor = selectedIds.has(entry.id)
                                         ? 'rgba(59, 130, 246, 0.08)'
-                                        : sectorBgColor;
+                                        : serviceColors.bg;
 
                                     return (
                                         <React.Fragment key={entry.id}>
@@ -947,7 +1011,7 @@ export default function LogbookPage() {
                                                 borderBottom: '1px solid var(--border-color)',
                                                 fontSize: '0.9rem',
                                                 backgroundColor: rowBgColor,
-                                                borderLeft: isNewSector ? `3px solid ${sectorColorMap[entry.sector].replace('0.02', '0.4')}` : 'none'
+                                                borderLeft: `3px solid ${serviceColors.border}`
                                             }}>
                                                 <td style={{ padding: '1rem', textAlign: 'center' }}>
                                                     <input
@@ -958,7 +1022,16 @@ export default function LogbookPage() {
                                                     />
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>{entry.date}</td>
-                                                <td style={{ padding: '1rem' }}>{entry.supervised_by}</td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    {(() => {
+                                                        const c = SERVICE_TYPE_COLORS[entry.supervised_by];
+                                                        return c ? (
+                                                            <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem', borderRadius: '10px', backgroundColor: c.light, color: c.text, border: `1px solid ${c.border}50`, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                                                {entry.supervised_by}
+                                                            </span>
+                                                        ) : (entry.supervised_by || '-');
+                                                    })()}
+                                                </td>
                                                 <td style={{ padding: '1rem' }}>{entry.supervisor || '-'}</td>
                                                 <td style={{ padding: '1rem' }}>{entry.location}</td>
                                                 <td style={{ padding: '1rem', fontWeight: isNewSector ? 600 : 400 }}>{entry.sector}</td>
@@ -1026,7 +1099,7 @@ export default function LogbookPage() {
                     ) : (
                         sortedEntries.map((entry) => (
                             <div key={entry.id} className="logbook-card" style={{
-                                borderLeft: `4px solid ${sectorColorMap[entry.sector]?.replace('0.02', '0.6') || 'var(--border-color)'}`,
+                                borderLeft: `4px solid ${SERVICE_TYPE_COLORS[entry.supervised_by]?.border || 'var(--border-color)'}`,
                                 padding: '1rem',
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -1122,49 +1195,32 @@ export default function LogbookPage() {
                                                 {currentUser?.role === 'supervisor' ? (
                                                     <input type="text" readOnly value={currentUser.name} className="input" style={{ backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)' }} />
                                                 ) : (
-                                                    <select
+                                                    <SearchableSelect
+                                                        options={supervisores.filter(s => {
+                                                            if (!newReportHeader.supervised_by || newReportHeader.supervised_by === 'Administrativos') return true;
+                                                            const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+                                                            const target = normalize(newReportHeader.supervised_by);
+                                                            const userRubros = s.rubro?.split(',').map(r => normalize(r.trim())) || [];
+                                                            return userRubros.includes(target);
+                                                        }).map(s => s.name)}
                                                         value={newReportHeader.supervisor || ''}
-                                                        onChange={e => setNewReportHeader({ ...newReportHeader, supervisor: e.target.value })}
-                                                        className="input"
-                                                        required
-                                                    >
-                                                        <option value="">Seleccionar Responsable</option>
-                                                        {supervisores
-                                                            .filter(s => {
-                                                                if (!newReportHeader.supervised_by || newReportHeader.supervised_by === 'Administrativos') return true;
-                                                                const normalize = (str: string) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-                                                                const target = normalize(newReportHeader.supervised_by);
-                                                                const userRubros = s.rubro?.split(',').map(r => normalize(r.trim())) || [];
-                                                                return userRubros.includes(target);
-                                                            })
-                                                            .map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-                                                    </select>
+                                                        onChange={v => setNewReportHeader({ ...newReportHeader, supervisor: v })}
+                                                        placeholder="Seleccionar Responsable"
+                                                    />
                                                 )}
                                             </div>
                                             <div>
                                                 <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Cliente</label>
-                                                <select
+                                                <SearchableSelect
+                                                    options={availableLocations}
                                                     value={newReportHeader.location}
-                                                    onChange={e => {
-                                                        const newLoc = e.target.value;
+                                                    onChange={newLoc => {
                                                         const sectors = getSectorsForLocation(newLoc);
-                                                        setNewReportHeader({
-                                                            ...newReportHeader,
-                                                            location: newLoc,
-                                                            sector: sectors[0] || ''
-                                                        });
-                                                        const newItems = reportItems.map(item => ({
-                                                            ...item,
-                                                            sector: sectors[0] || ''
-                                                        }));
-                                                        setReportItems(newItems);
+                                                        setNewReportHeader({ ...newReportHeader, location: newLoc, sector: sectors[0] || '' });
+                                                        setReportItems(reportItems.map(item => ({ ...item, sector: sectors[0] || '' })));
                                                     }}
-                                                    className="input"
-                                                    required
-                                                >
-                                                    <option value="">Seleccionar Cliente</option>
-                                                    {availableLocations.map(l => <option key={l} value={l}>{l}</option>)}
-                                                </select>
+                                                    placeholder="Seleccionar Cliente"
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -1212,18 +1268,12 @@ export default function LogbookPage() {
                                                                     style={{ width: '100%', padding: '0.6rem', backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)' }}
                                                                 />
                                                             ) : (
-                                                                <select
-                                                                    required
+                                                                <SearchableSelect
+                                                                    options={sectors}
                                                                     value={item.sector}
-                                                                    onChange={e => updateReportItem(idx, 'sector', e.target.value)}
-                                                                    className="input"
-                                                                    style={{ width: '100%', padding: '0.6rem' }}
-                                                                >
-                                                                    <option value="">Seleccionar Sector</option>
-                                                                    {sectors.map((s: string) => (
-                                                                        <option key={s} value={s}>{s}</option>
-                                                                    ))}
-                                                                </select>
+                                                                    onChange={v => updateReportItem(idx, 'sector', v)}
+                                                                    placeholder="Seleccionar Sector"
+                                                                />
                                                             );
                                                         })()}
                                                     </div>

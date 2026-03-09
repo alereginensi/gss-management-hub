@@ -401,6 +401,40 @@ class DbWrapper {
           } catch (fixErr) {
             console.error('❌ Error fixing logbook supervisors:', fixErr);
           }
+
+          // Second pass: for entries still missing supervisor, assign if there is
+          // exactly ONE distinct supervisor for that location + service type in history
+          try {
+            const fixed2 = await this.pgPool!.query(`
+              UPDATE logbook l1
+              SET supervisor = (
+                SELECT l2.supervisor
+                FROM logbook l2
+                WHERE l2.location = l1.location
+                  AND l2.supervised_by = l1.supervised_by
+                  AND l2.supervisor IS NOT NULL
+                  AND l2.supervisor <> ''
+                GROUP BY l2.supervisor
+                LIMIT 1
+              )
+              WHERE (l1.supervisor IS NULL OR l1.supervisor = '')
+                AND l1.location IS NOT NULL
+                AND l1.supervised_by IS NOT NULL
+                AND (
+                  SELECT COUNT(DISTINCT l2.supervisor)
+                  FROM logbook l2
+                  WHERE l2.location = l1.location
+                    AND l2.supervised_by = l1.supervised_by
+                    AND l2.supervisor IS NOT NULL
+                    AND l2.supervisor <> ''
+                ) = 1
+            `);
+            if (fixed2.rowCount && fixed2.rowCount > 0) {
+              console.log(`✅ Fixed ${fixed2.rowCount} more logbook entries via location+service history`);
+            }
+          } catch (fixErr2) {
+            console.error('❌ Error in second supervisor fix pass:', fixErr2);
+          }
         } catch (migErr) {
           console.error('❌ Error migrating logbook table in Postgres:', migErr);
         }
@@ -489,6 +523,37 @@ class DbWrapper {
           }
         } catch (fixErr) {
           console.error('❌ Error fixing logbook supervisors:', fixErr);
+        }
+
+        // Second pass: assign if exactly ONE distinct supervisor for location + service type
+        try {
+          const fixStmt2 = this.sqliteDb.prepare(`
+            UPDATE logbook SET supervisor = (
+              SELECT l2.supervisor FROM logbook l2
+              WHERE l2.location = logbook.location
+                AND l2.supervised_by = logbook.supervised_by
+                AND l2.supervisor IS NOT NULL
+                AND l2.supervisor <> ''
+              GROUP BY l2.supervisor
+              LIMIT 1
+            )
+            WHERE (supervisor IS NULL OR supervisor = '')
+              AND location IS NOT NULL
+              AND supervised_by IS NOT NULL
+              AND (
+                SELECT COUNT(DISTINCT l2.supervisor) FROM logbook l2
+                WHERE l2.location = logbook.location
+                  AND l2.supervised_by = logbook.supervised_by
+                  AND l2.supervisor IS NOT NULL
+                  AND l2.supervisor <> ''
+              ) = 1
+          `);
+          const result2 = fixStmt2.run();
+          if (result2.changes > 0) {
+            console.log(`✅ Fixed ${result2.changes} more logbook entries via location+service history`);
+          }
+        } catch (fixErr2) {
+          console.error('❌ Error in second supervisor fix pass:', fixErr2);
         }
       } catch (e) {
         // Table might not exist yet if initialize just ran, but sanitize anyway
