@@ -369,6 +369,38 @@ class DbWrapper {
               options TEXT
             )
           `);
+
+          // Fix logbook entries missing supervisor: copy from sibling entries (same date + location + supervised_by)
+          try {
+            const fixed = await this.pgPool!.query(`
+              UPDATE logbook l1
+              SET supervisor = (
+                SELECT l2.supervisor
+                FROM logbook l2
+                WHERE l2.date = l1.date
+                  AND l2.location = l1.location
+                  AND l2.supervised_by = l1.supervised_by
+                  AND l2.supervisor IS NOT NULL
+                  AND l2.supervisor <> ''
+                LIMIT 1
+              )
+              WHERE (l1.supervisor IS NULL OR l1.supervisor = '')
+                AND l1.location IS NOT NULL
+                AND EXISTS (
+                  SELECT 1 FROM logbook l2
+                  WHERE l2.date = l1.date
+                    AND l2.location = l1.location
+                    AND l2.supervised_by = l1.supervised_by
+                    AND l2.supervisor IS NOT NULL
+                    AND l2.supervisor <> ''
+                )
+            `);
+            if (fixed.rowCount && fixed.rowCount > 0) {
+              console.log(`✅ Fixed ${fixed.rowCount} logbook entries with missing supervisor`);
+            }
+          } catch (fixErr) {
+            console.error('❌ Error fixing logbook supervisors:', fixErr);
+          }
         } catch (migErr) {
           console.error('❌ Error migrating logbook table in Postgres:', migErr);
         }
@@ -426,6 +458,37 @@ class DbWrapper {
         }
         if (!existingNotifCols.includes('status_color')) {
           this.sqliteDb.exec('ALTER TABLE notifications ADD COLUMN status_color TEXT');
+        }
+
+        // Fix logbook entries missing supervisor: copy from sibling entries (same date + location + supervised_by)
+        try {
+          const fixStmt = this.sqliteDb.prepare(`
+            UPDATE logbook SET supervisor = (
+              SELECT l2.supervisor FROM logbook l2
+              WHERE l2.date = logbook.date
+                AND l2.location = logbook.location
+                AND l2.supervised_by = logbook.supervised_by
+                AND l2.supervisor IS NOT NULL
+                AND l2.supervisor <> ''
+              LIMIT 1
+            )
+            WHERE (supervisor IS NULL OR supervisor = '')
+              AND location IS NOT NULL
+              AND EXISTS (
+                SELECT 1 FROM logbook l2
+                WHERE l2.date = logbook.date
+                  AND l2.location = logbook.location
+                  AND l2.supervised_by = logbook.supervised_by
+                  AND l2.supervisor IS NOT NULL
+                  AND l2.supervisor <> ''
+              )
+          `);
+          const result = fixStmt.run();
+          if (result.changes > 0) {
+            console.log(`✅ Fixed ${result.changes} logbook entries with missing supervisor`);
+          }
+        } catch (fixErr) {
+          console.error('❌ Error fixing logbook supervisors:', fixErr);
         }
       } catch (e) {
         // Table might not exist yet if initialize just ran, but sanitize anyway
