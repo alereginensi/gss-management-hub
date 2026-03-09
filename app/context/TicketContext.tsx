@@ -897,7 +897,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         try {
             const res = await fetch(`/api/admin/users/${userId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify(userData)
             });
             if (res.ok) {
