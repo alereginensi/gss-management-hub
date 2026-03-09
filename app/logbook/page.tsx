@@ -169,6 +169,11 @@ export default function LogbookPage() {
     const [funcionarios, setFuncionarios] = useState<string[]>([]);
     const [supervisores, setSupervisores] = useState<{ name: string, rubro: string }[]>([]);
 
+    const getAuthHeaders = (): HeadersInit => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+        return token ? { 'Authorization': `Bearer ${token}` } : {};
+    };
+
     // Modals
     const [showReportModal, setShowReportModal] = useState(false);
     const [showColumnModal, setShowColumnModal] = useState(false);
@@ -265,9 +270,9 @@ export default function LogbookPage() {
         try {
             const rubroParam = currentUser?.role === 'supervisor' ? `&rubro=${encodeURIComponent(currentUser.rubro || '')}` : '';
             const [res, usersRes, supRes] = await Promise.all([
-                fetch('/api/logbook'),
-                fetch(`/api/admin/users?role=funcionario${rubroParam}`),
-                fetch(`/api/admin/users?role=supervisor`)
+                fetch('/api/logbook', { headers: getAuthHeaders() }),
+                fetch(`/api/admin/users?role=funcionario${rubroParam}`, { headers: getAuthHeaders() }),
+                fetch(`/api/admin/users?role=supervisor`, { headers: getAuthHeaders() })
             ]);
 
             if (res.ok) {
