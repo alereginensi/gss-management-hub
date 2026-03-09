@@ -528,18 +528,18 @@ export default function LogbookPage() {
             }
         };
 
+        // Columns match the web table order exactly
         const excelCols = [
-            { header: 'ID', key: 'id', width: 10 },
             { header: 'Fecha', key: 'date', width: 15 },
-            { header: 'Tipo de Servicio', key: 'supervised_by', width: 15 }, // changed from Superviso
-            { header: 'Responsable', key: 'supervisor', width: 20 }, // changed from Supervisor
+            { header: 'Tipo de Servicio', key: 'supervised_by', width: 20 },
+            { header: 'Responsable', key: 'supervisor', width: 20 },
+            { header: 'Cliente', key: 'location', width: 25 },
             { header: 'Sector', key: 'sector', width: 20 },
-            { header: 'Lugar', key: 'location', width: 20 },
             { header: 'Funcionario', key: 'staff_member', width: 20 },
             { header: 'Uniforme', key: 'uniform', width: 15 },
             { header: 'Incidencia', key: 'incident', width: 25 },
-            { header: 'Reporte', key: 'report', width: 50 },
-        ];
+            { header: 'Reporte', key: 'report', width: 55 },
+        ] as any[];
 
         columns.forEach(col => {
             excelCols.push({ header: col.label, key: col.name, width: 20 });
