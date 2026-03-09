@@ -879,7 +879,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         try {
             const res = await fetch('/api/admin/users', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ email, action: 'delete' })
             });
             if (res.ok) {

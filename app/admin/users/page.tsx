@@ -146,7 +146,7 @@ export default function UserManagement() {
         // Fetch existing assigned workers if supervisor (or role in form is supervisor)
         if (user.role === 'supervisor') {
             try {
-                const workersRes = await fetch(`/api/admin/users/${user.id}/workers`);
+                const workersRes = await fetch(`/api/admin/users/${user.id}/workers`, { headers: getAuthHeaders() });
                 if (workersRes.ok) {
                     const data = await workersRes.json();
                     setAssignedWorkers(data.workerIds || []);
@@ -192,7 +192,7 @@ export default function UserManagement() {
                 if (editForm.role === 'supervisor') {
                     await fetch(`/api/admin/users/${editingUser.id}/workers`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
                         body: JSON.stringify({ workerIds: assignedWorkers, department: editForm.rubro })
                     });
                 }
