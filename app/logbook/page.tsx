@@ -52,6 +52,7 @@ interface ReportItem {
 
 const SUPERVISO_OPTIONS = ['Limpieza', 'Seguridad Física', 'Seguridad Electrónica', 'Tercerizados', 'Administrativos'];
 const UNIFORMS = ['Completo', 'Parcial', 'Sin Uniforme', 'Otro'];
+
 const INCIDENT_CATEGORIES = [
     'Operativa',
     'Calidad',
@@ -352,10 +353,9 @@ export default function LogbookPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const rubroParam = currentUser?.role === 'supervisor' ? `&rubro=${encodeURIComponent(currentUser.rubro || '')}` : '';
-            const [res, usersRes, supRes] = await Promise.all([
+            const [res, funcRes, supRes] = await Promise.all([
                 fetch('/api/logbook', { headers: getAuthHeaders() }),
-                fetch(`/api/admin/users?role=funcionario${rubroParam}`, { headers: getAuthHeaders() }),
+                fetch('/api/admin/funcionarios', { headers: getAuthHeaders() }),
                 fetch(`/api/admin/users?role=supervisor`, { headers: getAuthHeaders() })
             ]);
 
@@ -365,9 +365,9 @@ export default function LogbookPage() {
                 setColumns(data.columns);
                 setSelectedIds(new Set());
             }
-            if (usersRes.ok) {
-                const users = await usersRes.json();
-                setFuncionarios(users.map((u: any) => u.name));
+            if (funcRes.ok) {
+                const funcs = await funcRes.json();
+                setFuncionarios(funcs.map((f: any) => f.name));
             }
             if (supRes.ok) {
                 const sups = await supRes.json();
@@ -1279,14 +1279,11 @@ export default function LogbookPage() {
                                                     </div>
                                                     <div>
                                                         <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Funcionario / Personal</label>
-                                                        <input
-                                                            type="text"
-                                                            required
-                                                            placeholder="Escribir nombre del funcionario"
+                                                        <SearchableSelect
+                                                            options={funcionarios}
                                                             value={item.staff_member}
-                                                            onChange={e => updateReportItem(idx, 'staff_member', e.target.value)}
-                                                            className="input"
-                                                            style={{ width: '100%', padding: '0.6rem' }}
+                                                            onChange={v => updateReportItem(idx, 'staff_member', v)}
+                                                            placeholder="Buscar funcionario..."
                                                         />
                                                     </div>
                                                     <div>

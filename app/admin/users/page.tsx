@@ -4,7 +4,7 @@ import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import { useTicketContext, RUBROS } from '../../context/TicketContext';
 import { useEffect, useState } from 'react';
-import { UserCheck, UserPlus, Info, Mail, Shield, X, Check, Edit2, Search, Trash2 } from 'lucide-react';
+import { UserCheck, UserPlus, Info, Mail, Shield, X, Check, Edit2, Search, Trash2, Users } from 'lucide-react';
 
 export default function UserManagement() {
     const { allUsers, pendingUsers, fetchAllUsers, approveUser, rejectUser, deleteUser, currentUser, isSidebarOpen, updateUser, isMobile } = useTicketContext();
@@ -16,6 +16,13 @@ export default function UserManagement() {
     const [funcionarios, setFuncionarios] = useState<any[]>([]);
     const [showApprovedUsers, setShowApprovedUsers] = useState(false);
     const [userSearchQuery, setUserSearchQuery] = useState('');
+    const [showFuncionarios, setShowFuncionarios] = useState(false);
+    const [funcList, setFuncList] = useState<{ id: number; name: string }[]>([]);
+    const [funcSearch, setFuncSearch] = useState('');
+    const [funcLoading, setFuncLoading] = useState(false);
+    const [editingFunc, setEditingFunc] = useState<{ id: number; name: string } | null>(null);
+    const [newFuncName, setNewFuncName] = useState('');
+    const [addingFunc, setAddingFunc] = useState(false);
 
     useEffect(() => {
         const role = currentUser?.role?.toLowerCase();
@@ -23,6 +30,70 @@ export default function UserManagement() {
             fetchAllUsers();
         }
     }, [currentUser]);
+
+    const getAuthHeaders = (): HeadersInit => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+        return token ? { 'Authorization': `Bearer ${token}` } : {};
+    };
+
+    const fetchFuncionarios = async () => {
+        setFuncLoading(true);
+        try {
+            const res = await fetch('/api/admin/funcionarios', { headers: getAuthHeaders() });
+            if (res.ok) setFuncList(await res.json());
+        } finally {
+            setFuncLoading(false);
+        }
+    };
+
+    const handleAddFunc = async () => {
+        if (!newFuncName.trim()) return;
+        setFuncLoading(true);
+        try {
+            const res = await fetch('/api/admin/funcionarios', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify({ name: newFuncName.trim() })
+            });
+            if (res.ok) {
+                const created = await res.json();
+                setFuncList(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+                setNewFuncName('');
+                setAddingFunc(false);
+            }
+        } finally {
+            setFuncLoading(false);
+        }
+    };
+
+    const handleUpdateFunc = async (id: number, name: string) => {
+        if (!name.trim()) return;
+        setFuncLoading(true);
+        try {
+            const res = await fetch(`/api/admin/funcionarios/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify({ name: name.trim() })
+            });
+            if (res.ok) {
+                setFuncList(prev => prev.map(f => f.id === id ? { ...f, name: name.trim() } : f).sort((a, b) => a.name.localeCompare(b.name)));
+                setEditingFunc(null);
+            }
+        } finally {
+            setFuncLoading(false);
+        }
+    };
+
+    const handleDeleteFunc = async (id: number) => {
+        if (!confirm('¿Eliminar este funcionario de la lista?')) return;
+        setFuncLoading(true);
+        try {
+            const res = await fetch(`/api/admin/funcionarios/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+            if (res.ok) setFuncList(prev => prev.filter(f => f.id !== id));
+        } finally {
+            setFuncLoading(false);
+        }
+    };
 
     const handleApprove = async (email: string) => {
         setLoading(true);
@@ -309,6 +380,27 @@ export default function UserManagement() {
                                     Registrar Admin
                                 </button>
                             </form>
+                        </div>
+                    </div>
+
+                    {/* Funcionarios Section */}
+                    <div>
+                        <div className="card">
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Users size={20} color="var(--accent-color)" />
+                                Funcionarios (Bitácora)
+                            </h3>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                Gestionar la lista de funcionarios disponibles en la bitácora.
+                            </p>
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => { setShowFuncionarios(true); fetchFuncionarios(); }}
+                                style={{ width: '100%', padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                            >
+                                <Users size={18} />
+                                Ver y Editar Funcionarios
+                            </button>
                         </div>
                     </div>
 
@@ -656,6 +748,108 @@ export default function UserManagement() {
                                 </div>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Funcionarios Modal */}
+            {showFuncionarios && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+                    <div className="card" style={{ maxWidth: '700px', width: '100%', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                        {/* Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Users size={20} color="var(--accent-color)" />
+                                Funcionarios ({funcList.filter(f => f.name.toLowerCase().includes(funcSearch.toLowerCase())).length})
+                            </h3>
+                            <button onClick={() => { setShowFuncionarios(false); setFuncSearch(''); setEditingFunc(null); setAddingFunc(false); setNewFuncName(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Search + Add */}
+                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                            <input
+                                type="text"
+                                placeholder="Buscar funcionario..."
+                                value={funcSearch}
+                                onChange={e => setFuncSearch(e.target.value)}
+                                className="input"
+                                style={{ flex: 1, padding: '0.6rem' }}
+                            />
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => { setAddingFunc(true); setEditingFunc(null); }}
+                                style={{ padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}
+                            >
+                                <UserPlus size={16} /> Agregar
+                            </button>
+                        </div>
+
+                        {/* Add form */}
+                        {addingFunc && (
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-color)', borderRadius: 'var(--radius)', border: '1px solid var(--accent-color)' }}>
+                                <input
+                                    type="text"
+                                    autoFocus
+                                    placeholder="Nombre del funcionario"
+                                    value={newFuncName}
+                                    onChange={e => setNewFuncName(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleAddFunc(); if (e.key === 'Escape') { setAddingFunc(false); setNewFuncName(''); } }}
+                                    className="input"
+                                    style={{ flex: 1, padding: '0.5rem' }}
+                                />
+                                <button className="btn btn-primary" onClick={handleAddFunc} disabled={funcLoading} style={{ padding: '0.5rem 1rem' }}>
+                                    <Check size={16} />
+                                </button>
+                                <button className="btn btn-secondary" onClick={() => { setAddingFunc(false); setNewFuncName(''); }} style={{ padding: '0.5rem 1rem' }}>
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        )}
+
+                        {/* List */}
+                        <div style={{ overflowY: 'auto', flex: 1 }}>
+                            {funcLoading && funcList.length === 0 ? (
+                                <p style={{ textAlign: 'center', padding: '2rem', opacity: 0.5 }}>Cargando...</p>
+                            ) : (
+                                funcList
+                                    .filter(f => f.name.toLowerCase().includes(funcSearch.toLowerCase()))
+                                    .map(f => (
+                                        <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.25rem', borderBottom: '1px solid var(--border-color)' }}>
+                                            {editingFunc?.id === f.id ? (
+                                                <>
+                                                    <input
+                                                        type="text"
+                                                        autoFocus
+                                                        value={editingFunc.name}
+                                                        onChange={e => setEditingFunc({ ...editingFunc, name: e.target.value })}
+                                                        onKeyDown={e => { if (e.key === 'Enter') handleUpdateFunc(f.id, editingFunc.name); if (e.key === 'Escape') setEditingFunc(null); }}
+                                                        className="input"
+                                                        style={{ flex: 1, padding: '0.4rem 0.6rem', fontSize: '0.875rem' }}
+                                                    />
+                                                    <button className="btn btn-primary" onClick={() => handleUpdateFunc(f.id, editingFunc.name)} disabled={funcLoading} style={{ padding: '0.4rem 0.75rem' }}>
+                                                        <Check size={14} />
+                                                    </button>
+                                                    <button className="btn btn-secondary" onClick={() => setEditingFunc(null)} style={{ padding: '0.4rem 0.75rem' }}>
+                                                        <X size={14} />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span style={{ flex: 1, fontSize: '0.9rem' }}>{f.name}</span>
+                                                    <button onClick={() => { setEditingFunc({ id: f.id, name: f.name }); setAddingFunc(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '0.25rem' }} title="Editar">
+                                                        <Edit2 size={15} />
+                                                    </button>
+                                                    <button onClick={() => handleDeleteFunc(f.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '0.25rem' }} title="Eliminar">
+                                                        <Trash2 size={15} />
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    ))
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
