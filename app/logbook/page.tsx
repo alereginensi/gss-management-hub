@@ -483,22 +483,19 @@ export default function LogbookPage() {
 
     const exportToExcel = async () => {
         const entriesToExport = selectedIds.size > 0
-            ? entries.filter(e => selectedIds.has(e.id))
-            : entries;
+            ? visibleEntries.filter(e => selectedIds.has(e.id))
+            : visibleEntries;
 
         if (entriesToExport.length === 0) {
             alert('Por favor selecciona al menos un reporte para exportar.');
             return;
         }
 
-        // Sort entries by sector first, then by date (newest first)
+        // Sort by date descending (newest first), then sector alphabetically — same as table view
         const sortedEntries = [...entriesToExport].sort((a, b) => {
-            const sectorA = a.sector || '';
-            const sectorB = b.sector || '';
-            if (sectorA !== sectorB) {
-                return sectorA.localeCompare(sectorB);
-            }
-            return new Date(b.date).getTime() - new Date(a.date).getTime();
+            const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+            if (dateDiff !== 0) return dateDiff;
+            return (a.sector || '').localeCompare(b.sector || '');
         });
 
         const Excel = (await import('exceljs')).default;
