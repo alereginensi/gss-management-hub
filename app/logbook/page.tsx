@@ -186,10 +186,26 @@ export default function LogbookPage() {
 
     const availableLocations = Object.keys(CLIENT_SECTOR_MAP).sort();
 
+    // Date Filter State - default to today for both from and to
+    const today = new Date().toISOString().split('T')[0];
+    const [dateFilter, setDateFilter] = useState<string>(today);
+    const [dateFilterTo, setDateFilterTo] = useState<string>(today);
+
     // Supervisors only see entries they personally supervised
-    const visibleEntries = currentUser?.role === 'supervisor'
+    const filteredByUser = currentUser?.role === 'supervisor'
         ? entries.filter(e => e.supervised_by === currentUser.name)
         : entries;
+
+    // Apply date range filter
+    const visibleEntries = (dateFilter || dateFilterTo)
+        ? filteredByUser.filter(e => {
+            const entryDate = e.date;
+            if (dateFilter && dateFilterTo) return entryDate >= dateFilter && entryDate <= dateFilterTo;
+            if (dateFilter) return entryDate >= dateFilter;
+            if (dateFilterTo) return entryDate <= dateFilterTo;
+            return true;
+        })
+        : filteredByUser;
 
     // Form States
     const [newReportHeader, setNewReportHeader] = useState({
@@ -664,13 +680,44 @@ export default function LogbookPage() {
                 />
 
                 <div className="desktop-toolbar">
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                         <button onClick={handleDeleteSelected} className="btn" style={{ fontSize: '0.8rem', backgroundColor: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                             Eliminar Fila(s)
                         </button>
                         <button onClick={() => handleManage('clear_entries')} className="btn" style={{ fontSize: '0.8rem', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 'bold', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                             Vaciar Todo
                         </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: '0.5rem' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Desde</span>
+                            <input
+                                type="date"
+                                value={dateFilter}
+                                onChange={e => {
+                                    setDateFilter(e.target.value);
+                                    if (dateFilterTo && e.target.value > dateFilterTo) setDateFilterTo(e.target.value);
+                                }}
+                                className="input"
+                                style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', width: 'auto' }}
+                            />
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Hasta</span>
+                            <input
+                                type="date"
+                                value={dateFilterTo}
+                                min={dateFilter}
+                                onChange={e => setDateFilterTo(e.target.value)}
+                                className="input"
+                                style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', width: 'auto' }}
+                            />
+                            {(dateFilter || dateFilterTo) && (
+                                <button
+                                    onClick={() => { setDateFilter(''); setDateFilterTo(''); }}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: '2px' }}
+                                    title="Ver todos"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -935,6 +982,39 @@ export default function LogbookPage() {
 
                 {/* Mobile Card View (Compact) */}
                 <div className="mobile-view">
+                    {/* Date filter for mobile */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', padding: '0.75rem 1rem', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
+                        <Calendar size={15} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Desde</span>
+                        <input
+                            type="date"
+                            value={dateFilter}
+                            onChange={e => {
+                                setDateFilter(e.target.value);
+                                if (dateFilterTo && e.target.value > dateFilterTo) setDateFilterTo(e.target.value);
+                            }}
+                            className="input"
+                            style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', flex: 1, minWidth: '130px' }}
+                        />
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Hasta</span>
+                        <input
+                            type="date"
+                            value={dateFilterTo}
+                            min={dateFilter}
+                            onChange={e => setDateFilterTo(e.target.value)}
+                            className="input"
+                            style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', flex: 1, minWidth: '130px' }}
+                        />
+                        {(dateFilter || dateFilterTo) && (
+                            <button
+                                onClick={() => { setDateFilter(''); setDateFilterTo(''); }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: '2px' }}
+                                title="Ver todos"
+                            >
+                                <X size={16} />
+                            </button>
+                        )}
+                    </div>
                     {visibleEntries.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                             <BookOpen size={48} opacity={0.2} />
