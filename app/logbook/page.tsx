@@ -623,12 +623,11 @@ export default function LogbookPage() {
     // Prepare data for rendering (Sort and Color) - Optimized with useMemo
     const sortedEntries = useMemo(() => {
         return [...visibleEntries].sort((a, b) => {
-            const sectorA = a.sector || '';
-            const sectorB = b.sector || '';
-            if (sectorA !== sectorB) {
-                return sectorA.localeCompare(sectorB);
-            }
-            return new Date(b.date).getTime() - new Date(a.date).getTime();
+            // Primary: date descending (newest first)
+            const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+            if (dateDiff !== 0) return dateDiff;
+            // Secondary: sector alphabetically within the same date
+            return (a.sector || '').localeCompare(b.sector || '');
         });
     }, [visibleEntries]);
 
