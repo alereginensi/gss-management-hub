@@ -65,7 +65,7 @@ const INCIDENT_CATEGORIES = [
 
 const SERVICE_TYPE_COLORS: Record<string, { bg: string; border: string; text: string; light: string; argb: string }> = {
     'Limpieza':              { bg: 'rgba(14,165,233,0.07)',   border: '#0ea5e9', text: '#0284c7',  light: 'rgba(14,165,233,0.15)',   argb: 'FFE0F2FE' },
-    'Seguridad Física':      { bg: 'rgba(239,68,68,0.07)',    border: '#ef4444', text: '#dc2626',  light: 'rgba(239,68,68,0.15)',    argb: 'FFFEE2E2' },
+    'Seguridad Física':      { bg: 'rgba(245,158,11,0.07)',   border: '#f59e0b', text: '#d97706',  light: 'rgba(245,158,11,0.15)',   argb: 'FFFEF3C7' },
     'Seguridad Electrónica': { bg: 'rgba(139,92,246,0.07)',   border: '#8b5cf6', text: '#7c3aed',  light: 'rgba(139,92,246,0.15)',   argb: 'FFF5F3FF' },
     'Tercerizados':          { bg: 'rgba(249,115,22,0.07)',   border: '#f97316', text: '#ea580c',  light: 'rgba(249,115,22,0.15)',   argb: 'FFFFF7ED' },
     'Administrativos':       { bg: 'rgba(100,116,139,0.07)',  border: '#64748b', text: '#475569',  light: 'rgba(100,116,139,0.15)', argb: 'FFF1F5F9' },
