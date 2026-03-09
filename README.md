@@ -91,3 +91,4 @@ Para facilitar la adopción del sistema, hemos dividido la documentación en mó
 - [📊 **Dashboard y Config**](./GUIA_CONFIGURACION.md): Interpretación de KPIs y ajustes del portal.
 - [💾 **Respaldos**](./BACKUPS.md): Procedimientos de backup de base de datos.
 - [🚀 **Despliegue**](./DEPLOYMENT_QUICKSTART.md): Guía rápida para Railway.
+
