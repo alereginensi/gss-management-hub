@@ -1,5 +1,6 @@
 # GSS Management Hub
 
+
 **GSS Management Hub** es una plataforma centralizada diseñada para la gestión operativa de **GSS Facility Services**. Permite el seguimiento de incidentes, control de bitácoras, registro de tareas y comunicación en tiempo real entre administradores, supervisores y personal operativo.
 
 ---
