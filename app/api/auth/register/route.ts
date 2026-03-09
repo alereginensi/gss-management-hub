@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
         const department = 'Sin Asignar';
         const userRole = role || 'user';
-        const userRubro = userRole === 'funcionario' ? rubro : null;
+        const userRubro = userRole === 'supervisor' ? rubro : null;
 
         if (userRole !== 'user' && !password) {
             return NextResponse.json({ error: 'La contraseña es obligatoria para este rol' }, { status: 400 });

@@ -197,12 +197,11 @@ export default function Register() {
                             >
                                 <option value="user">Solicitante</option>
                                 <option value="supervisor">Supervisor (Bitácoras)</option>
-                                <option value="funcionario">Funcionario</option>
                             </select>
                         </div>
                     </div>
 
-                    {(formData.role === 'funcionario' || formData.role === 'supervisor') && (
+                    {formData.role === 'supervisor' && (
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>
                                 {formData.role === 'supervisor' ? 'Categorías a Supervisar' : 'Rubro / Área (múltiple)'}

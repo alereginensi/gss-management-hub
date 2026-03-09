@@ -259,6 +259,13 @@ class DbWrapper {
         type TEXT NOT NULL,
         options TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS funcionarios_list (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        active INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `;
 
     if (this.type === 'pg') {
@@ -373,6 +380,22 @@ class DbWrapper {
               options TEXT
             )
           `);
+
+          // Ensure funcionarios_list exists and seed initial data
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS funcionarios_list (
+              id SERIAL PRIMARY KEY,
+              name TEXT NOT NULL,
+              active INTEGER DEFAULT 1,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          const funcCount = await this.pgPool!.query('SELECT COUNT(*) FROM funcionarios_list');
+          if (parseInt(funcCount.rows[0].count) < 100) {
+            console.log('🐘 Seeding/reseeding funcionarios_list...');
+            await this.pgPool!.query('DELETE FROM funcionarios_list');
+            await this.seedFuncionarios();
+          }
 
           // Fix logbook entries missing supervisor: copy from sibling entries (same date + location + supervised_by)
           try {
@@ -565,6 +588,14 @@ class DbWrapper {
 
       this.sqliteDb.exec(schema.replace(/SERIAL/g, 'INTEGER').replace(/TIMESTAMP/g, 'DATETIME').replace(/REFERENCES\s+\w+\(\w+\)/g, ''));
       console.log('✅ SQLite tables verified/created');
+
+      // Seed funcionarios_list for SQLite
+      const funcCountSqlite = this.sqliteDb.prepare('SELECT COUNT(*) as count FROM funcionarios_list').get();
+      if (funcCountSqlite.count < 100) {
+        console.log('📋 Seeding/reseeding funcionarios_list (SQLite)...');
+        this.sqliteDb.prepare('DELETE FROM funcionarios_list').run();
+        await this.seedFuncionarios();
+      }
     }
   }
 
@@ -616,6 +647,224 @@ class DbWrapper {
         throw e;
       }
     }
+  }
+
+  async seedFuncionarios() {
+    const nombres = [
+      'Abigail Salguero','Abril Demontel','Abril Gonzalez','Adelyn Serrano','Adrian Zelpo',
+      'Adriana Barboza','Adriana Delgado','Adriana Ippoliti','Adriana Machado','Adriana Martinez',
+      'Adriana Pinto','Adriana Romero','Agustin Collazo','Agustin Moreira','Agustina Diaz',
+      'Agustina Rottela','Agustina Sandoval','Agustina Silva','Alba Galvan','Alejandra Ibanez',
+      'Alejandra Martinez','Alejandra Spindola','Alejandra Tellez','Alejandrina Maria de La Cruz',
+      'Alejandro Izaguirre','Alejandro Moreira','Alejandro Tellez','Alen Mederos','Alex Cardozo',
+      'Alexander Echevarria','Alexander Machado','Alexanders Gonzalez','Alexandra Allende',
+      'Alexandra Aquino','Alexandra Cabrera','Alexandra Ogando','Alexandra Recoba','Alexandra Rodriguez',
+      'Alexis Arias','Alexis Escudero','Alfoncina Encarnacion','Alfonsina Fleitas','Alison Olivera',
+      'Allison Maneiro','Allyson Toledo','Alvaro Marquez','Alvaro Velazquez','Alyson Machado',
+      'Ana Alves','Ana Coronel','Ana Fagundez','Ana Garcia','Ana Malacre','Ana Marino',
+      'Ana Martinez','Ana Mercadal','Ana Moreira','Ana Pereyra','Ana Perez','Ana Santos',
+      'Ana Scapino','Ana Sentecil','Ana Suero','Ana Villagran','Ana Yack','Analia Felix',
+      'Analia Filipini','Andrea De los Santos','Andrea Lavega','Andrea Lima','Andrea Silveira',
+      'Andrea Zanotta','Andreita Adames','Angel Fauto','Angela Beracochea','Angela Curbelo',
+      'Angela Curcio','Angela Escudero','Angela Recarey','Anthony Fonseca','Antonella Batista',
+      'Antonella Duarte','Antonella Ibarra','Anty Gularte','Ariana Silvera','Ariel Rodriguez',
+      'Arley Amador','Armando Dominguez','Armando Garcia','Arturo Centurion','Augusto Castagnola',
+      'Barbara Guillen','Barbara Ramirez','Beatriz Romero','Bernarda Rodriguez','Berta Rosas',
+      'Bettina Cabrera','Bettina Freitas','Brady Luis','Brahian Santa Cruz','Braian Diaz',
+      'Brandon Aguiar','Brenda Fagundez','Brian Aguirre','Brian Duarte','Brian Olivo',
+      'Brian Sansberro','Brian da Silva','Brisa Ocampo','Bruno Brambate','Bruno Gonzalez',
+      'Bryan Alegre','Camila Acuna','Camila Cajica','Camila Carro','Camila Chavez',
+      'Camila Gancio','Camila Marquez','Camila Rivero','Camilo Flores','Candela Calderon',
+      'Candela Ferreira','Candela Rodriguez','Carla Castro','Carla Machado','Carla Martinez',
+      'Carla Mendez','Carlos Aguirre','Carlos Berrueta','Carlos Berrutti','Carlos Diaz',
+      'Carlos Echenique','Carlos Fernandez','Carlos Fugini','Carlos Lopez','Carlos Perez',
+      'Carlos Rodriguez','Carlos Sosa','Carmecia Volquez','Carolina Aguiar','Carolina Rodriguez',
+      'Caroline Sosa','Catherine Bezzoso','Catherine Callaba','Catherine Martinez','Catherine Montenegro',
+      'Catherine Pintos','Catherine Ramos','Cecilia Ferreira','Cecilia Godoy','Cecilia Paez',
+      'Cecilia Saura','Celina Almiron','Cesar Sanchez','Chiara Gonzalez','Christian Bello',
+      'Christian Santurio','Cielo Bosch','Cindy Almada','Cinthya Farina','Cintia De la Santa Cruz',
+      'Claudia Diaz','Claudia Fleitas','Claudia Furtado','Claudia Gallero','Claudia Olivera',
+      'Claudia Rodriguez','Claudia Villasante','Clemente Lechuga','Clide Marchelli','Cris Ceballos',
+      'Cristian Hernandez','Cristian Rodriguez','Cristian Silva','Cristian Traverso','Cristina Mallo',
+      'Cristina Sanchez','Cristofer Peralta','Dagmara Cuello','Daiana Alvarez','Daiana Da Silva',
+      'Daiana Guzman','Dailina Feliz','Daimarelys Garcia','Daineris Matos','Dalia Castaneda',
+      'Damaris Guibert','Damian Comini','Daniel Bonilla','Daniel Castro','Daniela Alvez',
+      'Daniela Disego','Daniela Genoud','Daniela Sauco','Daniela Sosa','Dario Borges',
+      'Darling Fervenza','Darnays Salgado','Daurin Sena','David Hernandez','Dayana Castillo',
+      'Dayana Piedrabuena','Dayana Rojas','Dayana Vera','Debora Martinez','Deborah Alvarez',
+      'Deborath Rodriguez','Deisy Da Rosa','Delfina Acosta','Delfino Silva','Delta Fragoso',
+      'Deury Franco','Diana Lopez','Diana Medina','Diana Novas','Diany Pena','Diego Perez',
+      'Diego Rodriguez','Diego Sena','Diego Tilve','Dominique Rodriguez','Douglas Pereira',
+      'Dunia Martinez','Ecaterina Umpierrez','Edgar Rivero','Edgardo Echevarria','Edgardo Rivero',
+      'Edison Da Silva','Eduardo Zapata','Eliana Rivas','Eliana Trucido','Eliana Vitancurt',
+      'Elias Cutti','Elida Lencina','Elida Tajes','Elisa Echague','Eliza Curbelo',
+      'Elizabeth Perez','Elizabeth Severo','Eluana Scarpa','Elvira Raman','Emanuel Cardozo',
+      'Emanuel Correa','Emanuel Fernandez','Emerson Dotta','Emilia Dotel','Emiliano Gonzalez',
+      'Emilio Merladett','Emilsen Romero','Emily Enrique','Emily Gutierrez','Emily Villalpando',
+      'Emily de los Santos','Emperatriz Advincola','Enrique Figueira','Enso Techeira','Erik Rodriguez',
+      'Erika Izquierdo','Erika Nunez','Erika Pereyra','Ernesto Santiesteban','Esmeralda Marquez',
+      'Esteban Fernandez','Estefani Brocal','Estefani Severo','Estefania Ramos','Estefany Bustamante',
+      'Estela Abad','Estela Alvarez','Estela Riffel','Ethel Gonzalez','Evangelina Quinteros',
+      'Evans Cortinas','Evelin Figueras','Evelyn Apud','Evelyn Caligaris','Evelyn Panizza',
+      'Evelyn Silveira','Evy Gonzalez','Fabiana Caetano','Fabiana Focarile','Fabiana Gomez',
+      'Fabiana Presa','Fabiana Zerpa','Fabio Da Silva','Fabiola Pereyra','Fabriccio Albertini',
+      'Facundo Cabalero','Facundo Cardozo','Facundo Davila','Facundo Gomez','Facundo Gonzalez',
+      'Facundo Silvera','Facundo Tabeira','Fanny Eusebio','Fatima Navarro','Fatima Paraduja',
+      'Fatima Ramirez','Fatima Rodao','Fatima Silva','Faustino De la Cruz','Felix Gascon',
+      'Fernanda Benitez','Fernanda Lopez','Fernando Pereda','Fernando Yaucire','Fiorella Ruiz Diaz',
+      'Flavia Castilla','Florencia Aguiar','Florencia Carmona','Florencia Colman','Florencia Gazzan',
+      'Florencia Hernandez','Florencia Outeda','Florencia Rodriguez','Florencia Suarez','Florencia Tabarez',
+      'Florencia de los Santos','Franco Bauza','Franco Biagetti','Franco Caldas','Franco Pena',
+      'Freddy Leguizamon','Freddy Pereira','Gabriel Da Luz','Gabriela Benitez','Gabriela Bustamante',
+      'Gabriela Fonseca','Gabriela Garcia','Gabriela Sastre','Gabriela Soria','Gabriela Villanueva',
+      'Gaston Costa','Geidy Marten','German Duran','German Luengo','German Pedroso',
+      'German Sanchez','Gilberto Carballea','Gimena Fernandez','Giosi Almeida','Giovana Fernandez',
+      'Giovana Vilche','Giuliana Salari','Gladys Rodriguez','Gladys Senorano','Gonzalo Guastavino',
+      'Gonzalo Rodriguez','Graciela Garcia','Graciela Sanguinetti','Guadalupe Abella','Guillermo Cardoso',
+      'Gustavo Angelino','Gustavo Correa','Gustavo Perazza','Gustavo Reyes','Gustavo Saravia',
+      'Gutterman Rigoli','Hector Rivero','Hector Rodriguez','Helen Almeida','Hugo Betancor',
+      'Hugo Daguerre','Hugo Diaz','Hugo Ramos','Humberto Lanz','Idalberto Perez',
+      'Idelsy Garcia','Ignacio Leites','Ignacio Lemos','Indira Dos Santos','Ines Moreno',
+      'Ingrid Diaz','Ingrid Falero','Irina Vega','Irma Barufaldi','Irma Ramirez',
+      'Irma Sequeira','Isabel Rivero','Ismael Barreto','Ivan Fernandez','Ivan Navas',
+      'Ivan Santana','Ivan Tejeira','Ivana Barrossi','Ivana Bentos','Jackeline Lara',
+      'Jacqueline Silva','Jasmina Calderon','Jave Rodriguez','Javier Baez','Javier Castagnino',
+      'Javier Hernandez','Javier Perez','Jeidy Ruiz','Jenifer Taboada','Jenina Fagundez',
+      'Jennifer Amaro','Jennifer Benitez','Jennifer Correa','Jennifer Ferreira','Jennifer Fraga',
+      'Jennifer Madruga','Jennifer Olivera','Jennifer Sequeira','Jessica Barreto','Jessica Correa',
+      'Jessica Fonseca','Jessica Garcia','Jessica Gonzalez','Jessica Hernandez','Jessica Rodriguez',
+      'Jessica Salazar','Jessica Soca','Jesus Escudero','Jissel Candelario','Joe Jerez',
+      'John Celle','Johnan Cabrera','Jonathan Berto','Jonathan Flores','Jonathan Machado',
+      'Jonathan Marcoff','Jonathan Mendez','Jonathan Pezzoli','Jorge Felimon','Jorge Fonte',
+      'Jorge Marmol','Jorge Morales','Jorge Sosa','Jose Fernandez','Jose Gutierrez',
+      'Jose Hernandez','Jose Jara','Jose Laguarda','Jose Molina','Jose Olivera',
+      'Jose Sampayo','Jose Silva','Jose Suarez','Joselin Fraga','Joseline Araujo',
+      'Juan Alonso','Juan Bitancourtt','Juan Castro','Juan Coelho','Juan Larrosa',
+      'Juan Mesquita','Juan Rodriguez','Juan Velazquez','Juana Garibaldi','Julia Maneiro',
+      'Julia Serrat','Julian Fiorelli','Juliana Lagos','Juliana Tarigo','Julio Fleitas',
+      'Julio Guardalopez','Karen Clavijo','Karen Guarino','Karen Silva','Karina Boschetti',
+      'Karina Milan','Karina Montero','Karina Ramos','Karina Torres','Kateherin de la Cruz',
+      'Katehryn Barboza','Katerin Beledo','Katerin Ferreira','Katerine Morales','Katherine Barreto',
+      'Katherine Cabrera','Katherine Ferreira','Katia Villasante','Katy Fernandez','Kelvin Modesto',
+      'Kevin Coitinho','Kevin Espana','Kevin Gonzalez','Kevin Martinez','Kiara Ferreira',
+      'Laura Cena','Laura De Leon','Laura Ferreira','Laura Gimenez','Laura Machado',
+      'Laura Romero','Laura Sequeira','Laura Sosa','Lautaro Ferreyra','Leandro Piriz',
+      'Leandro Rodriguez','Leniel Perez','Leo Piedrabuena','Leodany Munoz','Leonardo Nalerio',
+      'Leonardo Oliva','Leticia Ferreira','Leticia Olivera','Leyrys Alvarez','Lidia Ferraro',
+      'Lilyan Perez','Linda Vilar','Lismairi Arias','Liz San Martin','Lohana Rodriguez',
+      'Lorena Arezo','Lorena Bogado','Lorena Bustamante','Lorena Fernandez','Lorena Fierro',
+      'Lorena Hospital','Lorena Irute','Lorena Ojeda','Lorena Romero','Lorena Silva',
+      'Lourdes Barreiro','Lourdes Conil','Lourdes Peluffo','Lourdes Romero','Luana Martinez',
+      'Lucas Almada','Lucas Campopiano','Lucas Moreira','Lucas San Juan','Lucero Advincola',
+      'Lucia Abreu','Lucia Fagundez','Lucia Fernandez','Lucia Marquez','Lucia Medina',
+      'Lucia Rivas','Lucia Rodriguez','Lucia Sosaya','Lucia Suarez','Lucia Villareal',
+      'Luciana Bonifacio','Luciana Tabarez','Luciano Oliva','Luciano Saravia','Lucila Ferreira',
+      'Lucy De los Santos','Luis Alboa','Luis Delgado','Luis Flores','Luis Machado',
+      'Luis Perez','Luis Ramirez','Luis Rodriguez','Luis Sagas','Luis Soria',
+      'Luis Vasquez','Luis Yucra','Luz Matos','Mabel Ledesma','Mabel Rodriguez',
+      'Macarena Borges','Macarena Fernandez','Macarena Montero','Macarena Tricanico','Macarena Vinoles',
+      'Maday Fernandez','Magela Dure','Maia Cabrera','Maicol Correa','Maicol Martinez',
+      'Maikol Hernandez','Maikro Silveira','Mailen Rodriguez','Maira Barbero','Maira Falero',
+      'Maira Sanchez','Maisa Moreira','Maite Fernandez','Maite Sasias','Malena Gonzalez',
+      'Malena Sosa','Marcela Airala','Marcela Ferreira','Marcelo Gomez','Marcelo Pintos',
+      'Marcelo Rodriguez','Marco Silva','Marcos Cespedes','Marcos Curbelo','Maria Alonso',
+      'Maria Amaro','Maria Angulo','Maria Aplanalp','Maria Barcelo','Maria Barcelos',
+      'Maria Caceres','Maria Chagas','Maria Da Cunha','Maria De los Santos','Maria Dieppa',
+      'Maria Dominguez','Maria Fierro','Maria Galarraga','Maria Gomes','Maria Gomez',
+      'Maria Henao','Maria Lobo','Maria Lopez','Maria Mansilla','Maria Martinez',
+      'Maria Melendrez','Maria Melgarejo','Maria Mendez','Maria Monteagudo','Maria Morales',
+      'Maria Nacimiento','Maria Napoleon','Maria Nunez','Maria Olivera','Maria Pereira',
+      'Maria Penalosa','Maria Pintos','Maria Ramirez','Maria Ramos','Maria Real',
+      'Maria Rodriguez','Maria Sanchez','Maria Scarano','Maria Silva','Maria Silvera',
+      'Maria Torres','Maria Valerio','Maria Velazco','Maria de los Angeles Martinez',
+      'Maria de los angeles Correa','Maria del Carmen Perrone','Mariadna Casas','Marian Gomez',
+      'Mariana De Arrascaeta','Mariana Fernandez','Mariana La Palma','Mariana Olmedo',
+      'Mariela Recuero','Mariela Ybarra','Marina Fernandez','Marina Suarez','Marisa Rosas',
+      'Marisol Anaya','Maritza Adames','Marta Lavid','Martha Perdomo','Martina Abad',
+      'Martina Correa','Mary Arocha','Mary De los Santos','Maria Arevalo','Maria Velazquez',
+      'Mathias Bentancort','Mathias Monzon','Mathiu Morales','Matias Barreiro','Matias Caetano',
+      'Matias Gonzalez','Matias Lubenko','Matias Machado','Matias Pintos','Matius Olivera',
+      'Mauro De Castro','Maxima Maciel','Maximiliano Gonzalez','Maximiliano Mirabaye',
+      'Mayerling Tovar','Mayra Orrego','Mayra Trucido','Megan Elizalde','Melani Falero',
+      'Melani Piquet','Melanie Fajardo','Melany Perez','Melany Sanchez','Melisa Acosta',
+      'Melissa Chocho','Melissa Eguren','Mercedes Contreras','Micaela Correa','Micaela Demestoy',
+      'Micaela Leys','Micaela Lopez','Micaela Martinez','Michael Gonzalez','Michel Hernandez',
+      'Miguel Muchacho','Miguel Perdomo','Miguel Retamosa','Miguel Rivero','Miladys Lopez',
+      'Milagros Coitino','Milagros Diaz','Milagros Gonzalez','Milagros Gutierrez','Milagros Mazzulo',
+      'Milton Echavaleta','Miriam Abero','Mirian Alvez','Mirian Landoni','Monica Baldomir',
+      'Monica Delgado','Monica Godoy','Monica Maqueira','Monica Melgarejo','Monica Pereyra',
+      'Monica Rodriguez','Myriam Gonzalez','Nadia Babace','Nadia Cardozo','Nadia Gimenez',
+      'Nadia Mier','Nahim Gomez','Nahomi Cabrera','Nahuel Beltran','Nahuel Guillen',
+      'Nahuel Moruzzi','Nairim Diaz','Nancy Blanche','Nancy Saya','Naomi Correa',
+      'Nardo Urquiola','Natalia Bravo','Natalia Cabrera','Natalia Corbo','Natalia Cubilla',
+      'Natalia Debernardi','Natalia Faroppa','Natalia Figueira','Natalia Vega','Nataly Amaral',
+      'Nathali Bandera','Nathaniel De Leon','Nestor Cardozo','Nestor Ocampo','Nicauri Lluberes',
+      'Nicol Fleitas','Nicolas Banega','Nicolas Bello','Nicolas Rodriguez','Nicole Garre',
+      'Nicole Gonzalez','Nilda Perdomo','Nilza Dinardi','Ninozka Martinez','Niurka Llopiz',
+      'Noelia Ramirez','Noemi Santiago','Norma Vignoli','Odelkys Diaz','Olivia Castillo',
+      'Omaira Mangles','Omar Ferreira','Omar Indaburu','Oriana De la Campa','Orlando Fernandez',
+      'Oscar Noguera','Pablo Mujica','Pablo Otero','Paloma Aguiar','Pamela Villa',
+      'Paola Aguirre','Paola Alvez','Paola Fernandez','Paola Millan','Paola Rojas',
+      'Patricia Alvarez','Patricia Aturaola','Patricia Cardozo','Patricia Crossa','Patricia Garrido',
+      'Patricia Nunez','Patricia Rodriguez','Paula Ferradan','Paula Garcia','Paulina De los santos',
+      'Pedro Nunez','Radames Garcia','Rafael Banfi','Raisel Martinez','Raquel Vaz',
+      'Regina Carballo','Regla Delgado','Reinier Bello','Reni Adames','Reyna Quinones',
+      'Ricardo Herrera','Ricardo Martinez','Richard Mello','Rina Ayala','Robert Placeres',
+      'Roberto Moreta','Roberto Santana','Rocio Alvarez','Rocio Quijano','Rocio Ramirez',
+      'Romina Aguirre','Romina Almeida','Romina Castillo','Romina Correa','Romina Gonzalez',
+      'Romina Laquintana','Romina Pallero','Rosa Espinosa','Rosana Cal','Rossana Nunez',
+      'Rossana Rodriguez','Roxana Figueira','Roxana Rodriguez','Roxana Silvera','Ruben Colombo',
+      'Ruben Herrera','Ruben Sosa','Sabrina Nunez','Saily Morfi','Sandra Da Col',
+      'Sandra Fernandez','Sandra Leon','Sandra Lopez','Sandra Montero','Sandra Pineyro',
+      'Sandra Rebollo','Sandra Villalba','Santiago Alvez','Santiago Bernaola','Santiago Caballero',
+      'Santiago Fernandez','Santiago Gonzalez','Sara Nierez','Sasha Ferreira','Schubert Caceres',
+      'Sebastian Galvan','Sebastian Morales','Sebastian Rodriguez','Sebastian Scapino','Selenia De Aza',
+      'Sergio Alvarez','Sergio Aquino','Sergio Bell','Sergio De Sosa Viera','Sergio Gonzalez',
+      'Sergio Mederos','Sergio Rey','Sharon Alarcon','Shayra Rocha','Sheila Moraes',
+      'Sheila Munoz','Sheila Taboada','Sheila de los Santos','Sheyla Fernandez','Shirley Rivero',
+      'Silvana Montero','Silvana Pereyra','Silvana Techera','Silvia Flores','Silvia Melo',
+      'Silvia Quevedo','Silvia Valdez','Silvia Viera','Silvina Britos','Sofia Araujo',
+      'Sofia Britos','Sofia Carbone','Sofia Gomez','Sofia Miranda','Sofia Simonena',
+      'Solange Acuna','Soledad Arbelo','Soraida Mendez','Stefani Ledesma','Stefanny Techera',
+      'Stefany Alves','Stella Martins','Stephanie Guanco','Stephanie Vega','Susana Cabrera',
+      'Susana Luis','Susana Taborda','Susana Yarza','Taissa Branas','Tamara Menendez',
+      'Tamara Morales','Tamara Silva','Tanhia Luzardo','Tatiana Barboza','Tatiana Groba',
+      'Teo Silvera','Teresita Alvez','Thaina Pereira','Thalia Almiron','Tomas Sosa',
+      'Valentina De LaPuente','Valentina Lopez','Valentina Martinez','Valentina Santos','Valentino Pereyra',
+      'Valeria Britos','Valeria Estrada','Valeria Lemes','Valeria Rodriguez','Valeria Silvia',
+      'Vanesa Gonzalez','Vanesa Lemos','Vanessa Insua','Vanessa Rodriguez','Vanessa Zamora',
+      'Vanina Albano','Veronica Alonso','Veronica Cabrera','Veronica Maneiro','Veronica Peluffo',
+      'Veronica Rosano','Veronica Suarez','Veronica Vasquez','Vicky Britos','Victor Aguilera',
+      'Victor Garcia','Victor Rivero','Victor Ruilopez','Victoria Amaral','Victoria Camacho',
+      'Vilma Pirez','Virginia Torres','Viviana Rosa','Walter Farias','Washington Alvarez',
+      'Washington Pintos','Wendi Morel','Wuilber Mijares','Yaima Hernandez','Yaimy Oves',
+      'Yainier Barea','Yaiza Bermudez','Yajaira Sanchez','Yakivill Mora','Yamila Amaral',
+      'Yamila Curbelo','Yamila Dentone','Yamila Fernandez','Yanina Alcantara','Yarilexis Nuviola',
+      'Yasmany Chaviano','Yazmin Castano','Yeila Lopez','Yenifer Gonzalez','Yerisel Chaviano',
+      'Yerity Sanchez','Yesenia Ceruto','Yesica Freitas','Yesy Rieta','Yinangel Zabala',
+      'Yisety Rosa','Yissell Gavilan','Yoan Garcia','Yoana Segredo','Yodalis Sanchez',
+      'Yohan Rodriguez','Yokayra Hernandez','Yolanda Perez','Yonathan Aldave','Yrenia Lemos',
+      'Yudelky Franco','Yudith Silva','Yuleisy De Paula','Yuliana Gimenez','Yuneidi Bautista',
+      'Yuneisky Batista','Yuner Acevedo','Yunet Carballoso','Yuniel Rodriguez','Yunieski Speck',
+      'Yunior Lopez','Yurema Acosta','Yury Chacon','Yusmar Laroche','Yusnely Pereira',
+      'Zoila Pena','Zully De los Santos',
+    ];
+    const unique = [...new Set(nombres)];
+    if (this.type === 'pg') {
+      // Bulk insert in a single query to avoid deadlock with _initPromise
+      const placeholders = unique.map((_, i) => `($${i + 1})`).join(', ');
+      await this.pgPool!.query(
+        `INSERT INTO funcionarios_list (name) VALUES ${placeholders}`,
+        unique
+      );
+    } else {
+      // SQLite: synchronous direct calls, no wrapper needed
+      const stmt = this.sqliteDb.prepare('INSERT INTO funcionarios_list (name) VALUES (?)');
+      for (const name of unique) {
+        stmt.run(name);
+      }
+    }
+    console.log(`✅ Seeded ${unique.length} funcionarios`);
   }
 
   prepare(text: string) {
