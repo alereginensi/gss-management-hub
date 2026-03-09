@@ -325,9 +325,11 @@ export default function LogbookPage() {
         let payload;
         if (Array.isArray(data)) {
             // Batch report from modal
+            const supervisorName = currentUser?.role === 'supervisor' ? currentUser.name : newReportHeader.supervisor;
             payload = data.map(item => ({
                 ...newReportHeader,
-                ...item
+                ...item,
+                supervisor: supervisorName
             }));
         } else {
             // Single report from inline add
@@ -1106,7 +1108,7 @@ export default function LogbookPage() {
                                             </div>
                                             <div>
                                                 <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Tipo de Servicio</label>
-                                                <select value={newReportHeader.supervised_by} onChange={e => setNewReportHeader({ ...newReportHeader, supervised_by: e.target.value, supervisor: '' })} className="input" required>
+                                                <select value={newReportHeader.supervised_by} onChange={e => setNewReportHeader({ ...newReportHeader, supervised_by: e.target.value, supervisor: currentUser?.role === 'supervisor' ? currentUser.name : '' })} className="input" required>
                                                     {SUPERVISO_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                                 </select>
                                             </div>
