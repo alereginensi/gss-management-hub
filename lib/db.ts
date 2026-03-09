@@ -9,6 +9,7 @@ class DbWrapper {
   private pgPool: any | null = null;
   private sqliteDb: any | null = null;
   public type: 'pg' | 'sqlite' = 'sqlite';
+  private _initPromise: Promise<void> | null = null;
 
   constructor() {
     const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
@@ -35,6 +36,7 @@ class DbWrapper {
     } else {
       this.fallbackToSqlite();
     }
+    this._initPromise = this.initialize().then(() => { this._initPromise = null; });
   }
 
   private fallbackToSqlite() {
@@ -60,6 +62,7 @@ class DbWrapper {
   }
 
   async query(text: string, params: any[] = []): Promise<any[]> {
+    if (this._initPromise) await this._initPromise;
     const safeParams = params.map(p => p === undefined ? null : p);
 
     // Convert ? to $1, $2, etc for PG if needed, or vice-versa
@@ -88,6 +91,7 @@ class DbWrapper {
   }
 
   async run(text: string, params: any[] = []): Promise<{ lastInsertRowid?: number | string, changes: number }> {
+    if (this._initPromise) await this._initPromise;
     const safeParams = params.map(p => p === undefined ? null : p);
     let pgText = text;
     if (this.type === 'pg') {
@@ -628,10 +632,5 @@ class DbWrapper {
 }
 
 const db = new DbWrapper();
-
-// Trigger initialization
-if (typeof window === 'undefined') {
-  db.initialize().catch(console.error);
-}
 
 export default db;

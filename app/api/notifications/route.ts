@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
                 type || 'info',
                 statusColor || null
             );
-            return NextResponse.json({ success: true, id: result.lastInsertRowid });
+            return NextResponse.json({ success: true });
         }
 
         if (action === 'create_for_user') {
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
                 type || 'info',
                 statusColor || null
             );
-            return NextResponse.json({ success: true, id: result.lastInsertRowid });
+            return NextResponse.json({ success: true });
         }
 
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
