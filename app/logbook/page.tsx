@@ -281,13 +281,15 @@ export default function LogbookPage() {
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [showFilters, setShowFilters] = useState(false);
     const filterRef = useRef<HTMLDivElement>(null);
+    const mobileFilterRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!showFilters) return;
         const handler = (e: MouseEvent) => {
-            if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
-                setShowFilters(false);
-            }
+            const target = e.target as Node;
+            const outsideDesktop = !filterRef.current || !filterRef.current.contains(target);
+            const outsideMobile = !mobileFilterRef.current || !mobileFilterRef.current.contains(target);
+            if (outsideDesktop && outsideMobile) setShowFilters(false);
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
@@ -839,18 +841,18 @@ export default function LogbookPage() {
 
                         {/* Keyword search */}
                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                            <Search size={14} style={{ position: 'absolute', left: '0.6rem', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
+                            <Search size={15} style={{ position: 'absolute', left: '0.75rem', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
                             <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                                 placeholder="Buscar en bitácora..."
                                 className="input"
-                                style={{ paddingLeft: '2rem', paddingRight: searchQuery ? '1.8rem' : undefined, fontSize: '0.85rem', width: '220px' }}
+                                style={{ paddingLeft: '2.2rem', paddingRight: searchQuery ? '2rem' : '0.75rem', fontSize: '0.9rem', width: '280px', height: '36px' }}
                             />
                             {searchQuery && (
-                                <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '0.4rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: 0 }}>
-                                    <X size={13} />
+                                <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: 0 }}>
+                                    <X size={14} />
                                 </button>
                             )}
                         </div>
@@ -1116,56 +1118,70 @@ export default function LogbookPage() {
 
                 {/* Mobile Card View (Compact) */}
                 <div className="mobile-view">
-                    {/* Date filter for mobile */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', padding: '0.75rem 1rem', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
-                        <Calendar size={15} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Desde</span>
-                        <input
-                            type="date"
-                            value={dateFilter}
-                            onChange={e => {
-                                setDateFilter(e.target.value);
-                                if (dateFilterTo && e.target.value > dateFilterTo) setDateFilterTo(e.target.value);
-                            }}
-                            className="input"
-                            style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', flex: 1, minWidth: '130px' }}
-                        />
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Hasta</span>
-                        <input
-                            type="date"
-                            value={dateFilterTo}
-                            min={dateFilter}
-                            onChange={e => setDateFilterTo(e.target.value)}
-                            className="input"
-                            style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem', flex: 1, minWidth: '130px' }}
-                        />
-                        {(dateFilter || dateFilterTo) && (
-                            <button
-                                onClick={() => { setDateFilter(''); setDateFilterTo(''); }}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: '2px' }}
-                                title="Ver todos"
-                            >
-                                <X size={16} />
-                            </button>
-                        )}
-                    </div>
-                    {/* Mobile keyword search */}
-                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
-                        <Search size={14} style={{ position: 'absolute', left: '0.6rem', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Buscar en bitácora..."
-                            className="input"
-                            style={{ paddingLeft: '2rem', paddingRight: searchQuery ? '1.8rem' : undefined, fontSize: '0.85rem', width: '100%' }}
-                        />
-                        {searchQuery && (
-                            <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '0.6rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: 0 }}>
-                                <X size={14} />
-                            </button>
-                        )}
-                    </div>
+                    {/* Mobile: Filtros + Buscador */}
+                    {(() => {
+                        const activeCount = [dateFilter, dateFilterTo, serviceTypeFilter].filter(Boolean).length;
+                        return (
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+                                {/* Filtros dropdown */}
+                                <div ref={mobileFilterRef} style={{ position: 'relative', flexShrink: 0 }}>
+                                    <button
+                                        onClick={() => setShowFilters(v => !v)}
+                                        className="btn"
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', height: '38px', fontWeight: showFilters ? 600 : 400, border: activeCount > 0 ? '1px solid var(--accent-color)' : undefined, color: activeCount > 0 ? 'var(--accent-color)' : undefined }}
+                                    >
+                                        <Filter size={14} />
+                                        Filtros
+                                        {activeCount > 0 && (
+                                            <span style={{ background: 'var(--accent-color)', color: 'white', borderRadius: '10px', fontSize: '0.7rem', padding: '0 0.4rem', lineHeight: '1.4' }}>{activeCount}</span>
+                                        )}
+                                        <ChevronDown size={13} style={{ transform: showFilters ? 'rotate(180deg)' : undefined, transition: 'transform 0.2s' }} />
+                                    </button>
+                                    {showFilters && (
+                                        <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 200, background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '10px', boxShadow: '0 6px 24px rgba(0,0,0,0.12)', padding: '1rem', minWidth: '280px', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>Fecha desde</label>
+                                                <input type="date" value={dateFilter} onChange={e => { setDateFilter(e.target.value); if (dateFilterTo && e.target.value > dateFilterTo) setDateFilterTo(e.target.value); }} className="input" style={{ width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.85rem' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>Fecha hasta</label>
+                                                <input type="date" value={dateFilterTo} min={dateFilter} onChange={e => setDateFilterTo(e.target.value)} className="input" style={{ width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.85rem' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>Tipo de servicio</label>
+                                                <select value={serviceTypeFilter} onChange={e => setServiceTypeFilter(e.target.value)} className="input" style={{ width: '100%', padding: '0.4rem 0.5rem', fontSize: '0.85rem' }}>
+                                                    <option value="">Todos</option>
+                                                    {SUPERVISO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                                                </select>
+                                            </div>
+                                            {(dateFilter || dateFilterTo || serviceTypeFilter) && (
+                                                <button onClick={() => { setDateFilter(''); setDateFilterTo(''); setServiceTypeFilter(''); }} className="btn" style={{ fontSize: '0.8rem', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', backgroundColor: 'rgba(239,68,68,0.05)' }}>
+                                                    Limpiar filtros
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Keyword search */}
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1 }}>
+                                    <Search size={15} style={{ position: 'absolute', left: '0.75rem', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={e => setSearchQuery(e.target.value)}
+                                        placeholder="Buscar en bitácora..."
+                                        className="input"
+                                        style={{ paddingLeft: '2.2rem', paddingRight: searchQuery ? '2rem' : '0.75rem', fontSize: '0.9rem', width: '100%', height: '38px' }}
+                                    />
+                                    {searchQuery && (
+                                        <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: 0 }}>
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })()}
                     {searchFilteredEntries.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                             <BookOpen size={48} opacity={0.2} />
