@@ -841,14 +841,13 @@ export default function LogbookPage() {
 
                         {/* Keyword search */}
                         <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                            <Search size={15} style={{ position: 'absolute', left: '0.75rem', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
                             <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
                                 placeholder="Buscar en bitácora..."
                                 className="input"
-                                style={{ paddingLeft: '2.2rem', paddingRight: searchQuery ? '2rem' : '0.75rem', fontSize: '0.9rem', width: '280px', height: '36px' }}
+                                style={{ paddingLeft: '0.75rem', paddingRight: searchQuery ? '2rem' : '0.75rem', fontSize: '0.9rem', width: '280px', height: '36px' }}
                             />
                             {searchQuery && (
                                 <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: 0 }}>
@@ -1164,14 +1163,13 @@ export default function LogbookPage() {
                                 </div>
                                 {/* Keyword search */}
                                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1 }}>
-                                    <Search size={15} style={{ position: 'absolute', left: '0.75rem', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
                                     <input
                                         type="text"
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
                                         placeholder="Buscar en bitácora..."
                                         className="input"
-                                        style={{ paddingLeft: '2.2rem', paddingRight: searchQuery ? '2rem' : '0.75rem', fontSize: '0.9rem', width: '100%', height: '38px' }}
+                                        style={{ paddingLeft: '0.75rem', paddingRight: searchQuery ? '2rem' : '0.75rem', fontSize: '0.9rem', width: '100%', height: '38px' }}
                                     />
                                     {searchQuery && (
                                         <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: 0 }}>
