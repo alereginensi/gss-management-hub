@@ -15,7 +15,8 @@ import {
     ClipboardList,
     Trash2,
     Pencil,
-    Save
+    Save,
+    Search
 } from 'lucide-react';
 import { useTicketContext } from '../context/TicketContext';
 
@@ -275,6 +276,7 @@ export default function LogbookPage() {
     const [dateFilter, setDateFilter] = useState<string>(today);
     const [dateFilterTo, setDateFilterTo] = useState<string>(today);
     const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('');
+    const [searchQuery, setSearchQuery] = useState<string>('');
 
     // Supervisors only see entries they personally supervised
     const filteredByUser = currentUser?.role === 'supervisor'
@@ -296,6 +298,16 @@ export default function LogbookPage() {
     const visibleEntries = serviceTypeFilter
         ? dateFilteredEntries.filter(e => e.supervised_by === serviceTypeFilter)
         : dateFilteredEntries;
+
+    // Apply keyword search across all text fields
+    const searchFilteredEntries = searchQuery.trim()
+        ? visibleEntries.filter(e => {
+            const q = searchQuery.toLowerCase();
+            const fields = [e.location, e.sector, e.supervisor, e.staff_member, e.incident, e.report, e.supervised_by,
+                ...Object.values(e.extra_data || {}).map(String)];
+            return fields.some(v => v?.toLowerCase().includes(q));
+        })
+        : visibleEntries;
 
     // Form States
     const [newReportHeader, setNewReportHeader] = useState({
@@ -574,8 +586,8 @@ export default function LogbookPage() {
 
     const exportToExcel = async () => {
         const entriesToExport = selectedIds.size > 0
-            ? visibleEntries.filter(e => selectedIds.has(e.id))
-            : visibleEntries;
+            ? searchFilteredEntries.filter(e => selectedIds.has(e.id))
+            : searchFilteredEntries;
 
         if (entriesToExport.length === 0) {
             alert('Por favor selecciona al menos un reporte para exportar.');
@@ -693,14 +705,14 @@ export default function LogbookPage() {
 
     // Prepare data for rendering (Sort and Color) - Optimized with useMemo
     const sortedEntries = useMemo(() => {
-        return [...visibleEntries].sort((a, b) => {
+        return [...searchFilteredEntries].sort((a, b) => {
             // Primary: date descending (newest first)
             const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
             if (dateDiff !== 0) return dateDiff;
             // Secondary: sector alphabetically within the same date
             return (a.sector || '').localeCompare(b.sector || '');
         });
-    }, [visibleEntries]);
+    }, [searchFilteredEntries]);
 
 
     const updateReportItem = (index: number, field: keyof ReportItem, value: any) => {
@@ -771,6 +783,24 @@ export default function LogbookPage() {
                         </div>
                     </div>
 
+                    {/* Keyword search */}
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <Search size={14} style={{ position: 'absolute', left: '0.6rem', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            placeholder="Buscar en bitácora..."
+                            className="input"
+                            style={{ paddingLeft: '2rem', paddingRight: searchQuery ? '1.8rem' : undefined, fontSize: '0.8rem', width: '200px' }}
+                        />
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '0.4rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: 0 }}>
+                                <X size={13} />
+                            </button>
+                        )}
+                    </div>
+
                     <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flexWrap: 'wrap', marginLeft: '0.5rem' }}>
                         {SUPERVISO_OPTIONS.map(type => {
                             const c = SERVICE_TYPE_COLORS[type];
@@ -819,7 +849,7 @@ export default function LogbookPage() {
                                 <th style={{ padding: '1rem', width: '40px' }}>
                                     <input
                                         type="checkbox"
-                                        checked={visibleEntries.length > 0 && selectedIds.size === visibleEntries.length}
+                                        checked={searchFilteredEntries.length > 0 && selectedIds.size === searchFilteredEntries.length}
                                         onChange={toggleAll}
                                         style={{ cursor: 'pointer' }}
                                     />
@@ -983,12 +1013,12 @@ export default function LogbookPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {visibleEntries.length === 0 ? (
+                            {searchFilteredEntries.length === 0 ? (
                                 <tr>
                                     <td colSpan={11 + columns.length} style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
                                             <BookOpen size={48} opacity={0.2} />
-                                            <p>Empieza a llenar tu Bitácora directamente arriba o usa el botón Nuevo</p>
+                                            <p>{searchQuery.trim() ? `Sin resultados para "${searchQuery}"` : 'Empieza a llenar tu Bitácora directamente arriba o usa el botón Nuevo'}</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -1091,10 +1121,27 @@ export default function LogbookPage() {
                             </button>
                         )}
                     </div>
-                    {visibleEntries.length === 0 ? (
+                    {/* Mobile keyword search */}
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+                        <Search size={14} style={{ position: 'absolute', left: '0.6rem', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            placeholder="Buscar en bitácora..."
+                            className="input"
+                            style={{ paddingLeft: '2rem', paddingRight: searchQuery ? '1.8rem' : undefined, fontSize: '0.85rem', width: '100%' }}
+                        />
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '0.6rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: 0 }}>
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
+                    {searchFilteredEntries.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                             <BookOpen size={48} opacity={0.2} />
-                            <p style={{ marginTop: '1rem' }}>No hay registros. Usa el botón + para agregar uno.</p>
+                            <p style={{ marginTop: '1rem' }}>{searchQuery.trim() ? `Sin resultados para "${searchQuery}"` : 'No hay registros. Usa el botón + para agregar uno.'}</p>
                         </div>
                     ) : (
                         sortedEntries.map((entry) => (
