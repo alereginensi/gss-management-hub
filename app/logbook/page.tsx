@@ -85,6 +85,7 @@ function SearchableSelect({ options, value, onChange, placeholder, style, inputS
 }) {
     const [query, setQuery] = useState('');
     const [open, setOpen] = useState(false);
+    const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
     const ref = useRef<HTMLDivElement>(null);
 
     const filtered = query
@@ -102,6 +103,13 @@ function SearchableSelect({ options, value, onChange, placeholder, style, inputS
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
+    useEffect(() => {
+        if (open && ref.current) {
+            const rect = ref.current.getBoundingClientRect();
+            setDropdownPos({ top: rect.bottom + 2, left: rect.left, width: Math.max(rect.width, 180) });
+        }
+    }, [open]);
+
     return (
         <div ref={ref} style={{ position: 'relative', width: '100%', minWidth: '130px', ...style }}>
             <input
@@ -115,12 +123,12 @@ function SearchableSelect({ options, value, onChange, placeholder, style, inputS
                 style={{ width: '100%', paddingRight: '1.5rem', cursor: 'text', ...inputStyle }}
             />
             <span style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', opacity: 0.35, fontSize: '0.65rem' }}>▼</span>
-            {open && (
+            {open && dropdownPos && (
                 <div style={{
-                    position: 'absolute', top: 'calc(100% + 2px)', left: 0, right: 0,
-                    background: 'var(--bg-color, white)', border: '1px solid var(--border-color)',
+                    position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width,
+                    background: 'var(--surface-color, white)', border: '1px solid var(--border-color)',
                     borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-                    zIndex: 9999, maxHeight: '240px', overflowY: 'auto', minWidth: '180px'
+                    zIndex: 9999, maxHeight: '240px', overflowY: 'auto'
                 }}>
                     {filtered.length === 0 ? (
                         <div style={{ padding: '0.6rem 0.75rem', fontSize: '0.85rem', opacity: 0.5 }}>Sin resultados</div>
