@@ -847,7 +847,7 @@ export default function LogbookPage() {
                                 onChange={e => setSearchQuery(e.target.value)}
                                 placeholder="Buscar en bitácora..."
                                 className="input"
-                                style={{ paddingLeft: '0.75rem', paddingRight: searchQuery ? '2rem' : '0.75rem', fontSize: '0.9rem', width: '280px', height: '36px' }}
+                                style={{ paddingLeft: '0.75rem', paddingRight: '2rem', fontSize: '0.9rem', width: '280px', height: '36px', boxSizing: 'border-box' }}
                             />
                             {searchQuery && (
                                 <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: 0 }}>
@@ -1168,7 +1168,7 @@ export default function LogbookPage() {
                                         onChange={e => setSearchQuery(e.target.value)}
                                         placeholder="Buscar en bitácora..."
                                         className="input"
-                                        style={{ paddingLeft: '0.75rem', paddingRight: searchQuery ? '2rem' : '0.75rem', fontSize: '0.9rem', width: '100%', height: '38px' }}
+                                        style={{ paddingLeft: '0.75rem', paddingRight: '2rem', fontSize: '0.9rem', width: '100%', height: '38px', boxSizing: 'border-box' }}
                                     />
                                     {searchQuery && (
                                         <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', padding: 0 }}>
