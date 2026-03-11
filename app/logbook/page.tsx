@@ -981,7 +981,7 @@ export default function LogbookPage() {
                                         options={funcionarios}
                                         value={inlineData.staff_member || ''}
                                         onChange={v => setInlineData({ ...inlineData, staff_member: v })}
-                                        placeholder="Buscar funcionario..."
+                                        placeholder="Funcionario..."
                                         inputStyle={{ padding: '0.4rem', fontSize: '0.85rem' }}
                                     />
                                 </td>
@@ -1371,7 +1371,7 @@ export default function LogbookPage() {
                                                             options={funcionarios}
                                                             value={item.staff_member}
                                                             onChange={v => updateReportItem(idx, 'staff_member', v)}
-                                                            placeholder="Buscar funcionario..."
+                                                            placeholder="Funcionario..."
                                                         />
                                                     </div>
                                                     <div>
