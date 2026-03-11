@@ -885,10 +885,10 @@ export default function LogbookPage() {
                                 </th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Fecha</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Tipo de Servicio</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Responsable</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Cliente</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Sector</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Funcionario</th>
+                                <th style={{ padding: '1rem', fontSize: '0.85rem', minWidth: '150px' }}>Responsable</th>
+                                <th style={{ padding: '1rem', fontSize: '0.85rem', minWidth: '170px' }}>Cliente</th>
+                                <th style={{ padding: '1rem', fontSize: '0.85rem', minWidth: '120px' }}>Sector</th>
+                                <th style={{ padding: '1rem', fontSize: '0.85rem', minWidth: '150px' }}>Funcionario</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Uniforme</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Incidencia</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Reporte</th>
