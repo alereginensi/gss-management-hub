@@ -977,13 +977,12 @@ export default function LogbookPage() {
                                     })()}
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
-                                    <input
-                                        type="text"
-                                        placeholder="Nombre del funcionario"
-                                        value={inlineData.staff_member}
-                                        onChange={e => setInlineData({ ...inlineData, staff_member: e.target.value })}
-                                        className="input"
-                                        style={{ padding: '0.4rem', fontSize: '0.85rem' }}
+                                    <SearchableSelect
+                                        options={funcionarios}
+                                        value={inlineData.staff_member || ''}
+                                        onChange={v => setInlineData({ ...inlineData, staff_member: v })}
+                                        placeholder="Buscar funcionario..."
+                                        inputStyle={{ padding: '0.4rem', fontSize: '0.85rem' }}
                                     />
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
