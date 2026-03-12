@@ -602,12 +602,23 @@ export default function LogbookPage() {
                 alert('Debe seleccionar un Responsable en los Datos Generales.');
                 return;
             }
-            if (!newReportHeader.location || data.some(d => !d.staff_member || !d.report?.trim())) {
-                alert('Complete Cliente en los datos generales, y Funcionario y Reporte en todos los ítems.');
+            if (data.some(d => !d.report?.trim())) {
+                alert('Completa el campo Reporte en todos los ítems.');
                 return;
             }
-            payload = data.map(item => ({
-                ...newReportHeader,
+            const missingBatchFields: string[] = [];
+            if (!newReportHeader.location) missingBatchFields.push('Cliente');
+            if (data.some(d => !d.staff_member)) missingBatchFields.push('Funcionario');
+            let processedHeader = { ...newReportHeader };
+            let processedItems = data;
+            if (missingBatchFields.length > 0) {
+                const ok = window.confirm(`Al no completar los siguientes campos: ${missingBatchFields.join(', ')}, se marcarán como "No especificado". ¿Deseas continuar?`);
+                if (!ok) return;
+                if (!processedHeader.location) processedHeader = { ...processedHeader, location: 'No especificado' };
+                processedItems = data.map(item => ({ ...item, staff_member: item.staff_member || 'No especificado' }));
+            }
+            payload = processedItems.map(item => ({
+                ...processedHeader,
                 ...item,
                 supervisor: supervisorName,
                 time: getCurrentTime()
@@ -1097,7 +1108,7 @@ export default function LogbookPage() {
                                     </div>
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
-                                    <select value={inlineData.supervised_by} onChange={e => setInlineData({ ...inlineData, supervised_by: e.target.value, supervisor: '' })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
+                                    <select value={inlineData.supervised_by} onChange={e => setInlineData({ ...inlineData, supervised_by: e.target.value, supervisor: currentUser?.role === 'supervisor' ? currentUser.name : '' })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
                                         {SUPERVISO_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                     </select>
                                 </td>
@@ -1219,8 +1230,21 @@ export default function LogbookPage() {
                                                 alert('Debes seleccionar un Responsable.');
                                                 return;
                                             }
-                                            if (!inlineData.location || !inlineData.staff_member || !inlineData.report?.trim()) {
-                                                alert('Completa al menos: Responsable, Cliente, Funcionario y Reporte');
+                                            if (!inlineData.report?.trim()) {
+                                                alert('Completa el campo Reporte.');
+                                                return;
+                                            }
+                                            const missingInlineFields: string[] = [];
+                                            if (!inlineData.location) missingInlineFields.push('Cliente');
+                                            if (!inlineData.staff_member) missingInlineFields.push('Funcionario');
+                                            if (missingInlineFields.length > 0) {
+                                                const ok = window.confirm(`Al no completar los siguientes campos: ${missingInlineFields.join(', ')}, se marcarán como "No especificado". ¿Deseas continuar?`);
+                                                if (!ok) return;
+                                                handleCreateReport(null, {
+                                                    ...inlineData,
+                                                    location: inlineData.location || 'No especificado',
+                                                    staff_member: inlineData.staff_member || 'No especificado',
+                                                });
                                                 return;
                                             }
                                             handleCreateReport(null, inlineData);
