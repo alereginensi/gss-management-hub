@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
             entries: entries.map((e: any) => ({
                 ...e,
                 createdAt: e.created_at,
-                extra_data: e.extra_data ? JSON.parse(e.extra_data) : {}
+                extra_data: e.extra_data ? JSON.parse(e.extra_data) : {},
+                images: e.images ? JSON.parse(e.images) : []
             })),
             columns: columns.map((c: any) => ({
                 ...c,
@@ -54,8 +55,8 @@ export async function POST(req: NextRequest) {
         const items = Array.isArray(body) ? body : [body];
 
         const insertSql = `
-            INSERT INTO logbook (date, sector, supervisor, location, incident, report, staff_member, uniform, extra_data, supervised_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO logbook (date, sector, supervisor, location, incident, report, staff_member, uniform, extra_data, supervised_by, time, images)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         // Use a transaction for multiple inserts
@@ -71,7 +72,9 @@ export async function POST(req: NextRequest) {
                     entry.staff_member || '',
                     entry.uniform || '',
                     JSON.stringify(entry.extra_data || {}),
-                    entry.supervised_by || null
+                    entry.supervised_by || null,
+                    entry.time || null,
+                    JSON.stringify(entry.images || [])
                 ]);
             }
         });
@@ -86,15 +89,15 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
-        const { id, date, sector, supervisor, location, incident, report, staff_member, uniform, extra_data, supervised_by } = body;
+        const { id, date, sector, supervisor, location, incident, report, staff_member, uniform, extra_data, supervised_by, time, images } = body;
 
         if (!id) {
             return NextResponse.json({ error: 'ID is required' }, { status: 400 });
         }
 
         const update = db.prepare(`
-            UPDATE logbook 
-            SET date = ?, sector = ?, supervisor = ?, location = ?, incident = ?, report = ?, staff_member = ?, uniform = ?, extra_data = ?, supervised_by = ?
+            UPDATE logbook
+            SET date = ?, sector = ?, supervisor = ?, location = ?, incident = ?, report = ?, staff_member = ?, uniform = ?, extra_data = ?, supervised_by = ?, time = ?, images = ?
             WHERE id = ?
         `);
 
@@ -109,6 +112,8 @@ export async function PUT(req: Request) {
             uniform || '',
             JSON.stringify(extra_data || {}),
             supervised_by || null,
+            time || null,
+            JSON.stringify(images || []),
             id
         );
 
