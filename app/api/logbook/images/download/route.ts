@@ -4,11 +4,6 @@ import path from 'path';
 import { getSession } from '@/lib/auth-server';
 
 export async function GET(request: NextRequest) {
-    const session = await getSession(request);
-    if (!session) {
-        return new NextResponse('Unauthorized', { status: 401 });
-    }
-
     try {
         const { searchParams } = new URL(request.url);
         const filename = searchParams.get('filename');
