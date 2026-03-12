@@ -164,7 +164,8 @@ function SearchableSelect({ options, value, onChange, placeholder, style, inputS
 function ImageUploader({ images, onChange }: { images: string[]; onChange: (imgs: string[]) => void }) {
     const [uploading, setUploading] = useState(false);
     const [lightbox, setLightbox] = useState<string | null>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const cameraRef = useRef<HTMLInputElement>(null);
+    const galleryRef = useRef<HTMLInputElement>(null);
 
     const handleFiles = async (files: FileList | null) => {
         if (!files || files.length === 0) return;
@@ -215,25 +216,51 @@ function ImageUploader({ images, onChange }: { images: string[]; onChange: (imgs
                     ))}
                 </div>
             )}
-            {/* Hidden file input — accepts camera (mobile) and gallery */}
+            {/* Hidden file inputs */}
             <input
-                ref={inputRef}
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={e => handleFiles(e.target.files)}
+            />
+            <input
+                ref={galleryRef}
                 type="file"
                 accept="image/*"
                 multiple
                 style={{ display: 'none' }}
                 onChange={e => handleFiles(e.target.files)}
             />
-            <button
-                type="button"
-                onClick={() => inputRef.current?.click()}
-                disabled={uploading}
-                className="btn btn-secondary"
-                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', padding: '0.35rem 0.65rem', opacity: uploading ? 0.6 : 1 }}
-            >
-                <Camera size={14} />
-                {uploading ? 'Subiendo...' : images.length > 0 ? `${images.length} foto${images.length > 1 ? 's' : ''}` : 'Foto / Imagen'}
-            </button>
+
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <button
+                    type="button"
+                    onClick={() => cameraRef.current?.click()}
+                    disabled={uploading}
+                    className="btn btn-secondary"
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', fontSize: '0.75rem', padding: '0.35rem 0.5rem', opacity: uploading ? 0.6 : 1 }}
+                >
+                    <Camera size={14} />
+                    {uploading ? '...' : 'Cámara'}
+                </button>
+                <button
+                    type="button"
+                    onClick={() => galleryRef.current?.click()}
+                    disabled={uploading}
+                    className="btn btn-secondary"
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', fontSize: '0.75rem', padding: '0.35rem 0.5rem', opacity: uploading ? 0.6 : 1 }}
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    {uploading ? '...' : 'Galería'}
+                </button>
+            </div>
+            {images.length > 0 && (
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.25rem', textAlign: 'center' }}>
+                    {images.length} adjunta{images.length > 1 ? 's' : ''}
+                </div>
+            )}
             {/* Lightbox */}
             {lightbox && (
                 <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
