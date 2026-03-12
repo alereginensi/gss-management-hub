@@ -524,6 +524,13 @@ export default function LogbookPage() {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
+    useEffect(() => {
+        if (currentUser?.role === 'supervisor' && currentUser.name) {
+            setInlineData(prev => ({ ...prev, supervisor: currentUser.name }));
+            setNewReportHeader(prev => ({ ...prev, supervisor: currentUser.name }));
+        }
+    }, [currentUser]);
+
     const fetchData = async () => {
         setLoading(true);
         try {
