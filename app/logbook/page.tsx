@@ -18,7 +18,10 @@ import {
     Save,
     Search,
     Filter,
-    ChevronDown
+    ChevronDown,
+    Camera,
+    ImageIcon,
+    Clock
 } from 'lucide-react';
 import { useTicketContext } from '../context/TicketContext';
 
@@ -33,6 +36,7 @@ interface Column {
 interface LogEntry {
     id: number;
     date: string;
+    time: string;
     sector: string;
     supervisor: string;
     location: string;
@@ -42,14 +46,17 @@ interface LogEntry {
     uniform: string;
     supervised_by: string;
     extra_data: Record<string, any>;
+    images: string[];
 }
 
 interface ReportItem {
-    sector: string; // Was location
+    sector: string;
     staff_member: string;
     uniform: string;
     incident: string;
     report: string;
+    time: string;
+    images: string[];
     extra_data: Record<string, any>;
 }
 
@@ -68,11 +75,11 @@ const INCIDENT_CATEGORIES = [
 ];
 
 const SERVICE_TYPE_COLORS: Record<string, { bg: string; border: string; text: string; light: string; argb: string }> = {
-    'Limpieza':              { bg: 'rgba(14,165,233,0.07)',   border: '#0ea5e9', text: '#0284c7',  light: 'rgba(14,165,233,0.15)',   argb: 'FFE0F2FE' },
-    'Seguridad Física':      { bg: 'rgba(245,158,11,0.07)',   border: '#f59e0b', text: '#d97706',  light: 'rgba(245,158,11,0.15)',   argb: 'FFFEF3C7' },
-    'Seguridad Electrónica': { bg: 'rgba(139,92,246,0.07)',   border: '#8b5cf6', text: '#7c3aed',  light: 'rgba(139,92,246,0.15)',   argb: 'FFF5F3FF' },
-    'Tercerizados':          { bg: 'rgba(249,115,22,0.07)',   border: '#f97316', text: '#ea580c',  light: 'rgba(249,115,22,0.15)',   argb: 'FFFFF7ED' },
-    'Administrativos':       { bg: 'rgba(100,116,139,0.07)',  border: '#64748b', text: '#475569',  light: 'rgba(100,116,139,0.15)', argb: 'FFF1F5F9' },
+    'Limpieza': { bg: 'rgba(14,165,233,0.07)', border: '#0ea5e9', text: '#0284c7', light: 'rgba(14,165,233,0.15)', argb: 'FFE0F2FE' },
+    'Seguridad Física': { bg: 'rgba(245,158,11,0.07)', border: '#f59e0b', text: '#d97706', light: 'rgba(245,158,11,0.15)', argb: 'FFFEF3C7' },
+    'Seguridad Electrónica': { bg: 'rgba(139,92,246,0.07)', border: '#8b5cf6', text: '#7c3aed', light: 'rgba(139,92,246,0.15)', argb: 'FFF5F3FF' },
+    'Tercerizados': { bg: 'rgba(249,115,22,0.07)', border: '#f97316', text: '#ea580c', light: 'rgba(249,115,22,0.15)', argb: 'FFFFF7ED' },
+    'Administrativos': { bg: 'rgba(100,116,139,0.07)', border: '#64748b', text: '#475569', light: 'rgba(100,116,139,0.15)', argb: 'FFF1F5F9' },
 };
 
 function SearchableSelect({ options, value, onChange, placeholder, style, inputStyle }: {
@@ -147,6 +154,91 @@ function SearchableSelect({ options, value, onChange, placeholder, style, inputS
                             {opt}
                         </div>
                     ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Image Uploader Component ──────────────────────────────────────────────
+function ImageUploader({ images, onChange }: { images: string[]; onChange: (imgs: string[]) => void }) {
+    const [uploading, setUploading] = useState(false);
+    const [lightbox, setLightbox] = useState<string | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const handleFiles = async (files: FileList | null) => {
+        if (!files || files.length === 0) return;
+        setUploading(true);
+        const newUrls: string[] = [];
+        for (const file of Array.from(files)) {
+            const fd = new FormData();
+            fd.append('file', file);
+            try {
+                const res = await fetch('/api/logbook/images', { method: 'POST', body: fd });
+                if (res.ok) {
+                    const data = await res.json();
+                    newUrls.push(data.url);
+                } else {
+                    const d = await res.json();
+                    alert(d.error || 'Error al subir imagen');
+                }
+            } catch { alert('Error de conexión al subir imagen'); }
+        }
+        if (newUrls.length) onChange([...images, ...newUrls]);
+        setUploading(false);
+    };
+
+    const removeImage = async (url: string) => {
+        await fetch(`/api/logbook/images?url=${encodeURIComponent(url)}`, { method: 'DELETE' });
+        onChange(images.filter(u => u !== url));
+    };
+
+    return (
+        <div>
+            {/* Thumbnails */}
+            {images.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                    {images.map(url => (
+                        <div key={url} style={{ position: 'relative', width: 56, height: 56, flexShrink: 0 }}>
+                            <img
+                                src={url}
+                                alt="foto"
+                                onClick={() => setLightbox(url)}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 6, cursor: 'pointer', border: '1px solid var(--border-color)' }}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => removeImage(url)}
+                                style={{ position: 'absolute', top: -6, right: -6, background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: 18, height: 18, fontSize: '0.7rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                            >×</button>
+                        </div>
+                    ))}
+                </div>
+            )}
+            {/* Hidden file input — accepts camera (mobile) and gallery */}
+            <input
+                ref={inputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                style={{ display: 'none' }}
+                onChange={e => handleFiles(e.target.files)}
+            />
+            <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                disabled={uploading}
+                className="btn btn-secondary"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem', padding: '0.35rem 0.65rem', opacity: uploading ? 0.6 : 1 }}
+            >
+                <Camera size={14} />
+                {uploading ? 'Subiendo...' : images.length > 0 ? `${images.length} foto${images.length > 1 ? 's' : ''}` : 'Foto / Imagen'}
+            </button>
+            {/* Lightbox */}
+            {lightbox && (
+                <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <img src={lightbox} alt="vista ampliada" style={{ maxWidth: '90vw', maxHeight: '90vh', borderRadius: 10, boxShadow: '0 0 40px rgba(0,0,0,0.5)' }} />
+                    <button onClick={() => setLightbox(null)} style={{ position: 'absolute', top: '1rem', right: '1.5rem', background: 'none', border: 'none', color: 'white', fontSize: '2rem', cursor: 'pointer' }}>×</button>
                 </div>
             )}
         </div>
@@ -329,14 +421,18 @@ export default function LogbookPage() {
         ? visibleEntries.filter(e => {
             const q = searchQuery.toLowerCase();
             const fields = [e.location, e.sector, e.supervisor, e.staff_member, e.incident, e.report, e.supervised_by,
-                ...Object.values(e.extra_data || {}).map(String)];
+            ...Object.values(e.extra_data || {}).map(String)];
             return fields.some(v => v?.toLowerCase().includes(q));
         })
         : visibleEntries;
 
+    // Helper: current time as HH:MM
+    const getCurrentTime = () => new Date().toLocaleTimeString('es-UY', { hour: '2-digit', minute: '2-digit', hour12: false });
+
     // Form States
     const [newReportHeader, setNewReportHeader] = useState({
         date: new Date().toISOString().split('T')[0],
+        time: getCurrentTime(),
         location: '',
         sector: '',
         supervised_by: SUPERVISO_OPTIONS[0],
@@ -350,6 +446,8 @@ export default function LogbookPage() {
             uniform: UNIFORMS[0],
             incident: '',
             report: '',
+            time: getCurrentTime(),
+            images: [],
             extra_data: {}
         }
     ]);
@@ -364,6 +462,7 @@ export default function LogbookPage() {
     // Inline Add State
     const [inlineData, setInlineData] = useState<Partial<LogEntry>>({
         date: new Date().toISOString().split('T')[0],
+        time: getCurrentTime(),
         sector: '',
         location: '',
         supervised_by: SUPERVISO_OPTIONS[0],
@@ -372,11 +471,22 @@ export default function LogbookPage() {
         report: '',
         staff_member: '',
         uniform: UNIFORMS[0],
+        images: [],
         extra_data: {}
     });
 
     // Selection State
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+    // Submit state to prevent duplicates
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Dynamic real-time clock for UI display
+    const [realTime, setRealTime] = useState(getCurrentTime());
+    useEffect(() => {
+        const timer = setInterval(() => setRealTime(getCurrentTime()), 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     // Mobile Check
     const [isMobile, setIsMobile] = useState(false);
@@ -448,19 +558,32 @@ export default function LogbookPage() {
     const handleCreateReport = async (e: React.FormEvent | null, data: any) => {
         if (e) e.preventDefault();
 
+        if (isSubmitting) return;
+
         let payload;
         if (Array.isArray(data)) {
             // Batch report from modal
             const supervisorName = currentUser?.role === 'supervisor' ? currentUser.name : newReportHeader.supervisor;
+            if (!supervisorName) {
+                alert('Debe seleccionar un Responsable en los Datos Generales.');
+                return;
+            }
+            if (!newReportHeader.location || data.some(d => !d.staff_member || !d.report?.trim())) {
+                alert('Complete Cliente en los datos generales, y Funcionario y Reporte en todos los ítems.');
+                return;
+            }
             payload = data.map(item => ({
                 ...newReportHeader,
                 ...item,
-                supervisor: supervisorName
+                supervisor: supervisorName,
+                time: getCurrentTime()
             }));
         } else {
             // Single report from inline add
-            payload = [data];
+            payload = [{ ...data, time: getCurrentTime() }];
         }
+
+        setIsSubmitting(true);
 
         try {
             const res = await fetch('/api/logbook', {
@@ -475,6 +598,7 @@ export default function LogbookPage() {
                 // Reset states
                 setNewReportHeader({
                     date: new Date().toISOString().split('T')[0],
+                    time: getCurrentTime(),
                     location: '',
                     sector: '',
                     supervised_by: SUPERVISO_OPTIONS[0],
@@ -486,11 +610,14 @@ export default function LogbookPage() {
                     uniform: UNIFORMS[0],
                     incident: '',
                     report: '',
+                    time: getCurrentTime(),
+                    images: [],
                     extra_data: {}
                 }]);
 
                 setInlineData({
                     date: new Date().toISOString().split('T')[0],
+                    time: getCurrentTime(),
                     location: '',
                     sector: '',
                     supervised_by: SUPERVISO_OPTIONS[0],
@@ -499,11 +626,17 @@ export default function LogbookPage() {
                     report: '',
                     staff_member: '',
                     uniform: UNIFORMS[0],
+                    images: [],
                     extra_data: {}
                 });
+            } else {
+                alert('Error al guardar el reporte');
             }
         } catch (error) {
             console.error('Error creating report:', error);
+            alert('Error al crear el reporte');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -659,6 +792,7 @@ export default function LogbookPage() {
         // Columns match the web table order exactly
         const excelCols = [
             { header: 'Fecha', key: 'date', width: 15 },
+            { header: 'Hora', key: 'time', width: 10 },
             { header: 'Tipo de Servicio', key: 'supervised_by', width: 20 },
             { header: 'Responsable', key: 'supervisor', width: 20 },
             { header: 'Cliente', key: 'location', width: 25 },
@@ -691,6 +825,7 @@ export default function LogbookPage() {
             const rowData: any = {
                 id: entry.id,
                 date: entry.date,
+                time: entry.time, // Fix: Include time in export
                 supervised_by: entry.supervised_by,
                 supervisor: entry.supervisor,
                 sector: entry.sector,
@@ -891,7 +1026,7 @@ export default function LogbookPage() {
                                         style={{ cursor: 'pointer' }}
                                     />
                                 </th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Fecha</th>
+                                <th style={{ padding: '1rem', fontSize: '0.85rem', minWidth: '140px' }}>Fecha / Hora</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Tipo de Servicio</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem', minWidth: '150px' }}>Responsable</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem', minWidth: '170px' }}>Cliente</th>
@@ -900,6 +1035,7 @@ export default function LogbookPage() {
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Uniforme</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Incidencia</th>
                                 <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Reporte</th>
+                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Fotos</th>
                                 {columns.map(col => (
                                     <th key={col.id} style={{ padding: '1rem', fontSize: '0.85rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -921,7 +1057,10 @@ export default function LogbookPage() {
                             <tr style={{ borderBottom: '2px solid var(--accent-color)', backgroundColor: 'rgba(59, 130, 246, 0.05)' }}>
                                 <td style={{ padding: '0.5rem' }}></td>
                                 <td style={{ padding: '0.5rem' }}>
-                                    <input type="date" value={inlineData.date} onChange={e => setInlineData({ ...inlineData, date: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                        <input type="date" value={inlineData.date} onChange={e => setInlineData({ ...inlineData, date: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} />
+                                        <input type="text" readOnly value={realTime} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem', backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)', cursor: 'not-allowed' }} />
+                                    </div>
                                 </td>
                                 <td style={{ padding: '0.5rem' }}>
                                     <select value={inlineData.supervised_by} onChange={e => setInlineData({ ...inlineData, supervised_by: e.target.value, supervisor: '' })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
@@ -1019,6 +1158,12 @@ export default function LogbookPage() {
                                         style={{ padding: '0.4rem', fontSize: '0.85rem', resize: 'vertical', minHeight: '60px' }}
                                     />
                                 </td>
+                                <td style={{ padding: '0.5rem' }}>
+                                    <ImageUploader
+                                        images={inlineData.images || []}
+                                        onChange={imgs => setInlineData({ ...inlineData, images: imgs })}
+                                    />
+                                </td>
                                 {columns.map(col => (
                                     <td key={col.id} style={{ padding: '0.5rem' }}>
                                         {col.type === 'select' ? (
@@ -1033,17 +1178,23 @@ export default function LogbookPage() {
                                 ))}
                                 <td style={{ padding: '0.5rem' }}>
                                     <button
+                                        type="button"
+                                        disabled={isSubmitting}
                                         onClick={() => {
+                                            if (!inlineData.supervisor) {
+                                                alert('Debes seleccionar un Responsable.');
+                                                return;
+                                            }
                                             if (!inlineData.location || !inlineData.staff_member || !inlineData.report?.trim()) {
-                                                alert('Completa al menos: Cliente, Funcionario y Reporte');
+                                                alert('Completa al menos: Responsable, Cliente, Funcionario y Reporte');
                                                 return;
                                             }
                                             handleCreateReport(null, inlineData);
                                         }}
                                         className="btn btn-primary"
-                                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', whiteSpace: 'nowrap', opacity: isSubmitting ? 0.7 : 1 }}
                                     >
-                                        Agregar
+                                        {isSubmitting ? 'Guardando...' : 'Agregar'}
                                     </button>
                                 </td>
                             </tr>
@@ -1087,7 +1238,14 @@ export default function LogbookPage() {
                                                         style={{ cursor: 'pointer' }}
                                                     />
                                                 </td>
-                                                <td style={{ padding: '1rem' }}>{entry.date}</td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <div style={{ fontWeight: 500 }}>{entry.date}</div>
+                                                    {entry.time && (
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
+                                                            <Clock size={11} />{entry.time}
+                                                        </div>
+                                                    )}
+                                                </td>
                                                 <td style={{ padding: '1rem' }}>
                                                     {(() => {
                                                         const c = SERVICE_TYPE_COLORS[entry.supervised_by];
@@ -1109,6 +1267,21 @@ export default function LogbookPage() {
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>{entry.incident}</td>
                                                 <td style={{ padding: '1rem', verticalAlign: 'top', whiteSpace: 'normal', lineBreak: 'anywhere', minWidth: '250px' }}>{entry.report}</td>
+                                                <td style={{ padding: '0.75rem' }}>
+                                                    {entry.images && entry.images.length > 0 ? (
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                                                            {entry.images.map(url => (
+                                                                <img
+                                                                    key={url}
+                                                                    src={url}
+                                                                    alt="foto"
+                                                                    onClick={() => window.open(url, '_blank')}
+                                                                    style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 5, cursor: 'pointer', border: '1px solid var(--border-color)' }}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    ) : <span style={{ opacity: 0.3, fontSize: '0.8rem' }}>—</span>}
+                                                </td>
                                                 {columns.map(col => (
                                                     <td key={col.id} style={{ padding: '1rem' }}>{entry.extra_data[col.name] || '-'}</td>
                                                 ))}
@@ -1208,7 +1381,7 @@ export default function LogbookPage() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                            {entry.date} • {entry.sector}
+                                            {entry.date}{entry.time ? ` • ${entry.time}` : ''} • {entry.sector}
                                         </div>
                                         <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: '0.25rem' }}>
                                             {entry.location}
@@ -1238,6 +1411,19 @@ export default function LogbookPage() {
                                     </div>
                                 </div>
 
+                                {entry.images && entry.images.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', paddingTop: '0.25rem' }}>
+                                        {entry.images.map(url => (
+                                            <img
+                                                key={url}
+                                                src={url}
+                                                alt="foto"
+                                                onClick={() => window.open(url, '_blank')}
+                                                style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border-color)' }}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                                 <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 600 }}>
                                         {entry.incident || 'Sin incidencia'}
@@ -1275,10 +1461,14 @@ export default function LogbookPage() {
                                 <form onSubmit={(e) => handleCreateReport(e, reportItems)}>
                                     <div style={{ backgroundColor: 'rgba(0,0,0,0.02)', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--border-color)' }}>
                                         <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Datos Generales</h3>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: '1rem' }}>
                                             <div>
                                                 <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Fecha</label>
                                                 <input type="date" required value={newReportHeader.date} onChange={e => setNewReportHeader({ ...newReportHeader, date: e.target.value })} className="input" />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Hora (Actual)</label>
+                                                <input type="text" readOnly value={realTime} className="input" style={{ backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)', cursor: 'not-allowed' }} />
                                             </div>
                                             <div>
                                                 <label style={{ display: 'block', fontSize: '0.8rem', marginBottom: '0.4rem', fontWeight: 600 }}>Tipo de Servicio</label>
@@ -1328,7 +1518,7 @@ export default function LogbookPage() {
                                                 type="button"
                                                 onClick={() => {
                                                     const sectors = getSectorsForLocation(newReportHeader.location);
-                                                    setReportItems([...reportItems, { sector: sectors[0] || '', staff_member: '', uniform: UNIFORMS[0], incident: '', report: '', extra_data: {} }]);
+                                                    setReportItems([...reportItems, { sector: sectors[0] || '', staff_member: '', uniform: UNIFORMS[0], incident: '', report: '', time: getCurrentTime(), images: [], extra_data: {} }]);
                                                 }}
                                                 className="btn btn-secondary"
                                                 style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
@@ -1417,6 +1607,13 @@ export default function LogbookPage() {
                                                             style={{ resize: 'vertical', minHeight: isMobile ? '120px' : '90px', lineHeight: '1.5', width: '100%' }}
                                                         />
                                                     </div>
+                                                    <div style={{ gridColumn: '1 / -1' }}>
+                                                        <label style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.3rem', opacity: 0.6 }}>Imágenes (opcional)</label>
+                                                        <ImageUploader
+                                                            images={item.images || []}
+                                                            onChange={imgs => updateReportItem(idx, 'images', imgs)}
+                                                        />
+                                                    </div>
                                                 </div>
 
                                                 {columns.length > 0 && (
@@ -1457,7 +1654,9 @@ export default function LogbookPage() {
 
                                     <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
                                         <button type="button" onClick={() => setShowReportModal(false)} className="btn btn-secondary" style={{ flex: 1 }}>Cancelar</button>
-                                        <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>Guardar Reporte</button>
+                                        <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{ flex: 2, opacity: isSubmitting ? 0.7 : 1 }}>
+                                            {isSubmitting ? 'Guardando...' : 'Guardar Reporte'}
+                                        </button>
                                     </div>
                                 </form>
                             </div>
@@ -1520,7 +1719,9 @@ export default function LogbookPage() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'flex-start' }}>
                                 <div>
                                     <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>Detalles del Reporte</h2>
-                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{selectedReport.date} - {selectedReport.sector}</div>
+                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                        {selectedReport.date}{selectedReport.time ? ` — ${selectedReport.time}` : ''} • {selectedReport.sector}
+                                    </div>
                                 </div>
                                 <button onClick={() => setSelectedReport(null)} className="btn btn-secondary" style={{ padding: '0.5rem' }}><X size={20} /></button>
                             </div>
@@ -1559,6 +1760,25 @@ export default function LogbookPage() {
                                         {selectedReport.report}
                                     </div>
                                 </div>
+
+                                {selectedReport.images && selectedReport.images.length > 0 && (
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.75rem', opacity: 0.6, marginBottom: '0.5rem' }}>Imágenes ({selectedReport.images.length})</label>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                            {selectedReport.images.map(url => (
+                                                <img
+                                                    key={url}
+                                                    src={url}
+                                                    alt="foto"
+                                                    onClick={() => window.open(url, '_blank')}
+                                                    style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border-color)', transition: 'opacity 0.2s' }}
+                                                    onMouseOver={e => (e.currentTarget.style.opacity = '0.8')}
+                                                    onMouseOut={e => (e.currentTarget.style.opacity = '1')}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {columns.length > 0 && (
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
