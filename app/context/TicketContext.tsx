@@ -343,7 +343,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
 
     const loadTicketActivities = async (ticketId: string) => {
         try {
-            const res = await fetch(`/api/tickets/${ticketId}/activities`);
+            const res = await fetch(`/api/tickets/${ticketId}/activities`, { headers: getAuthHeaders() });
             if (res.ok) {
                 const data = await res.json();
                 // Merge with existing activities, avoiding duplicates
@@ -464,7 +464,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             // Save to Database — server returns the real sequential ID
             const res = await fetch('/api/tickets', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify(ticketPayload)
             });
 
@@ -731,7 +731,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         // Persist status change to database
         fetch(`/api/tickets/${ticketId}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
             body: JSON.stringify({ status: newStatus })
         }).catch(err => console.error('Error persisting ticket status to DB:', err));
 
@@ -941,7 +941,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             console.log('📡 API Call - Transfer Ticket:', { ticketId, newSupervisorId, transferredBy, reason });
             const res = await fetch(`/api/tickets/${ticketId}/assign`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify({ newSupervisorId, transferredBy, reason })
             });
             console.log('📡 API Response status:', res.status);
@@ -964,7 +964,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         try {
             const res = await fetch(`/api/tickets/${ticketId}/collaborators`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify({ userId, addedBy })
             });
             return res.ok;
@@ -977,7 +977,8 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     const removeCollaborator = async (ticketId: string, userId: number) => {
         try {
             const res = await fetch(`/api/tickets/${ticketId}/collaborators?userId=${userId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: getAuthHeaders()
             });
             return res.ok;
         } catch (error) {
@@ -988,7 +989,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
 
     const getTicketCollaborators = async (ticketId: string) => {
         try {
-            const res = await fetch(`/api/tickets/${ticketId}/collaborators`);
+            const res = await fetch(`/api/tickets/${ticketId}/collaborators`, { headers: getAuthHeaders() });
             if (res.ok) {
                 return await res.json();
             }
