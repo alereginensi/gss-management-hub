@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 
 export default function NewTicket() {
     const [submitted, setSubmitted] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const { addTicket, currentUser, isSidebarOpen, allUsers, isMobile } = useTicketContext();
     const router = useRouter();
 
@@ -43,6 +44,7 @@ export default function NewTicket() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (submitting) return;
 
         if (!formData.name || !formData.email || !formData.department) {
             alert('Por favor completa todos los campos obligatorios (Nombre, Email, Departamento).');
@@ -56,6 +58,8 @@ export default function NewTicket() {
             return;
         }
 
+        setSubmitting(true);
+
         // Validate email existence with API
         try {
             const validationResponse = await fetch('/api/validate-email', {
@@ -68,17 +72,12 @@ export default function NewTicket() {
 
             if (!validationData.valid) {
                 alert('Por favor escribe una dirección de email válida');
+                setSubmitting(false);
                 return;
-            }
-
-            // Show warning if using fallback validation
-            if (validationData.fallback) {
-                console.warn('Using fallback email validation:', validationData.message);
             }
         } catch (error) {
             console.error('Email validation error:', error);
             // Continue with ticket creation even if validation fails
-            console.warn('Email validation failed, proceeding with basic validation');
         }
 
         // Update current user email if not set
@@ -89,49 +88,61 @@ export default function NewTicket() {
         // Upload files if exists
         let attachmentUrls: string[] = [];
         if (files.length > 0) {
-            try {
-                for (const file of files) {
-                    const uploadFormData = new FormData();
-                    uploadFormData.append('file', file);
-
-                    const token = localStorage.getItem('authToken');
+            const token = localStorage.getItem('authToken');
+            for (const file of files) {
+                const uploadFormData = new FormData();
+                uploadFormData.append('file', file);
+                try {
                     const uploadRes = await fetch('/api/tickets/upload', {
                         method: 'POST',
                         headers: token ? { Authorization: `Bearer ${token}` } : {},
                         body: uploadFormData
                     });
-
                     if (uploadRes.ok) {
                         const uploadData = await uploadRes.json();
                         attachmentUrls.push(uploadData.url);
                     } else {
-                        console.error(`File upload failed for ${file.name}`);
+                        const errText = await uploadRes.text();
+                        console.error(`File upload failed (${uploadRes.status}):`, errText);
+                        alert(`Error al subir "${file.name}": ${uploadRes.status} ${uploadRes.statusText}`);
+                        setSubmitting(false);
+                        return;
                     }
+                } catch (error) {
+                    console.error('Error uploading file:', error);
+                    alert(`Error de red al subir "${file.name}". Revisá tu conexión.`);
+                    setSubmitting(false);
+                    return;
                 }
-            } catch (error) {
-                console.error('Error uploading files:', error);
             }
-        } // Close if (files.length > 0)
+        }
 
         let finalAttachmentUrl = '';
         if (attachmentUrls.length > 0) {
             finalAttachmentUrl = JSON.stringify(attachmentUrls);
         }
 
-        // Add ticket to global state
-        addTicket({
-            subject: formData.subject,
-            description: formData.description,
-            department: formData.department,
-            priority: formData.priority,
-            status: 'Nuevo',
-            requester: formData.name,
-            requesterEmail: formData.email,
-            affectedWorker: formData.affectedWorker,
-            supervisor: formData.supervisor,
-            attachmentUrl: finalAttachmentUrl
-        } as any);
+        try {
+            await addTicket({
+                subject: formData.subject,
+                description: formData.description,
+                department: formData.department,
+                priority: formData.priority,
+                status: 'Nuevo',
+                requester: formData.name,
+                requesterEmail: formData.email,
+                affectedWorker: formData.affectedWorker,
+                supervisor: formData.supervisor,
+                attachmentUrl: finalAttachmentUrl
+            } as any);
+        } catch (error) {
+            console.error('Error creating ticket:', error);
+            alert('Error al crear el ticket. Intentá de nuevo.');
+            setSubmitting(false);
+            return;
+        }
 
+        setSubmitting(false);
         setSubmitted(true);
 
         // Redirect to tickets page after 2 seconds
@@ -461,7 +472,9 @@ export default function NewTicket() {
 
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                                 <button type="button" className="btn" style={{ backgroundColor: 'transparent', border: '1px solid var(--border-color)' }} onClick={() => router.push('/')}>Cancelar</button>
-                                <button type="submit" className="btn btn-primary">Enviar Ticket</button>
+                                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                                    {submitting ? 'Enviando...' : 'Enviar Ticket'}
+                                </button>
                             </div>
                         </form>
                     )}
