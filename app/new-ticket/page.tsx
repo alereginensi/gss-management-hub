@@ -184,7 +184,7 @@ export default function NewTicket() {
                         <form onSubmit={handleSubmit} className="card">
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Supervisor</label>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Colaborador</label>
                                     {currentUser?.role === 'admin' ? (
                                         <select
                                             name="supervisor"
@@ -200,7 +200,7 @@ export default function NewTicket() {
                                                 color: 'var(--text-primary)'
                                             }}
                                         >
-                                            <option value="">Seleccionar Supervisor...</option>
+                                            <option value="">Seleccionar Colaborador...</option>
                                             {allUsers
                                                 .filter(u => {
                                                     const r = u.role?.toLowerCase();

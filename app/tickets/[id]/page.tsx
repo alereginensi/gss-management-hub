@@ -350,13 +350,28 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                                     }
                                                 }
 
+                                                const handleDownload = async () => {
+                                                    try {
+                                                        const token = localStorage.getItem('authToken');
+                                                        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+                                                        const res = await fetch(trimmedUrl, { headers });
+                                                        if (!res.ok) { alert('Error al descargar el archivo'); return; }
+                                                        const blob = await res.blob();
+                                                        const blobUrl = URL.createObjectURL(blob);
+                                                        const a = document.createElement('a');
+                                                        a.href = blobUrl;
+                                                        a.download = fileName;
+                                                        a.click();
+                                                        URL.revokeObjectURL(blobUrl);
+                                                    } catch {
+                                                        alert('Error al descargar el archivo');
+                                                    }
+                                                };
+
                                                 return (
-                                                    <a
+                                                    <button
                                                         key={i}
-                                                        href={trimmedUrl}
-                                                        download
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
+                                                        onClick={handleDownload}
                                                         style={{
                                                             display: 'flex',
                                                             alignItems: 'center',
@@ -366,14 +381,16 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                                             borderRadius: 'var(--radius)',
                                                             border: '1px solid var(--border-color)',
                                                             color: 'var(--accent-color)',
-                                                            textDecoration: 'none',
+                                                            cursor: 'pointer',
                                                             fontSize: '0.875rem',
-                                                            fontWeight: 500
+                                                            fontWeight: 500,
+                                                            width: '100%',
+                                                            textAlign: 'left'
                                                         }}
                                                     >
                                                         <Paperclip size={16} />
                                                         {fileName}
-                                                    </a>
+                                                    </button>
                                                 );
                                             });
                                         })()}
@@ -391,7 +408,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                     className="btn btn-secondary"
                                     style={{ width: '100%' }}
                                 >
-                                    Cambiar Supervisor
+                                    Cambiar Colaborador
                                 </button>
                             </div>
                         )}
@@ -492,13 +509,13 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                         }}>
                             <h3 style={{ marginBottom: '1rem' }}>Transferir Ticket</h3>
                             <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Supervisor Actual</label>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Colaborador Actual</label>
                                 <div style={{ padding: '0.5rem', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)' }}>
                                     {ticket.supervisor || 'Sin asignar'}
                                 </div>
                             </div>
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Nuevo Supervisor</label>
+                                <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Nuevo Colaborador</label>
                                 <select
                                     value={selectedSupervisor}
                                     onChange={(e) => setSelectedSupervisor(e.target.value)}
@@ -511,7 +528,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                         color: 'var(--text-primary)'
                                     }}
                                 >
-                                    <option value="">Seleccionar supervisor...</option>
+                                    <option value="">Seleccionar colaborador...</option>
                                     {allUsers.filter(u => u.role === 'supervisor' || u.role === 'admin').map(user => (
                                         <option key={user.id} value={user.name}>{user.name}</option>
                                     ))}
