@@ -94,8 +94,10 @@ export default function NewTicket() {
                     const uploadFormData = new FormData();
                     uploadFormData.append('file', file);
 
+                    const token = localStorage.getItem('authToken');
                     const uploadRes = await fetch('/api/tickets/upload', {
                         method: 'POST',
+                        headers: token ? { Authorization: `Bearer ${token}` } : {},
                         body: uploadFormData
                     });
 
