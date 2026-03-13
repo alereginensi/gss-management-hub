@@ -585,7 +585,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             // Save to DB
             const res = await fetch(`/api/tickets/${ticketId}/activities`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify({ message, type: 'comment' })
             });
 
@@ -641,7 +641,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         try {
             await fetch('/api/notifications', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify({
                     action: 'create',
                     ticketId,
@@ -667,7 +667,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         // Persist to DB
         fetch('/api/notifications', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
             body: JSON.stringify({ notificationId, action: 'mark_read' })
         }).catch(err => console.error('Error marking notification read:', err));
     };
@@ -675,7 +675,8 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     const deleteNotification = (notificationId: number) => {
         // Delete from DB
         fetch(`/api/notifications?id=${notificationId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: getAuthHeaders()
         }).catch(err => console.error('Error deleting notification:', err));
 
         // Optimistic update
@@ -686,7 +687,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         // Persist to DB
         fetch('/api/notifications', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
             body: JSON.stringify({ action: 'mark_all_read' })
         }).catch(err => console.error('Error marking all notifications read:', err));
 
@@ -697,7 +698,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
 
     const clearAllNotifications = () => {
         // Delete all from DB
-        fetch('/api/notifications?all=true', { method: 'DELETE' })
+        fetch('/api/notifications?all=true', { method: 'DELETE', headers: getAuthHeaders() })
             .catch(err => console.error('Error clearing notifications:', err));
         setNotifications([]);
     };
