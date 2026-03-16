@@ -2,16 +2,27 @@
 
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
-import { UploadCloud, CheckCircle, X } from 'lucide-react';
+import { UploadCloud, CheckCircle, X, Users, UserPlus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useTicketContext, DEPARTMENTS } from '../context/TicketContext';
 import { useRouter } from 'next/navigation';
 
+interface TeamTask {
+    userId: number;
+    userName: string;
+    task: string;
+}
+
 export default function NewTicket() {
     const [submitted, setSubmitted] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const { addTicket, currentUser, isSidebarOpen, allUsers, isMobile } = useTicketContext();
+    const { addTicket, currentUser, isSidebarOpen, allUsers, fetchAllUsers, isMobile } = useTicketContext();
     const router = useRouter();
+
+    // Team ticket state (jefe only)
+    const [teamMode, setTeamMode] = useState(false);
+    const [teamTasks, setTeamTasks] = useState<TeamTask[]>([]);
+    const [jefeTask, setJefeTask] = useState('');
 
     const [formData, setFormData] = useState({
         name: (currentUser?.id ?? 0) > 0 ? currentUser?.name : '',
@@ -40,7 +51,25 @@ export default function NewTicket() {
         if (currentUser?.role === 'supervisor' && currentUser?.name) {
             setFormData(prev => ({ ...prev, supervisor: currentUser.name }));
         }
+        if (currentUser?.role === 'jefe') {
+            fetchAllUsers();
+        }
     }, [currentUser]);
+
+    const addTeamMember = () => {
+        setTeamTasks(prev => [...prev, { userId: 0, userName: '', task: '' }]);
+    };
+
+    const removeTeamMember = (idx: number) => {
+        setTeamTasks(prev => prev.filter((_, i) => i !== idx));
+    };
+
+    const updateTeamMember = (idx: number, field: keyof TeamTask, value: string | number) => {
+        setTeamTasks(prev => prev.map((t, i) => i === idx ? { ...t, [field]: value } : t));
+    };
+
+    const supervisorUsers = allUsers.filter(u => u.role === 'supervisor' || u.role === 'jefe')
+        .filter(u => u.id !== currentUser?.id);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -122,6 +151,27 @@ export default function NewTicket() {
             finalAttachmentUrl = JSON.stringify(attachmentUrls);
         }
 
+        // Validate team tasks if in team mode
+        if (teamMode) {
+            if (!jefeTask.trim()) {
+                alert('Por favor ingresá tu tarea en el ticket de equipo.');
+                setSubmitting(false);
+                return;
+            }
+            const invalidMember = teamTasks.find(t => !t.userId || !t.task.trim());
+            if (invalidMember) {
+                alert('Por favor completá el colaborador y la tarea de cada integrante del equipo.');
+                setSubmitting(false);
+                return;
+            }
+        }
+
+        // Build final team tasks including jefe's own task
+        const finalTeamTasks = teamMode && currentUser ? [
+            { userId: currentUser.id, userName: currentUser.name, task: jefeTask },
+            ...teamTasks
+        ] : [];
+
         try {
             await addTicket({
                 subject: formData.subject,
@@ -133,7 +183,9 @@ export default function NewTicket() {
                 requesterEmail: formData.email,
                 affectedWorker: formData.affectedWorker,
                 supervisor: formData.supervisor,
-                attachmentUrl: finalAttachmentUrl
+                attachmentUrl: finalAttachmentUrl,
+                isTeamTicket: teamMode,
+                teamTasks: finalTeamTasks
             } as any);
         } catch (error) {
             console.error('Error creating ticket:', error);
@@ -195,6 +247,92 @@ export default function NewTicket() {
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="card">
+                            {/* Team ticket toggle — jefe only */}
+                            {currentUser?.role === 'jefe' && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', padding: '1rem', backgroundColor: teamMode ? 'rgba(59,130,246,0.07)' : 'var(--bg-color)', borderRadius: 'var(--radius)', border: `1px solid ${teamMode ? 'var(--accent-color)' : 'var(--border-color)'}`, transition: 'all 0.2s' }}>
+                                    <Users size={20} color={teamMode ? 'var(--accent-color)' : 'var(--text-secondary)'} />
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Ticket de Equipo</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Asignás tareas individuales a supervisores, el ticket se resuelve cuando todos completan su tarea</div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTeamMode(v => !v)}
+                                        style={{
+                                            width: '44px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+                                            backgroundColor: teamMode ? 'var(--accent-color)' : 'var(--border-color)',
+                                            position: 'relative', transition: 'background-color 0.2s', flexShrink: 0
+                                        }}
+                                    >
+                                        <span style={{
+                                            position: 'absolute', top: '3px', left: teamMode ? '23px' : '3px',
+                                            width: '18px', height: '18px', borderRadius: '50%', backgroundColor: 'white',
+                                            transition: 'left 0.2s', display: 'block'
+                                        }} />
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Team member builder */}
+                            {teamMode && currentUser?.role === 'jefe' && (
+                                <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <label style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--accent-color)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Equipo de Trabajo</label>
+
+                                    {/* Jefe's own task */}
+                                    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.5rem', padding: '0.75rem', backgroundColor: 'rgba(59,130,246,0.06)', borderRadius: 'var(--radius)', border: '1px solid var(--accent-color)' }}>
+                                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--accent-color)' }}>
+                                            {currentUser.name} <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>(vos)</span>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="Tu tarea en este ticket..."
+                                            value={jefeTask}
+                                            onChange={e => setJefeTask(e.target.value)}
+                                            style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', fontSize: '0.875rem', width: isMobile ? '100%' : 'auto', boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+
+                                    {/* Team members */}
+                                    {teamTasks.map((member, idx) => (
+                                        <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem', backgroundColor: 'var(--bg-color)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', position: 'relative' }}>
+                                            <button type="button" onClick={() => removeTeamMember(idx)} style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '0.2rem', display: 'flex', alignItems: 'center' }}>
+                                                <X size={15} />
+                                            </button>
+                                            <select
+                                                value={member.userId || ''}
+                                                onChange={e => {
+                                                    const u = supervisorUsers.find(u => u.id === Number(e.target.value));
+                                                    if (u) updateTeamMember(idx, 'userId', u.id);
+                                                    if (u) updateTeamMember(idx, 'userName', u.name);
+                                                }}
+                                                style={{ width: '100%', padding: '0.5rem 0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', fontSize: '0.875rem', boxSizing: 'border-box', paddingRight: '2rem' }}
+                                            >
+                                                <option value="">Seleccionar colaborador...</option>
+                                                {supervisorUsers
+                                                    .filter(u => u.id === member.userId || !teamTasks.some((t, ti) => ti !== idx && t.userId === u.id))
+                                                    .map(u => <option key={u.id} value={u.id}>{u.name}</option>)
+                                                }
+                                            </select>
+                                            <input
+                                                type="text"
+                                                placeholder="Tarea asignada..."
+                                                value={member.task}
+                                                onChange={e => updateTeamMember(idx, 'task', e.target.value)}
+                                                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', fontSize: '0.875rem', boxSizing: 'border-box' }}
+                                            />
+                                        </div>
+                                    ))}
+
+                                    <button
+                                        type="button"
+                                        onClick={addTeamMember}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius)', background: 'none', cursor: 'pointer', color: 'var(--accent-color)', fontSize: '0.875rem', alignSelf: 'flex-start' }}
+                                    >
+                                        <UserPlus size={16} /> Agregar colaborador
+                                    </button>
+                                </div>
+                            )}
+
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Colaborador</label>

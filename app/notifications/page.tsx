@@ -103,7 +103,7 @@ export default function NotificationsPage() {
 
                                         {/* Message */}
                                         <Link
-                                            href={notification.ticket_id ? `/tickets/${notification.ticket_id}` : '#'}
+                                            href={notification.ticketId ? `/tickets/${notification.ticketId}` : '#'}
                                             onClick={() => !notification.read && handleNotificationClick(notification.id)}
                                             style={{
                                                 cursor: 'pointer',

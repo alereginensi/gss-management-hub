@@ -2,7 +2,7 @@
 
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
-import { useTicketContext, RUBROS } from '../../context/TicketContext';
+import { useTicketContext, RUBROS, DEPARTMENTS } from '../../context/TicketContext';
 import { useEffect, useState } from 'react';
 import { UserCheck, UserPlus, Info, Mail, Shield, X, Check, Edit2, Search, Trash2, Users } from 'lucide-react';
 
@@ -556,14 +556,18 @@ export default function UserManagement() {
 
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Departamento</label>
-                                <input
-                                    type="text"
+                                <select
                                     required
                                     value={editForm.department}
                                     onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
                                     className="input"
                                     style={{ width: '100%', padding: '0.6rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }}
-                                />
+                                >
+                                    <option value="">Seleccionar departamento...</option>
+                                    {DEPARTMENTS.map(d => (
+                                        <option key={d} value={d}>{d}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div>
@@ -575,36 +579,12 @@ export default function UserManagement() {
                                     className="input"
                                     style={{ width: '100%', padding: '0.6rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }}
                                 >
-                                    <option value="user">Usuario</option>
                                     <option value="supervisor">Supervisor</option>
+                                    <option value="jefe">Jefe de Departamento</option>
                                     <option value="admin">Administrador</option>
-                                    <option value="funcionario">Funcionario</option>
                                 </select>
                             </div>
 
-                            {editForm.role === 'funcionario' && (
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Rubros</label>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: 'var(--radius)' }}>
-                                        {RUBROS.map(rubro => (
-                                            <label key={rubro} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={editForm.rubro.split(',').includes(rubro)}
-                                                    onChange={(e) => {
-                                                        const current = editForm.rubro ? editForm.rubro.split(',').filter(r => r) : [];
-                                                        const updated = e.target.checked
-                                                            ? [...current, rubro]
-                                                            : current.filter(r => r !== rubro);
-                                                        setEditForm({ ...editForm, rubro: updated.join(',') });
-                                                    }}
-                                                />
-                                                {rubro}
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
 
                             {editForm.role === 'supervisor' && (
                                 <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -632,51 +612,6 @@ export default function UserManagement() {
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                                            Funcionarios asignados
-                                            <span style={{ color: 'var(--text-secondary)', fontWeight: 400, marginLeft: '0.4rem' }}>(selección múltiple)</span>
-                                        </label>
-                                        <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                            {allUsers.filter(u => {
-                                                if (u.role !== 'funcionario') return false;
-                                                if (!editForm.rubro) return true; // Show all if no rubro selected for supervisor? Or none? Let's show all if empty, or filter if not.
-                                                const supervisorRubros = editForm.rubro.split(',').filter(r => r);
-                                                if (supervisorRubros.length === 0) return true;
-                                                const workerRubros = u.rubro ? u.rubro.split(',').filter(r => r) : [];
-                                                // Filter: worker must have at least one rubro that supervisor manages
-                                                return workerRubros.some(r => supervisorRubros.includes(r));
-                                            }).length === 0 ? (
-                                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', padding: '0.5rem' }}>No hay funcionarios que coincidan con los rubros seleccionados.</p>
-                                            ) : (
-                                                allUsers.filter(u => {
-                                                    if (u.role !== 'funcionario') return false;
-                                                    const supervisorRubros = editForm.rubro.split(',').filter(r => r);
-                                                    if (supervisorRubros.length === 0) return true;
-                                                    const workerRubros = u.rubro ? u.rubro.split(',').filter(r => r) : [];
-                                                    return workerRubros.some(r => supervisorRubros.includes(r));
-                                                }).map((func: any) => (
-                                                    <label key={func.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.35rem 0.5rem', borderRadius: '6px', cursor: 'pointer', backgroundColor: assignedWorkers.includes(Number(func.id)) ? 'rgba(59,130,246,0.08)' : 'transparent' }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={assignedWorkers.includes(Number(func.id))}
-                                                            onChange={(e) => {
-                                                                const id = Number(func.id);
-                                                                if (e.target.checked) {
-                                                                    setAssignedWorkers(prev => [...prev, id]);
-                                                                } else {
-                                                                    setAssignedWorkers(prev => prev.filter(w => w !== id));
-                                                                }
-                                                            }}
-                                                            style={{ cursor: 'pointer' }}
-                                                        />
-                                                        <span style={{ fontSize: '0.875rem' }}>{func.name}</span>
-                                                        {func.rubro && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>({func.rubro})</span>}
-                                                    </label>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
                                 </div>
                             )}
 

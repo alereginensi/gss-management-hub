@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import Link from 'next/link';
-import { useTicketContext } from '../context/TicketContext';
+import { useTicketContext, DEPARTMENTS } from '../context/TicketContext';
 import { X, ArrowRight, Eye, Trash2 } from 'lucide-react';
 
 export default function TicketList() {
@@ -50,11 +50,15 @@ export default function TicketList() {
             if (departmentFilter !== 'Todos' && ticket.department !== departmentFilter) {
                 return false;
             }
+        } else if (currentUser?.role?.toLowerCase() === 'jefe') {
+            // Jefe sees all department tickets (API already filters by department)
+            // No additional frontend filter needed
         } else if (currentUser?.role?.toLowerCase() === 'supervisor') {
             // Supervisors
             if (adminView === 'personal' || !adminView) {
-                // Show tickets created by them OR tickets assigned to them
-                if (ticket.requesterEmail !== currentUser?.email && ticket.supervisor !== currentUser?.name) {
+                const isTeamTicket = ticket.isTeamTicket || (ticket as any).is_team_ticket;
+                // Show tickets created by them, assigned to them, or team tickets (API already enforces membership)
+                if (ticket.requesterEmail !== currentUser?.email && ticket.supervisor !== currentUser?.name && !isTeamTicket) {
                     return false;
                 }
             }
@@ -82,7 +86,7 @@ export default function TicketList() {
         return matchesStatus && matchesSearch;
     });
 
-    const departments = ['Todos', 'Mantenimiento', 'Limpieza', 'IT', 'Seguridad', 'RRHH'];
+    const departments = ['Todos', ...DEPARTMENTS];
 
 
     return (
@@ -230,7 +234,14 @@ export default function TicketList() {
                                     filteredTickets.map(ticket => (
                                         <tr key={ticket.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                             <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>#{`T-${ticket.id}`}</td>
-                                            <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>{ticket.subject}</td>
+                                            <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                    {ticket.subject}
+                                                    {(ticket.isTeamTicket || (ticket as any).is_team_ticket) && (
+                                                        <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '10px', backgroundColor: 'rgba(139,92,246,0.15)', color: '#7c3aed', fontWeight: 600, whiteSpace: 'nowrap', border: '1px solid rgba(139,92,246,0.3)' }}>En equipo</span>
+                                                    )}
+                                                </div>
+                                            </td>
                                             <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.priorityColor }}>{ticket.priority}</span></td>
                                             <td style={{ padding: '1rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.statusColor }}>{ticket.status}</span></td>
                                             <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>{ticket.date}</td>
@@ -277,8 +288,11 @@ export default function TicketList() {
                                                 {ticket.status}
                                             </span>
                                         </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
                                             <div style={{ fontWeight: 600, fontSize: '1rem' }}>{ticket.subject}</div>
+                                            {(ticket.isTeamTicket || (ticket as any).is_team_ticket) && (
+                                                <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '10px', backgroundColor: 'rgba(139,92,246,0.15)', color: '#7c3aed', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid rgba(139,92,246,0.3)' }}>En equipo</span>
+                                            )}
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
                                             <span style={{

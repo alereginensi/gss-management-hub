@@ -33,7 +33,31 @@ export async function GET(request: NextRequest) {
                     startedAt: ticket.started_at,
                     resolvedAt: ticket.resolved_at,
                     affectedWorker: ticket.affected_worker,
-                    attachmentUrl: ticket.attachment_url
+                    attachmentUrl: ticket.attachment_url,
+                    isImportant: !!(ticket.is_important),
+                    isTeamTicket: !!(ticket.is_team_ticket)
+                };
+            }));
+            return NextResponse.json(tickets);
+        }
+
+        // Jefes see all tickets from their department
+        if (userRole === 'jefe') {
+            const rawTickets = await db.prepare('SELECT * FROM tickets WHERE department = ? ORDER BY created_at DESC').all(session.user.department) as any[];
+            const tickets = await Promise.all(rawTickets.map(async (ticket) => {
+                const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
+                return {
+                    ...ticket,
+                    collaboratorIds: collaborators.map(c => c.user_id),
+                    requesterEmail: ticket.requester_email,
+                    statusColor: ticket.status_color,
+                    createdAt: ticket.created_at,
+                    startedAt: ticket.started_at,
+                    resolvedAt: ticket.resolved_at,
+                    affectedWorker: ticket.affected_worker,
+                    attachmentUrl: ticket.attachment_url,
+                    isImportant: !!(ticket.is_important),
+                    isTeamTicket: !!(ticket.is_team_ticket)
                 };
             }));
             return NextResponse.json(tickets);
@@ -73,7 +97,8 @@ export async function GET(request: NextRequest) {
                     startedAt: ticket.started_at,
                     resolvedAt: ticket.resolved_at,
                     affectedWorker: ticket.affected_worker,
-                    attachmentUrl: ticket.attachment_url
+                    attachmentUrl: ticket.attachment_url,
+                    isTeamTicket: !!(ticket.is_team_ticket)
                 };
             }));
             return NextResponse.json(tickets);
@@ -84,12 +109,14 @@ export async function GET(request: NextRequest) {
             const tickets = await db.prepare(`
                 SELECT DISTINCT t.* FROM tickets t
                 LEFT JOIN ticket_collaborators tc ON t.id = tc.ticket_id
+                LEFT JOIN team_ticket_tasks ttt ON t.id = ttt.ticket_id
                 WHERE t.department IN (${placeholders})
                    OR tc.user_id = ?
+                   OR ttt.user_id = ?
                    OR t.requester_email = ?
                    OR (t.supervisor = ? AND t.supervisor IS NOT NULL AND t.supervisor != '')
                 ORDER BY t.created_at DESC
-            `).all(...departmentsForUser, userId, userEmail, session.user.name);
+            `).all(...departmentsForUser, userId, userId, userEmail, session.user.name);
 
             // Map snake_case to camelCase
             const mappedTickets = tickets.map((t: any) => ({
@@ -100,21 +127,25 @@ export async function GET(request: NextRequest) {
                 startedAt: t.started_at,
                 resolvedAt: t.resolved_at,
                 affectedWorker: t.affected_worker,
-                attachmentUrl: t.attachment_url
+                attachmentUrl: t.attachment_url,
+                isImportant: !!(t.is_important),
+                isTeamTicket: !!(t.is_team_ticket)
             }));
 
             return NextResponse.json(mappedTickets);
         }
 
-        // Default: user sees only tickets they created, are collaborators on, or are assigned supervisor
+        // Default: user sees only tickets they created, are collaborators on, assigned supervisor, or are in team tasks
         const rawTickets = await db.prepare(`
             SELECT DISTINCT t.* FROM tickets t
             LEFT JOIN ticket_collaborators tc ON t.id = tc.ticket_id
+            LEFT JOIN team_ticket_tasks ttt ON t.id = ttt.ticket_id
             WHERE t.requester_email = ?
                OR tc.user_id = ?
+               OR ttt.user_id = ?
                OR (t.supervisor = ? AND t.supervisor IS NOT NULL AND t.supervisor != '')
             ORDER BY t.created_at DESC
-        `).all(userEmail, userId, session.user.name) as any[];
+        `).all(userEmail, userId, userId, session.user.name) as any[];
 
         const tickets = await Promise.all(rawTickets.map(async (ticket) => {
             const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
@@ -127,7 +158,9 @@ export async function GET(request: NextRequest) {
                 startedAt: ticket.started_at,
                 resolvedAt: ticket.resolved_at,
                 affectedWorker: ticket.affected_worker,
-                attachmentUrl: ticket.attachment_url
+                attachmentUrl: ticket.attachment_url,
+                isImportant: !!(ticket.is_important),
+                isTeamTicket: !!(ticket.is_team_ticket)
             };
         }));
 
@@ -177,11 +210,11 @@ export async function POST(request: Request) {
             INSERT INTO tickets (
                 id, subject, description, department, priority, status,
                 requester, requester_email, affected_worker, date,
-                supervisor, status_color, attachment_url, created_at
+                supervisor, status_color, attachment_url, created_at, is_team_ticket
             ) VALUES (
                 ?, ?, ?, ?, ?, ?,
                 ?, ?, ?, ?,
-                ?, ?, ?, ?
+                ?, ?, ?, ?, ?
             )
         `);
 
@@ -200,7 +233,8 @@ export async function POST(request: Request) {
                 ticket.supervisor || null,
                 ticket.statusColor || null,
                 ticket.attachmentUrl || null,
-                ticket.createdAt ? new Date(ticket.createdAt).toISOString() : new Date().toISOString()
+                ticket.createdAt ? new Date(ticket.createdAt).toISOString() : new Date().toISOString(),
+                ticket.isTeamTicket ? 1 : 0
             );
         } catch (insertError: any) {
             console.error('Database Insertion Error:', insertError);
@@ -208,6 +242,16 @@ export async function POST(request: Request) {
                 error: 'Database error during ticket creation',
                 details: insertError.message
             }, { status: 500 });
+        }
+
+        // Insert team tasks if this is a team ticket
+        if (ticket.isTeamTicket && Array.isArray(ticket.teamTasks) && ticket.teamTasks.length > 0) {
+            for (const task of ticket.teamTasks) {
+                await db.run(
+                    'INSERT INTO team_ticket_tasks (ticket_id, user_id, user_name, task_description) VALUES (?, ?, ?, ?)',
+                    [newId, task.userId, task.userName, task.task]
+                );
+            }
         }
 
         return NextResponse.json({ success: true, id: newId, message: 'Ticket created successfully' }, { status: 201 });

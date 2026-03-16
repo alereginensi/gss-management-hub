@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShieldCheck, UserPlus, Mail, Lock, Building, Check } from 'lucide-react';
-import { RUBROS } from '../context/TicketContext';
+import { RUBROS, DEPARTMENTS } from '../context/TicketContext';
 
 
 export default function Register() {
@@ -13,8 +13,8 @@ export default function Register() {
         email: '',
         password: '',
         confirmPassword: '',
-        role: 'user',
-        department: 'Mantenimiento',
+        role: 'supervisor',
+        department: 'Recursos Humanos',
         rubro: ''
     });
     const [error, setError] = useState('');
@@ -43,7 +43,7 @@ export default function Register() {
         setLoading(true);
         setError('');
 
-        if (formData.role !== 'user' && formData.password !== formData.confirmPassword) {
+        if (formData.password !== formData.confirmPassword) {
             setError('Las contraseñas no coinciden');
             setLoading(false);
             return;
@@ -195,8 +195,8 @@ export default function Register() {
                                     boxSizing: 'border-box'
                                 }}
                             >
-                                <option value="user">Solicitante</option>
                                 <option value="supervisor">Supervisor (Bitácoras)</option>
+                                <option value="jefe">Jefe de Departamento</option>
                             </select>
                         </div>
                     </div>
@@ -255,6 +255,28 @@ export default function Register() {
                             </div>
                         </div>
                     )}
+
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Departamento</label>
+                        <select
+                            required
+                            value={formData.department}
+                            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                            style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                borderRadius: 'var(--radius)',
+                                border: '1px solid var(--border-color)',
+                                backgroundColor: 'var(--surface-color)',
+                                color: 'var(--text-primary)',
+                                fontSize: '0.875rem',
+                                appearance: 'none',
+                                boxSizing: 'border-box'
+                            }}
+                        >
+                            {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                    </div>
 
                     {formData.role !== 'user' && (
                         <>

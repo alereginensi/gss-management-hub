@@ -146,7 +146,19 @@ class DbWrapper {
         resolved_at TEXT,
         status_color TEXT,
         attachment_url TEXT,
-        created_at TIMESTAMP
+        created_at TIMESTAMP,
+        is_important INTEGER DEFAULT 0,
+        is_team_ticket INTEGER DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS team_ticket_tasks (
+        id SERIAL PRIMARY KEY,
+        ticket_id TEXT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL,
+        user_name TEXT NOT NULL,
+        task_description TEXT NOT NULL,
+        completed INTEGER DEFAULT 0,
+        completed_at TEXT
       );
 
       CREATE TABLE IF NOT EXISTS settings (
@@ -220,7 +232,7 @@ class DbWrapper {
       );
 
       CREATE TABLE IF NOT EXISTS notifications (
-        id BIGSERIAL PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id),
         ticket_id TEXT REFERENCES tickets(id),
         message TEXT NOT NULL,
@@ -267,6 +279,19 @@ class DbWrapper {
         name TEXT NOT NULL,
         active INTEGER DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS folders (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS ticket_folder (
+        ticket_id TEXT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        folder_id INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
+        PRIMARY KEY (ticket_id, folder_id)
       );
     `;
 
@@ -323,6 +348,25 @@ class DbWrapper {
             console.log('🐘 Migrating tickets: adding resolved_at column');
             await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN resolved_at TEXT');
           }
+          if (!existingTicketCols.includes('is_important')) {
+            console.log('🐘 Migrating tickets: adding is_important column');
+            await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN is_important INTEGER DEFAULT 0');
+          }
+          if (!existingTicketCols.includes('is_team_ticket')) {
+            console.log('🐘 Migrating tickets: adding is_team_ticket column');
+            await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN is_team_ticket INTEGER DEFAULT 0');
+          }
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS team_ticket_tasks (
+              id SERIAL PRIMARY KEY,
+              ticket_id TEXT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+              user_id INTEGER NOT NULL,
+              user_name TEXT NOT NULL,
+              task_description TEXT NOT NULL,
+              completed INTEGER DEFAULT 0,
+              completed_at TEXT
+            )
+          `);
 
           const logbookCols = await this.pgPool!.query(`
             SELECT column_name FROM information_schema.columns WHERE table_name = 'logbook'
@@ -388,6 +432,23 @@ class DbWrapper {
               label TEXT NOT NULL,
               type TEXT NOT NULL,
               options TEXT
+            )
+          `);
+
+          // Ensure folders tables exist (migration for existing DBs)
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS folders (
+              id SERIAL PRIMARY KEY,
+              name TEXT NOT NULL,
+              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS ticket_folder (
+              ticket_id TEXT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+              folder_id INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
+              PRIMARY KEY (ticket_id, folder_id)
             )
           `);
 
@@ -475,6 +536,28 @@ class DbWrapper {
         } catch (migErr) {
           console.error('❌ Error migrating logbook table in Postgres:', migErr);
         }
+
+        // Ensure folders and ticket_folder tables exist (migration for existing DBs)
+        try {
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS folders (
+              id SERIAL PRIMARY KEY,
+              name TEXT NOT NULL,
+              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS ticket_folder (
+              ticket_id TEXT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+              folder_id INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
+              PRIMARY KEY (ticket_id, folder_id)
+            )
+          `);
+        } catch (folderErr) {
+          console.error('❌ Error creating folders tables in Postgres:', folderErr);
+        }
+
       } catch (err) {
         console.error('❌ Error initializing Postgres:', err);
       }
@@ -501,6 +584,40 @@ class DbWrapper {
         if (!existingTicketCols.includes('resolved_at')) {
           this.sqliteDb.exec('ALTER TABLE tickets ADD COLUMN resolved_at TEXT');
         }
+        if (!existingTicketCols.includes('is_important')) {
+          this.sqliteDb.exec('ALTER TABLE tickets ADD COLUMN is_important INTEGER DEFAULT 0');
+        }
+        if (!existingTicketCols.includes('is_team_ticket')) {
+          this.sqliteDb.exec('ALTER TABLE tickets ADD COLUMN is_team_ticket INTEGER DEFAULT 0');
+        }
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS team_ticket_tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ticket_id TEXT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL,
+            user_name TEXT NOT NULL,
+            task_description TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            completed_at TEXT
+          )
+        `);
+
+        // Ensure folders tables exist for SQLite
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS folders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS ticket_folder (
+            ticket_id TEXT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+            folder_id INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
+            PRIMARY KEY (ticket_id, folder_id)
+          )
+        `);
 
         const tableInfo = this.sqliteDb.prepare("PRAGMA table_info(logbook)").all();
         const existingCols = tableInfo.map((c: any) => c.name);
@@ -602,8 +719,38 @@ class DbWrapper {
         // Table might not exist yet if initialize just ran, but sanitize anyway
       }
 
-      this.sqliteDb.exec(schema.replace(/SERIAL/g, 'INTEGER').replace(/TIMESTAMP/g, 'DATETIME').replace(/REFERENCES\s+\w+\(\w+\)/g, ''));
+      this.sqliteDb.exec(schema.replace(/SERIAL/g, 'INTEGER').replace(/TIMESTAMP/g, 'DATETIME').replace(/REFERENCES\s+\w+\(\w+\)\s+ON DELETE CASCADE/g, '').replace(/REFERENCES\s+\w+\(\w+\)/g, ''));
       console.log('✅ SQLite tables verified/created');
+
+      // Fix notifications table: ensure id column is INTEGER PRIMARY KEY (auto-increment)
+      // Old schema had BIGSERIAL which SQLite converted to BIGINTEGER, not auto-incrementing
+      try {
+        const notifTableInfo = this.sqliteDb.prepare("PRAGMA table_info(notifications)").all() as any[];
+        const idCol = notifTableInfo.find((c: any) => c.name === 'id');
+        if (idCol && idCol.type.toUpperCase() !== 'INTEGER') {
+          console.log('🔧 Migrating notifications table: fixing id column to INTEGER PRIMARY KEY AUTOINCREMENT');
+          this.sqliteDb.exec(`
+            CREATE TABLE IF NOT EXISTS notifications_new (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              ticket_id TEXT,
+              message TEXT NOT NULL,
+              type TEXT DEFAULT 'info',
+              read INTEGER DEFAULT 0,
+              ticket_subject TEXT,
+              status_color TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            INSERT INTO notifications_new (user_id, ticket_id, message, type, read, ticket_subject, status_color, created_at)
+              SELECT user_id, ticket_id, message, type, COALESCE(read, 0), ticket_subject, status_color, created_at FROM notifications;
+            DROP TABLE notifications;
+            ALTER TABLE notifications_new RENAME TO notifications;
+          `);
+          console.log('✅ Notifications table migrated successfully');
+        }
+      } catch (notifMigErr) {
+        console.error('❌ Error migrating notifications table:', notifMigErr);
+      }
 
       // Seed funcionarios_list for SQLite
       const funcCountSqlite = this.sqliteDb.prepare('SELECT COUNT(*) as count FROM funcionarios_list').get();

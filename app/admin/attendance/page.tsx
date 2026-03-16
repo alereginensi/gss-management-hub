@@ -180,7 +180,7 @@ export default function AttendancePage() {
         setExpandedRow(expandedRow === id ? null : id);
     };
 
-    if (currentUser?.role !== 'admin' && currentUser?.role !== 'supervisor') {
+    if (currentUser?.role !== 'admin' && currentUser?.role !== 'supervisor' && currentUser?.role !== 'jefe') {
         return <div style={{ padding: '2rem', textAlign: 'center' }}>Acceso denegado</div>;
     }
 

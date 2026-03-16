@@ -226,7 +226,7 @@ export default function Home() {
                       }}>
                         {ticket.status}
                       </span>
-                      {currentUser?.role?.toLowerCase() === 'admin' && (
+                      {(currentUser?.role?.toLowerCase() === 'admin' || currentUser?.role?.toLowerCase() === 'jefe') && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -249,7 +249,12 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>{ticket.subject}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>{ticket.subject}</span>
+                    {(ticket.isTeamTicket || (ticket as any).is_team_ticket) && (
+                      <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '10px', backgroundColor: 'rgba(139,92,246,0.15)', color: '#7c3aed', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid rgba(139,92,246,0.3)' }}>En equipo</span>
+                    )}
+                  </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -301,7 +306,7 @@ export default function Home() {
                     <th style={{ padding: '0.6rem 0.5rem', fontWeight: 500 }}>Prioridad</th>
                     <th style={{ padding: '0.6rem 0.5rem', fontWeight: 500 }}>Estado</th>
                     <th style={{ padding: '0.6rem 0.5rem', fontWeight: 500 }}>Fecha</th>
-                    {currentUser?.role?.toLowerCase() === 'admin' && (
+                    {(currentUser?.role?.toLowerCase() === 'admin' || currentUser?.role?.toLowerCase() === 'jefe') && (
                       <th style={{ padding: '0.6rem 0.5rem', fontWeight: 500 }}>Acción</th>
                     )}
                   </tr>
@@ -322,14 +327,19 @@ export default function Home() {
                       <td style={{ padding: '0.6rem 0.5rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                         #{`T-${ticket.id}`}
                       </td>
-                      <td style={{ padding: '0.6rem 0.5rem', fontWeight: 500, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {ticket.subject}
+                      <td style={{ padding: '0.6rem 0.5rem', fontWeight: 500, maxWidth: '200px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.subject}</span>
+                          {(ticket.isTeamTicket || (ticket as any).is_team_ticket) && (
+                            <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '10px', backgroundColor: 'rgba(139,92,246,0.15)', color: '#7c3aed', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid rgba(139,92,246,0.3)' }}>En equipo</span>
+                          )}
+                        </div>
                       </td>
                       <td style={{ padding: '0.6rem 0.5rem', whiteSpace: 'nowrap' }}>{ticket.requester || 'N/A'}</td>
                       <td style={{ padding: '0.6rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.priorityColor }}>{ticket.priority}</span></td>
                       <td style={{ padding: '0.6rem 0.5rem' }}><span className="tag" style={{ backgroundColor: ticket.statusColor }}>{ticket.status}</span></td>
                       <td style={{ padding: '0.6rem 0.5rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{ticket.date}</td>
-                      {currentUser?.role?.toLowerCase() === 'admin' && (
+                      {(currentUser?.role?.toLowerCase() === 'admin' || currentUser?.role?.toLowerCase() === 'jefe') && (
                         <td style={{ padding: '0.6rem 0.5rem' }}>
                           <button
                             onClick={(e) => {
