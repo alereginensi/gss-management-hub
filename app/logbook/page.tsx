@@ -422,9 +422,9 @@ export default function LogbookPage() {
         return () => document.removeEventListener('mousedown', handler);
     }, [showFilters]);
 
-    // Supervisors only see entries they personally supervised
+    // Supervisors only see entries they personally created
     const filteredByUser = currentUser?.role === 'supervisor'
-        ? entries.filter(e => e.supervised_by === currentUser.name)
+        ? entries.filter(e => e.supervisor === currentUser.name)
         : entries;
 
     // Apply date range filter

@@ -16,9 +16,9 @@ export async function GET(request: NextRequest) {
         const params: any[] = [];
 
         if (session?.user?.role === 'supervisor') {
-            entriesSql += ' WHERE sector = ?';
-            countSql += ' WHERE sector = ?';
-            params.push(session.user.rubro);
+            entriesSql += ' WHERE supervisor = ?';
+            countSql += ' WHERE supervisor = ?';
+            params.push(session.user.name);
         }
 
         entriesSql += ' ORDER BY id DESC LIMIT ? OFFSET ?';
