@@ -103,7 +103,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
             });
             const data = await res.json();
             if (res.ok) {
-                setTeamTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: 1 } : t));
+                setTeamTasks((prev: any[]) => prev.map((t: any) => t.id === taskId ? { ...t, completed: 1 } : t));
                 if (data.allDone) {
                     // Refresh ticket from API so status reflects "Resuelto"
                     const token = localStorage.getItem('authToken');
@@ -299,7 +299,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                             <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1.5rem' }}>Actividad</h3>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                {activities.map(activity => (
+                                {activities.map((activity: any) => (
                                     <div key={activity.id} style={{ display: 'flex', gap: '1rem' }}>
                                         <div style={{
                                             width: '32px',
@@ -427,7 +427,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                                     : [ticket.attachmentUrl];
                                             }
 
-                                            return urls.map((url, i) => {
+                                            return urls.map((url: any, i: number) => {
                                                 const trimmedUrl = url.trim();
                                                 if (!trimmedUrl) return null;
                                                 // Extract original file name if possible
@@ -508,7 +508,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
 
                                 {/* Progress bar */}
                                 {(() => {
-                                    const done = teamTasks.filter(t => t.completed === 1 || t.completed === true).length;
+                                    const done = teamTasks.filter((t: any) => t.completed === 1 || t.completed === true).length;
                                     const total = teamTasks.length;
                                     const pct = Math.round((done / total) * 100);
                                     return (
