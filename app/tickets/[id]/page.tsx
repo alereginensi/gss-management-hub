@@ -31,8 +31,8 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
     const isOwner = ticket?.requesterEmail === currentUser?.email;
     const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'jefe';
     const isSupervisor = ticket?.supervisor === currentUser?.name;
-    const isCollaborator = collaborators.some(c => c.user_id === currentUser?.id);
-    const isTeamMember = teamTasks.some(t => Number(t.user_id) === Number(currentUser?.id));
+    const isCollaborator = collaborators.some((c: any) => c.user_id === currentUser?.id);
+    const isTeamMember = teamTasks.some((t: any) => Number(t.user_id) === Number(currentUser?.id));
     const canSeeTicket = ticket && (isAdmin || isOwner || isSupervisor || isCollaborator || isTeamMember || !!(ticket.isTeamTicket || ticket.is_team_ticket));
 
     const handleSubmitComment = (e: React.FormEvent) => {
@@ -127,7 +127,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
 
     const handleTransferTicket = async () => {
         if (!selectedSupervisor) return;
-        const supervisorUser = allUsers.find(u => u.name === selectedSupervisor);
+        const supervisorUser = allUsers.find((u: any) => u.name === selectedSupervisor);
         if (!supervisorUser) return;
 
         console.log('🔄 Transferring ticket:', ticketId, 'to:', supervisorUser.name, 'ID:', supervisorUser.id);
@@ -151,7 +151,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
 
     const handleAddCollaborator = async () => {
         if (!selectedCollaborator) return;
-        const collaboratorUser = allUsers.find(u => u.name === selectedCollaborator);
+        const collaboratorUser = allUsers.find((u: any) => u.name === selectedCollaborator);
         if (!collaboratorUser) return;
 
         const success = await addCollaborator(ticketId, collaboratorUser.id, currentUser?.id ?? 0);
@@ -689,7 +689,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                     }}
                                 >
                                     <option value="">Seleccionar colaborador...</option>
-                                    {allUsers.filter(u => u.role === 'supervisor' || u.role === 'admin' || u.role === 'jefe').map(user => (
+                                    {allUsers.filter((u: any) => u.role === 'supervisor' || u.role === 'admin' || u.role === 'jefe').map((user: any) => (
                                         <option key={user.id} value={user.name}>{user.name}</option>
                                     ))}
                                 </select>
@@ -749,7 +749,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                     }}
                                 >
                                     <option value="">Seleccionar usuario...</option>
-                                    {allUsers.filter(u => !collaborators.some(c => c.user_id === u.id)).map(user => (
+                                    {allUsers.filter((u: any) => !collaborators.some((c: any) => c.user_id === u.id)).map((user: any) => (
                                         <option key={user.id} value={user.name}>{user.name} ({user.role})</option>
                                     ))}
                                 </select>
