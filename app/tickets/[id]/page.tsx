@@ -25,7 +25,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
     const ticketId = resolvedParams.id;
     const [fetchedTicket, setFetchedTicket] = useState<any>(null);
     const [fetchError, setFetchError] = useState(false);
-    const ticket = tickets.find(t => t.id === ticketId) || fetchedTicket;
+    const ticket = tickets.find((t: any) => t.id === ticketId) || fetchedTicket;
     const activities = getActivitiesByTicket(ticketId);
 
     const isOwner = ticket?.requesterEmail === currentUser?.email;
