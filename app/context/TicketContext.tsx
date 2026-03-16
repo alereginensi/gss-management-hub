@@ -4,13 +4,15 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 
 export const DEPARTMENTS = [
-    'Mantenimiento',
-    'Limpieza',
-    'IT',
-    'Seguridad',
-    'RRHH',
+    'Recursos Humanos',
+    'Controller',
     'Administración',
-    'Logística'
+    'Logistica',
+    'Operaciones Seguridad',
+    'Operaciones Limpieza',
+    'Comercial',
+    'Dirección',
+    'Gestión'
 ];
 
 export const RUBROS = [
@@ -52,6 +54,14 @@ export interface Ticket {
     startedAt?: Date;
     resolvedAt?: Date;
     attachmentUrl?: string;
+    isTeamTicket?: boolean;
+}
+
+export interface Folder {
+    id: number;
+    name: string;
+    ticketCount: number;
+    createdAt?: string;
 }
 
 export interface Activity {
@@ -81,7 +91,7 @@ export interface User {
     name: string;
     email?: string;
     department: string;
-    role: 'user' | 'admin' | 'supervisor' | 'funcionario';
+    role: 'user' | 'admin' | 'supervisor' | 'funcionario' | 'jefe';
     rubro?: string;
     approved?: boolean;
 }
@@ -133,6 +143,14 @@ interface TicketContextType {
     getTicketCollaborators: (ticketId: string) => Promise<any[]>;
     fetchTickets: () => Promise<void>;
     loadTicketActivities: (ticketId: string) => Promise<void>;
+    folders: Folder[];
+    fetchFolders: () => Promise<void>;
+    createFolder: (name: string) => Promise<Folder | null>;
+    deleteFolder: (folderId: number) => Promise<boolean>;
+    renameFolder: (folderId: number, name: string) => Promise<boolean>;
+    addTicketToFolder: (ticketId: string, folderId: number) => Promise<boolean>;
+    removeTicketFromFolder: (ticketId: string, folderId: number) => Promise<boolean>;
+    getTicketFolderId: (ticketId: string) => number | null;
 }
 
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
@@ -152,6 +170,9 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         notification_emails: 'admin@gss-facility.com'
     });
     const [pendingUsers, setPendingUsers] = useState<User[]>([]);
+    const [folders, setFolders] = useState<Folder[]>([]);
+    // ticket_id -> folder_id mapping for the current user
+    const [ticketFolderMap, setTicketFolderMap] = useState<Record<string, number>>({});
     const [allUsers, setAllUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [isMobile, setIsMobile] = useState<boolean>(false);
@@ -257,7 +278,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         ];
 
         const role = activeUser?.role?.toLowerCase();
-        if (role === 'admin' || role === 'supervisor') {
+        if (role === 'admin' || role === 'supervisor' || role === 'jefe') {
             console.log('👥 TicketContext: Role allows user fetching, calling fetchAllUsers');
             promises.push(fetchAllUsers());
         }
@@ -501,6 +522,68 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                 }).catch(err => console.error('Error creating supervisor notification:', err));
             }
 
+            // Team ticket: notify each team member (in-app + email)
+            const teamTasks = (ticketData as any).teamTasks as Array<{ userId: number; userName: string; task: string }> | undefined;
+            if ((ticketData as any).isTeamTicket && Array.isArray(teamTasks) && teamTasks.length > 0) {
+                for (const task of teamTasks) {
+                    if (task.userId === currentUser?.id) continue; // jefe already got "created" notification
+                    fetch('/api/notifications', {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({
+                            action: 'create_for_user',
+                            targetUserId: task.userId,
+                            ticketId: newId,
+                            ticketSubject: newTicket.subject,
+                            message: `Fuiste asignado a un ticket de equipo: "${newTicket.subject}". Tu tarea: ${task.task}`,
+                            type: 'info'
+                        })
+                    }).catch(err => console.error('Error creating team member notification:', err));
+                }
+
+                // Email to each team member
+                const memberEmails = teamTasks
+                    .filter((t) => t.userId !== currentUser?.id)
+                    .map((t) => allUsers.find(u => u.id === t.userId)?.email)
+                    .filter(Boolean) as string[];
+
+                if (memberEmails.length > 0) {
+                    const teamEmailBody = `
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #7c3aed; margin-bottom: 10px;">👥 Ticket de Equipo Asignado</h2>
+  <p>El jefe <strong>${currentUser?.name}</strong> te asignó una tarea en un ticket de equipo:</p>
+
+  <div style="background-color: #f5f3ff; padding: 15px; border-radius: 8px; border-left: 4px solid #7c3aed;">
+    <ul style="list-style: none; padding: 0; margin: 0;">
+      <li><strong>📌 Asunto:</strong> ${newTicket.subject}</li>
+      <li><strong>🏢 Departamento:</strong> ${newTicket.department}</li>
+      <li><strong>🚦 Prioridad:</strong> ${newTicket.priority}</li>
+      <li><strong>📅 Fecha:</strong> ${newTicket.date}</li>
+    </ul>
+  </div>
+  <p style="margin-top: 16px;">Por favor, ingresá al portal para ver tu tarea asignada y marcarla cuando la completes.</p>
+</div>`.trim();
+
+                    fetch('/api/notify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            to: memberEmails,
+                            subject: `[TICKET DE EQUIPO] ${newTicket.subject}`,
+                            body: teamEmailBody,
+                            ticketData: {
+                                id: newId,
+                                subject: newTicket.subject,
+                                department: newTicket.department,
+                                priority: newTicket.priority,
+                                date: newTicket.date,
+                                requesterEmail: currentUser?.email
+                            }
+                        })
+                    }).catch(err => console.error('Error sending team ticket email:', err));
+                }
+            }
+
             // Email notification
             const deptEmailKey = `notification_emails_${newTicket.department}`.replace(/\s+/g, '_');
             const emailString = systemSettings[deptEmailKey] || systemSettings.notification_emails || systemSettings.notification_email || '';
@@ -513,7 +596,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
 <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
   <h2 style="color: #2563eb; margin-bottom: 10px;">🎫 Nuevo Ticket Registrado</h2>
   <p>Se ha registrado una nueva solicitud en el portal:</p>
-  
+
   <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; border-left: 4px solid #2563eb;">
     <ul style="list-style: none; padding: 0; margin: 0;">
       <li><strong>📌 Asunto:</strong> ${newTicket.subject}</li>
@@ -1000,6 +1083,135 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const fetchFolders = async () => {
+        try {
+            const res = await fetch('/api/folders', { headers: getAuthHeaders() });
+            if (res.ok) {
+                const data: Folder[] = await res.json();
+                setFolders(data);
+                // Rebuild the ticket->folder map
+                const map: Record<string, number> = {};
+                await Promise.all(data.map(async (folder) => {
+                    const r = await fetch(`/api/folders/${folder.id}/tickets`, { headers: getAuthHeaders() });
+                    if (r.ok) {
+                        const tickets = await r.json();
+                        tickets.forEach((t: any) => { map[t.id] = folder.id; });
+                    }
+                }));
+                setTicketFolderMap(map);
+            }
+        } catch (error) {
+            console.error('Error fetching folders:', error);
+        }
+    };
+
+    const createFolder = async (name: string): Promise<Folder | null> => {
+        try {
+            const res = await fetch('/api/folders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify({ name })
+            });
+            if (res.ok) {
+                const folder = await res.json();
+                setFolders(prev => [{ ...folder, ticketCount: 0 }, ...prev]);
+                return folder;
+            }
+            return null;
+        } catch (error) {
+            return null;
+        }
+    };
+
+    const deleteFolder = async (folderId: number): Promise<boolean> => {
+        try {
+            const res = await fetch(`/api/folders/${folderId}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            if (res.ok) {
+                setFolders(prev => prev.filter(f => f.id !== folderId));
+                setTicketFolderMap(prev => {
+                    const next = { ...prev };
+                    Object.keys(next).forEach(k => { if (next[k] === folderId) delete next[k]; });
+                    return next;
+                });
+                return true;
+            }
+            return false;
+        } catch (error) {
+            return false;
+        }
+    };
+
+    const renameFolder = async (folderId: number, name: string): Promise<boolean> => {
+        try {
+            const res = await fetch(`/api/folders/${folderId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify({ name })
+            });
+            if (res.ok) {
+                setFolders(prev => prev.map(f => f.id === folderId ? { ...f, name } : f));
+                return true;
+            }
+            return false;
+        } catch (error) {
+            return false;
+        }
+    };
+
+    const addTicketToFolder = async (ticketId: string, folderId: number): Promise<boolean> => {
+        try {
+            const res = await fetch(`/api/folders/${folderId}/tickets`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify({ ticketId })
+            });
+            if (res.ok) {
+                setTicketFolderMap(prev => ({ ...prev, [ticketId]: folderId }));
+                setFolders(prev => prev.map(f => {
+                    const wasInFolder = ticketFolderMap[ticketId] === f.id;
+                    if (f.id === folderId) return { ...f, ticketCount: f.ticketCount + 1 };
+                    if (wasInFolder) return { ...f, ticketCount: Math.max(0, f.ticketCount - 1) };
+                    return f;
+                }));
+                return true;
+            }
+            return false;
+        } catch (error) {
+            return false;
+        }
+    };
+
+    const removeTicketFromFolder = async (ticketId: string, folderId: number): Promise<boolean> => {
+        try {
+            const res = await fetch(`/api/folders/${folderId}/tickets`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify({ ticketId })
+            });
+            if (res.ok) {
+                setTicketFolderMap(prev => {
+                    const next = { ...prev };
+                    delete next[ticketId];
+                    return next;
+                });
+                setFolders(prev => prev.map(f =>
+                    f.id === folderId ? { ...f, ticketCount: Math.max(0, f.ticketCount - 1) } : f
+                ));
+                return true;
+            }
+            return false;
+        } catch (error) {
+            return false;
+        }
+    };
+
+    const getTicketFolderId = (ticketId: string): number | null => {
+        return ticketFolderMap[ticketId] ?? null;
+    };
+
     return (
         <TicketContext.Provider value={{
             tickets,
@@ -1047,7 +1259,15 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             removeCollaborator,
             getTicketCollaborators,
             fetchTickets,
-            loadTicketActivities
+            loadTicketActivities,
+            folders,
+            fetchFolders,
+            createFolder,
+            deleteFolder,
+            renameFolder,
+            addTicketToFolder,
+            removeTicketFromFolder,
+            getTicketFolderId
         }}>
             {children}
         </TicketContext.Provider>

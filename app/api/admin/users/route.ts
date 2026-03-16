@@ -6,7 +6,7 @@ import { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
     const session = await getSession(request);
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'supervisor')) {
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'supervisor' && session.user.role !== 'jefe')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     try {
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     const session = await getSession(request);
-    if (!session || (session.user.role !== 'admin' && session.user.role !== 'supervisor')) {
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'supervisor' && session.user.role !== 'jefe')) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     try {

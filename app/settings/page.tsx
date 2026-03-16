@@ -48,7 +48,7 @@ export default function Settings() {
                                     {currentUser?.name}
                                 </div>
                                 <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                                    {currentUser?.department} • {currentUser?.role === 'admin' ? 'Administrador' : 'Usuario'}
+                                    {currentUser?.department} • {currentUser?.role === 'admin' ? 'Administrador' : currentUser?.role === 'jefe' ? 'Jefe de Departamento' : currentUser?.role === 'supervisor' ? 'Supervisor' : currentUser?.role === 'funcionario' ? 'Funcionario' : 'Usuario'}
                                 </div>
                             </div>
                         </div>
@@ -67,7 +67,7 @@ export default function Settings() {
                                     Rol
                                 </label>
                                 <div style={{ fontSize: '0.875rem' }}>
-                                    {currentUser?.role === 'admin' ? 'Administrador' : 'Usuario'}
+                                    {currentUser?.role === 'admin' ? 'Administrador' : currentUser?.role === 'jefe' ? 'Jefe de Departamento' : currentUser?.role === 'supervisor' ? 'Supervisor' : currentUser?.role === 'funcionario' ? 'Funcionario' : 'Usuario'}
                                 </div>
                             </div>
                         </div>

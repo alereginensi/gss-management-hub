@@ -6,25 +6,35 @@ import {
     Ticket as TicketIcon,
     PlusCircle,
     Settings,
-    ShieldCheck,
     LogOut,
     Users,
     BookOpen,
     Menu,
     X,
     Bell,
-    Clock
+    Clock,
+    Folder,
+    FolderPlus,
+    Trash2,
+    Pencil,
+    Check
 } from 'lucide-react';
 import { useTicketContext } from '../context/TicketContext';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 export default function Sidebar() {
-    const { currentUser, logout, isAuthenticated, unreadCount, deleteUser, isSidebarOpen, toggleSidebar } = useTicketContext();
+    const { currentUser, logout, isAuthenticated, unreadCount, isSidebarOpen, toggleSidebar, folders, fetchFolders, createFolder, deleteFolder, renameFolder } = useTicketContext();
     const router = useRouter();
     const pathname = usePathname();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
+    const [showNewFolderInput, setShowNewFolderInput] = useState(false);
+    const [editingFolderId, setEditingFolderId] = useState<number | null>(null);
+    const [editingName, setEditingName] = useState('');
+    const [showMoreFolders, setShowMoreFolders] = useState(false);
+    const FOLDER_LIMIT = 3;
 
 
     useEffect(() => {
@@ -41,6 +51,27 @@ export default function Sidebar() {
     useEffect(() => {
         setIsMobileMenuOpen(false);
     }, [pathname]);
+
+    // Load folders when user is authenticated
+    useEffect(() => {
+        if (isAuthenticated && currentUser) {
+            fetchFolders();
+        }
+    }, [isAuthenticated, currentUser]);
+
+    const handleCreateFolder = async () => {
+        if (!newFolderName.trim()) return;
+        await createFolder(newFolderName.trim());
+        setNewFolderName('');
+        setShowNewFolderInput(false);
+    };
+
+    const handleRenameFolder = async (folderId: number) => {
+        if (!editingName.trim()) return;
+        await renameFolder(folderId, editingName.trim());
+        setEditingFolderId(null);
+        setEditingName('');
+    };
 
     const handleLogout = async () => {
         if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
@@ -101,8 +132,78 @@ export default function Sidebar() {
                     </div>
                 )}
 
+                {/* --- SECCIÓN CARPETAS --- */}
+                {currentUser.role !== 'funcionario' && (
+                    <div style={{ marginBottom: '2rem' }}>
+                        <div style={{ paddingLeft: '1rem', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.5rem', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: '0.5rem' }}>
+                            <span>Carpetas</span>
+                            <button
+                                onClick={() => setShowNewFolderInput(v => !v)}
+                                title="Nueva carpeta"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.5)', padding: '0', display: 'flex' }}
+                            >
+                                <FolderPlus size={14} />
+                            </button>
+                        </div>
+                        {/* New folder input — full row on mobile so the tick never overlaps */}
+                        {showNewFolderInput && (
+                            <div style={{ padding: '0.25rem 0.5rem 0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <input
+                                    autoFocus
+                                    value={newFolderName}
+                                    onChange={e => setNewFolderName(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') setShowNewFolderInput(false); }}
+                                    placeholder="Nombre de la carpeta..."
+                                    style={{ width: '100%', fontSize: '0.8rem', padding: '0.4rem 0.6rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: 'white', outline: 'none', boxSizing: 'border-box' }}
+                                />
+                                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                    <button onClick={handleCreateFolder} style={{ flex: 1, padding: '0.35rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: 'rgba(59,130,246,0.5)', color: 'white', fontSize: '0.8rem', fontWeight: 600 }}>
+                                        Crear
+                                    </button>
+                                    <button onClick={() => setShowNewFolderInput(false)} style={{ padding: '0.35rem 0.6rem', borderRadius: '4px', border: 'none', cursor: 'pointer', background: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>
+                                        Cancelar
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: 0, margin: 0 }}>
+                            {folders.slice(0, FOLDER_LIMIT).map((f: any) => (
+                                <FolderItem key={f.id} f={f} pathname={pathname} editingFolderId={editingFolderId} editingName={editingName} setEditingName={setEditingName} setEditingFolderId={setEditingFolderId} handleRenameFolder={handleRenameFolder} deleteFolder={deleteFolder} />
+                            ))}
+
+                            {/* "Ver más" — proper floating dropdown */}
+                            {folders.length > FOLDER_LIMIT && (
+                                <li style={{ position: 'relative' }}>
+                                    <button
+                                        onClick={() => setShowMoreFolders(v => !v)}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.5rem 1rem', background: showMoreFolders ? 'rgba(255,255,255,0.08)' : 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.65)', fontSize: '0.8rem', borderRadius: 'var(--radius)' }}
+                                    >
+                                        <Folder size={14} />
+                                        <span style={{ flex: 1, textAlign: 'left' }}>+{folders.length - FOLDER_LIMIT} más carpetas</span>
+                                        <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>{showMoreFolders ? '▲' : '▼'}</span>
+                                    </button>
+                                    {showMoreFolders && (
+                                        <div style={{ position: 'absolute', left: 0, right: 0, zIndex: 50, marginTop: '2px', backgroundColor: 'var(--sidebar-bg)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 'var(--radius)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
+                                            <ul style={{ listStyle: 'none', padding: '0.25rem 0', margin: 0, maxHeight: '260px', overflowY: 'auto' }}>
+                                                {folders.slice(FOLDER_LIMIT).map((f: any) => (
+                                                    <FolderItem key={f.id} f={f} pathname={pathname} editingFolderId={editingFolderId} editingName={editingName} setEditingName={setEditingName} setEditingFolderId={setEditingFolderId} handleRenameFolder={handleRenameFolder} deleteFolder={deleteFolder} />
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </li>
+                            )}
+
+                            {folders.length === 0 && !showNewFolderInput && (
+                                <li style={{ paddingLeft: '1rem', fontSize: '0.8rem', opacity: 0.4, fontStyle: 'italic' }}>Sin carpetas</li>
+                            )}
+                        </ul>
+                    </div>
+                )}
+
                 {/* --- SECCIÓN BITÁCORA --- */}
-                {(currentUser.role === 'admin' || currentUser.role === 'supervisor') && (
+                {(currentUser.role === 'admin' || currentUser.role === 'supervisor' || currentUser.role === 'jefe') && (
                     <div style={{ marginBottom: '2rem' }}>
                         <div style={{ paddingLeft: '1rem', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
                             Operaciones
@@ -326,5 +427,43 @@ function NavItem({ href, icon, label, active, badge }: { href: string, icon: Rea
                 </span>
             )}
         </Link>
+    );
+}
+
+function FolderItem({ f, pathname, editingFolderId, editingName, setEditingName, setEditingFolderId, handleRenameFolder, deleteFolder }: any) {
+    return (
+        <li style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', paddingRight: '0.25rem' }}>
+            {editingFolderId === f.id ? (
+                <div style={{ display: 'flex', flex: 1, gap: '0.25rem', padding: '0.25rem 0.5rem' }}>
+                    <input
+                        autoFocus
+                        value={editingName}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingName(e.target.value)}
+                        onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') handleRenameFolder(f.id); if (e.key === 'Escape') setEditingFolderId(null); }}
+                        style={{ flex: 1, fontSize: '0.8rem', padding: '0.3rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: 'white', outline: 'none' }}
+                    />
+                    <button onClick={() => handleRenameFolder(f.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.7)', display: 'flex' }}>
+                        <Check size={14} />
+                    </button>
+                </div>
+            ) : (
+                <>
+                    <Link
+                        href={`/tickets/folders/${f.id}`}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, padding: '0.6rem 1rem', borderRadius: 'var(--radius)', color: pathname === `/tickets/folders/${f.id}` ? 'white' : 'var(--text-inverse)', backgroundColor: pathname === `/tickets/folders/${f.id}` ? 'rgba(255,255,255,0.1)' : 'transparent', textDecoration: 'none', fontSize: '0.875rem', opacity: pathname === `/tickets/folders/${f.id}` ? 1 : 0.8, minHeight: '40px' }}
+                    >
+                        <Folder size={16} />
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                        {f.ticketCount > 0 && <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>{f.ticketCount}</span>}
+                    </Link>
+                    <button onClick={() => { setEditingFolderId(f.id); setEditingName(f.name); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: '0.25rem', display: 'flex' }}>
+                        <Pencil size={12} />
+                    </button>
+                    <button onClick={() => { if (confirm(`¿Eliminar carpeta "${f.name}"?`)) deleteFolder(f.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: '0.25rem', display: 'flex' }}>
+                        <Trash2 size={12} />
+                    </button>
+                </>
+            )}
+        </li>
     );
 }

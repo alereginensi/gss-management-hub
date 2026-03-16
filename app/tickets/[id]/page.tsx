@@ -2,30 +2,38 @@
 
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
-import { User, Paperclip, UserPlus, X } from 'lucide-react';
-import Link from 'next/link';
+import { User, Paperclip, UserPlus, X, Folder, CheckSquare, Square, Users } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useTicketContext } from '../../context/TicketContext';
 import { useState, use, useEffect } from 'react';
 
 export default function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
-    const { tickets, getActivitiesByTicket, addActivity, updateTicketStatus, currentUser, transferTicket, addCollaborator, removeCollaborator, getTicketCollaborators, allUsers, fetchAllUsers, isSidebarOpen, isMobile, loading } = useTicketContext();
+    const { tickets, getActivitiesByTicket, addActivity, updateTicketStatus, currentUser, transferTicket, addCollaborator, removeCollaborator, getTicketCollaborators, allUsers, fetchAllUsers, loadTicketActivities, isSidebarOpen, isMobile, loading, folders, addTicketToFolder, removeTicketFromFolder, getTicketFolderId, fetchTickets } = useTicketContext() as any;
+    const router = useRouter();
     const [comment, setComment] = useState('');
     const [collaborators, setCollaborators] = useState<any[]>([]);
     const [showTransferModal, setShowTransferModal] = useState(false);
     const [showAddCollaboratorModal, setShowAddCollaboratorModal] = useState(false);
     const [selectedSupervisor, setSelectedSupervisor] = useState('');
     const [selectedCollaborator, setSelectedCollaborator] = useState('');
+    const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
+    const [showFolderMenu, setShowFolderMenu] = useState(false);
+    const [teamTasks, setTeamTasks] = useState<any[]>([]);
+    const [completingTask, setCompletingTask] = useState<number | null>(null);
 
     const resolvedParams = use(params);
     const ticketId = resolvedParams.id;
-    const ticket = tickets.find(t => t.id === ticketId);
+    const [fetchedTicket, setFetchedTicket] = useState<any>(null);
+    const [fetchError, setFetchError] = useState(false);
+    const ticket = tickets.find(t => t.id === ticketId) || fetchedTicket;
     const activities = getActivitiesByTicket(ticketId);
 
     const isOwner = ticket?.requesterEmail === currentUser?.email;
-    const isAdmin = currentUser?.role === 'admin';
+    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'jefe';
     const isSupervisor = ticket?.supervisor === currentUser?.name;
     const isCollaborator = collaborators.some(c => c.user_id === currentUser?.id);
-    const canSeeTicket = ticket && (isAdmin || isOwner || isSupervisor || isCollaborator);
+    const isTeamMember = teamTasks.some(t => Number(t.user_id) === Number(currentUser?.id));
+    const canSeeTicket = ticket && (isAdmin || isOwner || isSupervisor || isCollaborator || isTeamMember || !!(ticket.isTeamTicket || ticket.is_team_ticket));
 
     const handleSubmitComment = (e: React.FormEvent) => {
         e.preventDefault();
@@ -53,15 +61,64 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
         return words.map(w => w[0]).join('').substring(0, 2).toUpperCase();
     };
 
-    // Load collaborators on mount
+    // If ticket not in context, fetch it directly from API
+    useEffect(() => {
+        if (!ticketId || tickets.find((t: any) => t.id === ticketId)) return;
+        const token = localStorage.getItem('authToken');
+        fetch(`/api/tickets/${ticketId}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+            .then(r => r.ok ? r.json() : Promise.reject(r.status))
+            .then(setFetchedTicket)
+            .catch(() => setFetchError(true));
+    }, [ticketId, tickets]);
+
+    // Load collaborators, activities and team tasks on mount
     useEffect(() => {
         if (ticketId) {
             getTicketCollaborators(ticketId).then(setCollaborators);
+            loadTicketActivities(ticketId);
         }
-        // Load all users for dropdowns
         fetchAllUsers();
-        console.log('🔍 Ticket Detail - allUsers:', allUsers);
     }, [ticketId]);
+
+    useEffect(() => {
+        const isTeamTicket = ticket?.is_team_ticket || ticket?.isTeamTicket;
+        if (isTeamTicket && ticketId) {
+            const token = localStorage.getItem('authToken');
+            fetch(`/api/tickets/${ticketId}/tasks`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            })
+                .then(r => r.ok ? r.json() : [])
+                .then(setTeamTasks);
+        }
+    }, [ticket?.is_team_ticket, ticket?.isTeamTicket, ticketId]);
+
+    const handleCompleteTask = async (taskId: number) => {
+        setCompletingTask(taskId);
+        try {
+            const token = localStorage.getItem('authToken');
+            const res = await fetch(`/api/tickets/${ticketId}/tasks`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                body: JSON.stringify({ taskId })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setTeamTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: 1 } : t));
+                if (data.allDone) {
+                    // Refresh ticket from API so status reflects "Resuelto"
+                    const token = localStorage.getItem('authToken');
+                    fetch(`/api/tickets/${ticketId}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+                        .then(r => r.ok ? r.json() : null)
+                        .then(updated => { if (updated) setFetchedTicket(updated); });
+                    fetchTickets();
+                }
+            } else {
+                alert(data.error || 'Error al completar la tarea');
+            }
+        } finally {
+            setCompletingTask(null);
+        }
+    };
 
     // Debug: log when allUsers changes
     useEffect(() => {
@@ -165,7 +222,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                     <Header title="Ticket no encontrado" />
                     <div className="card">
                         <p>El ticket #{ticketId} no existe o no tienes permiso para verlo.</p>
-                        <Link href="/tickets" style={{ color: 'var(--accent-color)' }}>← Volver a Mis Tickets</Link>
+                        <button onClick={() => router.back()} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-color)', fontSize: '0.875rem', padding: 0 }}>← Volver</button>
                     </div>
                 </main>
             </div>
@@ -184,10 +241,46 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                 backgroundColor: 'var(--bg-color)'
             }}>
                 <div style={{ marginBottom: '1rem' }}>
-                    <Link href="/tickets" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>← Volver a Mis Tickets</Link>
+                    <button onClick={() => router.back()} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.875rem', padding: 0 }}>← Volver</button>
                 </div>
 
-                <Header title={`Ticket #T-${ticketId}`} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+                    <h1 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: 700, flex: 1 }}>Ticket #T-{ticketId}</h1>
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            onClick={() => setShowFolderMenu(v => !v)}
+                            title="Mover a carpeta"
+                            style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', cursor: 'pointer', padding: '0.4rem 0.75rem', color: getTicketFolderId(ticketId) ? 'var(--accent-color)' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}
+                        >
+                            <Folder size={16} />
+                            {getTicketFolderId(ticketId) ? (folders.find((f: any) => f.id === getTicketFolderId(ticketId))?.name ?? 'Carpeta') : 'Carpeta'}
+                        </button>
+                        {showFolderMenu && (
+                            <div style={{ position: 'absolute', right: 0, top: '110%', zIndex: 100, backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: '180px', overflow: 'hidden' }}>
+                                {folders.length === 0 && (
+                                    <div style={{ padding: '0.75rem 1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>No tenés carpetas aún</div>
+                                )}
+                                {getTicketFolderId(ticketId) && (
+                                    <button
+                                        onClick={async () => { await removeTicketFromFolder(ticketId, getTicketFolderId(ticketId)); setShowFolderMenu(false); }}
+                                        style={{ width: '100%', textAlign: 'left', padding: '0.65rem 1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: '#ef4444', borderBottom: folders.length > 0 ? '1px solid var(--border-color)' : 'none' }}
+                                    >
+                                        Quitar de carpeta
+                                    </button>
+                                )}
+                                {folders.map((f: any) => (
+                                    <button
+                                        key={f.id}
+                                        onClick={async () => { await addTicketToFolder(ticketId, f.id); setShowFolderMenu(false); }}
+                                        style={{ width: '100%', textAlign: 'left', padding: '0.65rem 1rem', background: getTicketFolderId(ticketId) === f.id ? 'rgba(59,130,246,0.08)' : 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem', color: getTicketFolderId(ticketId) === f.id ? 'var(--accent-color)' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                                    >
+                                        <Folder size={14} /> {f.name}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 <div style={{
                     display: 'grid',
@@ -308,9 +401,9 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
 
                             {ticket.resolvedAt && (
                                 <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Resuelto</label>
-                                    <div style={{ marginTop: '0.25rem', fontSize: '0.875rem' }}>
-                                        {formatTimestamp(ticket.resolvedAt)}
+                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Resuelto el</label>
+                                    <div style={{ marginTop: '0.25rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--status-resolved)' }}>
+                                        {new Date(ticket.resolvedAt).toLocaleString('es-UY', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                     </div>
                                 </div>
                             )}
@@ -350,7 +443,10 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                                     }
                                                 }
 
+                                                const isDownloading = downloadingFile === trimmedUrl;
                                                 const handleDownload = async () => {
+                                                    if (isDownloading) return;
+                                                    setDownloadingFile(trimmedUrl);
                                                     try {
                                                         const token = localStorage.getItem('authToken');
                                                         const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
@@ -365,6 +461,8 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                                         URL.revokeObjectURL(blobUrl);
                                                     } catch {
                                                         alert('Error al descargar el archivo');
+                                                    } finally {
+                                                        setDownloadingFile(null);
                                                     }
                                                 };
 
@@ -372,6 +470,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                                     <button
                                                         key={i}
                                                         onClick={handleDownload}
+                                                        disabled={isDownloading}
                                                         style={{
                                                             display: 'flex',
                                                             alignItems: 'center',
@@ -380,8 +479,8 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                                             backgroundColor: 'var(--bg-color)',
                                                             borderRadius: 'var(--radius)',
                                                             border: '1px solid var(--border-color)',
-                                                            color: 'var(--accent-color)',
-                                                            cursor: 'pointer',
+                                                            color: isDownloading ? 'var(--text-secondary)' : 'var(--accent-color)',
+                                                            cursor: isDownloading ? 'wait' : 'pointer',
                                                             fontSize: '0.875rem',
                                                             fontWeight: 500,
                                                             width: '100%',
@@ -389,7 +488,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                                         }}
                                                     >
                                                         <Paperclip size={16} />
-                                                        {fileName}
+                                                        {isDownloading ? 'Descargando...' : fileName}
                                                     </button>
                                                 );
                                             });
@@ -398,6 +497,67 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                 </div>
                             )}
                         </div>
+
+                        {/* Team Tasks Section */}
+                        {ticket?.is_team_ticket === 1 && teamTasks.length > 0 && (
+                            <div className="card">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                                    <Users size={16} color="var(--accent-color)" />
+                                    <h3 style={{ fontSize: '0.875rem', textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0 }}>Equipo de Trabajo</h3>
+                                </div>
+
+                                {/* Progress bar */}
+                                {(() => {
+                                    const done = teamTasks.filter(t => t.completed === 1 || t.completed === true).length;
+                                    const total = teamTasks.length;
+                                    const pct = Math.round((done / total) * 100);
+                                    return (
+                                        <div style={{ marginBottom: '1rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.35rem' }}>
+                                                <span>{done}/{total} completadas</span>
+                                                <span>{pct}%</span>
+                                            </div>
+                                            <div style={{ height: '6px', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
+                                                <div style={{ width: `${pct}%`, height: '100%', backgroundColor: pct === 100 ? 'var(--status-resolved)' : 'var(--accent-color)', borderRadius: '3px', transition: 'width 0.4s ease' }} />
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                    {teamTasks.map((task: any) => {
+                                        const isMyTask = Number(task.user_id) === Number(currentUser?.id);
+                                        const isDone = task.completed === 1 || task.completed === true;
+                                        const isLoading = completingTask === task.id;
+                                        return (
+                                            <div key={task.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.6rem 0.75rem', borderRadius: 'var(--radius)', backgroundColor: isDone ? 'rgba(34,197,94,0.07)' : isMyTask ? 'rgba(59,130,246,0.06)' : 'var(--bg-color)', border: `1px solid ${isDone ? 'rgba(34,197,94,0.25)' : isMyTask ? 'rgba(59,130,246,0.25)' : 'var(--border-color)'}`, transition: 'all 0.2s' }}>
+                                                <button
+                                                    onClick={() => !isDone && isMyTask && handleCompleteTask(task.id)}
+                                                    disabled={isDone || !isMyTask || isLoading}
+                                                    style={{ background: 'none', border: 'none', padding: 0, cursor: isDone || !isMyTask ? 'default' : 'pointer', color: isDone ? 'var(--status-resolved)' : isMyTask ? 'var(--accent-color)' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', flexShrink: 0, marginTop: '1px' }}
+                                                    title={isMyTask && !isDone ? 'Marcar como completada' : isDone ? 'Completada' : 'Solo el responsable puede marcar esta tarea'}
+                                                >
+                                                    {isLoading ? (
+                                                        <div style={{ width: 18, height: 18, border: '2px solid var(--accent-color)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                                                    ) : isDone ? (
+                                                        <CheckSquare size={18} />
+                                                    ) : (
+                                                        <Square size={18} />
+                                                    )}
+                                                </button>
+                                                <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                                                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: isDone ? 'var(--text-secondary)' : 'var(--text-primary)', textDecoration: isDone ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {task.user_name} {isMyTask && <span style={{ fontWeight: 400, color: 'var(--accent-color)' }}>(vos)</span>}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.15rem', wordBreak: 'break-word' }}>{task.task_description}</div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <style jsx>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                            </div>
+                        )}
 
                         {/* Transfer Ticket Section - Admin/Supervisor only */}
                         {(isAdmin || currentUser?.role === 'supervisor') && (
@@ -529,7 +689,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                     }}
                                 >
                                     <option value="">Seleccionar colaborador...</option>
-                                    {allUsers.filter(u => u.role === 'supervisor' || u.role === 'admin').map(user => (
+                                    {allUsers.filter(u => u.role === 'supervisor' || u.role === 'admin' || u.role === 'jefe').map(user => (
                                         <option key={user.id} value={user.name}>{user.name}</option>
                                     ))}
                                 </select>
