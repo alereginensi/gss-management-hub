@@ -23,17 +23,22 @@ export default function Home() {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Redirigiendo...</div>;
   }
 
+  // Jefe only sees their own department
+  const visibleTickets = currentUser?.role === 'jefe'
+    ? tickets.filter(t => t.department === currentUser.department)
+    : tickets;
+
   // Calculate KPIs from tickets
-  const openTickets = tickets.filter(t => t.status === 'Nuevo' || t.status === 'En Progreso').length;
-  const resolvedToday = tickets.filter(t => t.status === 'Resuelto').length;
+  const openTickets = visibleTickets.filter(t => t.status === 'Nuevo' || t.status === 'En Progreso').length;
+  const resolvedToday = visibleTickets.filter(t => t.status === 'Resuelto').length;
 
   // Priority Breakdown
   const priorityCounts = {
-    Alta: tickets.filter(t => t.priority === 'Alta').length,
-    Media: tickets.filter(t => t.priority === 'Media').length,
-    Baja: tickets.filter(t => t.priority === 'Baja').length
+    Alta: visibleTickets.filter(t => t.priority === 'Alta').length,
+    Media: visibleTickets.filter(t => t.priority === 'Media').length,
+    Baja: visibleTickets.filter(t => t.priority === 'Baja').length
   };
-  const totalTickets = tickets.length || 1; // Avoid division by zero
+  const totalTickets = visibleTickets.length || 1; // Avoid division by zero
 
   const avgResolutionTime = getAverageResolutionTime();
 
@@ -41,7 +46,7 @@ export default function Home() {
   const [statusFilter, setStatusFilter] = useState<'Todos' | 'Pendiente' | 'Resuelto'>('Todos');
   const [priorityFilter, setPriorityFilter] = useState<string>('Todos');
 
-  const filteredTickets = tickets.filter(t => {
+  const filteredTickets = visibleTickets.filter(t => {
     const matchesStatus =
       statusFilter === 'Todos' ||
       (statusFilter === 'Pendiente' && (t.status === 'Nuevo' || t.status === 'En Progreso')) ||
@@ -196,6 +201,22 @@ export default function Home() {
 
           {isMobile ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.25rem' }}>
+                <button
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    if (statusFilter !== 'Todos') params.set('status', statusFilter);
+                    if (priorityFilter !== 'Todos') params.set('priority', priorityFilter);
+                    const qs = params.toString();
+                    window.open(`/api/tickets/export${qs ? '?' + qs : ''}`, '_blank');
+                  }}
+                  className="btn btn-secondary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                  Exportar Excel
+                </button>
+              </div>
               {recentTickets.map(ticket => (
                 <div
                   key={ticket.id}

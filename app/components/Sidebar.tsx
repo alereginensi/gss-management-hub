@@ -108,7 +108,7 @@ export default function Sidebar() {
                             Menu Principal
                         </div>
                         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: 0, margin: 0 }}>
-                            {currentUser?.role?.toLowerCase() === 'admin' && (
+                            {(currentUser?.role?.toLowerCase() === 'admin' || currentUser?.role?.toLowerCase() === 'jefe') && (
                                 <li>
                                     <NavItem href="/" icon={<LayoutDashboard size={18} />} label="Dashboard" active={pathname === '/'} />
                                 </li>

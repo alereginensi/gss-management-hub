@@ -41,9 +41,12 @@ export async function GET(request: NextRequest) {
             return NextResponse.json(tickets);
         }
 
-        // Jefes see all tickets from their department
+        // Jefes see all tickets from their department (including multi-department tickets)
         if (userRole === 'jefe') {
-            const rawTickets = await db.prepare('SELECT * FROM tickets WHERE department = ? ORDER BY created_at DESC').all(session.user.department) as any[];
+            const dept = session.user.department || '';
+            const rawTickets = await db.prepare(
+                "SELECT * FROM tickets WHERE department = ? OR department LIKE ? OR department LIKE ? OR department LIKE ? ORDER BY created_at DESC"
+            ).all(dept, `${dept},%`, `%,${dept}`, `%,${dept},%`) as any[];
             const tickets = await Promise.all(rawTickets.map(async (ticket) => {
                 const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
                 return {
@@ -98,6 +101,7 @@ export async function GET(request: NextRequest) {
                     resolvedAt: ticket.resolved_at,
                     affectedWorker: ticket.affected_worker,
                     attachmentUrl: ticket.attachment_url,
+                    isImportant: !!(ticket.is_important),
                     isTeamTicket: !!(ticket.is_team_ticket)
                 };
             }));
