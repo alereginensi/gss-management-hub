@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { getSession } from '@/lib/auth-server';
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 export async function POST(request: NextRequest) {
     const session = await getSession(request);
@@ -20,28 +19,11 @@ export async function POST(request: NextRequest) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        // Define upload directory - sync with db.ts logic
-        const IS_PROD = process.env.NODE_ENV === 'production';
-        const uploadDir = IS_PROD ? '/app/data/uploads' : path.join(process.cwd(), 'data', 'uploads');
-
-        // Ensure directory exists
-        try {
-            await mkdir(uploadDir, { recursive: true });
-        } catch (e) {
-            // Directory might already exist
-        }
-
-        // Generate unique filename, replacing whitespace and dangerous URL chars with underscores
         const sanitizedName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
         const filename = `${Date.now()}-${sanitizedName}`;
-        const filePath = path.join(uploadDir, filename);
+        const url = await uploadToCloudinary(buffer, 'tickets', filename);
 
-        await writeFile(filePath, buffer);
-        console.log(`📁 File uploaded: ${filePath}`);
-
-        // Return the download API URL encoding the filename to be safe
-        const fileUrl = `/api/tickets/download?filename=${encodeURIComponent(filename)}`;
-        return NextResponse.json({ success: true, url: fileUrl });
+        return NextResponse.json({ success: true, url });
     } catch (error: any) {
         console.error('Upload Error:', error);
         return NextResponse.json({ error: 'Upload failed', details: error.message }, { status: 500 });
