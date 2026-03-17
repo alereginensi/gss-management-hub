@@ -5,7 +5,7 @@ import { useTicketContext } from '../context/TicketContext';
 import { useRouter, usePathname } from 'next/navigation';
 
 export default function ThemeWrapper({ children }: { children: React.ReactNode }) {
-    const { theme, isAuthenticated, currentUser, loading } = useTicketContext();
+    const { isAuthenticated, currentUser, loading } = useTicketContext();
     const router = useRouter();
     const pathname = usePathname();
     const [isMounted, setIsMounted] = useState(false);
@@ -23,7 +23,7 @@ export default function ThemeWrapper({ children }: { children: React.ReactNode }
         if (isAuthenticated) {
             if (isPublicRoute) {
                 router.push('/tickets');
-            } else if (pathname === '/' && currentUser?.role !== 'admin') {
+            } else if (pathname === '/' && currentUser?.role !== 'admin' && currentUser?.role !== 'jefe') {
                 // Regular users can't see dashboard
                 router.push('/tickets');
             }

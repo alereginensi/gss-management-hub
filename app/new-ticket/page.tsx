@@ -19,17 +19,19 @@ export default function NewTicket() {
     const { addTicket, currentUser, isSidebarOpen, allUsers, fetchAllUsers, isMobile } = useTicketContext();
     const router = useRouter();
 
-    // Team ticket state (jefe only)
+    // Team ticket state
     const [teamMode, setTeamMode] = useState(false);
     const [teamTasks, setTeamTasks] = useState<TeamTask[]>([]);
-    const [jefeTask, setJefeTask] = useState('');
+    const [myTask, setMyTask] = useState('');
+
+    // Multi-department selection
+    const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
 
     const [formData, setFormData] = useState({
         name: (currentUser?.id ?? 0) > 0 ? currentUser?.name : '',
         email: currentUser?.email || '',
         subject: '',
         description: '',
-        department: currentUser?.department || '',
         priority: 'Media' as 'Alta' | 'Media' | 'Baja',
         affectedWorker: '',
         supervisor: '',
@@ -45,16 +47,22 @@ export default function NewTicket() {
         if (currentUser?.email) {
             setFormData(prev => ({ ...prev, email: currentUser?.email || '' }));
         }
-        if (currentUser?.department && currentUser.department !== 'Sin Asignar') {
-            setFormData(prev => ({ ...prev, department: currentUser.department }));
-        }
+        // No pre-selection — user must choose explicitly
         if (currentUser?.role === 'supervisor' && currentUser?.name) {
             setFormData(prev => ({ ...prev, supervisor: currentUser.name }));
         }
-        if (currentUser?.role === 'jefe') {
+        // Load all users for collaborator picker & team ticket builder
+        const role = currentUser?.role;
+        if (role === 'admin' || role === 'jefe' || role === 'supervisor') {
             fetchAllUsers();
         }
     }, [currentUser]);
+
+    const toggleDept = (dept: string) => {
+        setSelectedDepts(prev =>
+            prev.includes(dept) ? prev.filter(d => d !== dept) : [...prev, dept]
+        );
+    };
 
     const addTeamMember = () => {
         setTeamTasks(prev => [...prev, { userId: 0, userName: '', task: '' }]);
@@ -68,19 +76,22 @@ export default function NewTicket() {
         setTeamTasks(prev => prev.map((t, i) => i === idx ? { ...t, [field]: value } : t));
     };
 
-    const supervisorUsers = allUsers.filter(u => u.role === 'supervisor' || u.role === 'jefe')
-        .filter(u => u.id !== currentUser?.id);
+    const collaboratorUsers = allUsers.filter(u => {
+        const r = u.role?.toLowerCase();
+        return r === 'supervisor' || r === 'admin' || r === 'jefe';
+    });
+
+    const teamMemberUsers = collaboratorUsers.filter(u => u.id !== currentUser?.id);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (submitting) return;
 
-        if (!formData.name || !formData.email || !formData.department) {
+        if (!formData.name || !formData.email || selectedDepts.length === 0) {
             alert('Por favor completa todos los campos obligatorios (Nombre, Email, Departamento).');
             return;
         }
 
-        // Validate email format first
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
             alert('Por favor ingresa un email válido.');
@@ -89,16 +100,13 @@ export default function NewTicket() {
 
         setSubmitting(true);
 
-        // Validate email existence with API
         try {
             const validationResponse = await fetch('/api/validate-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: formData.email })
             });
-
             const validationData = await validationResponse.json();
-
             if (!validationData.valid) {
                 alert('Por favor escribe una dirección de email válida');
                 setSubmitting(false);
@@ -106,15 +114,12 @@ export default function NewTicket() {
             }
         } catch (error) {
             console.error('Email validation error:', error);
-            // Continue with ticket creation even if validation fails
         }
 
-        // Update current user email if not set
         if (currentUser && !currentUser.email) {
             currentUser.email = formData.email;
         }
 
-        // Upload files if exists
         let attachmentUrls: string[] = [];
         if (files.length > 0) {
             const token = localStorage.getItem('authToken');
@@ -151,9 +156,8 @@ export default function NewTicket() {
             finalAttachmentUrl = JSON.stringify(attachmentUrls);
         }
 
-        // Validate team tasks if in team mode
         if (teamMode) {
-            if (!jefeTask.trim()) {
+            if (!myTask.trim()) {
                 alert('Por favor ingresá tu tarea en el ticket de equipo.');
                 setSubmitting(false);
                 return;
@@ -166,17 +170,18 @@ export default function NewTicket() {
             }
         }
 
-        // Build final team tasks including jefe's own task
         const finalTeamTasks = teamMode && currentUser ? [
-            { userId: currentUser.id, userName: currentUser.name, task: jefeTask },
+            { userId: currentUser.id, userName: currentUser.name, task: myTask },
             ...teamTasks
         ] : [];
+
+        const departmentStr = selectedDepts.join(',');
 
         try {
             await addTicket({
                 subject: formData.subject,
                 description: formData.description,
-                department: formData.department,
+                department: departmentStr,
                 priority: formData.priority,
                 status: 'Nuevo',
                 requester: formData.name,
@@ -197,7 +202,6 @@ export default function NewTicket() {
         setSubmitting(false);
         setSubmitted(true);
 
-        // Redirect to tickets page after 2 seconds
         setTimeout(() => {
             router.push('/tickets');
         }, 2000);
@@ -205,11 +209,9 @@ export default function NewTicket() {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            // Append incoming files to existing ones without replacing them
             const newFiles = Array.from(e.target.files);
             setFiles(prev => [...prev, ...newFiles]);
         }
-        // Reset the input value so the exact same file can be selected again if it was removed
         e.target.value = '';
     };
 
@@ -221,6 +223,9 @@ export default function NewTicket() {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
+
+    const canPickCollaborator = currentUser?.role === 'admin' || currentUser?.role === 'jefe';
+    const canUseTeamMode = currentUser?.role === 'admin' || currentUser?.role === 'jefe' || currentUser?.role === 'supervisor';
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -247,13 +252,13 @@ export default function NewTicket() {
                         </div>
                     ) : (
                         <form onSubmit={handleSubmit} className="card">
-                            {/* Team ticket toggle — jefe only */}
-                            {currentUser?.role === 'jefe' && (
+                            {/* Team ticket toggle */}
+                            {canUseTeamMode && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', padding: '1rem', backgroundColor: teamMode ? 'rgba(59,130,246,0.07)' : 'var(--bg-color)', borderRadius: 'var(--radius)', border: `1px solid ${teamMode ? 'var(--accent-color)' : 'var(--border-color)'}`, transition: 'all 0.2s' }}>
                                     <Users size={20} color={teamMode ? 'var(--accent-color)' : 'var(--text-secondary)'} />
                                     <div style={{ flex: 1 }}>
                                         <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Ticket de Equipo</div>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Asignás tareas individuales a supervisores, el ticket se resuelve cuando todos completan su tarea</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Asignás tareas individuales a colaboradores, el ticket se resuelve cuando todos completan su tarea</div>
                                     </div>
                                     <button
                                         type="button"
@@ -274,20 +279,20 @@ export default function NewTicket() {
                             )}
 
                             {/* Team member builder */}
-                            {teamMode && currentUser?.role === 'jefe' && (
+                            {teamMode && canUseTeamMode && (
                                 <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                     <label style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--accent-color)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Equipo de Trabajo</label>
 
-                                    {/* Jefe's own task */}
+                                    {/* Creator's own task */}
                                     <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.5rem', padding: '0.75rem', backgroundColor: 'rgba(59,130,246,0.06)', borderRadius: 'var(--radius)', border: '1px solid var(--accent-color)' }}>
-                                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--accent-color)' }}>
-                                            {currentUser.name} <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>(vos)</span>
+                                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--accent-color)', flexShrink: 0 }}>
+                                            {currentUser?.name} <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>(vos)</span>
                                         </div>
                                         <input
                                             type="text"
                                             placeholder="Tu tarea en este ticket..."
-                                            value={jefeTask}
-                                            onChange={e => setJefeTask(e.target.value)}
+                                            value={myTask}
+                                            onChange={e => setMyTask(e.target.value)}
                                             style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', fontSize: '0.875rem', width: isMobile ? '100%' : 'auto', boxSizing: 'border-box' }}
                                         />
                                     </div>
@@ -301,14 +306,14 @@ export default function NewTicket() {
                                             <select
                                                 value={member.userId || ''}
                                                 onChange={e => {
-                                                    const u = supervisorUsers.find(u => u.id === Number(e.target.value));
+                                                    const u = teamMemberUsers.find(u => u.id === Number(e.target.value));
                                                     if (u) updateTeamMember(idx, 'userId', u.id);
                                                     if (u) updateTeamMember(idx, 'userName', u.name);
                                                 }}
-                                                style={{ width: '100%', padding: '0.5rem 0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', fontSize: '0.875rem', boxSizing: 'border-box', paddingRight: '2rem' }}
+                                                style={{ width: '100%', padding: '0.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', fontSize: '0.875rem', boxSizing: 'border-box' }}
                                             >
                                                 <option value="">Seleccionar colaborador...</option>
-                                                {supervisorUsers
+                                                {teamMemberUsers
                                                     .filter(u => u.id === member.userId || !teamTasks.some((t, ti) => ti !== idx && t.userId === u.id))
                                                     .map(u => <option key={u.id} value={u.id}>{u.name}</option>)
                                                 }
@@ -334,9 +339,10 @@ export default function NewTicket() {
                             )}
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                                {/* Collaborator picker */}
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Colaborador</label>
-                                    {currentUser?.role === 'admin' ? (
+                                    {canPickCollaborator ? (
                                         <select
                                             name="supervisor"
                                             value={formData.supervisor}
@@ -352,14 +358,9 @@ export default function NewTicket() {
                                             }}
                                         >
                                             <option value="">Seleccionar Colaborador...</option>
-                                            {allUsers
-                                                .filter(u => {
-                                                    const r = u.role?.toLowerCase();
-                                                    return r === 'supervisor' || r === 'admin';
-                                                })
-                                                .map(sup => (
-                                                    <option key={sup.id} value={sup.name}>{sup.name}</option>
-                                                ))}
+                                            {collaboratorUsers.map(sup => (
+                                                <option key={sup.id} value={sup.name}>{sup.name}</option>
+                                            ))}
                                         </select>
                                     ) : (
                                         <input
@@ -491,28 +492,50 @@ export default function NewTicket() {
                                     />
                                 </div>
 
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Departamento</label>
-                                    <select
-                                        name="department"
-                                        required
-                                        value={formData.department}
-                                        onChange={handleInputChange}
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.75rem',
-                                            borderRadius: 'var(--radius)',
-                                            border: '1px solid var(--border-color)',
-                                            fontSize: '1rem',
-                                            backgroundColor: 'var(--surface-color)',
-                                            color: 'var(--text-primary)'
-                                        }}
-                                    >
-                                        <option value="">Seleccionar...</option>
-                                        {DEPARTMENTS.map(dept => (
-                                            <option key={dept} value={dept}>{dept}</option>
-                                        ))}
-                                    </select>
+                                {/* Multi-department checkboxes */}
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 500 }}>
+                                        Departamento(s) *
+                                        {selectedDepts.length === 0 ? (
+                                            <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: 'var(--status-rejected)', fontWeight: 400 }}>
+                                                Seleccioná al menos un departamento
+                                            </span>
+                                        ) : (
+                                            <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 400 }}>
+                                                {selectedDepts.length} seleccionado{selectedDepts.length > 1 ? 's' : ''}
+                                            </span>
+                                        )}
+                                    </label>
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
+                                        gap: '0.5rem'
+                                    }}>
+                                        {DEPARTMENTS.map(dept => {
+                                            const selected = selectedDepts.includes(dept);
+                                            return (
+                                                <button
+                                                    key={dept}
+                                                    type="button"
+                                                    onClick={() => toggleDept(dept)}
+                                                    style={{
+                                                        padding: '0.5rem 0.75rem',
+                                                        borderRadius: 'var(--radius)',
+                                                        border: `1px solid ${selected ? 'var(--accent-color)' : 'var(--border-color)'}`,
+                                                        backgroundColor: selected ? 'rgba(59,130,246,0.1)' : 'var(--surface-color)',
+                                                        color: selected ? 'var(--accent-color)' : 'var(--text-primary)',
+                                                        fontSize: '0.85rem',
+                                                        fontWeight: selected ? 600 : 400,
+                                                        cursor: 'pointer',
+                                                        textAlign: 'left',
+                                                        transition: 'all 0.15s'
+                                                    }}
+                                                >
+                                                    {selected ? '✓ ' : ''}{dept}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
 
                                 <div>

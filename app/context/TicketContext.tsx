@@ -12,7 +12,9 @@ export const DEPARTMENTS = [
     'Operaciones Limpieza',
     'Comercial',
     'Dirección',
-    'Gestión'
+    'Gestión',
+    'IT',
+    'Area de Planificacion'
 ];
 
 export const RUBROS = [
