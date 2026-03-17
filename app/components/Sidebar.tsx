@@ -211,14 +211,6 @@ export default function Sidebar() {
                         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: 0, margin: 0 }}>
                             <li>
                                 <NavItem
-                                    href="/admin/attendance"
-                                    icon={<Clock size={18} />}
-                                    label="Asistencia"
-                                    active={pathname === '/admin/attendance'}
-                                />
-                            </li>
-                            <li>
-                                <NavItem
                                     href="/logbook"
                                     icon={<BookOpen size={18} />}
                                     label="Bitácora"
