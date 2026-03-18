@@ -554,10 +554,11 @@ export default function UserManagement() {
                                 />
                             </div>
 
+                            {editForm.role !== 'supervisor' && (
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Departamento</label>
                                 <select
-                                    required
+                                    required={editForm.role !== 'supervisor'}
                                     value={editForm.department}
                                     onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
                                     className="input"
@@ -569,6 +570,7 @@ export default function UserManagement() {
                                     ))}
                                 </select>
                             </div>
+                            )}
 
                             <div>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Rol</label>
