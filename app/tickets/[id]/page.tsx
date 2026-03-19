@@ -5,12 +5,13 @@ import Header from '../../components/Header';
 import { User, Paperclip, UserPlus, X, Folder, CheckSquare, Square, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTicketContext } from '../../context/TicketContext';
-import { useState, use, useEffect } from 'react';
+import { useState, use, useEffect, useRef } from 'react';
 
 export default function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
     const { tickets, getActivitiesByTicket, addActivity, updateTicketStatus, currentUser, transferTicket, addCollaborator, removeCollaborator, getTicketCollaborators, allUsers, fetchAllUsers, loadTicketActivities, isSidebarOpen, isMobile, loading, folders, addTicketToFolder, removeTicketFromFolder, getTicketFolderId, fetchTickets } = useTicketContext() as any;
     const router = useRouter();
     const [comment, setComment] = useState('');
+    const commentRef = useRef<HTMLTextAreaElement>(null);
     const [collaborators, setCollaborators] = useState<any[]>([]);
     const [showTransferModal, setShowTransferModal] = useState(false);
     const [showAddCollaboratorModal, setShowAddCollaboratorModal] = useState(false);
@@ -40,6 +41,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
         if (comment.trim()) {
             addActivity(ticketId, currentUser?.name || 'Usuario', comment);
             setComment('');
+            if (commentRef.current) commentRef.current.style.height = 'auto';
         }
     };
 
@@ -328,22 +330,43 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                 ))}
                             </div>
 
-                            <form onSubmit={handleSubmitComment} style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
-                                <input
-                                    type="text"
+                            <form onSubmit={handleSubmitComment} style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                <textarea
+                                    ref={commentRef}
                                     placeholder="Escribir un comentario..."
                                     value={comment}
-                                    onChange={(e) => setComment(e.target.value)}
+                                    rows={3}
+                                    onChange={(e) => {
+                                        setComment(e.target.value);
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = e.target.scrollHeight + 'px';
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                            e.preventDefault();
+                                            handleSubmitComment(e as any);
+                                        }
+                                    }}
                                     style={{
-                                        flex: 1,
+                                        width: '100%',
                                         padding: '0.75rem',
                                         borderRadius: 'var(--radius)',
                                         border: '1px solid var(--border-color)',
                                         backgroundColor: 'var(--surface-color)',
-                                        color: 'var(--text-primary)'
+                                        color: 'var(--text-primary)',
+                                        resize: 'none',
+                                        overflow: 'hidden',
+                                        lineHeight: '1.5',
+                                        fontFamily: 'inherit',
+                                        fontSize: '0.875rem',
+                                        boxSizing: 'border-box',
+                                        minHeight: '80px',
                                     }}
                                 />
-                                <button type="submit" className="btn btn-primary">Enviar</button>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Ctrl+Enter para enviar</span>
+                                    <button type="submit" className="btn btn-primary">Enviar</button>
+                                </div>
                             </form>
                         </div>
                     </div>
