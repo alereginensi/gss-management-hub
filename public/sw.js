@@ -60,8 +60,9 @@ self.addEventListener('fetch', (event) => {
                 if (response) {
                     return response;
                 }
-                return fetch(event.request).catch((error) => {
-                    throw error;
+                return fetch(event.request).catch(() => {
+                    // Network unavailable - fail silently for non-navigation requests
+                    return new Response('', { status: 503, statusText: 'Service Unavailable' });
                 });
             })
     );

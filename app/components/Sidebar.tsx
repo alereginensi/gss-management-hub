@@ -17,7 +17,8 @@ import {
     FolderPlus,
     Trash2,
     Pencil,
-    Check
+    Check,
+    Home
 } from 'lucide-react';
 import { useTicketContext } from '../context/TicketContext';
 import { useRouter, usePathname } from 'next/navigation';
@@ -108,9 +109,12 @@ export default function Sidebar() {
                             Menu Principal
                         </div>
                         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: 0, margin: 0 }}>
+                            <li>
+                                <NavItem href="/" icon={<Home size={18} />} label="Inicio" active={pathname === '/'} />
+                            </li>
                             {(currentUser?.role?.toLowerCase() === 'admin' || currentUser?.role?.toLowerCase() === 'jefe') && (
                                 <li>
-                                    <NavItem href="/" icon={<LayoutDashboard size={18} />} label="Dashboard" active={pathname === '/'} />
+                                    <NavItem href="/administracion" icon={<LayoutDashboard size={18} />} label="Dashboard" active={pathname === '/administracion'} />
                                 </li>
                             )}
                             <li>

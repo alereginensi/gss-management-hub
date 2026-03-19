@@ -51,7 +51,7 @@ export default function Login() {
                     rubro: data.user.rubro
                 }, data.token);
 
-                router.push('/tickets');
+                router.push('/');
             } else {
                 if (res.status === 403) {
                     setPendingApproval(true);

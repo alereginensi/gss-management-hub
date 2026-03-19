@@ -293,6 +293,27 @@ class DbWrapper {
         folder_id INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
         PRIMARY KEY (ticket_id, folder_id)
       );
+
+      CREATE TABLE IF NOT EXISTS security_records (
+        id SERIAL PRIMARY KEY,
+        type TEXT NOT NULL,
+        report_datetime TEXT,
+        client TEXT,
+        branch TEXT,
+        supervisor TEXT,
+        technician TEXT,
+        record_type TEXT,
+        security_event TEXT,
+        mobile_intervention TEXT,
+        affected_system TEXT,
+        record_detail TEXT,
+        event_classification TEXT,
+        public_force INTEGER DEFAULT 0,
+        complaint_number TEXT,
+        end_datetime TEXT,
+        created_by TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
     `;
 
     if (this.type === 'pg') {

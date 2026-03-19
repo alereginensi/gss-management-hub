@@ -479,7 +479,7 @@ export default function UserManagement() {
                                             <div className="user-info">
                                                 <div style={{ fontWeight: 600 }}>{user.name}</div>
                                                 <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                                                    {user.email} • {user.department} • {user.role}
+                                                    {user.email}{user.role !== 'supervisor' && user.department ? ` • ${user.department}` : ''} • {user.role}
                                                     {user.rubro && ` • ${user.rubro}`}
                                                 </div>
                                             </div>
@@ -583,6 +583,7 @@ export default function UserManagement() {
                                 >
                                     <option value="supervisor">Supervisor</option>
                                     <option value="jefe">Jefe de Departamento</option>
+                                    <option value="tecnico">Técnico</option>
                                     <option value="admin">Administrador</option>
                                 </select>
                             </div>

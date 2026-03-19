@@ -22,12 +22,9 @@ export default function ThemeWrapper({ children }: { children: React.ReactNode }
 
         if (isAuthenticated) {
             if (isPublicRoute) {
-                router.push('/tickets');
-            } else if (pathname === '/' && currentUser?.role !== 'admin' && currentUser?.role !== 'jefe') {
-                // Regular users can't see dashboard
-                router.push('/tickets');
+                router.push('/');
             }
-        } else if (!isPublicRoute) {
+        } else if (!isPublicRoute && pathname !== '/') {
             router.push('/login');
         }
     }, [isAuthenticated, pathname, isMounted, router, currentUser?.role, loading]);

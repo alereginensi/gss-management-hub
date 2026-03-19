@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // For page routes: check if there's any auth token available
-    const publicPages = ['/login', '/register'];
+    const publicPages = ['/login', '/register', '/'];
     const isPublicPage = publicPages.includes(pathname);
 
     if (isPublicPage) {
