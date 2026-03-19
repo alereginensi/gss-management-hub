@@ -96,7 +96,7 @@ export default function Landing() {
             <div style={{ padding: '0.9rem', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>
               <Briefcase size={36} color="white" />
             </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', margin: 0 }}>Administración</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', margin: 0 }}>Panel General</h2>
             <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', margin: 0 }}>Tickets, bitácora y gestión operativa</p>
           </div>
         </Link>
