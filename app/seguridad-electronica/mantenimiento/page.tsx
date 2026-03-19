@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, LogOut } from 'lucide-react';
 import { useTicketContext } from '@/app/context/TicketContext';
-import { CLIENT_NAMES, getSectorsForClient } from '@/lib/client-sectors';
 
 interface FormState {
     report_datetime: string;   // Fecha y Hora de Entrada
@@ -67,6 +66,7 @@ export default function MantenimientoPage() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [clientSectorMap, setClientSectorMap] = useState<Record<string, string[]>>({});
 
     useEffect(() => {
         if (isAuthenticated === false) router.push('/login');
@@ -77,6 +77,18 @@ export default function MantenimientoPage() {
         if (!currentUser) return;
         setForm(f => ({ ...f, technician: f.technician || currentUser.name }));
     }, [currentUser?.id]);
+
+    useEffect(() => {
+        fetch('/api/config/locations', { headers: getAuthHeaders() })
+            .then(r => r.json())
+            .then((locs: any[]) => {
+                if (!Array.isArray(locs)) return;
+                const map: Record<string, string[]> = {};
+                locs.forEach(loc => { map[loc.name] = (loc.sectors || []).map((s: any) => s.name); });
+                setClientSectorMap(map);
+            })
+            .catch(console.error);
+    }, []);
 
     const set = (field: keyof FormState) =>
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -156,16 +168,16 @@ export default function MantenimientoPage() {
                             {requiredLabel('Cliente')}
                             <select required value={form.client} onChange={set('client')} style={fieldStyle}>
                                 <option value="">Seleccionar cliente...</option>
-                                {CLIENT_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
+                                {Object.keys(clientSectorMap).sort().map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
 
                         <div>
                             {requiredLabel('Sector')}
-                            {getSectorsForClient(form.client).length > 0 ? (
+                            {(clientSectorMap[form.client] || []).length > 0 ? (
                                 <select required value={form.branch} onChange={set('branch')} style={fieldStyle}>
                                     <option value="">Seleccionar sector...</option>
-                                    {getSectorsForClient(form.client).map(s => <option key={s} value={s}>{s}</option>)}
+                                    {(clientSectorMap[form.client] || []).map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             ) : (
                                 <input type="text" required value={form.branch} onChange={set('branch')} style={fieldStyle} placeholder="Ingresar sector..." />

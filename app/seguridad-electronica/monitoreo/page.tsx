@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, LogOut } from 'lucide-react';
 import { useTicketContext } from '@/app/context/TicketContext';
-import { CLIENT_NAMES, getSectorsForClient } from '@/lib/client-sectors';
 
 const RECORD_TYPES = ['Evento de Seguridad', 'Intervención Móvil', 'Bitácora Técnica'];
 const SECURITY_EVENTS = ['Intrusión confirmado', 'Sospechoso', 'Falla técnica', 'Pánico / Emergencia humana', 'Falsa alarma', 'Otro'];
@@ -79,6 +78,7 @@ export default function MonitoreoPage() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [clientSectorMap, setClientSectorMap] = useState<Record<string, string[]>>({});
 
     useEffect(() => {
         if (isAuthenticated === false) router.push('/login');
@@ -94,6 +94,18 @@ export default function MonitoreoPage() {
             technician: f.technician || currentUser.name,
         }));
     }, [currentUser?.id]);
+
+    useEffect(() => {
+        fetch('/api/config/locations', { headers: getAuthHeaders() })
+            .then(r => r.json())
+            .then((locs: any[]) => {
+                if (!Array.isArray(locs)) return;
+                const map: Record<string, string[]> = {};
+                locs.forEach(loc => { map[loc.name] = (loc.sectors || []).map((s: any) => s.name); });
+                setClientSectorMap(map);
+            })
+            .catch(console.error);
+    }, []);
 
     const set = (field: keyof FormState) =>
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -137,7 +149,8 @@ export default function MonitoreoPage() {
 
     if (!currentUser) return null;
 
-    const sectors = getSectorsForClient(form.client);
+    const clientNames = Object.keys(clientSectorMap).sort();
+    const sectors = clientSectorMap[form.client] || [];
     const showSecurityEvent = form.record_type === 'Evento de Seguridad';
     const showMobileIntervention = form.record_type === 'Intervención Móvil';
 
@@ -177,7 +190,7 @@ export default function MonitoreoPage() {
                             {req('Cliente')}
                             <select required value={form.client} onChange={set('client')} style={fieldStyle}>
                                 <option value="">Seleccionar cliente...</option>
-                                {CLIENT_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
+                                {clientNames.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
 
