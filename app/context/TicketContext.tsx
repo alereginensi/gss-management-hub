@@ -93,7 +93,7 @@ export interface User {
     name: string;
     email?: string;
     department: string;
-    role: 'user' | 'admin' | 'supervisor' | 'funcionario' | 'jefe';
+    role: 'user' | 'admin' | 'supervisor' | 'funcionario' | 'jefe' | 'tecnico';
     rubro?: string;
     approved?: boolean;
 }
@@ -138,6 +138,7 @@ interface TicketContextType {
     fetchAllUsers: () => Promise<void>;
     loading: boolean;
     allUsers: User[];
+    getAuthHeaders: () => HeadersInit;
     updateUser: (userId: number, userData: Partial<User> & { password?: string }) => Promise<boolean>;
     transferTicket: (ticketId: string, newSupervisorId: number, transferredBy: number, reason?: string) => Promise<boolean>;
     addCollaborator: (ticketId: string, userId: number, addedBy: number) => Promise<boolean>;
@@ -1256,6 +1257,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             loading,
             isMobile,
             allUsers,
+            getAuthHeaders,
             transferTicket,
             addCollaborator,
             removeCollaborator,

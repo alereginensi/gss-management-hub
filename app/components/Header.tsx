@@ -17,7 +17,7 @@ export default function Header({ title, actions }: { title: string, actions?: Re
     const router = useRouter();
 
     // Show search only on Dashboard and Tickets list
-    const showSearch = pathname === '/' || pathname === '/tickets';
+    const showSearch = pathname === '/administracion' || pathname === '/tickets';
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(e.target.value);
