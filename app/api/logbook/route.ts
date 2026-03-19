@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 export async function GET(request: NextRequest) {
     const session = await getSession(request);
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limitParam = parseInt(searchParams.get('limit') || '0');
     const offset = parseInt(searchParams.get('offset') || '0');
 
     try {
@@ -21,9 +21,14 @@ export async function GET(request: NextRequest) {
             params.push(session.user.name);
         }
 
-        entriesSql += ' ORDER BY id DESC LIMIT ? OFFSET ?';
-
-        const entries = await db.prepare(entriesSql).all(...params, limit, offset);
+        let entries;
+        if (limitParam > 0) {
+            entriesSql += ' ORDER BY id DESC LIMIT ? OFFSET ?';
+            entries = await db.prepare(entriesSql).all(...params, limitParam, offset);
+        } else {
+            entriesSql += ' ORDER BY id DESC';
+            entries = await db.prepare(entriesSql).all(...params);
+        }
         const columns = await db.prepare('SELECT * FROM logbook_columns').all();
         const totalCount = await db.prepare(countSql).get(...params) as { count: number };
 
