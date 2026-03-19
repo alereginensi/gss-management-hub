@@ -9,17 +9,25 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limitParam = parseInt(searchParams.get('limit') || '0');
     const offset = parseInt(searchParams.get('offset') || '0');
+    const dateFrom = searchParams.get('dateFrom') || '';
+    const dateTo = searchParams.get('dateTo') || '';
+    const serviceType = searchParams.get('serviceType') || '';
 
     try {
-        let entriesSql = 'SELECT * FROM logbook';
-        let countSql = 'SELECT count(*) as count FROM logbook';
+        const conditions: string[] = [];
         const params: any[] = [];
 
         if (session?.user?.role === 'supervisor') {
-            entriesSql += ' WHERE supervisor = ?';
-            countSql += ' WHERE supervisor = ?';
+            conditions.push('supervisor = ?');
             params.push(session.user.name);
         }
+        if (dateFrom) { conditions.push('date >= ?'); params.push(dateFrom); }
+        if (dateTo) { conditions.push('date <= ?'); params.push(dateTo); }
+        if (serviceType) { conditions.push('supervised_by = ?'); params.push(serviceType); }
+
+        const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+        let entriesSql = 'SELECT * FROM logbook' + whereClause;
+        const countSql = 'SELECT count(*) as count FROM logbook' + whereClause;
 
         let entries;
         if (limitParam > 0) {

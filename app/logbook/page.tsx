@@ -325,26 +325,8 @@ export default function LogbookPage() {
         return () => document.removeEventListener('mousedown', handler);
     }, [showFilters]);
 
-    // Supervisors only see entries they personally created
-    const filteredByUser = currentUser?.role === 'supervisor'
-        ? entries.filter(e => e.supervisor === currentUser.name)
-        : entries;
-
-    // Apply date range filter
-    const dateFilteredEntries = (dateFilter || dateFilterTo)
-        ? filteredByUser.filter(e => {
-            const entryDate = e.date;
-            if (dateFilter && dateFilterTo) return entryDate >= dateFilter && entryDate <= dateFilterTo;
-            if (dateFilter) return entryDate >= dateFilter;
-            if (dateFilterTo) return entryDate <= dateFilterTo;
-            return true;
-        })
-        : filteredByUser;
-
-    // Apply service type filter
-    const visibleEntries = serviceTypeFilter
-        ? dateFilteredEntries.filter(e => e.supervised_by === serviceTypeFilter)
-        : dateFilteredEntries;
+    // Apply keyword search across entries returned by the server (already filtered by date/serviceType/role)
+    const visibleEntries = entries;
 
     // Apply keyword search across all text fields
     const searchFilteredEntries = searchQuery.trim()
@@ -446,11 +428,40 @@ export default function LogbookPage() {
             .catch(console.error);
     }, []);
 
+    const buildLogbookUrl = (params: { dateFrom?: string; dateTo?: string; serviceType?: string; limit?: number }) => {
+        const qs = new URLSearchParams();
+        if (params.dateFrom) qs.set('dateFrom', params.dateFrom);
+        if (params.dateTo) qs.set('dateTo', params.dateTo);
+        if (params.serviceType) qs.set('serviceType', params.serviceType);
+        if (params.limit !== undefined) qs.set('limit', String(params.limit));
+        const str = qs.toString();
+        return '/api/logbook' + (str ? '?' + str : '');
+    };
+
+    const fetchEntries = async (df: string, dt: string, st: string) => {
+        setLoading(true);
+        try {
+            const url = buildLogbookUrl({ dateFrom: df, dateTo: dt, serviceType: st });
+            const res = await fetch(url, { headers: getAuthHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                setEntries(data.entries);
+                setColumns(data.columns);
+                setSelectedIds(new Set());
+            }
+        } catch (error) {
+            console.error('Error fetching logbook entries:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const fetchData = async () => {
         setLoading(true);
         try {
+            const url = buildLogbookUrl({ dateFrom: dateFilter, dateTo: dateFilterTo, serviceType: serviceTypeFilter });
             const [res, funcRes, supRes] = await Promise.all([
-                fetch('/api/logbook', { headers: getAuthHeaders() }),
+                fetch(url, { headers: getAuthHeaders() }),
                 fetch('/api/admin/funcionarios', { headers: getAuthHeaders() }),
                 fetch(`/api/admin/users?role=supervisor`, { headers: getAuthHeaders() })
             ]);
@@ -476,9 +487,16 @@ export default function LogbookPage() {
         }
     };
 
+    const isFirstRender = useRef(true);
+
     useEffect(() => {
         fetchData();
     }, []);
+
+    useEffect(() => {
+        if (isFirstRender.current) { isFirstRender.current = false; return; }
+        fetchEntries(dateFilter, dateFilterTo, serviceTypeFilter);
+    }, [dateFilter, dateFilterTo, serviceTypeFilter]);
 
     const handleUpdateReport = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -703,12 +721,34 @@ export default function LogbookPage() {
     };
 
     const exportToExcel = async () => {
-        const entriesToExport = selectedIds.size > 0
-            ? searchFilteredEntries.filter(e => selectedIds.has(e.id))
-            : searchFilteredEntries;
+        let entriesToExport: LogEntry[];
+
+        if (selectedIds.size > 0) {
+            entriesToExport = searchFilteredEntries.filter(e => selectedIds.has(e.id));
+        } else {
+            // Fetch ALL matching entries from server (no limit) for export
+            const url = buildLogbookUrl({ dateFrom: dateFilter, dateTo: dateFilterTo, serviceType: serviceTypeFilter, limit: 0 });
+            const res = await fetch(url, { headers: getAuthHeaders() });
+            if (!res.ok) { alert('Error al obtener datos para exportar.'); return; }
+            const data = await res.json();
+            entriesToExport = data.entries.map((e: any) => ({
+                ...e,
+                extra_data: e.extra_data || {},
+                images: e.images || []
+            }));
+            // Apply client-side search filter if active
+            if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase();
+                entriesToExport = entriesToExport.filter(e => {
+                    const fields = [e.location, e.sector, e.supervisor, e.staff_member, e.incident, e.report, e.supervised_by,
+                        ...Object.values(e.extra_data || {}).map(String)];
+                    return fields.some(v => v?.toLowerCase().includes(q));
+                });
+            }
+        }
 
         if (entriesToExport.length === 0) {
-            alert('Por favor selecciona al menos un reporte para exportar.');
+            alert('No hay reportes para exportar con los filtros actuales.');
             return;
         }
 
