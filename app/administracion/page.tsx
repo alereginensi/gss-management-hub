@@ -245,7 +245,7 @@ export default function AdminDashboard() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-primary)' }}>{ticket.subject}</span>
-                    {(ticket.isTeamTicket || (ticket as any).is_team_ticket) && (
+                    {!!(ticket.isTeamTicket || (ticket as any).is_team_ticket) && (
                       <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '10px', backgroundColor: 'rgba(139,92,246,0.15)', color: '#7c3aed', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid rgba(139,92,246,0.3)' }}>En equipo</span>
                     )}
                   </div>
@@ -307,7 +307,7 @@ export default function AdminDashboard() {
                         <td style={{ padding: '0.6rem 0.5rem', fontWeight: 500, maxWidth: '200px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden' }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ticket.subject}</span>
-                            {(ticket.isTeamTicket || (ticket as any).is_team_ticket) && (
+                            {!!(ticket.isTeamTicket || (ticket as any).is_team_ticket) && (
                               <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '10px', backgroundColor: 'rgba(139,92,246,0.15)', color: '#7c3aed', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid rgba(139,92,246,0.3)' }}>En equipo</span>
                             )}
                           </div>

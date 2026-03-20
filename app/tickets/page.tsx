@@ -237,7 +237,7 @@ export default function TicketList() {
                                             <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                     {ticket.subject}
-                                                    {(ticket.isTeamTicket || (ticket as any).is_team_ticket) && (
+                                                    {!!(ticket.isTeamTicket || (ticket as any).is_team_ticket) && (
                                                         <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '10px', backgroundColor: 'rgba(139,92,246,0.15)', color: '#7c3aed', fontWeight: 600, whiteSpace: 'nowrap', border: '1px solid rgba(139,92,246,0.3)' }}>En equipo</span>
                                                     )}
                                                 </div>
@@ -290,7 +290,7 @@ export default function TicketList() {
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
                                             <div style={{ fontWeight: 600, fontSize: '1rem' }}>{ticket.subject}</div>
-                                            {(ticket.isTeamTicket || (ticket as any).is_team_ticket) && (
+                                            {!!(ticket.isTeamTicket || (ticket as any).is_team_ticket) && (
                                                 <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '10px', backgroundColor: 'rgba(139,92,246,0.15)', color: '#7c3aed', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0, border: '1px solid rgba(139,92,246,0.3)' }}>En equipo</span>
                                             )}
                                         </div>
