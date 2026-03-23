@@ -93,7 +93,7 @@ export interface User {
     name: string;
     email?: string;
     department: string;
-    role: 'user' | 'admin' | 'supervisor' | 'funcionario' | 'jefe' | 'tecnico';
+    role: 'user' | 'admin' | 'supervisor' | 'funcionario' | 'jefe' | 'tecnico' | 'contador' | 'logistica';
     rubro?: string;
     approved?: boolean;
 }
@@ -525,6 +525,23 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                 }).catch(err => console.error('Error creating supervisor notification:', err));
             }
 
+            // In-App Notification + Email for the collaborator (affectedWorker)
+            const collaboratorUser = allUsers.find(u => u.name === newTicket.affectedWorker);
+            if (collaboratorUser?.id && collaboratorUser.id !== supervisorUser?.id && collaboratorUser.id !== currentUser?.id) {
+                fetch('/api/notifications', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        action: 'create_for_user',
+                        targetUserId: collaboratorUser.id,
+                        ticketId: newId,
+                        ticketSubject: newTicket.subject,
+                        message: `Fuiste agregado como colaborador en el ticket: "${newTicket.subject}" (creado por ${currentUser?.name || 'Admin'})`,
+                        type: 'info'
+                    })
+                }).catch(err => console.error('Error creating collaborator notification:', err));
+            }
+
             // Team ticket: notify each team member (in-app + email)
             const teamTasks = (ticketData as any).teamTasks as Array<{ userId: number; userName: string; task: string }> | undefined;
             if ((ticketData as any).isTeamTicket && Array.isArray(teamTasks) && teamTasks.length > 0) {
@@ -604,7 +621,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     <ul style="list-style: none; padding: 0; margin: 0;">
       <li><strong>📌 Asunto:</strong> ${newTicket.subject}</li>
       <li><strong>👤 Colaborador:</strong> ${newTicket.requester}</li>
-      ${newTicket.affectedWorker ? `<li><strong>👷 Funcionario Afectado:</strong> ${newTicket.affectedWorker}</li>` : ''}
+      ${newTicket.affectedWorker ? `<li><strong>🤝 Colaborador:</strong> ${newTicket.affectedWorker}</li>` : ''}
       <li><strong>📧 Email:</strong> ${currentUser?.email}</li>
       <li><strong>🏢 Sector/Departamento:</strong> ${newTicket.department}</li>
       <li><strong>🚦 Prioridad:</strong> ${newTicket.priority}</li>
@@ -622,10 +639,11 @@ export function TicketProvider({ children }: { children: ReactNode }) {
   </p>
 </div>`.trim();
 
-                // Add supervisor email to the recipients list if available
+                // Add supervisor and collaborator emails to the recipients list if available
                 const finalTo = [...emailList];
-                if (supervisorUser?.email) {
-                    finalTo.push(supervisorUser.email);
+                if (supervisorUser?.email) finalTo.push(supervisorUser.email);
+                if (collaboratorUser?.email && collaboratorUser.email !== supervisorUser?.email) {
+                    finalTo.push(collaboratorUser.email);
                 }
 
                 fetch('/api/notify', {
