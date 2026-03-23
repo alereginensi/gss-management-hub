@@ -38,6 +38,7 @@ export default function NewTicket() {
         location: '',
         sector: ''
     });
+    const [collaboratorList, setCollaboratorList] = useState<{ id: number; name: string; email: string }[]>([]);
     const [files, setFiles] = useState<File[]>([]);
 
     useEffect(() => {
@@ -47,14 +48,17 @@ export default function NewTicket() {
         if (currentUser?.email) {
             setFormData(prev => ({ ...prev, email: currentUser?.email || '' }));
         }
-        // No pre-selection — user must choose explicitly
-        if (currentUser?.role === 'supervisor' && currentUser?.name) {
-            setFormData(prev => ({ ...prev, supervisor: currentUser.name }));
-        }
-        // Load all users for collaborator picker & team ticket builder
+        // Load users for team ticket builder (admin/jefe/supervisor)
         const role = currentUser?.role;
         if (role === 'admin' || role === 'jefe' || role === 'supervisor') {
             fetchAllUsers();
+        }
+        // Load collaborator list for all roles
+        if (currentUser?.id) {
+            fetch('/api/users', { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } })
+                .then(r => r.ok ? r.json() : [])
+                .then(data => setCollaboratorList(Array.isArray(data) ? data : []))
+                .catch(() => {});
         }
     }, [currentUser]);
 
@@ -76,9 +80,7 @@ export default function NewTicket() {
         setTeamTasks(prev => prev.map((t, i) => i === idx ? { ...t, [field]: value } : t));
     };
 
-    const collaboratorUsers = allUsers;
-
-    const teamMemberUsers = collaboratorUsers.filter(u => u.id !== currentUser?.id);
+    const teamMemberUsers = allUsers.filter(u => u.id !== currentUser?.id);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -221,7 +223,6 @@ export default function NewTicket() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const canPickCollaborator = currentUser?.role === 'admin' || currentUser?.role === 'jefe' || currentUser?.role === 'supervisor';
     const canUseTeamMode = currentUser?.role === 'admin' || currentUser?.role === 'jefe' || currentUser?.role === 'supervisor';
 
     return (
@@ -336,49 +337,25 @@ export default function NewTicket() {
                             )}
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                                {/* Collaborator picker */}
+                                {/* Solicitante (readonly, auto-filled) */}
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Colaborador</label>
-                                    {canPickCollaborator ? (
-                                        <select
-                                            name="supervisor"
-                                            value={formData.supervisor}
-                                            onChange={handleInputChange}
-                                            style={{
-                                                width: '100%',
-                                                padding: '0.75rem',
-                                                borderRadius: 'var(--radius)',
-                                                border: '1px solid var(--border-color)',
-                                                fontSize: '1rem',
-                                                backgroundColor: 'var(--surface-color)',
-                                                color: 'var(--text-primary)'
-                                            }}
-                                        >
-                                            <option value="">Seleccionar Colaborador...</option>
-                                            {collaboratorUsers.map(sup => (
-                                                <option key={sup.id} value={sup.name}>{sup.name}</option>
-                                            ))}
-                                        </select>
-                                    ) : (
-                                        <input
-                                            type="text"
-                                            name="supervisor"
-                                            value={formData.supervisor}
-                                            readOnly
-                                            placeholder="Auto-asignado"
-                                            style={{
-                                                width: '100%',
-                                                padding: '0.75rem',
-                                                borderRadius: 'var(--radius)',
-                                                border: '1px solid var(--border-color)',
-                                                fontSize: '1rem',
-                                                backgroundColor: 'var(--background-color)',
-                                                color: 'var(--text-primary)',
-                                                opacity: 0.8,
-                                                cursor: 'not-allowed'
-                                            }}
-                                        />
-                                    )}
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Solicitante</label>
+                                    <input
+                                        type="text"
+                                        value={formData.name}
+                                        readOnly
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            borderRadius: 'var(--radius)',
+                                            border: '1px solid var(--border-color)',
+                                            fontSize: '1rem',
+                                            backgroundColor: 'var(--background-color)',
+                                            color: 'var(--text-primary)',
+                                            opacity: 0.8,
+                                            cursor: 'not-allowed'
+                                        }}
+                                    />
                                 </div>
 
                                 <div>
@@ -403,28 +380,6 @@ export default function NewTicket() {
                                     />
                                 </div>
 
-                                {currentUser?.role !== 'supervisor' && (
-                                    <div style={{ gridColumn: '1 / -1' }}>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Nombre Completo *</label>
-                                        <input
-                                            type="text"
-                                            name="name"
-                                            required
-                                            value={formData.name}
-                                            onChange={handleInputChange}
-                                            placeholder="Tu nombre y apellido"
-                                            style={{
-                                                width: '100%',
-                                                padding: '0.75rem',
-                                                borderRadius: 'var(--radius)',
-                                                border: '1px solid var(--border-color)',
-                                                fontSize: '1rem',
-                                                backgroundColor: 'var(--surface-color)',
-                                                color: 'var(--text-primary)'
-                                            }}
-                                        />
-                                    </div>
-                                )}
 
                                 <div style={{ gridColumn: '1 / -1' }}>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Asunto</label>
@@ -448,13 +403,11 @@ export default function NewTicket() {
                                 </div>
 
                                 <div style={{ gridColumn: '1 / -1' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Funcionario Afectado (Opcional)</label>
-                                    <input
-                                        type="text"
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Colaborador (Opcional)</label>
+                                    <select
                                         name="affectedWorker"
                                         value={formData.affectedWorker}
                                         onChange={handleInputChange}
-                                        placeholder="Nombre del funcionario (si es diferente al solicitante)"
                                         style={{
                                             width: '100%',
                                             padding: '0.75rem',
@@ -464,7 +417,15 @@ export default function NewTicket() {
                                             backgroundColor: 'var(--surface-color)',
                                             color: 'var(--text-primary)'
                                         }}
-                                    />
+                                    >
+                                        <option value="">Sin colaborador</option>
+                                        {collaboratorList
+                                            .filter(u => u.name !== formData.name)
+                                            .map(u => (
+                                                <option key={u.id} value={u.name}>{u.name}</option>
+                                            ))
+                                        }
+                                    </select>
                                 </div>
 
                                 <div style={{ gridColumn: '1 / -1' }}>
