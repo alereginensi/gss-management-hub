@@ -620,7 +620,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
   <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; border-left: 4px solid #2563eb;">
     <ul style="list-style: none; padding: 0; margin: 0;">
       <li><strong>📌 Asunto:</strong> ${newTicket.subject}</li>
-      <li><strong>👤 Colaborador:</strong> ${newTicket.requester}</li>
+      <li><strong>👤 Solicitante:</strong> ${newTicket.requester}</li>
       ${newTicket.affectedWorker ? `<li><strong>🤝 Colaborador:</strong> ${newTicket.affectedWorker}</li>` : ''}
       <li><strong>📧 Email:</strong> ${currentUser?.email}</li>
       <li><strong>🏢 Sector/Departamento:</strong> ${newTicket.department}</li>
