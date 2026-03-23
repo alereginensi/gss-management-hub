@@ -76,10 +76,7 @@ export default function NewTicket() {
         setTeamTasks(prev => prev.map((t, i) => i === idx ? { ...t, [field]: value } : t));
     };
 
-    const collaboratorUsers = allUsers.filter(u => {
-        const r = u.role?.toLowerCase();
-        return r === 'supervisor' || r === 'admin' || r === 'jefe';
-    });
+    const collaboratorUsers = allUsers;
 
     const teamMemberUsers = collaboratorUsers.filter(u => u.id !== currentUser?.id);
 
@@ -224,7 +221,7 @@ export default function NewTicket() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const canPickCollaborator = currentUser?.role === 'admin' || currentUser?.role === 'jefe';
+    const canPickCollaborator = currentUser?.role === 'admin' || currentUser?.role === 'jefe' || currentUser?.role === 'supervisor';
     const canUseTeamMode = currentUser?.role === 'admin' || currentUser?.role === 'jefe' || currentUser?.role === 'supervisor';
 
     return (
