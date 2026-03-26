@@ -28,6 +28,7 @@ export async function GET(
         const isJefe = userRole === 'jefe' && ticket.department === session.user.department;
         const isRequester = ticket.requester_email === userEmail;
         const isSupervisorField = ticket.supervisor === session.user.name;
+        const isAffectedWorker = ticket.affected_worker === session.user.name;
 
         const collaboratorRow = await db.prepare('SELECT 1 FROM ticket_collaborators WHERE ticket_id = ? AND user_id = ?').get(ticketId, userId) as any;
         const isCollaborator = !!collaboratorRow;
@@ -35,7 +36,7 @@ export async function GET(
         const teamTaskRow = await db.prepare('SELECT 1 FROM team_ticket_tasks WHERE ticket_id = ? AND user_id = ?').get(ticketId, userId) as any;
         const isTeamMember = !!teamTaskRow;
 
-        if (!isAdmin && !isJefe && !isRequester && !isSupervisorField && !isCollaborator && !isTeamMember) {
+        if (!isAdmin && !isJefe && !isRequester && !isSupervisorField && !isAffectedWorker && !isCollaborator && !isTeamMember) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 

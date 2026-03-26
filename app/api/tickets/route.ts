@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json(mappedTickets);
         }
 
-        // Default: user sees only tickets they created, are collaborators on, assigned supervisor, or are in team tasks
+        // Default: user sees only tickets they created, are collaborators on, assigned supervisor, affected worker, or are in team tasks
         const rawTickets = await db.prepare(`
             SELECT DISTINCT t.* FROM tickets t
             LEFT JOIN ticket_collaborators tc ON t.id = tc.ticket_id
@@ -148,8 +148,9 @@ export async function GET(request: NextRequest) {
                OR tc.user_id = ?
                OR ttt.user_id = ?
                OR (t.supervisor = ? AND t.supervisor IS NOT NULL AND t.supervisor != '')
+               OR (t.affected_worker = ? AND t.affected_worker IS NOT NULL AND t.affected_worker != '')
             ORDER BY t.created_at DESC
-        `).all(userEmail, userId, userId, session.user.name) as any[];
+        `).all(userEmail, userId, userId, session.user.name, session.user.name) as any[];
 
         const tickets = await Promise.all(rawTickets.map(async (ticket) => {
             const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
