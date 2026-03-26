@@ -104,16 +104,22 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
         
         // Only record if user is NOT the requester
         if (ticket.requesterEmail !== currentUser.email) {
-            const hasAlreadyViewed = ticket.viewedBy?.some((v: any) => v.id === currentUser.id);
-            if (!hasAlreadyViewed) {
-                const token = localStorage.getItem('authToken');
-                fetch(`/api/tickets/${ticketId}/view`, {
-                    method: 'POST',
-                    headers: token ? { Authorization: `Bearer ${token}` } : {}
-                }).catch(err => console.error('Error recording view:', err));
+            // AND user is relevant (supervisor, collaborator, team member, or same department)
+            const isSupervisorMatch = ticket.supervisor && ticket.supervisor.trim().toLowerCase() === currentUser.name.trim().toLowerCase();
+            const isDeptMatch = ticket.department && ticket.department.split(',').map((d: string) => d.trim().toLowerCase()).includes(currentUser.department?.toLowerCase());
+            
+            if (isSupervisorMatch || isDeptMatch || isCollaborator || isTeamMember) {
+                const hasAlreadyViewed = ticket.viewedBy?.some((v: any) => v.id === currentUser.id);
+                if (!hasAlreadyViewed) {
+                    const token = localStorage.getItem('authToken');
+                    fetch(`/api/tickets/${ticketId}/view`, {
+                        method: 'POST',
+                        headers: token ? { Authorization: `Bearer ${token}` } : {}
+                    }).catch(err => console.error('Error recording view:', err));
+                }
             }
         }
-    }, [ticket?.requesterEmail, currentUser?.email, ticketId]);
+    }, [ticket?.requesterEmail, ticket?.supervisor, ticket?.department, isCollaborator, isTeamMember, currentUser?.email, currentUser?.name, currentUser?.department, ticketId]);
 
     const handleCompleteTask = async (taskId: number) => {
         setCompletingTask(taskId);
