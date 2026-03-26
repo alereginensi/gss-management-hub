@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
+import { getSession } from '@/lib/auth-server';
+import { NextRequest } from 'next/server';
 
 // GET /api/tickets/[id]/collaborators - Get all collaborators for a ticket
 export async function GET(
@@ -34,9 +36,14 @@ export async function GET(
 
 // POST /api/tickets/[id]/collaborators - Add a collaborator to a ticket
 export async function POST(
-    request: Request,
+    request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    const session = await getSession(request);
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const { id: ticketId } = await params;
         const { userId, addedBy } = await request.json();
@@ -52,7 +59,7 @@ export async function POST(
         }
 
         // Verify ticket exists
-        const ticket = await db.prepare('SELECT id FROM tickets WHERE id = ?').get(ticketId);
+        const ticket = await db.prepare('SELECT id, subject, status_color FROM tickets WHERE id = ?').get(ticketId) as { id: string; subject: string; status_color: string } | undefined;
         if (!ticket) {
             return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
         }
@@ -68,6 +75,26 @@ export async function POST(
             INSERT INTO ticket_collaborators (ticket_id, user_id, added_by)
             VALUES (?, ?, ?)
         `).run(ticketId, userId, addedBy);
+
+        // Insert in-app notification for the collaborator
+        const notifMessage = `Has sido agregado como colaborador al ticket: ${ticket.subject}`;
+        await db.prepare(`
+            INSERT INTO notifications (user_id, ticket_id, ticket_subject, message, type, status_color)
+            VALUES (?, ?, ?, ?, 'info', ?)
+        `).run(user.id, ticketId, ticket.subject, notifMessage, ticket.status_color || null);
+
+        // Send email notification (non-blocking)
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${request.headers.get('x-forwarded-proto') || 'http'}://${request.headers.get('host')}`;
+        fetch(`${baseUrl}/api/notify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': request.headers.get('Authorization') || '' },
+            body: JSON.stringify({
+                to: user.email,
+                subject: `Fuiste agregado como colaborador: ${ticket.subject}`,
+                body: `<p>Hola ${user.name},</p><p>Has sido agregado como colaborador al ticket <strong>${ticket.subject}</strong>.</p><p>Puedes ver el ticket en: <a href="${baseUrl}/tickets/${ticketId}">${baseUrl}/tickets/${ticketId}</a></p>`,
+                ticketData: { id: ticketId }
+            })
+        }).catch((err) => console.error('Collaborator email notification failed:', err));
 
         return NextResponse.json({
             success: true,

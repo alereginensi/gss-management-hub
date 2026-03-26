@@ -108,7 +108,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
             const fd = new FormData();
             fd.append('file', file);
             const token = localStorage.getItem('authToken');
-            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+            const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
             const res = await fetch('/api/tickets/upload', { method: 'POST', headers, body: fd });
             if (!res.ok) { alert('Error al subir el archivo'); return; }
             const { url } = await res.json();

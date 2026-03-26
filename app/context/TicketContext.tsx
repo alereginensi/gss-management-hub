@@ -368,7 +368,20 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         };
 
         restoreSession();
-        return () => window.removeEventListener('resize', checkMobile);
+
+        // Poll tickets and notifications every 60 seconds so collaborators
+        // see newly assigned tickets without requiring a manual refresh
+        const pollInterval = setInterval(() => {
+            if (isAuthenticatedRef.current) {
+                fetchTickets();
+                fetchNotifications();
+            }
+        }, 60000);
+
+        return () => {
+            window.removeEventListener('resize', checkMobile);
+            clearInterval(pollInterval);
+        };
     }, []);
 
     const updateSystemSettings = async (newSettings: Record<string, string>) => {
