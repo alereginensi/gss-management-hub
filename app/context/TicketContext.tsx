@@ -98,6 +98,18 @@ export interface User {
     role: 'user' | 'admin' | 'supervisor' | 'funcionario' | 'jefe' | 'tecnico' | 'contador' | 'logistica';
     rubro?: string;
     approved?: boolean;
+    modules?: string; // comma-separated: "logistica,tecnico,cotizacion"
+}
+
+export function hasModuleAccess(user: User, mod: 'logistica' | 'tecnico' | 'cotizacion'): boolean {
+    if (user.role === 'admin') return true;
+    if (mod === 'logistica' && user.role === 'logistica') return true;
+    if (mod === 'tecnico' && user.role === 'tecnico') return true;
+    if (mod === 'cotizacion' && user.role === 'contador') return true;
+    if (user.modules) {
+        return user.modules.split(',').map(m => m.trim()).includes(mod);
+    }
+    return false;
 }
 
 interface TicketContextType {

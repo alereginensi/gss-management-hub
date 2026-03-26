@@ -3,8 +3,8 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Briefcase, Shield, LogOut } from 'lucide-react';
-import { useTicketContext } from './context/TicketContext';
+import { Briefcase, Shield, LogOut, Package, Calculator } from 'lucide-react';
+import { useTicketContext, hasModuleAccess } from './context/TicketContext';
 
 const cardHoverOn = (e: React.MouseEvent<HTMLDivElement>) => {
   e.currentTarget.style.transform = 'translateY(-4px)';
@@ -71,7 +71,7 @@ export default function Landing() {
         gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
         gap: '1.5rem',
         width: '100%',
-        maxWidth: '620px'
+        maxWidth: '900px'
       }}>
         <Link href="/administracion" style={{ textDecoration: 'none' }}>
           <div
@@ -101,7 +101,7 @@ export default function Landing() {
           </div>
         </Link>
 
-        {(currentUser.role === 'admin' || currentUser.role === 'tecnico') ? (
+        {hasModuleAccess(currentUser, 'tecnico') ? (
           <Link href="/seguridad-electronica" style={{ textDecoration: 'none' }}>
             <div
               style={{
@@ -135,6 +135,80 @@ export default function Landing() {
             </div>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#94a3b8', margin: 0 }}>Seguridad Electrónica</h2>
             <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>Necesitás ser Técnico para acceder a esta sección</p>
+          </div>
+        )}
+
+        {hasModuleAccess(currentUser, 'logistica') ? (
+          <Link href="/logistica" style={{ textDecoration: 'none' }}>
+            <div
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                padding: '2.5rem 2rem', gap: '1rem', cursor: 'pointer',
+                transition: 'transform 0.18s, box-shadow 0.18s, background-color 0.18s',
+                minHeight: '180px', textAlign: 'center',
+                backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)',
+                boxShadow: '0 4px 12px rgba(41,65,107,0.2)'
+              }}
+              onMouseOver={cardHoverOn}
+              onMouseOut={cardHoverOff}
+            >
+              <div style={{ padding: '0.9rem', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>
+                <Package size={36} color="white" />
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', margin: 0 }}>Logística</h2>
+              <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', margin: 0 }}>Solicitudes de materiales y órdenes de compra</p>
+            </div>
+          </Link>
+        ) : (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: '2.5rem 2rem', gap: '1rem', cursor: 'not-allowed',
+            minHeight: '180px', textAlign: 'center',
+            backgroundColor: '#e2e8f0', borderRadius: 'var(--radius)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ padding: '0.9rem', backgroundColor: 'rgba(100,116,139,0.15)', borderRadius: '50%' }}>
+              <Package size={36} color="#94a3b8" />
+            </div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#94a3b8', margin: 0 }}>Logística</h2>
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>Sin acceso a esta sección</p>
+          </div>
+        )}
+
+        {hasModuleAccess(currentUser, 'cotizacion') ? (
+          <Link href="/cotizacion" style={{ textDecoration: 'none' }}>
+            <div
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                padding: '2.5rem 2rem', gap: '1rem', cursor: 'pointer',
+                transition: 'transform 0.18s, box-shadow 0.18s, background-color 0.18s',
+                minHeight: '180px', textAlign: 'center',
+                backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)',
+                boxShadow: '0 4px 12px rgba(41,65,107,0.2)'
+              }}
+              onMouseOver={cardHoverOn}
+              onMouseOut={cardHoverOff}
+            >
+              <div style={{ padding: '0.9rem', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>
+                <Calculator size={36} color="white" />
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', margin: 0 }}>Cotización</h2>
+              <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', margin: 0 }}>Tarifas, liquidaciones y reportes</p>
+            </div>
+          </Link>
+        ) : (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: '2.5rem 2rem', gap: '1rem', cursor: 'not-allowed',
+            minHeight: '180px', textAlign: 'center',
+            backgroundColor: '#e2e8f0', borderRadius: 'var(--radius)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ padding: '0.9rem', backgroundColor: 'rgba(100,116,139,0.15)', borderRadius: '50%' }}>
+              <Calculator size={36} color="#94a3b8" />
+            </div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#94a3b8', margin: 0 }}>Cotización</h2>
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>Sin acceso a esta sección</p>
           </div>
         )}
       </div>

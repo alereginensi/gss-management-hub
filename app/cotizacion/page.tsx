@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, BarChart3, DollarSign, ClipboardList, FileSpreadsheet, LogOut } from 'lucide-react';
-import { useTicketContext } from '@/app/context/TicketContext';
+import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 
 const MENU_ITEMS = [
     { label: 'Panel', href: '/cotizacion/panel', icon: BarChart3 },
@@ -20,7 +20,7 @@ export default function CotizacionPage() {
     useEffect(() => {
         if (loading) return;
         if (!isAuthenticated) router.push('/login');
-        else if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'contador') router.push('/');
+        else if (currentUser && !hasModuleAccess(currentUser, 'cotizacion')) router.push('/');
     }, [loading, isAuthenticated, currentUser, router]);
 
     if (loading || !currentUser) return null;
@@ -37,7 +37,7 @@ export default function CotizacionPage() {
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{currentUser.name}</span>
             </header>
 
-            <main className="hub-main standalone-page" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', marginLeft: 0 }}>
+            <main className="hub-main standalone-page" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
                     <div style={{ textAlign: 'center' }}>
                         <h1 style={{ color: 'var(--text-primary)', fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.35rem' }}>MENÚ PRINCIPAL</h1>

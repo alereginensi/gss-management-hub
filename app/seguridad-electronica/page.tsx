@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Video, Wrench, History, LogOut } from 'lucide-react';
-import { useTicketContext } from '@/app/context/TicketContext';
+import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 
 const MENU_ITEMS = [
     { label: 'Historial\nMonitoreo', href: '/seguridad-electronica/historial?tipo=monitoreo', icon: History },
@@ -20,7 +20,7 @@ export default function SeguridadElectronicaPage() {
     useEffect(() => {
         if (loading) return;
         if (!isAuthenticated) router.push('/login');
-        else if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'tecnico') router.push('/');
+        else if (currentUser && !hasModuleAccess(currentUser, 'tecnico')) router.push('/');
     }, [loading, isAuthenticated, currentUser, router]);
 
     if (loading || !currentUser) return null;
@@ -54,61 +54,30 @@ export default function SeguridadElectronicaPage() {
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{currentUser.name}</span>
             </header>
 
-            {/* Title + Grid centered together */}
-            <main style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '2rem',
-                marginLeft: 0
-            }}>
+            <main className="hub-main standalone-page" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
                     <div style={{ textAlign: 'center' }}>
                         <h1 style={{ color: 'var(--text-primary)', fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.35rem' }}>MENÚ PRINCIPAL</h1>
                         <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>Operaciones de Seguridad Electrónica</p>
                     </div>
-                <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: '1rem',
-                    width: '480px',
-                    maxWidth: '100%'
-                }}>
-                    {MENU_ITEMS.map((item) => {
-                        const Icon = item.icon;
-                        return (
-                            <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
-                                <div
-                                    style={{
-                                        backgroundColor: 'var(--primary-color)',
-                                        borderRadius: 'var(--radius)',
-                                        padding: '1.75rem 1rem',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        gap: '0.75rem',
-                                        cursor: 'pointer',
-                                        transition: 'transform 0.15s, background-color 0.15s, box-shadow 0.15s',
-                                        color: 'white',
-                                        textAlign: 'center',
-                                        fontWeight: 600,
-                                        fontSize: '0.9rem',
-                                        lineHeight: 1.3,
-                                        minHeight: '130px',
-                                        justifyContent: 'center',
-                                        boxShadow: '0 4px 12px rgba(41,65,107,0.2)'
-                                    }}
-                                    onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#1e3a8a'; e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(41,65,107,0.35)'; }}
-                                    onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-color)'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(41,65,107,0.2)'; }}
-                                >
-                                    <Icon size={32} color="white" />
-                                    <span style={{ whiteSpace: 'pre-line' }}>{item.label}</span>
-                                </div>
-                            </Link>
-                        );
-                    })}
-                </div>
+                    <div className="hub-menu-grid">
+                        {MENU_ITEMS.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                                <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+                                    <div
+                                        className="hub-menu-card"
+                                        style={{ backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)', transition: 'transform 0.15s, background-color 0.15s, box-shadow 0.15s', boxShadow: '0 4px 12px rgba(41,65,107,0.2)' }}
+                                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#1e3a8a'; e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(41,65,107,0.35)'; }}
+                                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-color)'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(41,65,107,0.2)'; }}
+                                    >
+                                        <Icon size={32} color="white" />
+                                        <span style={{ whiteSpace: 'pre-line' }}>{item.label}</span>
+                                    </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
                 </div>
             </main>
 

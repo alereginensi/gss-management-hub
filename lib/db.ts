@@ -314,6 +314,30 @@ class DbWrapper {
         created_by TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS logistics_shipments (
+        id SERIAL PRIMARY KEY,
+        tracking_number TEXT,
+        recipient TEXT NOT NULL,
+        destination TEXT NOT NULL,
+        date_sent TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        weight REAL,
+        declared_value REAL,
+        description TEXT,
+        notes TEXT,
+        invoice_image_url TEXT,
+        created_by TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS logistics_shipment_comments (
+        id SERIAL PRIMARY KEY,
+        shipment_id INTEGER NOT NULL REFERENCES logistics_shipments(id) ON DELETE CASCADE,
+        user_name TEXT NOT NULL,
+        comment TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `;
 
     if (this.type === 'pg') {
@@ -587,6 +611,41 @@ class DbWrapper {
             await this.pgPool!.query('ALTER TABLE purchase_orders ADD COLUMN received_items TEXT');
           }
         } catch (e) {}
+        try {
+          const userCols = await this.pgPool!.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'users'`);
+          const userColNames = userCols.rows.map((r: any) => r.column_name);
+          if (!userColNames.includes('modules')) {
+            await this.pgPool!.query('ALTER TABLE users ADD COLUMN modules TEXT');
+          }
+        } catch (e) {}
+        try {
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS logistics_shipments (
+              id SERIAL PRIMARY KEY,
+              tracking_number TEXT,
+              recipient TEXT NOT NULL,
+              destination TEXT NOT NULL,
+              date_sent TEXT NOT NULL,
+              status TEXT DEFAULT 'pending',
+              weight REAL,
+              declared_value REAL,
+              description TEXT,
+              notes TEXT,
+              invoice_image_url TEXT,
+              created_by TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS logistics_shipment_comments (
+              id SERIAL PRIMARY KEY,
+              shipment_id INTEGER NOT NULL REFERENCES logistics_shipments(id) ON DELETE CASCADE,
+              user_name TEXT NOT NULL,
+              comment TEXT NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+        } catch (e) {}
 
         // Ensure folders and ticket_folder tables exist (migration for existing DBs)
         try {
@@ -828,6 +887,43 @@ class DbWrapper {
         if (!poCols.includes('received_items')) {
           this.sqliteDb.exec('ALTER TABLE purchase_orders ADD COLUMN received_items TEXT');
         }
+      } catch (e) {}
+      // users: add modules
+      try {
+        const userInfo = this.sqliteDb.prepare("PRAGMA table_info(users)").all() as any[];
+        const userCols = userInfo.map((c: any) => c.name);
+        if (!userCols.includes('modules')) {
+          this.sqliteDb.exec('ALTER TABLE users ADD COLUMN modules TEXT');
+        }
+      } catch (e) {}
+      // logistics_shipments and comments tables
+      try {
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS logistics_shipments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tracking_number TEXT,
+            recipient TEXT NOT NULL,
+            destination TEXT NOT NULL,
+            date_sent TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            weight REAL,
+            declared_value REAL,
+            description TEXT,
+            notes TEXT,
+            invoice_image_url TEXT,
+            created_by TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS logistics_shipment_comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            shipment_id INTEGER NOT NULL REFERENCES logistics_shipments(id) ON DELETE CASCADE,
+            user_name TEXT NOT NULL,
+            comment TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
       } catch (e) {}
 
       // Seed funcionarios_list for SQLite

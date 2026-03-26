@@ -57,7 +57,8 @@ export async function POST(request: Request) {
             email: user.email,
             department: user.department,
             role: user.role,
-            rubro: user.rubro
+            rubro: user.rubro,
+            modules: user.modules ?? null
         });
 
         const response = NextResponse.json({
@@ -68,7 +69,8 @@ export async function POST(request: Request) {
                 email: user.email,
                 department: user.department,
                 role: user.role,
-                rubro: user.rubro
+                rubro: user.rubro,
+                modules: user.modules ?? null
             },
             token: sessionToken // Return token for client-side storage (fallback)
         });

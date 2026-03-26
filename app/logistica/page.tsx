@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Globe, Package, ShoppingCart, ClipboardList, LogOut } from 'lucide-react';
-import { useTicketContext } from '@/app/context/TicketContext';
+import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 
 const AGENDA_URL = 'https://capable-possibility-production-8da3.up.railway.app/login';
 
@@ -15,7 +15,7 @@ export default function LogisticaPage() {
     useEffect(() => {
         if (loading) return;
         if (!isAuthenticated) router.push('/login');
-        else if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'logistica') router.push('/');
+        else if (currentUser && !hasModuleAccess(currentUser, 'logistica')) router.push('/');
     }, [loading, isAuthenticated, currentUser, router]);
 
     if (loading || !currentUser) return null;
@@ -31,7 +31,7 @@ export default function LogisticaPage() {
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{currentUser.name}</span>
             </header>
 
-            <main className="hub-main" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', marginLeft: 0 }}>
+            <main className="hub-main standalone-page" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 0 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
                     <div style={{ textAlign: 'center' }}>
                         <h1 style={{ color: 'var(--text-primary)', fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.35rem' }}>MENÚ PRINCIPAL</h1>
@@ -53,7 +53,7 @@ export default function LogisticaPage() {
                         </a>
 
                         {/* Envíos al Interior — internal link */}
-                        <Link href="/logistica/envios-dac" style={{ textDecoration: 'none' }}>
+                        <Link href="/logistica/envios" style={{ textDecoration: 'none' }}>
                             <div
                                 className="hub-menu-card"
                                 style={{ backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)', transition: 'transform 0.15s, background-color 0.15s, box-shadow 0.15s', boxShadow: '0 4px 12px rgba(41,65,107,0.2)' }}

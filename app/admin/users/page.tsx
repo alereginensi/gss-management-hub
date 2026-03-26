@@ -11,7 +11,7 @@ export default function UserManagement() {
     const [loading, setLoading] = useState(false);
     const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', department: 'Administración' });
     const [editingUser, setEditingUser] = useState<any>(null);
-    const [editForm, setEditForm] = useState({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '' });
+    const [editForm, setEditForm] = useState({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '', modules: '' });
     const [assignedWorkers, setAssignedWorkers] = useState<number[]>([]);
     const [funcionarios, setFuncionarios] = useState<any[]>([]);
     const [showApprovedUsers, setShowApprovedUsers] = useState(false);
@@ -137,7 +137,8 @@ export default function UserManagement() {
             role: user.role || 'user',
             rubro: user.rubro || '',
             password: '',
-            confirmPassword: ''
+            confirmPassword: '',
+            modules: user.modules || ''
         });
 
         // Always reset assigned workers first
@@ -178,7 +179,8 @@ export default function UserManagement() {
                 email: editForm.email,
                 department: editForm.department,
                 role: editForm.role,
-                rubro: editForm.rubro
+                rubro: editForm.rubro,
+                modules: editForm.modules || null
             };
 
             // Only include password if it was provided
@@ -231,7 +233,7 @@ export default function UserManagement() {
         setEditingUser(null);
         setAssignedWorkers([]);
         setFuncionarios([]);
-        setEditForm({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '' });
+        setEditForm({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '', modules: '' });
     };
 
     if (currentUser?.role !== 'admin') {
@@ -583,11 +585,44 @@ export default function UserManagement() {
                                 >
                                     <option value="supervisor">Supervisor</option>
                                     <option value="jefe">Jefe de Departamento</option>
-                                    <option value="tecnico">Técnico</option>
                                     <option value="admin">Administrador</option>
                                 </select>
                             </div>
 
+                            {editForm.role !== 'admin' && (
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Acceso a módulos</label>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: 'var(--radius)' }}>
+                                        {[
+                                            { key: 'logistica', label: 'Logística' },
+                                            { key: 'tecnico', label: 'Seguridad Electrónica' },
+                                            { key: 'cotizacion', label: 'Cotización' },
+                                        ].map(mod => {
+                                            const activeMods = editForm.modules ? editForm.modules.split(',').filter(m => m) : [];
+                                            const checked = activeMods.includes(mod.key);
+                                            return (
+                                                <label key={mod.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={(e) => {
+                                                            const current = editForm.modules ? editForm.modules.split(',').filter(m => m) : [];
+                                                            const updated = e.target.checked
+                                                                ? [...current, mod.key]
+                                                                : current.filter(m => m !== mod.key);
+                                                            setEditForm({ ...editForm, modules: updated.join(',') });
+                                                        }}
+                                                    />
+                                                    {mod.label}
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0.35rem 0 0' }}>
+                                        Los módulos marcados se suman al rol principal. El Administrador siempre tiene acceso total.
+                                    </p>
+                                </div>
+                            )}
 
                             {editForm.role === 'supervisor' && (
                                 <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
