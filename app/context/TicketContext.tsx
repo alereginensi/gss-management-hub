@@ -369,8 +369,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
 
         restoreSession();
 
-        // Poll tickets and notifications every 60 seconds so collaborators
-        // see newly assigned tickets without requiring a manual refresh
+        // Poll tickets and notifications every 60 seconds
         const pollInterval = setInterval(() => {
             if (isAuthenticatedRef.current) {
                 fetchTickets();
@@ -378,9 +377,20 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             }
         }, 60000);
 
+        // Also refresh immediately when the tab regains focus
+        // so collaborators see new tickets as soon as they open the app
+        const handleVisibilityChange = () => {
+            if (!document.hidden && isAuthenticatedRef.current) {
+                fetchTickets();
+                fetchNotifications();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         return () => {
             window.removeEventListener('resize', checkMobile);
             clearInterval(pollInterval);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
     }, []);
 

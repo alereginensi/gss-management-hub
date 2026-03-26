@@ -8,7 +8,7 @@ import { useTicketContext } from '../../context/TicketContext';
 import { useState, use, useEffect, useRef } from 'react';
 
 export default function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
-    const { tickets, getActivitiesByTicket, addActivity, updateTicketStatus, currentUser, transferTicket, addCollaborator, removeCollaborator, getTicketCollaborators, allUsers, fetchAllUsers, loadTicketActivities, isSidebarOpen, isMobile, loading, folders, addTicketToFolder, removeTicketFromFolder, getTicketFolderId, fetchTickets } = useTicketContext() as any;
+    const { tickets, getActivitiesByTicket, addActivity, updateTicketStatus, currentUser, transferTicket, addCollaborator, removeCollaborator, getTicketCollaborators, allUsers, fetchAllUsers, loadTicketActivities, isSidebarOpen, isMobile, loading, folders, addTicketToFolder, removeTicketFromFolder, getTicketFolderId, fetchTickets, getAuthHeaders } = useTicketContext() as any;
     const router = useRouter();
     const [comment, setComment] = useState('');
     const commentRef = useRef<HTMLTextAreaElement>(null);
@@ -557,29 +557,18 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                                 if (isDownloading) return;
                                                 setDownloadingFile(trimmedUrl);
                                                 try {
-                                                    const res = await fetch(trimmedUrl);
+                                                    const proxyUrl = `/api/download?url=${encodeURIComponent(trimmedUrl)}&filename=${encodeURIComponent(fileName)}`;
+                                                    const res = await fetch(proxyUrl, { headers: getAuthHeaders() });
                                                     if (!res.ok) { alert('Error al descargar el archivo'); return; }
                                                     const blob = await res.blob();
+                                                    const disposition = res.headers.get('content-disposition') || '';
+                                                    const nameMatch = disposition.match(/filename\*?=(?:UTF-8'')?([^;\r\n"]+)/i);
+                                                    const downloadName = nameMatch
+                                                        ? decodeURIComponent(nameMatch[1].replace(/"/g, ''))
+                                                        : fileName;
                                                     const blobUrl = URL.createObjectURL(blob);
                                                     const a = document.createElement('a');
                                                     a.href = blobUrl;
-                                                    // Detect extension from MIME type in case Cloudinary strips it from URL
-                                                    const mimeToExt: Record<string, string> = {
-                                                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
-                                                        'application/msword': '.doc',
-                                                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
-                                                        'application/vnd.ms-excel': '.xls',
-                                                        'application/pdf': '.pdf',
-                                                        'text/plain': '.txt',
-                                                        'image/jpeg': '.jpg',
-                                                        'image/png': '.png',
-                                                        'image/gif': '.gif',
-                                                        'image/webp': '.webp',
-                                                    };
-                                                    const detectedExt = mimeToExt[blob.type] ?? '';
-                                                    const downloadName = detectedExt && !fileName.toLowerCase().endsWith(detectedExt)
-                                                        ? fileName + detectedExt
-                                                        : fileName;
                                                     a.download = downloadName;
                                                     a.click();
                                                     URL.revokeObjectURL(blobUrl);
