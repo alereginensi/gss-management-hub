@@ -214,15 +214,24 @@ export function TicketProvider({ children }: { children: ReactNode }) {
 
     const fetchAllUsers = async () => {
         try {
-            const res = await fetch('/api/admin/users', { headers: getAuthHeaders() });
+            const role = currentUser?.role?.toLowerCase();
+            const isAdmin = role === 'admin' || role === 'supervisor' || role === 'jefe';
+            const endpoint = isAdmin ? '/api/admin/users' : '/api/users';
+
+            const res = await fetch(endpoint, { headers: getAuthHeaders() });
             if (res.ok) {
                 const data = await res.json();
-                // API returns array directly, not { users: [] }
-                const pending = data.filter((u: User) => !u.approved);
-                const approved = data.filter((u: User) => u.approved);
-                setPendingUsers(pending);
-                setAllUsers(approved);
-                console.log('✅ Users loaded - Approved:', approved.length, 'Pending:', pending.length);
+                if (isAdmin) {
+                    const pending = data.filter((u: User) => !u.approved);
+                    const approved = data.filter((u: User) => u.approved);
+                    setPendingUsers(pending);
+                    setAllUsers(approved);
+                    console.log('✅ Users loaded (Admin API) - Approved:', approved.length, 'Pending:', pending.length);
+                } else {
+                    setPendingUsers([]);
+                    setAllUsers(data);
+                    console.log('✅ Users loaded (Public API) - Count:', data.length);
+                }
             }
         } catch (error) {
             console.error('Error fetching users:', error);
