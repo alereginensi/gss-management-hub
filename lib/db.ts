@@ -558,6 +558,36 @@ class DbWrapper {
           console.error('❌ Error migrating logbook table in Postgres:', migErr);
         }
 
+        // Ensure ticket_views exists for Postgres
+        try {
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS ticket_views (
+              ticket_id TEXT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (ticket_id, user_id)
+            )
+          `);
+        } catch (vErr) {
+          console.error('❌ Error creating ticket_views table in Postgres:', vErr);
+        }
+
+        // Ensure material_requests has file_url and purchase_orders has received_items
+        try {
+          const mrCols = await this.pgPool!.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'material_requests'`);
+          const mrColNames = mrCols.rows.map((r: any) => r.column_name);
+          if (!mrColNames.includes('file_url')) {
+            await this.pgPool!.query('ALTER TABLE material_requests ADD COLUMN file_url TEXT');
+          }
+        } catch (e) {}
+        try {
+          const poCols = await this.pgPool!.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'purchase_orders'`);
+          const poColNames = poCols.rows.map((r: any) => r.column_name);
+          if (!poColNames.includes('received_items')) {
+            await this.pgPool!.query('ALTER TABLE purchase_orders ADD COLUMN received_items TEXT');
+          }
+        } catch (e) {}
+
         // Ensure folders and ticket_folder tables exist (migration for existing DBs)
         try {
           await this.pgPool!.query(`
@@ -664,6 +694,16 @@ class DbWrapper {
         if (!existingCols.includes('images')) {
           this.sqliteDb.exec('ALTER TABLE logbook ADD COLUMN images TEXT');
         }
+
+        // Ensure ticket_views exists for SQLite
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS ticket_views (
+            ticket_id TEXT NOT NULL REFERENCES tickets(id),
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (ticket_id, user_id)
+          )
+        `);
 
         // Check notifications table for SQLite
         const notifInfo = this.sqliteDb.prepare("PRAGMA table_info(notifications)").all();
@@ -772,6 +812,23 @@ class DbWrapper {
       } catch (notifMigErr) {
         console.error('❌ Error migrating notifications table:', notifMigErr);
       }
+
+      // material_requests: add file_url
+      try {
+        const mrInfo = this.sqliteDb.prepare("PRAGMA table_info(material_requests)").all() as any[];
+        const mrCols = mrInfo.map((c: any) => c.name);
+        if (!mrCols.includes('file_url')) {
+          this.sqliteDb.exec('ALTER TABLE material_requests ADD COLUMN file_url TEXT');
+        }
+      } catch (e) {}
+      // purchase_orders: add received_items
+      try {
+        const poInfo = this.sqliteDb.prepare("PRAGMA table_info(purchase_orders)").all() as any[];
+        const poCols = poInfo.map((c: any) => c.name);
+        if (!poCols.includes('received_items')) {
+          this.sqliteDb.exec('ALTER TABLE purchase_orders ADD COLUMN received_items TEXT');
+        }
+      } catch (e) {}
 
       // Seed funcionarios_list for SQLite
       const funcCountSqlite = this.sqliteDb.prepare('SELECT COUNT(*) as count FROM funcionarios_list').get();

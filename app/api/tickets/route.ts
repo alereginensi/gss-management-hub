@@ -24,9 +24,11 @@ export async function GET(request: NextRequest) {
             const rawTickets = await db.prepare('SELECT * FROM tickets ORDER BY created_at DESC').all() as any[];
             const tickets = await Promise.all(rawTickets.map(async (ticket) => {
                 const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
+                const views = await db.prepare('SELECT COUNT(*) as count FROM ticket_views WHERE ticket_id = ?').get(ticket.id) as { count: number };
                 return {
                     ...ticket,
                     collaboratorIds: collaborators.map(c => c.user_id),
+                    isViewedByOthers: (views?.count || 0) > 0,
                     requesterEmail: ticket.requester_email,
                     statusColor: ticket.status_color,
                     createdAt: ticket.created_at,
@@ -58,9 +60,11 @@ export async function GET(request: NextRequest) {
 
             const tickets = await Promise.all(rawTickets.map(async (ticket) => {
                 const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
+                const views = await db.prepare('SELECT COUNT(*) as count FROM ticket_views WHERE ticket_id = ?').get(ticket.id) as { count: number };
                 return {
                     ...ticket,
                     collaboratorIds: collaborators.map(c => c.user_id),
+                    isViewedByOthers: (views?.count || 0) > 0,
                     requesterEmail: ticket.requester_email,
                     statusColor: ticket.status_color,
                     createdAt: ticket.created_at,
@@ -100,9 +104,11 @@ export async function GET(request: NextRequest) {
             const rawTickets = await db.prepare('SELECT * FROM tickets ORDER BY created_at DESC').all() as any[];
             const tickets = await Promise.all(rawTickets.map(async (ticket) => {
                 const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
+                const views = await db.prepare('SELECT COUNT(*) as count FROM ticket_views WHERE ticket_id = ?').get(ticket.id) as { count: number };
                 return {
                     ...ticket,
                     collaboratorIds: collaborators.map(c => c.user_id),
+                    isViewedByOthers: (views?.count || 0) > 0,
                     requesterEmail: ticket.requester_email,
                     statusColor: ticket.status_color,
                     createdAt: ticket.created_at,
@@ -133,9 +139,11 @@ export async function GET(request: NextRequest) {
 
             const tickets = await Promise.all(rawTickets.map(async (ticket) => {
                 const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
+                const views = await db.prepare('SELECT COUNT(*) as count FROM ticket_views WHERE ticket_id = ?').get(ticket.id) as { count: number };
                 return {
                     ...ticket,
                     collaboratorIds: collaborators.map(c => c.user_id),
+                    isViewedByOthers: (views?.count || 0) > 0,
                     requesterEmail: ticket.requester_email,
                     statusColor: ticket.status_color,
                     createdAt: ticket.created_at,
@@ -166,9 +174,11 @@ export async function GET(request: NextRequest) {
 
         const tickets = await Promise.all(rawTickets.map(async (ticket) => {
             const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
+            const views = await db.prepare('SELECT COUNT(*) as count FROM ticket_views WHERE ticket_id = ?').get(ticket.id) as { count: number };
             return {
                 ...ticket,
                 collaboratorIds: collaborators.map(c => c.user_id),
+                isViewedByOthers: views.count > 0,
                 requesterEmail: ticket.requester_email,
                 statusColor: ticket.status_color,
                 createdAt: ticket.created_at,

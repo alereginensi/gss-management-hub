@@ -2,7 +2,7 @@
 
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
-import { User, Paperclip, UserPlus, X, Folder, CheckSquare, Square, Users } from 'lucide-react';
+import { User, Paperclip, UserPlus, X, Folder, CheckSquare, Square, Users, Eye } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTicketContext } from '../../context/TicketContext';
 import { useState, use, useEffect, useRef } from 'react';
@@ -26,7 +26,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
     const ticketId = resolvedParams.id;
     const [fetchedTicket, setFetchedTicket] = useState<any>(null);
     const [fetchError, setFetchError] = useState(false);
-    const ticket = tickets.find((t: any) => t.id === ticketId) || fetchedTicket;
+    const ticket = fetchedTicket || tickets.find((t: any) => t.id === ticketId);
     const activities = getActivitiesByTicket(ticketId);
 
     const isOwner = ticket?.requesterEmail === currentUser?.email;
@@ -63,9 +63,13 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
         return words.map(w => w[0]).join('').substring(0, 2).toUpperCase();
     };
 
-    // If ticket not in context, fetch it directly from API
+    // If ticket not in context or missing full details (like viewedBy), fetch it directly from API
     useEffect(() => {
-        if (!ticketId || tickets.find((t: any) => t.id === ticketId)) return;
+        if (!ticketId) return;
+        // Check if we need to fetch (missing in context OR missing viewedBy info)
+        const inContext = tickets.find((t: any) => t.id === ticketId);
+        if (inContext && inContext.viewedBy) return;
+
         const token = localStorage.getItem('authToken');
         fetch(`/api/tickets/${ticketId}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
             .then(r => r.ok ? r.json() : Promise.reject(r.status))
@@ -93,6 +97,23 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                 .then(setTeamTasks);
         }
     }, [ticket?.is_team_ticket, ticket?.isTeamTicket, ticketId]);
+
+    // Record "seen" (visto) status
+    useEffect(() => {
+        if (!ticket || !currentUser || !ticketId) return;
+        
+        // Only record if user is NOT the requester
+        if (ticket.requesterEmail !== currentUser.email) {
+            const hasAlreadyViewed = ticket.viewedBy?.some((v: any) => v.id === currentUser.id);
+            if (!hasAlreadyViewed) {
+                const token = localStorage.getItem('authToken');
+                fetch(`/api/tickets/${ticketId}/view`, {
+                    method: 'POST',
+                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                }).catch(err => console.error('Error recording view:', err));
+            }
+        }
+    }, [ticket?.requesterEmail, currentUser?.email, ticketId]);
 
     const handleCompleteTask = async (taskId: number) => {
         setCompletingTask(taskId);
@@ -427,6 +448,29 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Resuelto el</label>
                                     <div style={{ marginTop: '0.25rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--status-resolved)' }}>
                                         {new Date(ticket.resolvedAt).toLocaleString('es-UY', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Seen status for requester and admins */}
+                            {(isOwner || isAdmin) && ticket.viewedBy && ticket.viewedBy.length > 0 && (
+                                <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                                        <Eye size={16} color="#3b82f6" />
+                                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Visto por</label>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                        {ticket.viewedBy.map((viewer: any) => (
+                                            <div key={viewer.id} style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#3b82f6' }}></div>
+                                                    <span style={{ fontWeight: 500 }}>{viewer.name}</span>
+                                                </div>
+                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                                                    {formatTimestamp(viewer.viewedAt)}
+                                                </span>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}

@@ -41,10 +41,17 @@ export async function GET(
         }
 
         const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticketId) as { user_id: number }[];
+        const viewers = await db.prepare(`
+            SELECT tv.user_id, u.name, tv.viewed_at 
+            FROM ticket_views tv
+            JOIN users u ON tv.user_id = u.id
+            WHERE tv.ticket_id = ?
+        `).all(ticketId) as { user_id: number; name: string; viewed_at: string }[];
 
         return NextResponse.json({
             ...ticket,
             collaboratorIds: collaborators.map(c => c.user_id),
+            viewedBy: viewers.map(v => ({ id: v.user_id, name: v.name, viewedAt: v.viewed_at })),
             requesterEmail: ticket.requester_email,
             statusColor: ticket.status_color,
             createdAt: ticket.created_at,

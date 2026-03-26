@@ -57,6 +57,8 @@ export interface Ticket {
     resolvedAt?: Date;
     attachmentUrl?: string;
     isTeamTicket?: boolean;
+    isViewedByOthers?: boolean;
+    viewedBy?: { id: number; name: string; viewedAt: string }[];
 }
 
 export interface Folder {
