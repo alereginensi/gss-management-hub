@@ -267,7 +267,8 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                 marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
                 padding: isMobile ? '1rem' : '2rem',
-                backgroundColor: 'var(--bg-color)'
+                backgroundColor: 'var(--bg-color)',
+                minWidth: 0 // Prevents flex item from overflowing parent
             }}>
                 <div style={{ marginBottom: '1rem' }}>
                     <button onClick={() => router.back()} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.875rem', padding: 0 }}>← Volver</button>
@@ -317,9 +318,9 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                     gap: isMobile ? '1.5rem' : '2rem'
                 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '1.5rem' : '2rem' }}>
-                        <div className="card">
-                            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem' }}>{ticket.subject}</h2>
-                            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+                        <div className="card" style={{ overflow: 'hidden' }}>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{ticket.subject}</h2>
+                            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                                 {ticket.description || 'Sin descripción'}
                             </p>
                         </div>
@@ -622,7 +623,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                                     <div style={{ fontSize: '0.8rem', fontWeight: 600, color: isDone ? 'var(--text-secondary)' : 'var(--text-primary)', textDecoration: isDone ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                         {task.user_name} {isMyTask && <span style={{ fontWeight: 400, color: 'var(--accent-color)' }}>(vos)</span>}
                                                     </div>
-                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.15rem', wordBreak: 'break-word' }}>{task.task_description}</div>
+                                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.15rem', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{task.task_description}</div>
                                                 </div>
                                             </div>
                                         );
