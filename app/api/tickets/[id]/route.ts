@@ -48,12 +48,20 @@ export async function GET(
             WHERE tv.ticket_id = ?
         `).all(ticketId) as { user_id: number; name: string; viewed_at: string }[];
 
+        const priorityColors: Record<string, string> = {
+            'Alta': 'var(--priority-high)',
+            'Media': 'var(--priority-medium)',
+            'Baja': 'var(--priority-low)',
+            'Urgente': '#ef4444'
+        };
+
         return NextResponse.json({
             ...ticket,
             collaboratorIds: collaborators.map(c => c.user_id),
             viewedBy: viewers.map(v => ({ id: v.user_id, name: v.name, viewedAt: v.viewed_at })),
             requesterEmail: ticket.requester_email,
             statusColor: ticket.status_color,
+            priorityColor: priorityColors[ticket.priority] || 'var(--priority-medium)',
             createdAt: ticket.created_at,
             startedAt: ticket.started_at,
             resolvedAt: ticket.resolved_at,
