@@ -563,7 +563,24 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                                     const blobUrl = URL.createObjectURL(blob);
                                                     const a = document.createElement('a');
                                                     a.href = blobUrl;
-                                                    a.download = fileName;
+                                                    // Detect extension from MIME type in case Cloudinary strips it from URL
+                                                    const mimeToExt: Record<string, string> = {
+                                                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+                                                        'application/msword': '.doc',
+                                                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+                                                        'application/vnd.ms-excel': '.xls',
+                                                        'application/pdf': '.pdf',
+                                                        'text/plain': '.txt',
+                                                        'image/jpeg': '.jpg',
+                                                        'image/png': '.png',
+                                                        'image/gif': '.gif',
+                                                        'image/webp': '.webp',
+                                                    };
+                                                    const detectedExt = mimeToExt[blob.type] ?? '';
+                                                    const downloadName = detectedExt && !fileName.toLowerCase().endsWith(detectedExt)
+                                                        ? fileName + detectedExt
+                                                        : fileName;
+                                                    a.download = downloadName;
                                                     a.click();
                                                     URL.revokeObjectURL(blobUrl);
                                                 } catch { alert('Error al descargar el archivo'); }
