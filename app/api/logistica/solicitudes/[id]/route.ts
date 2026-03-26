@@ -8,7 +8,7 @@ async function checkAuth(request: NextRequest) {
     return session;
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } | Promise<{ id: string }> }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const session = await checkAuth(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -27,7 +27,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } | Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     const session = await checkAuth(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

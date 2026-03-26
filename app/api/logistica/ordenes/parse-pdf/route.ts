@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth-server';
 import { uploadToCloudinary } from '@/lib/cloudinary';
+import pdfParse from 'pdf-parse';
 
 function parseNum(s: string): number {
     // Format: 9,270.00 (comma=thousands, dot=decimal) → remove commas
@@ -89,8 +90,7 @@ export async function POST(request: NextRequest) {
             fileUrl = await uploadToCloudinary(buffer, 'logistica/ordenes', filename);
         } catch { /* non-critical */ }
 
-        // Parse PDF — use lib path to avoid Next.js test file loading issue
-        const pdfParse = require('pdf-parse/lib/pdf-parse.js');
+        // Parse PDF
         const parsed = await pdfParse(buffer);
         const extracted = parseOrderPdf(parsed.text);
 
