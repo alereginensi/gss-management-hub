@@ -41,12 +41,21 @@ export async function GET(request: NextRequest) {
             return NextResponse.json(tickets);
         }
 
-        // Jefes see all tickets from their department (including multi-department tickets)
+        // Jefes see all tickets from their department + tickets they are involved in
         if (userRole === 'jefe') {
             const dept = session.user.department || '';
-            const rawTickets = await db.prepare(
-                "SELECT * FROM tickets WHERE department = ? OR department LIKE ? OR department LIKE ? OR department LIKE ? ORDER BY created_at DESC"
-            ).all(dept, `${dept},%`, `%,${dept}`, `%,${dept},%`) as any[];
+            const rawTickets = await db.prepare(`
+                SELECT DISTINCT t.* FROM tickets t
+                LEFT JOIN ticket_collaborators tc ON t.id = tc.ticket_id
+                LEFT JOIN team_ticket_tasks ttt ON t.id = ttt.ticket_id
+                WHERE t.department = ? OR t.department LIKE ? OR t.department LIKE ? OR t.department LIKE ?
+                   OR tc.user_id = ?
+                   OR ttt.user_id = ?
+                   OR t.requester_email = ?
+                   OR LOWER(TRIM(t.supervisor)) = LOWER(TRIM(?))
+                ORDER BY t.created_at DESC
+            `).all(dept, `${dept},%`, `%,${dept}`, `%,${dept},%`, userId, userId, userEmail, session.user.name) as any[];
+
             const tickets = await Promise.all(rawTickets.map(async (ticket) => {
                 const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
                 return {
@@ -110,7 +119,7 @@ export async function GET(request: NextRequest) {
 
         if (departmentsForUser.length > 0) {
             const placeholders = departmentsForUser.map(() => '?').join(', ');
-            const tickets = await db.prepare(`
+            const rawTickets = await db.prepare(`
                 SELECT DISTINCT t.* FROM tickets t
                 LEFT JOIN ticket_collaborators tc ON t.id = tc.ticket_id
                 LEFT JOIN team_ticket_tasks ttt ON t.id = ttt.ticket_id
@@ -118,25 +127,28 @@ export async function GET(request: NextRequest) {
                    OR tc.user_id = ?
                    OR ttt.user_id = ?
                    OR t.requester_email = ?
-                   OR (t.supervisor = ? AND t.supervisor IS NOT NULL AND t.supervisor != '')
+                   OR LOWER(TRIM(t.supervisor)) = LOWER(TRIM(?))
                 ORDER BY t.created_at DESC
-            `).all(...departmentsForUser, userId, userId, userEmail, session.user.name);
+            `).all(...departmentsForUser, userId, userId, userEmail, session.user.name) as any[];
 
-            // Map snake_case to camelCase
-            const mappedTickets = tickets.map((t: any) => ({
-                ...t,
-                requesterEmail: t.requester_email,
-                statusColor: t.status_color,
-                createdAt: t.created_at,
-                startedAt: t.started_at,
-                resolvedAt: t.resolved_at,
-                affectedWorker: t.affected_worker,
-                attachmentUrl: t.attachment_url,
-                isImportant: !!(t.is_important),
-                isTeamTicket: !!(t.is_team_ticket)
+            const tickets = await Promise.all(rawTickets.map(async (ticket) => {
+                const collaborators = await db.prepare('SELECT user_id FROM ticket_collaborators WHERE ticket_id = ?').all(ticket.id) as { user_id: number }[];
+                return {
+                    ...ticket,
+                    collaboratorIds: collaborators.map(c => c.user_id),
+                    requesterEmail: ticket.requester_email,
+                    statusColor: ticket.status_color,
+                    createdAt: ticket.created_at,
+                    startedAt: ticket.started_at,
+                    resolvedAt: ticket.resolved_at,
+                    affectedWorker: ticket.affected_worker,
+                    attachmentUrl: ticket.attachment_url,
+                    isImportant: !!(ticket.is_important),
+                    isTeamTicket: !!(ticket.is_team_ticket)
+                };
             }));
 
-            return NextResponse.json(mappedTickets);
+            return NextResponse.json(tickets);
         }
 
         // Default: user sees only tickets they created, are collaborators on, assigned supervisor, affected worker, or are in team tasks
@@ -147,7 +159,7 @@ export async function GET(request: NextRequest) {
             WHERE t.requester_email = ?
                OR tc.user_id = ?
                OR ttt.user_id = ?
-               OR t.supervisor = ?
+               OR LOWER(TRIM(t.supervisor)) = LOWER(TRIM(?))
                OR (t.affected_worker = ? AND t.affected_worker IS NOT NULL AND t.affected_worker != '')
             ORDER BY t.created_at DESC
         `).all(userEmail, userId, userId, session.user.name, session.user.name) as any[];

@@ -39,11 +39,13 @@ export default function TicketList() {
         // 1. Visibility & Filter for Admins vs Users
         const role = currentUser?.role?.toLowerCase();
         const isTeamTicket = !!(ticket.isTeamTicket || (ticket as any).is_team_ticket);
-        const isRequester = ticket.requesterEmail === currentUser?.email;
-        const isSupervisor = ticket.supervisor === currentUser?.name;
+        const isRequester = ticket.requesterEmail?.toLowerCase() === currentUser?.email?.toLowerCase();
+        const isSupervisor = ticket.supervisor && currentUser?.name && 
+                           ticket.supervisor.toLowerCase().trim() === currentUser.name.toLowerCase().trim();
         // Support both new multi-collaborator IDs and legacy single affectedWorker name
         const isCollaborator = (Array.isArray(ticket.collaboratorIds) && ticket.collaboratorIds.includes(currentUser?.id || 0)) || 
-                             ticket.affectedWorker === currentUser?.name;
+                             (ticket.affectedWorker && currentUser?.name && 
+                              ticket.affectedWorker.toLowerCase().trim() === currentUser.name.toLowerCase().trim());
         
         const isInvolved = isRequester || isSupervisor || isCollaborator || isTeamTicket;
 
