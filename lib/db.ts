@@ -315,6 +315,54 @@ class DbWrapper {
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS purchase_orders (
+        id SERIAL PRIMARY KEY,
+        order_number TEXT,
+        adenda_id TEXT,
+        rut_emisor TEXT,
+        rut_comprador TEXT,
+        buyer_name TEXT,
+        issue_date TEXT,
+        due_date TEXT,
+        total_amount REAL,
+        neto_basica REAL,
+        neto_minima REAL,
+        iva_basica REAL,
+        iva_minima REAL,
+        discounts REAL,
+        exempt REAL,
+        notes TEXT,
+        file_url TEXT,
+        status TEXT DEFAULT 'pending',
+        received_items TEXT,
+        created_by TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS purchase_order_items (
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+        quantity REAL,
+        article TEXT,
+        unit_price REAL,
+        discount REAL DEFAULT 0,
+        subtotal REAL
+      );
+
+      CREATE TABLE IF NOT EXISTS material_requests (
+        id SERIAL PRIMARY KEY,
+        client TEXT,
+        article TEXT,
+        quantity REAL,
+        items TEXT,
+        needed_date TEXT,
+        requested_by TEXT,
+        file_url TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS logistics_shipments (
         id SERIAL PRIMARY KEY,
         tracking_number TEXT,
@@ -620,6 +668,32 @@ class DbWrapper {
         } catch (e) {}
         try {
           await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS purchase_orders (
+              id SERIAL PRIMARY KEY,
+              order_number TEXT, adenda_id TEXT, rut_emisor TEXT, rut_comprador TEXT, buyer_name TEXT,
+              issue_date TEXT, due_date TEXT, total_amount REAL, neto_basica REAL, neto_minima REAL,
+              iva_basica REAL, iva_minima REAL, discounts REAL, exempt REAL, notes TEXT, file_url TEXT,
+              status TEXT DEFAULT 'pending', received_items TEXT, created_by TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS purchase_order_items (
+              id SERIAL PRIMARY KEY,
+              order_id INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+              quantity REAL, article TEXT, unit_price REAL, discount REAL DEFAULT 0, subtotal REAL
+            )
+          `);
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS material_requests (
+              id SERIAL PRIMARY KEY, client TEXT, article TEXT, quantity REAL, items TEXT,
+              needed_date TEXT, requested_by TEXT, file_url TEXT, status TEXT DEFAULT 'pending',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+        } catch (e) {}
+        try {
+          await this.pgPool!.query(`
             CREATE TABLE IF NOT EXISTS logistics_shipments (
               id SERIAL PRIMARY KEY,
               tracking_number TEXT,
@@ -895,6 +969,34 @@ class DbWrapper {
         if (!userCols.includes('modules')) {
           this.sqliteDb.exec('ALTER TABLE users ADD COLUMN modules TEXT');
         }
+      } catch (e) {}
+      // purchase_orders, items, material_requests tables
+      try {
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS purchase_orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_number TEXT, adenda_id TEXT, rut_emisor TEXT, rut_comprador TEXT, buyer_name TEXT,
+            issue_date TEXT, due_date TEXT, total_amount REAL, neto_basica REAL, neto_minima REAL,
+            iva_basica REAL, iva_minima REAL, discounts REAL, exempt REAL, notes TEXT, file_url TEXT,
+            status TEXT DEFAULT 'pending', received_items TEXT, created_by TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS purchase_order_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+            quantity REAL, article TEXT, unit_price REAL, discount REAL DEFAULT 0, subtotal REAL
+          )
+        `);
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS material_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client TEXT, article TEXT, quantity REAL, items TEXT,
+            needed_date TEXT, requested_by TEXT, file_url TEXT, status TEXT DEFAULT 'pending',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
       } catch (e) {}
       // logistics_shipments and comments tables
       try {
