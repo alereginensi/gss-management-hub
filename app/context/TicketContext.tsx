@@ -866,7 +866,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         // Add activity log with the actual user name
         addActivity(ticketId, currentUser?.name || 'Sistema', `Estado cambiado a: ${newStatus}`);
 
-        // Send notification with status color
+        // Send persistent notifications to relevant users
         const ticket = tickets.find(t => t.id === ticketId);
         if (ticket) {
             const statusColors = {
@@ -874,18 +874,80 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                 'En Progreso': 'var(--status-progress)',
                 'Resuelto': 'var(--status-resolved)'
             };
+            
+            const message = `Ticket #${ticketId} - "${ticket.subject}": estado cambiado a ${newStatus} por ${currentUser?.name || 'Sistema'}`;
+            const sColor = statusColors[newStatus];
+
+            // 1. Notify the requester (persistently)
+            const requesterUser = allUsers.find(u => u.email === ticket.requesterEmail);
+            if (requesterUser?.id && requesterUser.id !== currentUser?.id) {
+                fetch('/api/notifications', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        action: 'create_for_user',
+                        targetUserId: requesterUser.id,
+                        ticketId,
+                        ticketSubject: ticket.subject,
+                        message,
+                        type: 'status_change',
+                        statusColor: sColor
+                    })
+                }).catch(err => console.error('Error notifying requester:', err));
+            }
+
+            // 2. Notify the supervisor (persistently)
+            const supervisorUser = allUsers.find(u => u.name === ticket.supervisor);
+            if (supervisorUser?.id && supervisorUser.id !== currentUser?.id && supervisorUser.id !== requesterUser?.id) {
+                fetch('/api/notifications', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        action: 'create_for_user',
+                        targetUserId: supervisorUser.id,
+                        ticketId,
+                        ticketSubject: ticket.subject,
+                        message,
+                        type: 'status_change',
+                        statusColor: sColor
+                    })
+                }).catch(err => console.error('Error notifying supervisor:', err));
+            }
+
+            // 3. Notify collaborators (persistently)
+            if (Array.isArray(ticket.collaboratorIds)) {
+                ticket.collaboratorIds.forEach(collabId => {
+                    if (collabId !== currentUser?.id && collabId !== requesterUser?.id && collabId !== supervisorUser?.id) {
+                        fetch('/api/notifications', {
+                            method: 'POST',
+                            headers: getAuthHeaders(),
+                            body: JSON.stringify({
+                                action: 'create_for_user',
+                                targetUserId: collabId,
+                                ticketId,
+                                ticketSubject: ticket.subject,
+                                message,
+                                type: 'status_change',
+                                statusColor: sColor
+                            })
+                        }).catch(err => console.error('Error notifying collaborator:', err));
+                    }
+                });
+            }
+
+            // Also add for current user (locally) so they see their own action feedback
             const notification: Notification = {
                 id: Date.now(),
                 user_id: currentUser?.id || 0,
                 ticket_id: ticketId,
-                message: `Ticket #${ticketId} - "${ticket.subject}": estado cambiado a ${newStatus} por ${currentUser?.name || 'Sistema'}`,
+                message,
                 type: 'status_change',
                 read: 0,
                 created_at: new Date().toISOString(),
-                ticketId, // Legacy support
-                ticketSubject: ticket.subject, // Legacy support
-                timestamp: new Date(), // Legacy support
-                statusColor: statusColors[newStatus] // Legacy support
+                ticketId,
+                ticketSubject: ticket.subject,
+                timestamp: new Date(),
+                statusColor: sColor
             };
             setNotifications(prev => [notification, ...prev]);
 
