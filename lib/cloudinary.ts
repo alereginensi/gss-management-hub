@@ -11,7 +11,7 @@ export async function uploadToCloudinary(buffer: Buffer, folder: string, filenam
         const uploadStream = cloudinary.uploader.upload_stream(
             {
                 folder,
-                public_id: filename.replace(/\.[^/.]+$/, ''), // strip extension
+                public_id: filename, // keep extension so raw files (docx, xlsx) get proper URLs
                 resource_type: 'auto',
             },
             (error, result) => {

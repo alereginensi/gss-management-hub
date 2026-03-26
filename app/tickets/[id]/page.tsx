@@ -2,7 +2,7 @@
 
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
-import { User, Paperclip, UserPlus, X, Folder, CheckSquare, Square, Users, Eye } from 'lucide-react';
+import { User, Paperclip, UserPlus, X, Folder, CheckSquare, Square, Users, Eye, Plus, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTicketContext } from '../../context/TicketContext';
 import { useState, use, useEffect, useRef } from 'react';
@@ -18,6 +18,9 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
     const [selectedSupervisor, setSelectedSupervisor] = useState('');
     const [selectedCollaborator, setSelectedCollaborator] = useState('');
     const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
+    const [attachmentUrls, setAttachmentUrls] = useState<string[]>([]);
+    const [uploadingAttachment, setUploadingAttachment] = useState(false);
+    const attachmentInputRef = useRef<HTMLInputElement>(null);
     const [showFolderMenu, setShowFolderMenu] = useState(false);
     const [teamTasks, setTeamTasks] = useState<any[]>([]);
     const [completingTask, setCompletingTask] = useState<number | null>(null);
@@ -76,6 +79,48 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
             .then(setFetchedTicket)
             .catch(() => setFetchError(true));
     }, [ticketId, tickets]);
+
+    // Sync attachmentUrls from ticket
+    useEffect(() => {
+        if (!ticket?.attachmentUrl) { setAttachmentUrls([]); return; }
+        try {
+            const parsed = JSON.parse(ticket.attachmentUrl);
+            setAttachmentUrls(Array.isArray(parsed) ? parsed.filter(Boolean) : [ticket.attachmentUrl]);
+        } catch {
+            setAttachmentUrls(ticket.attachmentUrl.includes(',') ? ticket.attachmentUrl.split(',').filter(Boolean) : [ticket.attachmentUrl]);
+        }
+    }, [ticket?.attachmentUrl]);
+
+    const patchAttachments = async (newUrls: string[]) => {
+        const token = localStorage.getItem('authToken');
+        const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+        await fetch(`/api/tickets/${ticketId}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ attachment_url: newUrls.length ? JSON.stringify(newUrls) : null })
+        });
+        setAttachmentUrls(newUrls);
+    };
+
+    const handleAddAttachment = async (file: File) => {
+        setUploadingAttachment(true);
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const token = localStorage.getItem('authToken');
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+            const res = await fetch('/api/tickets/upload', { method: 'POST', headers, body: fd });
+            if (!res.ok) { alert('Error al subir el archivo'); return; }
+            const { url } = await res.json();
+            await patchAttachments([...attachmentUrls, url]);
+        } catch { alert('Error al subir el archivo'); }
+        finally { setUploadingAttachment(false); }
+    };
+
+    const handleRemoveAttachment = async (urlToRemove: string) => {
+        if (!confirm('¿Eliminar este archivo adjunto?')) return;
+        await patchAttachments(attachmentUrls.filter(u => u !== urlToRemove));
+    };
 
     // Load collaborators, activities and team tasks on mount
     useEffect(() => {
@@ -482,91 +527,69 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                 </div>
                             )}
 
-                            {ticket.attachmentUrl && (
+                            {(attachmentUrls.length > 0 || isOwner || isAdmin || isCollaborator) && (
                                 <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>Adjuntos</label>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-secondary)' }}>Adjuntos</label>
+                                        {(isOwner || isAdmin || isCollaborator) && (
+                                            <>
+                                                <input ref={attachmentInputRef} type="file" style={{ display: 'none' }} accept="image/*,.pdf,.xlsx,.xls,.doc,.docx,.txt,.csv,.zip"
+                                                    onChange={e => { const f = e.target.files?.[0]; if (f) handleAddAttachment(f); e.target.value = ''; }} />
+                                                <button onClick={() => attachmentInputRef.current?.click()} disabled={uploadingAttachment}
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--accent-color)', background: 'none', border: 'none', cursor: uploadingAttachment ? 'wait' : 'pointer', padding: '0.2rem 0.4rem', borderRadius: 'var(--radius)' }}>
+                                                    <Plus size={14} />{uploadingAttachment ? 'Subiendo...' : 'Agregar'}
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        {(() => {
-                                            let urls: string[] = [];
-                                            try {
-                                                // Try to parse as JSON array (new format)
-                                                urls = JSON.parse(ticket.attachmentUrl);
-                                                if (!Array.isArray(urls)) {
-                                                    urls = [ticket.attachmentUrl];
-                                                }
-                                            } catch (e) {
-                                                // Fallback to single string or comma separated legacy format (mostly single string)
-                                                urls = ticket.attachmentUrl.includes(',')
-                                                    ? ticket.attachmentUrl.split(',')
-                                                    : [ticket.attachmentUrl];
-                                            }
+                                        {attachmentUrls.map((url, i) => {
+                                            const trimmedUrl = url.trim();
+                                            if (!trimmedUrl) return null;
+                                            let fileName = `Archivo adjunto ${i + 1}`;
+                                            const urlWithoutQuery = trimmedUrl.split('?')[0];
+                                            const parts = urlWithoutQuery.split('/');
+                                            const lastPart = parts[parts.length - 1];
+                                            if (lastPart) fileName = decodeURIComponent(lastPart);
 
-                                            return urls.map((url: any, i: number) => {
-                                                const trimmedUrl = url.trim();
-                                                if (!trimmedUrl) return null;
-                                                // Extract original file name if possible
-                                                let fileName = `Archivo adjunto ${i + 1}`;
-                                                const match = trimmedUrl.match(/filename=\d+-(.+)$/);
-                                                if (match && match[1]) {
-                                                    fileName = decodeURIComponent(match[1]);
-                                                } else {
-                                                    const parts = trimmedUrl.split('/');
-                                                    const lastPart = parts[parts.length - 1];
-                                                    if (lastPart && lastPart !== 'download') {
-                                                        fileName = decodeURIComponent(lastPart);
-                                                    }
-                                                }
+                                            const isDownloading = downloadingFile === trimmedUrl;
+                                            const handleDownload = async () => {
+                                                if (isDownloading) return;
+                                                setDownloadingFile(trimmedUrl);
+                                                try {
+                                                    const res = await fetch(trimmedUrl);
+                                                    if (!res.ok) { alert('Error al descargar el archivo'); return; }
+                                                    const blob = await res.blob();
+                                                    const blobUrl = URL.createObjectURL(blob);
+                                                    const a = document.createElement('a');
+                                                    a.href = blobUrl;
+                                                    a.download = fileName;
+                                                    a.click();
+                                                    URL.revokeObjectURL(blobUrl);
+                                                } catch { alert('Error al descargar el archivo'); }
+                                                finally { setDownloadingFile(null); }
+                                            };
 
-                                                const isDownloading = downloadingFile === trimmedUrl;
-                                                const handleDownload = async () => {
-                                                    if (isDownloading) return;
-                                                    setDownloadingFile(trimmedUrl);
-                                                    try {
-                                                        const token = localStorage.getItem('authToken');
-                                                        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-                                                        const res = await fetch(trimmedUrl, { headers });
-                                                        if (!res.ok) { alert('Error al descargar el archivo'); return; }
-                                                        const blob = await res.blob();
-                                                        const blobUrl = URL.createObjectURL(blob);
-                                                        const a = document.createElement('a');
-                                                        a.href = blobUrl;
-                                                        a.download = fileName;
-                                                        a.click();
-                                                        URL.revokeObjectURL(blobUrl);
-                                                    } catch {
-                                                        alert('Error al descargar el archivo');
-                                                    } finally {
-                                                        setDownloadingFile(null);
-                                                    }
-                                                };
-
-                                                return (
-                                                    <button
-                                                        key={i}
-                                                        onClick={handleDownload}
-                                                        disabled={isDownloading}
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '0.5rem',
-                                                            padding: '0.75rem',
-                                                            backgroundColor: 'var(--bg-color)',
-                                                            borderRadius: 'var(--radius)',
-                                                            border: '1px solid var(--border-color)',
-                                                            color: isDownloading ? 'var(--text-secondary)' : 'var(--accent-color)',
-                                                            cursor: isDownloading ? 'wait' : 'pointer',
-                                                            fontSize: '0.875rem',
-                                                            fontWeight: 500,
-                                                            width: '100%',
-                                                            textAlign: 'left'
-                                                        }}
-                                                    >
-                                                        <Paperclip size={16} />
-                                                        {isDownloading ? 'Descargando...' : fileName}
+                                            return (
+                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <button onClick={handleDownload} disabled={isDownloading}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 0.75rem', backgroundColor: 'var(--bg-color)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', color: isDownloading ? 'var(--text-secondary)' : 'var(--accent-color)', cursor: isDownloading ? 'wait' : 'pointer', fontSize: '0.875rem', fontWeight: 500, flex: 1, textAlign: 'left', overflow: 'hidden' }}>
+                                                        <Paperclip size={16} style={{ flexShrink: 0 }} />
+                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isDownloading ? 'Descargando...' : fileName}</span>
                                                     </button>
-                                                );
-                                            });
-                                        })()}
+                                                    {(isOwner || isAdmin || isCollaborator) && (
+                                                        <button onClick={() => handleRemoveAttachment(trimmedUrl)}
+                                                            style={{ padding: '0.5rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', flexShrink: 0, display: 'flex' }}
+                                                            title="Eliminar adjunto">
+                                                            <Trash2 size={15} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                        {attachmentUrls.length === 0 && (
+                                            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, fontStyle: 'italic' }}>Sin archivos adjuntos</p>
+                                        )}
                                     </div>
                                 </div>
                             )}

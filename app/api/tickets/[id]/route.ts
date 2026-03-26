@@ -90,7 +90,25 @@ export async function PATCH(
     try {
         const { id: ticketId } = await params;
         const body = await request.json();
-        const { status, is_important } = body;
+        const { status, is_important, attachment_url } = body;
+
+        // Handle attachment_url update (owner, collaborator, admin/jefe)
+        if (attachment_url !== undefined) {
+            const ticket = await db.prepare('SELECT * FROM tickets WHERE id = ?').get(ticketId) as any;
+            if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+
+            const userId = session.user.id;
+            const isAdmin = userRole === 'admin' || userRole === 'jefe';
+            const isRequester = ticket.requester_email === session.user.email;
+            const collaboratorRow = await db.prepare('SELECT 1 FROM ticket_collaborators WHERE ticket_id = ? AND user_id = ?').get(ticketId, userId) as any;
+
+            if (!isAdmin && !isRequester && !collaboratorRow) {
+                return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+            }
+
+            await db.prepare('UPDATE tickets SET attachment_url = ? WHERE id = ?').run(attachment_url ?? null, ticketId);
+            return NextResponse.json({ success: true });
+        }
 
         // Handle marking as important (admin/supervisor only)
         if (is_important !== undefined) {
