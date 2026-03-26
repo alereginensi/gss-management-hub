@@ -481,7 +481,8 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             affectedWorker: ticketData.affectedWorker,
             supervisor: ticketData.supervisor,
             attachmentUrl: (ticketData as any).attachmentUrl,
-            createdAt: now
+            createdAt: now,
+            collaboratorIds: (ticketData as any).collaboratorIds
         };
 
         try {
@@ -525,9 +526,30 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                 }).catch(err => console.error('Error creating supervisor notification:', err));
             }
 
-            // In-App Notification + Email for the collaborator (affectedWorker)
+            // In-App Notification + Email for all collaborators
+            const collaboratorIds = (ticketData as any).collaboratorIds as number[] | undefined;
+            if (Array.isArray(collaboratorIds) && collaboratorIds.length > 0) {
+                for (const collabId of collaboratorIds) {
+                    if (collabId === supervisorUser?.id || collabId === currentUser?.id) continue;
+                    
+                    fetch('/api/notifications', {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({
+                            action: 'create_for_user',
+                            targetUserId: collabId,
+                            ticketId: newId,
+                            ticketSubject: newTicket.subject,
+                            message: `Fuiste agregado como colaborador en el ticket: "${newTicket.subject}" (creado por ${currentUser?.name || 'Admin'})`,
+                            type: 'info'
+                        })
+                    }).catch(err => console.error('Error creating collaborator notification:', err));
+                }
+            }
+
+            // Legacy support for single affectedWorker (if still used somehow)
             const collaboratorUser = allUsers.find(u => u.name === newTicket.affectedWorker);
-            if (collaboratorUser?.id && collaboratorUser.id !== supervisorUser?.id && collaboratorUser.id !== currentUser?.id) {
+            if (collaboratorUser?.id && collaboratorUser.id !== supervisorUser?.id && collaboratorUser.id !== currentUser?.id && !collaboratorIds?.includes(collaboratorUser.id)) {
                 fetch('/api/notifications', {
                     method: 'POST',
                     headers: getAuthHeaders(),

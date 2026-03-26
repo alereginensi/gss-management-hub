@@ -37,35 +37,30 @@ export default function TicketList() {
     // Apply filters
     const filteredTickets = tickets.filter(ticket => {
         // 1. Visibility & Filter for Admins vs Users
-        if (currentUser?.role?.toLowerCase() === 'admin') {
-            // If personal view is active, only show tickets where admin is creator
-            // (Removed supervisor/collaborator from personal view as per user request)
-            if (adminView === 'personal') {
-                if (ticket.requesterEmail !== currentUser.email) {
-                    return false;
-                }
-            }
+        const role = currentUser?.role?.toLowerCase();
+        const isTeamTicket = !!(ticket.isTeamTicket || (ticket as any).is_team_ticket);
+        const isRequester = ticket.requesterEmail === currentUser?.email;
+        const isSupervisor = ticket.supervisor === currentUser?.name;
+        // Support both new multi-collaborator IDs and legacy single affectedWorker name
+        const isCollaborator = (Array.isArray(ticket.collaboratorIds) && ticket.collaboratorIds.includes(currentUser?.id || 0)) || 
+                             ticket.affectedWorker === currentUser?.name;
+        
+        const isInvolved = isRequester || isSupervisor || isCollaborator || isTeamTicket;
 
-            // Apply department filter for admins in any view
+        if (role === 'admin') {
+            // Admins can see everything in 'all' view, or only their own in 'personal'
+            if (adminView === 'personal' && !isRequester) {
+                return false;
+            }
             if (departmentFilter !== 'Todos' && ticket.department !== departmentFilter) {
                 return false;
             }
-        } else if (currentUser?.role?.toLowerCase() === 'jefe') {
-            // Jefe sees all department tickets (API already filters by department)
-            // No additional frontend filter needed
-        } else if (currentUser?.role?.toLowerCase() === 'supervisor') {
-            // Supervisors
-            if (adminView === 'personal' || !adminView) {
-                const isTeamTicket = ticket.isTeamTicket || (ticket as any).is_team_ticket;
-                // Show tickets created by them, assigned to them, or team tickets (API already enforces membership)
-                if (ticket.requesterEmail !== currentUser?.email && ticket.supervisor !== currentUser?.name && !isTeamTicket) {
-                    return false;
-                }
-            }
+        } else if (role === 'jefe') {
+            // Jefes see everything the API returns (which is already filtered by department)
         } else {
-            // Other Users (standard users)
+            // Supervisors, Técnicos, and standard Users
             if (adminView === 'personal' || !adminView) {
-                if (ticket.requesterEmail !== currentUser?.email) {
+                if (!isInvolved) {
                     return false;
                 }
             }

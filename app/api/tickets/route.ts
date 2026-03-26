@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
             WHERE t.requester_email = ?
                OR tc.user_id = ?
                OR ttt.user_id = ?
-               OR (t.supervisor = ? AND t.supervisor IS NOT NULL AND t.supervisor != '')
+               OR t.supervisor = ?
                OR (t.affected_worker = ? AND t.affected_worker IS NOT NULL AND t.affected_worker != '')
             ORDER BY t.created_at DESC
         `).all(userEmail, userId, userId, session.user.name, session.user.name) as any[];
@@ -176,7 +176,11 @@ export async function GET(request: NextRequest) {
     }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+    const session = await getSession(request);
+    if (!session) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     try {
         const ticket = await request.json();
 
@@ -255,6 +259,18 @@ export async function POST(request: Request) {
                 await db.run(
                     'INSERT INTO team_ticket_tasks (ticket_id, user_id, user_name, task_description) VALUES (?, ?, ?, ?)',
                     [newId, task.userId, task.userName, task.task]
+                );
+            }
+        }
+
+        // Insert collaborators if provided
+        if (Array.isArray(ticket.collaboratorIds) && ticket.collaboratorIds.length > 0) {
+            const currentUserId = session.user.id;
+            for (const collabId of ticket.collaboratorIds) {
+                // Check if already in (shouldn't happen with new ticket but safe)
+                await db.run(
+                    'INSERT INTO ticket_collaborators (ticket_id, user_id, added_by) VALUES (?, ?, ?)',
+                    [newId, collabId, currentUserId]
                 );
             }
         }

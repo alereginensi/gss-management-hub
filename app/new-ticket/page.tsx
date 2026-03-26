@@ -39,6 +39,7 @@ export default function NewTicket() {
         sector: ''
     });
     const [collaboratorList, setCollaboratorList] = useState<{ id: number; name: string; email: string }[]>([]);
+    const [selectedCollaboratorIds, setSelectedCollaboratorIds] = useState<number[]>([]);
     const [files, setFiles] = useState<File[]>([]);
 
     useEffect(() => {
@@ -189,7 +190,8 @@ export default function NewTicket() {
                 supervisor: formData.supervisor,
                 attachmentUrl: finalAttachmentUrl,
                 isTeamTicket: teamMode,
-                teamTasks: finalTeamTasks
+                teamTasks: finalTeamTasks,
+                collaboratorIds: selectedCollaboratorIds
             } as any);
         } catch (error) {
             console.error('Error creating ticket:', error);
@@ -402,31 +404,50 @@ export default function NewTicket() {
                                     />
                                 </div>
 
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Colaborador (Opcional)</label>
-                                    <select
-                                        name="affectedWorker"
-                                        value={formData.affectedWorker}
-                                        onChange={handleInputChange}
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.75rem',
-                                            borderRadius: 'var(--radius)',
-                                            border: '1px solid var(--border-color)',
-                                            fontSize: '1rem',
-                                            backgroundColor: 'var(--surface-color)',
-                                            color: 'var(--text-primary)'
-                                        }}
-                                    >
-                                        <option value="">Sin colaborador</option>
-                                        {collaboratorList
-                                            .filter(u => u.name !== formData.name)
-                                            .map(u => (
-                                                <option key={u.id} value={u.name}>{u.name}</option>
-                                            ))
-                                        }
-                                    </select>
-                                </div>
+                                {!teamMode && (
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Colaboradores (Opcional)</label>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                            {selectedCollaboratorIds.map(id => {
+                                                const user = collaboratorList.find(u => u.id === id);
+                                                return (
+                                                    <div key={id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.6rem', backgroundColor: 'rgba(59,130,246,0.1)', color: 'var(--accent-color)', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 500 }}>
+                                                        {user?.name}
+                                                        <button type="button" onClick={() => setSelectedCollaboratorIds(prev => prev.filter(i => i !== id))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-color)', display: 'flex', alignItems: 'center', padding: '0.1rem' }}>
+                                                            <X size={14} />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <select
+                                            onChange={(e) => {
+                                                const id = Number(e.target.value);
+                                                if (id && !selectedCollaboratorIds.includes(id)) {
+                                                    setSelectedCollaboratorIds(prev => [...prev, id]);
+                                                }
+                                                e.target.value = '';
+                                            }}
+                                            style={{
+                                                width: '100%',
+                                                padding: '0.75rem',
+                                                borderRadius: 'var(--radius)',
+                                                border: '1px solid var(--border-color)',
+                                                fontSize: '1rem',
+                                                backgroundColor: 'var(--surface-color)',
+                                                color: 'var(--text-primary)'
+                                            }}
+                                        >
+                                            <option value="">Agregar colaborador...</option>
+                                            {collaboratorList
+                                                .filter(u => u.name !== formData.name && !selectedCollaboratorIds.includes(u.id))
+                                                .map(u => (
+                                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                                ))
+                                            }
+                                        </select>
+                                    </div>
+                                )}
 
                                 <div style={{ gridColumn: '1 / -1' }}>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Descripción Detallada</label>
