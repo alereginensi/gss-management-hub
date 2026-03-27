@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 
     try {
         const users = await db.prepare(
-            'SELECT id, name, email, role, department, rubro FROM users WHERE approved = 1 ORDER BY name ASC'
+            'SELECT id, name, email, role, department, rubro, modules FROM users WHERE approved = 1 ORDER BY name ASC'
         ).all();
         return NextResponse.json(users);
     } catch (error) {
