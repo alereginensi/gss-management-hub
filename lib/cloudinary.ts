@@ -16,7 +16,18 @@ export async function uploadToCloudinary(buffer: Buffer, folder: string, filenam
             },
             (error, result) => {
                 if (error || !result) return reject(error ?? new Error('Upload failed'));
-                resolve(result.secure_url);
+                let url = result.secure_url;
+                // With resource_type:'auto', Cloudinary stores raw files (docx, xlsx, etc.)
+                // with the format separate from the public_id, so secure_url may lack the
+                // extension. Append it from result.format so the stored URL is downloadable
+                // with the correct filename.
+                if (result.format && result.resource_type === 'raw') {
+                    const ext = `.${result.format.toLowerCase()}`;
+                    if (!url.toLowerCase().endsWith(ext)) {
+                        url = `${url}.${result.format}`;
+                    }
+                }
+                resolve(url);
             }
         );
         uploadStream.end(buffer);

@@ -9,7 +9,7 @@ import { useTicketContext, DEPARTMENTS } from '../context/TicketContext';
 import { X, ArrowRight, Eye, Trash2, Check } from 'lucide-react';
 
 export default function TicketList() {
-    const { tickets, searchQuery, filter, setFilter, currentUser, isSidebarOpen, deleteTicket, isMobile } = useTicketContext();
+    const { tickets, searchQuery, filter, setFilter, currentUser, isSidebarOpen, deleteTicket, isMobile, fetchTickets } = useTicketContext() as any;
     const [departmentFilter, setDepartmentFilter] = useState<string>('Todos');
     const [selectedTicket, setSelectedTicket] = useState<any>(null);
     const router = useRouter();
@@ -30,12 +30,17 @@ export default function TicketList() {
         }
     }, [currentUser, router]);
 
+    // Refresh ticket list on every mount so collaborators see newly assigned tickets
+    useEffect(() => {
+        if (fetchTickets) fetchTickets();
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
     if (currentUser && currentUser.role === 'funcionario') {
         return null;
     }
 
     // Apply filters
-    const filteredTickets = tickets.filter(ticket => {
+    const filteredTickets = (tickets as any[]).filter((ticket: any) => {
         // 1. Visibility & Filter for Admins vs Users
         const role = currentUser?.role?.toLowerCase();
         const isTeamTicket = !!(ticket.isTeamTicket || (ticket as any).is_team_ticket);
@@ -228,7 +233,7 @@ export default function TicketList() {
                             </thead>
                             <tbody style={{ fontSize: '0.875rem' }}>
                                 {filteredTickets.length > 0 ? (
-                                    filteredTickets.map(ticket => (
+                                    filteredTickets.map((ticket: any) => (
                                         <tr key={ticket.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                             <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>#{`T-${ticket.id}`}</td>
                                             <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>
@@ -268,7 +273,7 @@ export default function TicketList() {
                     <div className="mobile-view">
                         {filteredTickets.length > 0 ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {filteredTickets.map(ticket => (
+                                {filteredTickets.map((ticket: any) => (
                                     <div key={ticket.id} style={{
                                         padding: '1rem',
                                         borderRadius: '8px',
