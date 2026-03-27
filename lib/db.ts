@@ -561,6 +561,16 @@ class DbWrapper {
             await this.seedFuncionarios();
           }
 
+          // Remove duplicate funcionarios_list entries keeping only the lowest id per name
+          try {
+            await this.pgPool!.query(`
+              DELETE FROM funcionarios_list
+              WHERE id NOT IN (
+                SELECT MIN(id) FROM funcionarios_list GROUP BY LOWER(name)
+              )
+            `);
+          } catch (e) {}
+
           // Fix logbook entries missing supervisor: copy from sibling entries (same date + location + supervised_by)
           try {
             const fixed = await this.pgPool!.query(`

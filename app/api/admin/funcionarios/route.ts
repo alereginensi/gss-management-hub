@@ -28,6 +28,13 @@ export async function POST(request: NextRequest) {
         if (!name?.trim()) {
             return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 });
         }
+        // Prevent duplicates
+        const existing = await db.prepare(
+            'SELECT id, name FROM funcionarios_list WHERE LOWER(name) = LOWER(?) AND active = 1'
+        ).get(name.trim());
+        if (existing) {
+            return NextResponse.json(existing);
+        }
         await db.prepare('INSERT INTO funcionarios_list (name) VALUES (?)').run(name.trim());
         const created = await db.prepare(
             'SELECT id, name FROM funcionarios_list WHERE name = ? AND active = 1 ORDER BY id DESC LIMIT 1'

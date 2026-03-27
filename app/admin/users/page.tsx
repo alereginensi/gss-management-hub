@@ -47,7 +47,7 @@ export default function UserManagement() {
     };
 
     const handleAddFunc = async () => {
-        if (!newFuncName.trim()) return;
+        if (!newFuncName.trim() || funcLoading) return;
         setFuncLoading(true);
         try {
             const res = await fetch('/api/admin/funcionarios', {
@@ -57,7 +57,10 @@ export default function UserManagement() {
             });
             if (res.ok) {
                 const created = await res.json();
-                setFuncList(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+                setFuncList(prev => {
+                    if (prev.some(f => f.id === created.id)) return prev;
+                    return [...prev, created].sort((a, b) => a.name.localeCompare(b.name));
+                });
                 setNewFuncName('');
                 setAddingFunc(false);
             }
