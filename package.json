@@ -27,14 +27,14 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "20.19.37",
     "@types/pdf-parse": "^1.1.4",
     "@types/pg": "^8.16.0",
-    "@types/react": "^19",
+    "@types/react": "19.2.14",
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
     "eslint": "^4.1.1",
     "eslint-config-next": "^0.2.4",
-    "typescript": "^5"
+    "typescript": "5.9.3"
   }
 }

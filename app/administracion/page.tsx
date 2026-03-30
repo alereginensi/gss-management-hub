@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 export default function AdminDashboard() {
-  const { tickets, getAverageResolutionTime, currentUser, isSidebarOpen, deleteTicket, isMobile } = useTicketContext();
+  const { tickets, searchQuery, getAverageResolutionTime, currentUser, isSidebarOpen, deleteTicket, isMobile } = useTicketContext();
   const router = useRouter();
 
   useEffect(() => {
@@ -56,14 +56,19 @@ export default function AdminDashboard() {
   const [showAll, setShowAll] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'Todos' | 'Pendiente' | 'Resuelto'>('Todos');
   const [priorityFilter, setPriorityFilter] = useState<string>('Todos');
-
   const filteredTickets = visibleTickets.filter((t: any) => {
     const matchesStatus =
       statusFilter === 'Todos' ||
       (statusFilter === 'Pendiente' && (t.status === 'Nuevo' || t.status === 'En Progreso')) ||
       (statusFilter === 'Resuelto' && t.status === 'Resuelto');
     const matchesPriority = priorityFilter === 'Todos' || (t.priority || '').trim() === priorityFilter.trim();
-    return matchesStatus && matchesPriority;
+    
+    const matchesSearch = !searchQuery || 
+      (t.subject || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.id || '').toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.requester || '').toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesStatus && matchesPriority && matchesSearch;
   });
   const recentTickets = showAll ? filteredTickets : filteredTickets.slice(0, 5);
 

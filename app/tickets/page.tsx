@@ -84,8 +84,12 @@ export default function TicketList() {
         }
 
         // 4. Search filter
-        const matchesSearch = ticket.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            ticket.id.toLowerCase().includes(searchQuery.toLowerCase());
+        const query = (searchQuery || '').toLowerCase();
+        const matchesSearch = !query ||
+            (ticket.subject || '').toLowerCase().includes(query) ||
+            (ticket.description || '').toLowerCase().includes(query) ||
+            (ticket.id || '').toString().toLowerCase().includes(query) ||
+            (ticket.requester || '').toLowerCase().includes(query);
 
         return matchesStatus && matchesSearch;
     });
