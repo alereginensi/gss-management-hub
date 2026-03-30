@@ -27,8 +27,22 @@ export default function AdminDashboard() {
     ? tickets.filter((t: any) => t.department === currentUser.department)
     : tickets;
 
-  const openTickets = visibleTickets.filter((t: any) => t.status === 'Nuevo' || t.status === 'En Progreso').length;
-  const resolvedToday = visibleTickets.filter((t: any) => t.status === 'Resuelto').length;
+  const pendingTickets = visibleTickets.filter((t: any) => t.status === 'Nuevo' || t.status === 'En Progreso');
+  const openTickets = pendingTickets.length;
+  const openPriorityCounts = {
+    Alta: pendingTickets.filter((t: any) => t.priority === 'Alta').length,
+    Media: pendingTickets.filter((t: any) => t.priority === 'Media').length,
+    Baja: pendingTickets.filter((t: any) => t.priority === 'Baja').length,
+  };
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const resolvedToday = visibleTickets.filter((t: any) => {
+    if (t.status !== 'Resuelto') return false;
+    const resolvedAt = t.resolvedAt ? new Date(t.resolvedAt) : null;
+    if (!resolvedAt || isNaN(resolvedAt.getTime())) return false;
+    return resolvedAt >= todayStart;
+  }).length;
 
   const priorityCounts = {
     Alta: visibleTickets.filter((t: any) => t.priority === 'Alta').length,
@@ -85,12 +99,31 @@ export default function AdminDashboard() {
           marginBottom: '2rem'
         }}>
           <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: isMobile ? '1rem' : '1.5rem' }}>
-            <div style={{ padding: '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', color: 'var(--status-new)' }}>
+            <div style={{ padding: '0.75rem', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '50%', color: 'var(--status-new)', flexShrink: 0 }}>
               <FileText size={isMobile ? 20 : 24} />
             </div>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Tickets Pendientes</p>
               <p style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: 700 }}>{openTickets}</p>
+              {openTickets > 0 && (
+                <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                  {openPriorityCounts.Alta > 0 && (
+                    <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.45rem', borderRadius: '9999px', backgroundColor: 'rgba(239,68,68,0.12)', color: 'var(--priority-high)' }}>
+                      Alta: {openPriorityCounts.Alta}
+                    </span>
+                  )}
+                  {openPriorityCounts.Media > 0 && (
+                    <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.45rem', borderRadius: '9999px', backgroundColor: 'rgba(245,158,11,0.12)', color: 'var(--priority-medium)' }}>
+                      Media: {openPriorityCounts.Media}
+                    </span>
+                  )}
+                  {openPriorityCounts.Baja > 0 && (
+                    <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.45rem', borderRadius: '9999px', backgroundColor: 'rgba(34,197,94,0.12)', color: 'var(--priority-low)' }}>
+                      Baja: {openPriorityCounts.Baja}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
