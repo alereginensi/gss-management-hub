@@ -14,6 +14,8 @@ export default function TicketList() {
     const [selectedTicket, setSelectedTicket] = useState<any>(null);
     const router = useRouter();
     const [adminView, setAdminView] = useState<'personal' | 'all'>('personal');
+    const [showAll, setShowAll] = useState(false);
+    const VISIBLE_COUNT = 5;
 
     // Handle view param from URL
     useEffect(() => {
@@ -89,7 +91,8 @@ export default function TicketList() {
     });
 
     const departments = ['Todos', ...DEPARTMENTS];
-
+    const displayedTickets = showAll ? filteredTickets : filteredTickets.slice(0, VISIBLE_COUNT);
+    const hasMore = filteredTickets.length > VISIBLE_COUNT;
 
     return (
         <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -233,7 +236,7 @@ export default function TicketList() {
                             </thead>
                             <tbody style={{ fontSize: '0.875rem' }}>
                                 {filteredTickets.length > 0 ? (
-                                    filteredTickets.map((ticket: any) => (
+                                    displayedTickets.map((ticket: any) => (
                                         <tr key={ticket.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                             <td style={{ padding: '1rem 0.5rem', color: 'var(--text-secondary)' }}>#{`T-${ticket.id}`}</td>
                                             <td style={{ padding: '1rem 0.5rem', fontWeight: 500 }}>
@@ -273,7 +276,7 @@ export default function TicketList() {
                     <div className="mobile-view">
                         {filteredTickets.length > 0 ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {filteredTickets.map((ticket: any) => (
+                                {displayedTickets.map((ticket: any) => (
                                     <div key={ticket.id} style={{
                                         padding: '1rem',
                                         borderRadius: '8px',
@@ -338,6 +341,19 @@ export default function TicketList() {
                             </div>
                         )}
                     </div>
+
+                    {/* Ver todos / Ver menos button */}
+                    {hasMore && (
+                        <div style={{ textAlign: 'center', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                            <button
+                                onClick={() => setShowAll((prev: boolean) => !prev)}
+                                className="btn"
+                                style={{ fontSize: '0.875rem', color: 'var(--accent-color)', border: '1px solid var(--border-color)' }}
+                            >
+                                {showAll ? 'Ver menos' : `Ver todos (${filteredTickets.length})`}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Ticket Quick View Modal */}
