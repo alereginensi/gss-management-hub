@@ -600,6 +600,7 @@ export default function UserManagement() {
                                             { key: 'logistica', label: 'Logística' },
                                             { key: 'tecnico', label: 'Seguridad Electrónica' },
                                             { key: 'cotizacion', label: 'Cotización' },
+                                            { key: 'limpieza', label: 'Operaciones Limpieza' },
                                         ].map(mod => {
                                             const activeMods = editForm.modules ? editForm.modules.split(',').filter(m => m) : [];
                                             const checked = activeMods.includes(mod.key);

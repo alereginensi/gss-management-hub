@@ -101,7 +101,7 @@ export interface User {
     modules?: string; // comma-separated: "logistica,tecnico,cotizacion"
 }
 
-export function hasModuleAccess(user: User, mod: 'logistica' | 'tecnico' | 'cotizacion'): boolean {
+export function hasModuleAccess(user: User, mod: 'logistica' | 'tecnico' | 'cotizacion' | 'limpieza'): boolean {
     if (user.role === 'admin') return true;
     if (mod === 'logistica' && user.role === 'logistica') return true;
     if (mod === 'tecnico' && user.role === 'tecnico') return true;

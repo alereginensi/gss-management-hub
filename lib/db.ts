@@ -386,7 +386,64 @@ class DbWrapper {
         comment TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS limpieza_usuarios (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        cedula TEXT,
+        email TEXT UNIQUE NOT NULL,
+        sector TEXT,
+        cliente TEXT,
+        activo INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS limpieza_registros (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        cedula TEXT,
+        email TEXT,
+        sector TEXT,
+        ubicacion TEXT,
+        fecha TEXT NOT NULL,
+        hora_inicio TEXT,
+        hora_fin TEXT,
+        tareas TEXT,
+        observaciones TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS limpieza_asistencia (
+        id SERIAL PRIMARY KEY,
+        fecha TEXT NOT NULL,
+        seccion TEXT NOT NULL,
+        funcionario_id INTEGER,
+        nombre TEXT,
+        cedula TEXT,
+        cliente TEXT,
+        entrada1 TEXT,
+        salida1 TEXT,
+        entrada2 TEXT,
+        salida2 TEXT,
+        firma TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `;
+
+    // SQLite migration for new columns
+    if (this.type === 'sqlite') {
+      try {
+        const info = this.sqliteDb.prepare("PRAGMA table_info(limpieza_asistencia)").all();
+        const hasCliente = info.some((c: any) => c.name === 'cliente');
+        if (!hasCliente) {
+          console.log('🏗️ Adding missing "cliente" column to limpieza_asistencia');
+          this.sqliteDb.prepare("ALTER TABLE limpieza_asistencia ADD COLUMN cliente TEXT").run();
+        }
+      } catch (err) {
+        console.error('❌ Error migrate SQLite asistencia:', err);
+      }
+    }
 
     if (this.type === 'pg') {
       try {
@@ -420,6 +477,16 @@ class DbWrapper {
           if (!existingTicketCols.includes('attachment_url')) {
             console.log('🐘 Migrating tickets: adding attachment_url column');
             await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN attachment_url TEXT');
+          }
+
+          // Migrate limpieza_asistencia: adding cliente column
+          const asisCols = await this.pgPool!.query(`
+            SELECT column_name FROM information_schema.columns WHERE table_name = 'limpieza_asistencia'
+          `);
+          const existingAsisCols = asisCols.rows.map((r: any) => r.column_name);
+          if (existingAsisCols.length > 0 && !existingAsisCols.includes('cliente')) {
+            console.log('🐘 Migrating limpieza_asistencia: adding cliente column');
+            await this.pgPool!.query('ALTER TABLE limpieza_asistencia ADD COLUMN cliente TEXT');
           }
           if (!existingTicketCols.includes('requester_email')) {
             console.log('🐘 Migrating tickets: adding requester_email column');
@@ -653,6 +720,12 @@ class DbWrapper {
         } catch (vErr) {
           console.error('❌ Error creating ticket_views table in Postgres:', vErr);
         }
+
+        // limpieza_registros: drop NOT NULL on cedula and sector
+        try {
+          await this.pgPool!.query('ALTER TABLE limpieza_registros ALTER COLUMN cedula DROP NOT NULL');
+          await this.pgPool!.query('ALTER TABLE limpieza_registros ALTER COLUMN sector DROP NOT NULL');
+        } catch (e) {}
 
         // Ensure material_requests has file_url and purchase_orders has received_items
         try {
@@ -980,6 +1053,34 @@ class DbWrapper {
           this.sqliteDb.exec('ALTER TABLE users ADD COLUMN modules TEXT');
         }
       } catch (e) {}
+      // limpieza_registros: drop NOT NULL on cedula and sector (SQLite requires table recreation)
+      try {
+        const lrInfo = this.sqliteDb.prepare("PRAGMA table_info(limpieza_registros)").all() as any[];
+        const cedulaCol = lrInfo.find((c: any) => c.name === 'cedula');
+        if (cedulaCol && cedulaCol.notnull === 1) {
+          console.log('🔧 Migrating limpieza_registros: removing NOT NULL constraints');
+          this.sqliteDb.exec(`
+            CREATE TABLE IF NOT EXISTS limpieza_registros_new (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              nombre TEXT NOT NULL,
+              cedula TEXT,
+              email TEXT,
+              sector TEXT,
+              ubicacion TEXT,
+              fecha TEXT NOT NULL,
+              hora_inicio TEXT,
+              hora_fin TEXT,
+              tareas TEXT,
+              observaciones TEXT,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            INSERT INTO limpieza_registros_new SELECT * FROM limpieza_registros;
+            DROP TABLE limpieza_registros;
+            ALTER TABLE limpieza_registros_new RENAME TO limpieza_registros;
+          `);
+          console.log('✅ limpieza_registros migrated');
+        }
+      } catch (e) { console.error('❌ Error migrating limpieza_registros:', e); }
       // purchase_orders, items, material_requests tables
       try {
         this.sqliteDb.exec(`
