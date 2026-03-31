@@ -24,12 +24,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         const logParams: any[] = [date_from, date_to];
         if (service_type) { sql += ' AND supervised_by = ?'; logParams.push(service_type); }
 
-        const logEntries = await db.prepare(sql).all(...logParams) as any[];
+        const logEntries = await db.query(sql, logParams) as any[];
 
         // Get already imported logbook entry IDs for this period
-        const alreadyImported = await db.prepare(
-            'SELECT logbook_entry_id FROM billing_entries WHERE period_id = ? AND logbook_entry_id IS NOT NULL'
-        ).all(id) as any[];
+        const alreadyImported = await db.query(
+            'SELECT logbook_entry_id FROM billing_entries WHERE period_id = ? AND logbook_entry_id IS NOT NULL',
+            [id]
+        ) as any[];
         const importedIds = new Set(alreadyImported.map((r: any) => r.logbook_entry_id));
 
         let imported = 0;

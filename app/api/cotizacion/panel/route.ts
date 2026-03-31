@@ -27,11 +27,12 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ period: null, total_hours: 0, total_employees: 0, estimated_cost: 0, by_service_type: [] });
         }
 
-        const entries = await db.prepare(
+        const entries = await db.query(
             `SELECT be.*, bc.name as category_name FROM billing_entries be
              LEFT JOIN billing_categories bc ON be.category_id = bc.id
-             WHERE be.period_id = ?`
-        ).all(period.id) as any[];
+             WHERE be.period_id = ?`,
+            [period.id]
+        ) as any[];
 
         let totalHours = 0;
         let estimatedCost = 0;

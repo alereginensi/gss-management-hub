@@ -32,13 +32,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const period = await db.get('SELECT * FROM billing_periods WHERE id = ?', [id]) as any;
         if (!period) return NextResponse.json({ error: 'Period not found' }, { status: 404 });
 
-        const entries = await db.prepare(
+        const entries = await db.query(
             `SELECT be.*, bc.name as category_name
              FROM billing_entries be
              LEFT JOIN billing_categories bc ON be.category_id = bc.id
              WHERE be.period_id = ?
-             ORDER BY be.date, be.funcionario`
-        ).all(id) as any[];
+             ORDER BY be.date, be.funcionario`,
+            [id]
+        ) as any[];
 
         const entriesWithCost = await Promise.all(entries.map(async (e) => {
             const rate = await getRate(e.category_id, e.date);

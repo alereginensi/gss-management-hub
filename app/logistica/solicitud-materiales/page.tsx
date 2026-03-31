@@ -87,7 +87,6 @@ export default function SolicitudMaterialesPage() {
     const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
     const [saving, setSaving] = useState(false);
 
-    // Calendar State
     const [currentDate, setCurrentDate] = useState(() => {
         const d = new Date();
         return new Date(d.getFullYear(), d.getMonth(), 1);

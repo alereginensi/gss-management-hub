@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     try {
-        const categories = await db.prepare('SELECT * FROM billing_categories ORDER BY name').all();
+        const categories = await db.query('SELECT * FROM billing_categories ORDER BY name');
         return NextResponse.json(categories);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

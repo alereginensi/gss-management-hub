@@ -386,6 +386,100 @@ class DbWrapper {
         comment TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS limpieza_usuarios (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        cedula TEXT,
+        email TEXT UNIQUE NOT NULL,
+        sector TEXT,
+        cliente TEXT,
+        activo INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS limpieza_registros (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        cedula TEXT,
+        email TEXT,
+        sector TEXT,
+        ubicacion TEXT,
+        fecha TEXT NOT NULL,
+        hora_inicio TEXT,
+        hora_fin TEXT,
+        tareas TEXT,
+        observaciones TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS limpieza_asistencia (
+        id SERIAL PRIMARY KEY,
+        fecha TEXT NOT NULL,
+        seccion TEXT NOT NULL,
+        funcionario_id INTEGER,
+        nombre TEXT,
+        cedula TEXT,
+        cliente TEXT,
+        entrada1 TEXT,
+        salida1 TEXT,
+        entrada2 TEXT,
+        salida2 TEXT,
+        firma TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS billing_categories (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS billing_rates (
+        id SERIAL PRIMARY KEY,
+        category_id INTEGER NOT NULL REFERENCES billing_categories(id) ON DELETE CASCADE,
+        rate REAL NOT NULL,
+        overtime_multiplier REAL DEFAULT 1.5,
+        social_security_pct REAL DEFAULT 0,
+        bonus_provisions_pct REAL DEFAULT 0,
+        valid_from TEXT NOT NULL,
+        valid_to TEXT,
+        notes TEXT,
+        created_by TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS billing_periods (
+        id SERIAL PRIMARY KEY,
+        label TEXT NOT NULL,
+        period_type TEXT DEFAULT 'monthly',
+        date_from TEXT NOT NULL,
+        date_to TEXT NOT NULL,
+        status TEXT DEFAULT 'open',
+        notes TEXT,
+        created_by TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS billing_entries (
+        id SERIAL PRIMARY KEY,
+        period_id INTEGER NOT NULL REFERENCES billing_periods(id) ON DELETE CASCADE,
+        funcionario TEXT NOT NULL,
+        category_id INTEGER REFERENCES billing_categories(id),
+        date TEXT NOT NULL,
+        regular_hours REAL DEFAULT 8,
+        overtime_hours REAL DEFAULT 0,
+        location TEXT,
+        sector TEXT,
+        service_type TEXT,
+        logbook_entry_id INTEGER,
+        source TEXT DEFAULT 'manual',
+        notes TEXT,
+        created_by TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `;
 
     if (this.type === 'pg') {

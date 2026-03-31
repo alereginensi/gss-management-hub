@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         if (status) { sql += ' AND bp.status = ?'; params.push(status); }
         sql += ' GROUP BY bp.id ORDER BY bp.created_at DESC';
 
-        const periods = await db.prepare(sql).all(...params);
+        const periods = await db.query(sql, params);
         return NextResponse.json(periods);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

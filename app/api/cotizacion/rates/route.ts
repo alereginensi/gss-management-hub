@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         if (activeOnly) { sql += ' AND br.valid_to IS NULL'; }
         sql += ' ORDER BY br.category_id, br.valid_from DESC';
 
-        const rates = await db.prepare(sql).all(...params);
+        const rates = await db.query(sql, params);
         return NextResponse.json(rates);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

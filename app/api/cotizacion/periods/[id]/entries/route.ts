@@ -36,13 +36,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     try {
         const { id } = await params;
-        const entries = await db.prepare(
+        const entries = await db.query(
             `SELECT be.*, bc.name as category_name
              FROM billing_entries be
              LEFT JOIN billing_categories bc ON be.category_id = bc.id
              WHERE be.period_id = ?
-             ORDER BY be.date DESC, be.funcionario`
-        ).all(id) as any[];
+             ORDER BY be.date DESC, be.funcionario`,
+            [id]
+        ) as any[];
 
         // Attach computed cost per entry
         const withCost = await Promise.all(entries.map(async (e) => {
