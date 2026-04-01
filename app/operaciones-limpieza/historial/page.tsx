@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
     ArrowLeft, Calendar, ChevronRight, Folder, 
-    FileText, Search, Clock, ChevronDown, ChevronUp
+    FileText, Search, Clock, ChevronDown, ChevronUp, LogOut
 } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 
@@ -14,7 +14,7 @@ interface GroupedReports {
 }
 
 export default function HistorialInformesPage() {
-    const { currentUser, isAuthenticated, loading, getAuthHeaders } = useTicketContext();
+    const { currentUser, isAuthenticated, loading, getAuthHeaders, logout } = useTicketContext() as any;
     const router = useRouter();
     
     const [dates, setDates] = useState<string[]>([]);
@@ -87,22 +87,31 @@ export default function HistorialInformesPage() {
         <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
             {/* Header */}
             <header style={{ 
-                backgroundColor: '#1d3461', color: '#fff', padding: '1rem 1.5rem', 
+                backgroundColor: '#1d3461', color: '#fff', padding: '0.75rem 1rem', 
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)', position: 'sticky', top: 0, zIndex: 50
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <Link href="/operaciones-limpieza" style={{ color: '#fff', display: 'flex', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <Link href="/operaciones-limpieza" style={{ color: '#fff', display: 'flex', alignItems: 'center', padding: '0.2rem' }}>
                         <ArrowLeft size={20} />
                     </Link>
-                    <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Historial de Informes</h1>
+                    <h1 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Historial</h1>
                 </div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>
-                    {dates.length} Informes registrados
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.8 }} className="mobile-hide">
+                        {dates.length} Informes
+                    </div>
+                    <button 
+                        onClick={() => { logout(); router.push('/login'); }} 
+                        style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: '0.4rem' }}
+                        title="Cerrar sesión"
+                    >
+                        <LogOut size={18} />
+                    </button>
                 </div>
             </header>
 
-            <main style={{ flex: 1, padding: '1.5rem', maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+            <main style={{ flex: 1, padding: '1rem', maxWidth: '800px', margin: '0 auto', width: '100%' }}>
                 {/* Search Bar */}
                 <div style={{ 
                     backgroundColor: '#fff', borderRadius: '12px', padding: '0.75rem 1rem',

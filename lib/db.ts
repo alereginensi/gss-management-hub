@@ -390,8 +390,7 @@ class DbWrapper {
       CREATE TABLE IF NOT EXISTS limpieza_usuarios (
         id SERIAL PRIMARY KEY,
         nombre TEXT NOT NULL,
-        cedula TEXT,
-        email TEXT UNIQUE NOT NULL,
+        cedula TEXT UNIQUE NOT NULL,
         sector TEXT,
         cliente TEXT,
         activo INTEGER DEFAULT 1,
@@ -401,10 +400,9 @@ class DbWrapper {
       CREATE TABLE IF NOT EXISTS limpieza_registros (
         id SERIAL PRIMARY KEY,
         nombre TEXT NOT NULL,
-        cedula TEXT,
-        email TEXT,
+        cedula TEXT NOT NULL,
         sector TEXT,
-        ubicacion TEXT,
+        cliente TEXT,
         fecha TEXT NOT NULL,
         hora_inicio TEXT,
         hora_fin TEXT,
@@ -430,6 +428,21 @@ class DbWrapper {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
+
+    // Migration for limpieza_registros
+    if (this.type === 'sqlite') {
+      try {
+        const info = this.sqliteDb.prepare("PRAGMA table_info(limpieza_registros)").all();
+        const hasUbicacion = info.some((c: any) => c.name === 'ubicacion');
+        const hasCliente = info.some((c: any) => c.name === 'cliente');
+        if (hasUbicacion && !hasCliente) {
+          console.log('🏗️ Renaming "ubicacion" to "cliente" in limpieza_registros (SQLite)');
+          this.sqliteDb.prepare("ALTER TABLE limpieza_registros RENAME COLUMN ubicacion TO cliente").run();
+        }
+      } catch (err) {
+        console.error('❌ Error migrate SQLite limpieza_registros:', err);
+      }
+    }
 
     // SQLite migration for new columns
     if (this.type === 'sqlite') {
@@ -488,6 +501,35 @@ class DbWrapper {
             console.log('🐘 Migrating limpieza_asistencia: adding cliente column');
             await this.pgPool!.query('ALTER TABLE limpieza_asistencia ADD COLUMN cliente TEXT');
           }
+
+          // Migrate limpieza_usuarios: remove email if exists, make cedula unique
+          const luCols = await this.pgPool!.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'limpieza_usuarios'");
+          const luColNames = luCols.rows.map((r: any) => r.column_name);
+          if (luColNames.includes('email')) {
+            console.log('🐘 Migrating limpieza_usuarios: removing email column');
+            await this.pgPool!.query('ALTER TABLE limpieza_usuarios DROP COLUMN email');
+          }
+          // Ensure cedula is unique and not null
+          try {
+            await this.pgPool!.query('ALTER TABLE limpieza_usuarios ALTER COLUMN cedula SET NOT NULL');
+            await this.pgPool!.query('ALTER TABLE limpieza_usuarios ADD CONSTRAINT limpieza_usuarios_cedula_key UNIQUE (cedula)');
+          } catch (e) {}
+
+          // Migrate limpieza_registros: remove email if exists, rename ubicacion to cliente
+          const lrColsPG = await this.pgPool!.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'limpieza_registros'");
+          const lrColNamesPG = lrColsPG.rows.map((r: any) => r.column_name);
+          if (lrColNamesPG.includes('email')) {
+            console.log('🐘 Migrating limpieza_registros: removing email column');
+            await this.pgPool!.query('ALTER TABLE limpieza_registros DROP COLUMN email');
+          }
+          if (lrColNamesPG.includes('ubicacion') && !lrColNamesPG.includes('cliente')) {
+            console.log('🐘 Migrating limpieza_registros: renaming ubicacion to cliente');
+            await this.pgPool!.query('ALTER TABLE limpieza_registros RENAME COLUMN ubicacion TO cliente');
+          }
+          try {
+            await this.pgPool!.query('ALTER TABLE limpieza_registros ALTER COLUMN cedula SET NOT NULL');
+          } catch (e) {}
+
           if (!existingTicketCols.includes('requester_email')) {
             console.log('🐘 Migrating tickets: adding requester_email column');
             await this.pgPool!.query('ALTER TABLE tickets ADD COLUMN requester_email TEXT');
@@ -1053,18 +1095,41 @@ class DbWrapper {
           this.sqliteDb.exec('ALTER TABLE users ADD COLUMN modules TEXT');
         }
       } catch (e) {}
-      // limpieza_registros: drop NOT NULL on cedula and sector (SQLite requires table recreation)
+      // limpieza_usuarios: remove email, make cedula unique (SQLite)
       try {
-        const lrInfo = this.sqliteDb.prepare("PRAGMA table_info(limpieza_registros)").all() as any[];
-        const cedulaCol = lrInfo.find((c: any) => c.name === 'cedula');
-        if (cedulaCol && cedulaCol.notnull === 1) {
-          console.log('🔧 Migrating limpieza_registros: removing NOT NULL constraints');
+        const luInfo = this.sqliteDb.prepare("PRAGMA table_info(limpieza_usuarios)").all() as any[];
+        const hasEmail = luInfo.some((c: any) => c.name === 'email');
+        if (hasEmail) {
+          console.log('🔧 Migrating limpieza_usuarios: removing email, enforcing unique cedula');
           this.sqliteDb.exec(`
-            CREATE TABLE IF NOT EXISTS limpieza_registros_new (
+            CREATE TABLE limpieza_usuarios_new (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               nombre TEXT NOT NULL,
-              cedula TEXT,
-              email TEXT,
+              cedula TEXT UNIQUE NOT NULL,
+              sector TEXT,
+              cliente TEXT,
+              activo INTEGER DEFAULT 1,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            INSERT INTO limpieza_usuarios_new (id, nombre, cedula, sector, cliente, activo, created_at)
+            SELECT id, nombre, cedula, sector, cliente, activo, created_at FROM limpieza_usuarios;
+            DROP TABLE limpieza_usuarios;
+            ALTER TABLE limpieza_usuarios_new RENAME TO limpieza_usuarios;
+          `);
+        }
+      } catch (e) { console.error('❌ Error migrating limpieza_usuarios SQLite:', e); }
+
+      // limpieza_registros: remove email (SQLite)
+      try {
+        const lrInfo = this.sqliteDb.prepare("PRAGMA table_info(limpieza_registros)").all() as any[];
+        const hasEmail = lrInfo.some((c: any) => c.name === 'email');
+        if (hasEmail) {
+          console.log('🔧 Migrating limpieza_registros: removing email column');
+          this.sqliteDb.exec(`
+            CREATE TABLE limpieza_registros_new (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              nombre TEXT NOT NULL,
+              cedula TEXT NOT NULL,
               sector TEXT,
               ubicacion TEXT,
               fecha TEXT NOT NULL,
@@ -1074,13 +1139,13 @@ class DbWrapper {
               observaciones TEXT,
               created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
-            INSERT INTO limpieza_registros_new SELECT * FROM limpieza_registros;
+            INSERT INTO limpieza_registros_new (id, nombre, cedula, sector, ubicacion, fecha, hora_inicio, hora_fin, tareas, observaciones, created_at)
+            SELECT id, nombre, cedula, sector, ubicacion, fecha, hora_inicio, hora_fin, tareas, observaciones, created_at FROM limpieza_registros;
             DROP TABLE limpieza_registros;
             ALTER TABLE limpieza_registros_new RENAME TO limpieza_registros;
           `);
-          console.log('✅ limpieza_registros migrated');
         }
-      } catch (e) { console.error('❌ Error migrating limpieza_registros:', e); }
+      } catch (e) { console.error('❌ Error migrating limpieza_registros SQLite:', e); }
       // purchase_orders, items, material_requests tables
       try {
         this.sqliteDb.exec(`

@@ -27,63 +27,72 @@ export default function OperacionesLimpiezaPage() {
 
     return (
         <div style={{
-            height: '100vh',
+            minHeight: '100vh',
             backgroundColor: 'var(--bg-color)',
             display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden'
+            flexDirection: 'column'
         }}>
             {/* Top Nav */}
             <header style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: '1rem 1.5rem',
+                padding: '0.75rem 1rem',
                 borderBottom: '1px solid var(--border-color)',
-                backgroundColor: 'var(--surface-color)'
+                backgroundColor: 'var(--surface-color)',
+                position: 'sticky',
+                top: 0,
+                zIndex: 50
             }}>
                 <Link href="/" style={{
                     display: 'flex', alignItems: 'center', gap: '0.4rem',
                     color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.85rem'
                 }}>
-                    <ArrowLeft size={15} />
-                    Inicio
+                    <ArrowLeft size={16} />
+                    <span className="mobile-hide">Inicio</span>
                 </Link>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="GSS" style={{ height: '36px' }} />
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{currentUser.name}</span>
+                <img src="/logo.png" alt="GSS" style={{ height: '32px' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }} className="mobile-hide">{currentUser.name}</span>
+                    <button 
+                        onClick={() => { logout(); router.push('/login'); }} 
+                        style={{ background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', padding: '0.4rem' }}
+                        title="Cerrar sesión"
+                    >
+                        <LogOut size={18} />
+                    </button>
+                </div>
             </header>
 
-            <main className="hub-main standalone-page" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 0 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
+            <main className="standalone-page" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem', width: '100%', textAlign: 'center' }}>
                     <div style={{ textAlign: 'center' }}>
-                        <h1 style={{ color: 'var(--text-primary)', fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.35rem' }}>MENÚ PRINCIPAL</h1>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>Operaciones de Limpieza</p>
+                        <h1 style={{ color: 'var(--text-primary)', fontSize: '1.25rem', fontWeight: 800, margin: '0 0 0.25rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Módulo de Limpieza</h1>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: 0 }}>GSS Management Hub</p>
                     </div>
-                    <div className="hub-menu-grid">
-                        {MENU_ITEMS.map((item) => {
-                            const Icon = item.icon;
-                            return (
-                                <Link key={item.href} href={item.href} style={{ textDecoration: 'none' }}>
+                    <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                        <div className="hub-menu-grid">
+                            {MENU_ITEMS.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                <Link key={item.href} href={item.href} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
                                     <div
                                         className="hub-menu-card"
-                                        style={{ backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)', transition: 'transform 0.15s, background-color 0.15s, box-shadow 0.15s', boxShadow: '0 4px 12px rgba(41,65,107,0.2)' }}
-                                        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#1e3a8a'; e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(41,65,107,0.35)'; }}
-                                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-color)'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(41,65,107,0.2)'; }}
+                                        style={{ backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(41,65,107,0.15)', height: '100%' }}
                                     >
-                                        <Icon size={32} color="white" />
-                                        <span style={{ whiteSpace: 'pre-line' }}>{item.label}</span>
+                                        <div style={{ padding: '0.75rem', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Icon size={24} color="white" />
+                                        </div>
+                                        <span style={{ whiteSpace: 'pre-line', fontSize: '0.9rem' }}>{item.label}</span>
                                     </div>
                                 </Link>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </main>
-
-            <button onClick={() => { logout(); router.push('/login'); }} style={{ position: 'fixed', bottom: '1.5rem', left: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.5rem 0.9rem', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                <LogOut size={14} /> Cerrar sesión
-            </button>
         </div>
     );
 }

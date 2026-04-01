@@ -11,35 +11,35 @@ const TAREAS_PREDEFINIDAS = [
     'Limpieza de cocina / comedor',
 ];
 
-type Step = 'email' | 'tasks' | 'done';
+type Step = 'cedula' | 'tasks' | 'done';
 
 interface Worker { nombre: string; sector: string; cliente: string; }
 
 export default function RegistroLimpiezaPage() {
-    const [step, setStep] = useState<Step>('email');
-    const [email, setEmail] = useState('');
+    const [step, setStep] = useState<Step>('cedula');
+    const [cedula, setCedula] = useState('');
     const [worker, setWorker] = useState<Worker | null>(null);
     const [tareasChecked, setTareasChecked] = useState<boolean[]>(TAREAS_PREDEFINIDAS.map(() => false));
     const [observaciones, setObservaciones] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const handleEmailSubmit = async (e: { preventDefault: () => void }) => {
+    const handleCedulaSubmit = async (e: { preventDefault: () => void }) => {
         e.preventDefault();
         setError('');
         setLoading(true);
         try {
             // 1. Lookup worker
-            const res = await fetch(`/api/limpieza/usuarios/lookup?email=${encodeURIComponent(email.trim())}`);
+            const res = await fetch(`/api/limpieza/usuarios/lookup?cedula=${encodeURIComponent(cedula.trim())}`);
             if (!res.ok) {
-                setError('Tu email no está registrado. Contactá a tu supervisor.');
+                setError('Tu cédula no está registrada. Contactá a tu supervisor.');
             } else {
                 const data = await res.json();
                 setWorker(data);
                 
                 // 2. Lookup today's record for persistence
                 try {
-                    const recordRes = await fetch(`/api/limpieza/registros/lookup?email=${encodeURIComponent(email.trim())}`);
+                    const recordRes = await fetch(`/api/limpieza/registros/lookup?cedula=${encodeURIComponent(cedula.trim())}`);
                     if (recordRes.ok) {
                         const recordData = await recordRes.json();
                         if (recordData.found && recordData.registro) {
@@ -85,7 +85,7 @@ export default function RegistroLimpiezaPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: email.trim(),
+                    cedula: cedula.trim(),
                     tareas: JSON.stringify(tareasSeleccionadas),
                     observaciones: observaciones || null,
                 }),
@@ -104,8 +104,8 @@ export default function RegistroLimpiezaPage() {
     };
 
     const handleNuevo = () => {
-        setStep('email');
-        setEmail('');
+        setStep('cedula');
+        setCedula('');
         setWorker(null);
         setTareasChecked(TAREAS_PREDEFINIDAS.map(() => false));
         setObservaciones('');
@@ -115,9 +115,9 @@ export default function RegistroLimpiezaPage() {
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="GSS" style={{ maxWidth: '150px', marginBottom: '1.5rem' }} />
+            <img src="/logo.png" alt="GSS" style={{ height: '40px', marginBottom: '2rem' }} />
 
-            <div style={{ width: '100%', maxWidth: '440px', backgroundColor: '#fff', borderRadius: '14px', boxShadow: '0 4px 24px rgba(0,0,0,0.09)', padding: '2rem' }}>
+            <div style={{ width: '100%', maxWidth: '440px', backgroundColor: '#fff', borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.08)', padding: '2.25rem 1.75rem' }}>
 
                 {/* STEP: DONE */}
                 {step === 'done' && (
@@ -131,8 +131,8 @@ export default function RegistroLimpiezaPage() {
                     </div>
                 )}
 
-                {/* STEP: EMAIL */}
-                {step === 'email' && (
+                {/* STEP: CEDULA */}
+                {step === 'cedula' && (
                     <>
                         <h1 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111827', margin: '0 0 0.2rem' }}>Registro de Tareas</h1>
                         <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '1.75rem' }}>Operaciones de Limpieza</p>
@@ -143,16 +143,17 @@ export default function RegistroLimpiezaPage() {
                             </div>
                         )}
 
-                        <form onSubmit={handleEmailSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <form onSubmit={handleCedulaSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div>
                                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                                    Tu email
+                                    Tu Cédula
                                 </label>
                                 <input
-                                    type="email"
-                                    value={email}
-                                    onChange={e => setEmail(e.target.value)}
-                                    placeholder="correo@ejemplo.com"
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={cedula}
+                                    onChange={e => setCedula(e.target.value)}
+                                    placeholder="Ingrese su cédula"
                                     required
                                     autoFocus
                                     style={{ width: '100%', padding: '0.7rem 0.85rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.95rem', backgroundColor: '#fff', color: '#111827', boxSizing: 'border-box' }}
@@ -171,78 +172,74 @@ export default function RegistroLimpiezaPage() {
 
                 {/* STEP: TASKS */}
                 {step === 'tasks' && worker && (
-                    <>
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: '0 0 0.2rem' }}>Bienvenido/a</p>
-                            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#111827', margin: 0 }}>{worker.nombre}</h2>
-                            {(worker.sector || worker.cliente) && (
-                                <p style={{ fontSize: '0.82rem', color: '#6b7280', margin: '0.2rem 0 0' }}>
-                                    {[worker.sector, worker.cliente].filter(Boolean).join(' · ')}
-                                </p>
-                            )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hola,</span>
+                            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0' }}>{worker.nombre}</h2>
+                            <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0.2rem 0 0' }}>{worker.cliente} - {worker.sector}</p>
                         </div>
 
                         {error && (
-                            <div style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '0.6rem 0.85rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                            <div style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>
                                 {error}
                             </div>
                         )}
 
-                        <form onSubmit={handleTaskSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.03em', margin: '0 0 0.25rem' }}>
-                                Tareas realizadas hoy
-                            </p>
+                        <form onSubmit={handleTaskSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', marginBottom: '1rem', textTransform: 'uppercase' }}>
+                                    Tareas realizadas hoy:
+                                </label>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {TAREAS_PREDEFINIDAS.map((t, i) => (
+                                        <div 
+                                            key={i} 
+                                            onClick={() => toggleTarea(i)}
+                                            style={{ 
+                                                display: 'flex', alignItems: 'center', gap: '1rem', 
+                                                padding: '1rem', borderRadius: '12px', border: '2px solid',
+                                                borderColor: tareasChecked[i] ? '#1d3461' : '#e5e7eb',
+                                                backgroundColor: tareasChecked[i] ? 'rgba(29,52,97,0.03)' : '#fff',
+                                                cursor: 'pointer', transition: 'all 0.2s',
+                                                userSelect: 'none'
+                                            }}
+                                        >
+                                            <div style={{ 
+                                                width: '24px', height: '24px', borderRadius: '6px', border: '2px solid',
+                                                borderColor: tareasChecked[i] ? '#1d3461' : '#d1d5db',
+                                                backgroundColor: tareasChecked[i] ? '#1d3461' : '#fff',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                color: '#fff', transition: 'all 0.2s'
+                                            }}>
+                                                {tareasChecked[i] && <Check size={16} strokeWidth={4} />}
+                                            </div>
+                                            <span style={{ fontSize: '0.95rem', fontWeight: 600, color: tareasChecked[i] ? '#1d3461' : '#374151' }}>{t}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
 
-                            {TAREAS_PREDEFINIDAS.map((tarea, i) => (
-                                <button
-                                    key={i}
-                                    type="button"
-                                    onClick={() => toggleTarea(i)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '0.75rem',
-                                        padding: '0.8rem 1rem', borderRadius: '10px', cursor: 'pointer',
-                                        border: `2px solid ${tareasChecked[i] ? '#1d3461' : '#e5e7eb'}`,
-                                        backgroundColor: tareasChecked[i] ? '#eef2ff' : '#f9fafb',
-                                        transition: 'all 0.15s', textAlign: 'left', width: '100%',
-                                    }}
-                                >
-                                    <div style={{
-                                        width: '22px', height: '22px', borderRadius: '6px', flexShrink: 0,
-                                        border: `2px solid ${tareasChecked[i] ? '#1d3461' : '#d1d5db'}`,
-                                        backgroundColor: tareasChecked[i] ? '#1d3461' : '#fff',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        transition: 'all 0.15s',
-                                    }}>
-                                        {tareasChecked[i] && <Check size={13} color="white" strokeWidth={3} />}
-                                    </div>
-                                    <span style={{ fontSize: '0.9rem', fontWeight: tareasChecked[i] ? 600 : 400, color: tareasChecked[i] ? '#1d3461' : '#374151' }}>
-                                        {tarea}
-                                    </span>
-                                </button>
-                            ))}
-
-                            <div style={{ marginTop: '0.25rem' }}>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
                                     Observaciones
                                 </label>
                                 <textarea
                                     value={observaciones}
                                     onChange={e => setObservaciones(e.target.value)}
-                                    rows={2}
-                                    placeholder="Notas adicionales..."
-                                    style={{ width: '100%', padding: '0.65rem 0.8rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.875rem', backgroundColor: '#fff', color: '#111827', boxSizing: 'border-box', resize: 'vertical' }}
+                                    placeholder=""
+                                    style={{ width: '100%', padding: '0.85rem', borderRadius: '12px', border: '1px solid #d1d5db', fontSize: '0.95rem', backgroundColor: '#fff', color: '#111827', minHeight: '100px', boxSizing: 'border-box', outline: 'none' }}
                                 />
                             </div>
 
                             <button
                                 type="submit"
-                                disabled={loading}
-                                style={{ padding: '0.8rem', backgroundColor: loading ? '#9ca3af' : '#1d3461', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', marginTop: '0.25rem' }}
+                                disabled={loading || !tareasChecked.some(v => v)}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1rem', backgroundColor: (loading || !tareasChecked.some(v => v)) ? '#9ca3af' : '#1d3461', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer' }}
                             >
-                                {loading ? 'Enviando...' : 'Enviar registro'}
+                                {loading ? 'Enviando...' : 'Finalizar Registro'}
                             </button>
                         </form>
-                    </>
+                    </div>
                 )}
             </div>
         </div>

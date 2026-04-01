@@ -10,13 +10,12 @@ interface LimpiezaUser {
     id: number;
     nombre: string;
     cedula: string;
-    email: string;
     sector: string;
     cliente: string;
     activo: number;
 }
 
-const emptyForm = { nombre: '', cedula: '', email: '', sector: '', cliente: '' };
+const emptyForm = { nombre: '', cedula: '', sector: '', cliente: '' };
 
 export default function PersonalLimpiezaPage() {
     const { currentUser, isAuthenticated, loading, logout, getAuthHeaders } = useTicketContext() as any;
@@ -64,14 +63,14 @@ export default function PersonalLimpiezaPage() {
 
     const openNew = () => { setForm(emptyForm); setEditingId(null); setFormError(''); setShowForm(true); };
     const openEdit = (u: LimpiezaUser) => {
-        setForm({ nombre: u.nombre, cedula: u.cedula || '', email: u.email, sector: u.sector || '', cliente: u.cliente || '' });
+        setForm({ nombre: u.nombre, cedula: u.cedula || '', sector: u.sector || '', cliente: u.cliente || '' });
         setEditingId(u.id); setFormError(''); setShowForm(true);
     };
     const closeForm = () => { setShowForm(false); setEditingId(null); setForm(emptyForm); };
 
     const handleSave = async () => {
         setFormError('');
-        if (!form.nombre || !form.email) { setFormError('Nombre y email son obligatorios.'); return; }
+        if (!form.nombre) { setFormError('El nombre es obligatorio.'); return; }
         setSaving(true);
         try {
             const method = editingId ? 'PUT' : 'POST';
@@ -111,49 +110,60 @@ export default function PersonalLimpiezaPage() {
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-color)', display: 'flex', flexDirection: 'column' }}>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)' }}>
+            <header style={{ 
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', 
+                backgroundColor: 'var(--surface-color)', position: 'sticky', top: 0, zIndex: 50 
+            }}>
                 <Link href="/operaciones-limpieza" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.85rem' }}>
-                    <ArrowLeft size={15} /> Operaciones Limpieza
+                    <ArrowLeft size={16} /> <span className="mobile-hide">Operaciones Limpieza</span>
                 </Link>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="GSS" style={{ height: '36px' }} />
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{currentUser.name}</span>
+                <img src="/logo.png" alt="GSS" style={{ height: '32px' }} className="mobile-hide" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }} className="mobile-hide">{currentUser.name}</span>
+                    <button 
+                        onClick={() => { logout(); router.push('/login'); }} 
+                        style={{ background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', padding: '0.4rem' }}
+                        title="Cerrar sesión"
+                    >
+                        <LogOut size={18} />
+                    </button>
+                </div>
             </header>
 
-            <main style={{ flex: 1, padding: '1.5rem 2rem', maxWidth: '900px', margin: '0 auto', width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <main style={{ flex: 1, padding: '1.25rem 1rem', maxWidth: '900px', margin: '0 auto', width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <Users size={22} color="var(--primary-color)" />
-                        <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Personal de Limpieza</h1>
+                        <div style={{ padding: '0.5rem', backgroundColor: 'rgba(41,65,107,0.1)', borderRadius: '10px' }}>
+                            <Users size={22} color="var(--primary-color)" />
+                        </div>
+                        <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Personal</h1>
                     </div>
                     <button onClick={openNew} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.55rem 1.1rem', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: 'var(--radius)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>
-                        <Plus size={15} /> Nuevo
+                        <Plus size={16} /> <span className="mobile-hide">Nuevo</span>
                     </button>
                 </div>
 
                 {/* Form modal */}
                 {showForm && (
-                    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-                        <div className="card" style={{ width: '100%', maxWidth: '480px', padding: '1.75rem', position: 'relative' }}>
-                            <button onClick={closeForm} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={20} /></button>
-                            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 1.25rem' }}>{editingId ? 'Editar' : 'Nuevo'} funcionario</h3>
+                    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0' }}>
+                        <div className="card modal-responsive" style={{ width: '100%', maxWidth: '480px', padding: '1.75rem', position: 'relative', overflowY: 'auto' }}>
+                            <button onClick={closeForm} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '0.5rem' }}><X size={24} /></button>
+                            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1.5rem', color: 'var(--primary-color)' }}>{editingId ? 'Editar' : 'Nuevo'} Funcionario</h3>
 
-                            {formError && <div style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#b91c1c', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius)', fontSize: '0.85rem', marginBottom: '1rem' }}>{formError}</div>}
+                            {formError && <div style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#b91c1c', padding: '0.75rem', borderRadius: 'var(--radius)', fontSize: '0.85rem', marginBottom: '1.25rem', border: '1px solid rgba(239,68,68,0.2)' }}>{formError}</div>}
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                     <div>
                                         <label style={labelStyle}>Nombre *</label>
-                                        <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Juan Pérez" style={inputStyle} />
+                                        <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} placeholder="" style={inputStyle} />
                                     </div>
                                     <div>
                                         <label style={labelStyle}>Cédula</label>
-                                        <input value={form.cedula} onChange={e => setForm(p => ({ ...p, cedula: e.target.value }))} placeholder="12345678" style={inputStyle} />
+                                        <input value={form.cedula} onChange={e => setForm(p => ({ ...p, cedula: e.target.value }))} placeholder="" style={inputStyle} />
                                     </div>
-                                </div>
-                                <div>
-                                    <label style={labelStyle}>Email *</label>
-                                    <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="correo@ejemplo.com" style={inputStyle} />
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                                     <div>
@@ -177,64 +187,96 @@ export default function PersonalLimpiezaPage() {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
-                                <button onClick={closeForm} style={{ padding: '0.55rem 1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', background: 'transparent', color: 'var(--text-secondary)', fontSize: '0.875rem', cursor: 'pointer' }}>Cancelar</button>
-                                <button onClick={handleSave} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.55rem 1.2rem', backgroundColor: saving ? '#9ca3af' : 'var(--primary-color)', color: 'white', border: 'none', borderRadius: 'var(--radius)', fontSize: '0.875rem', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}>
-                                    <Check size={14} /> {saving ? 'Guardando...' : 'Guardar'}
+                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '2rem' }}>
+                                <button onClick={closeForm} style={{ flex: 1, padding: '0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', background: 'transparent', color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+                                <button onClick={handleSave} disabled={saving} style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', backgroundColor: saving ? '#9ca3af' : 'var(--primary-color)', color: 'white', border: 'none', borderRadius: 'var(--radius)', fontSize: '0.9rem', fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}>
+                                    <Check size={18} /> {saving ? 'Guardando...' : 'Guardar'}
                                 </button>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* Table */}
-                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                {/* List Container */}
+                <div style={{ width: '100%' }}>
                     {fetching ? (
-                        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Cargando...</div>
+                        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)' }}>Cargando personal...</div>
                     ) : usuarios.length === 0 ? (
-                        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
                             <Users size={40} style={{ opacity: 0.2, marginBottom: '0.75rem' }} />
                             <p>No hay funcionarios registrados.</p>
                         </div>
                     ) : (
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                            <thead>
-                                <tr style={{ backgroundColor: 'var(--surface-color)', borderBottom: '2px solid var(--border-color)' }}>
-                                    {['Nombre', 'Cédula', 'Email', 'Sector', 'Cliente', 'Estado', ''].map(h => (
-                                        <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {usuarios.map(u => (
-                                    <tr key={u.id} style={{ borderBottom: '1px solid var(--border-color)', opacity: u.activo ? 1 : 0.5 }}>
-                                        <td style={{ padding: '0.7rem 1rem', fontWeight: 500 }}>{u.nombre}</td>
-                                        <td style={{ padding: '0.7rem 1rem', color: 'var(--text-secondary)' }}>{u.cedula || '-'}</td>
-                                        <td style={{ padding: '0.7rem 1rem', color: 'var(--text-secondary)' }}>{u.email}</td>
-                                        <td style={{ padding: '0.7rem 1rem' }}>{u.sector || '-'}</td>
-                                        <td style={{ padding: '0.7rem 1rem' }}>{u.cliente || '-'}</td>
-                                        <td style={{ padding: '0.7rem 1rem' }}>
-                                            <button onClick={() => handleToggleActivo(u)} style={{ fontSize: '0.72rem', padding: '0.15rem 0.55rem', borderRadius: '9999px', border: 'none', cursor: 'pointer', fontWeight: 600, backgroundColor: u.activo ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.1)', color: u.activo ? '#15803d' : '#b91c1c' }}>
-                                                {u.activo ? 'Activo' : 'Inactivo'}
-                                            </button>
-                                        </td>
-                                        <td style={{ padding: '0.7rem 1rem' }}>
-                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                <button onClick={() => openEdit(u)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '0.2rem', borderRadius: '4px' }} title="Editar"><Pencil size={15} /></button>
-                                                <button onClick={() => handleDelete(u.id, u.nombre)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '0.2rem', borderRadius: '4px' }} title="Eliminar"><Trash2 size={15} /></button>
+                        <>
+                            {/* Desktop Table View */}
+                            <div className="desktop-view card" style={{ padding: 0, overflow: 'hidden' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                                    <thead>
+                                        <tr style={{ backgroundColor: 'var(--surface-color)', borderBottom: '2px solid var(--border-color)' }}>
+                                            {['Nombre', 'Cédula', 'Sector', 'Cliente', 'Estado', ''].map(h => (
+                                                <th key={h} style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {usuarios.map(u => (
+                                            <tr key={u.id} style={{ borderBottom: '1px solid var(--border-color)', opacity: u.activo ? 1 : 0.5 }}>
+                                                <td style={{ padding: '0.7rem 1rem', fontWeight: 500 }}>{u.nombre}</td>
+                                                <td style={{ padding: '0.7rem 1rem', color: 'var(--text-secondary)' }}>{u.cedula || '-'}</td>
+                                                <td style={{ padding: '0.7rem 1rem' }}>{u.sector || '-'}</td>
+                                                <td style={{ padding: '0.7rem 1rem' }}>{u.cliente || '-'}</td>
+                                                <td style={{ padding: '0.7rem 1rem' }}>
+                                                    <button onClick={() => handleToggleActivo(u)} style={{ fontSize: '0.72rem', padding: '0.15rem 0.55rem', borderRadius: '9999px', border: 'none', cursor: 'pointer', fontWeight: 600, backgroundColor: u.activo ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.1)', color: u.activo ? '#15803d' : '#b91c1c' }}>
+                                                        {u.activo ? 'Activo' : 'Inactivo'}
+                                                    </button>
+                                                </td>
+                                                <td style={{ padding: '0.7rem 1rem' }}>
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        <button onClick={() => openEdit(u)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: '0.2rem', borderRadius: '4px' }} title="Editar"><Pencil size={15} /></button>
+                                                        <button onClick={() => handleDelete(u.id, u.nombre)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '0.2rem', borderRadius: '4px' }} title="Eliminar"><Trash2 size={15} /></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Mobile Card View */}
+                            <div className="mobile-view">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    {usuarios.map(u => (
+                                        <div key={u.id} className="logbook-card" style={{ opacity: u.activo ? 1 : 0.7 }}>
+                                            <div className="logbook-card-header" style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                                <span style={{ fontWeight: 700, color: 'var(--primary-color)' }}>{u.nombre}</span>
+                                                <button onClick={() => handleToggleActivo(u)} style={{ fontSize: '0.7rem', padding: '0.1rem 0.6rem', borderRadius: '9999px', border: 'none', cursor: 'pointer', fontWeight: 600, backgroundColor: u.activo ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.1)', color: u.activo ? '#15803d' : '#b91c1c' }}>
+                                                    {u.activo ? 'Activo' : 'Inactivo'}
+                                                </button>
                                             </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                            <div className="logbook-card-body">
+                                                <div className="logbook-row">
+                                                    <span className="logbook-label">CI:</span>
+                                                    <span className="logbook-value">{u.cedula || '-'}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
+                                                    <button onClick={() => openEdit(u)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600 }}>
+                                                        <Pencil size={14} /> Editar
+                                                    </button>
+                                                    <button onClick={() => handleDelete(u.id, u.nombre)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.6rem', backgroundColor: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: '#ef4444', fontSize: '0.85rem', fontWeight: 600 }}>
+                                                        <Trash2 size={14} /> Eliminar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
                     )}
                 </div>
             </main>
 
-            <button onClick={() => { logout(); router.push('/login'); }} style={{ position: 'fixed', bottom: '1.5rem', left: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.5rem 0.9rem', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                <LogOut size={14} /> Cerrar sesión
-            </button>
+            {/* Logout button removed from here, now in header */}
         </div>
     );
 }

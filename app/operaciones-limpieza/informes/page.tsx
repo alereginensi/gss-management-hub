@@ -294,39 +294,45 @@ export default function InformesOperativosPage() {
                     <ArrowLeft size={15} /> {fromHistory ? 'Volver al Historial' : 'Operaciones Limpieza'}
                 </Link>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="GSS" style={{ height: '36px' }} />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{currentUser.name}</span>
+                <img src="/logo.png" alt="GSS" style={{ height: '36px' }} className="mobile-hide" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#64748b' }} className="mobile-hide">{currentUser.name}</span>
+                    <button 
+                        onClick={() => { logout(); router.push('/login'); }} 
+                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.4rem' }}
+                        title="Cerrar sesión"
+                    >
+                        <LogOut size={18} />
+                    </button>
                 </div>
             </header>
 
             <main style={{ flex: 1, padding: '1.5rem', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
                 {/* Actions Row - no-print */}
-                <div className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', gap: '1rem', flexWrap: 'wrap' }}>
+                <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <div style={{ backgroundColor: '#1d3461', color: 'white', padding: '0.6rem', borderRadius: '10px' }}>
                             <FileText size={22} />
                         </div>
                         <div>
-                            <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', margin: 0 }}>Reporte Operativo Diario</h1>
+                            <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: 0 }}>Reporte Operativo</h1>
                             <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: 0 }}>Planilla de asistencia y novedades</p>
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', alignItems: 'end' }}>
                         {/* Cliente Filter */}
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1d3461', textTransform: 'uppercase' }}>Cliente:</span>
+                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase', marginLeft: '0.2rem' }}>Cliente</span>
                             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                <Building2 size={16} style={{ position: 'absolute', left: '0.75rem', color: '#64748b' }} />
                                 <select
                                     value={clienteSeleccionado}
                                     onChange={e => setClienteSeleccionado(e.target.value)}
                                     style={{
-                                        padding: '0.55rem 0.75rem 0.55rem 2.25rem', borderRadius: '8px',
+                                        padding: '0.55rem 0.75rem', borderRadius: '8px',
                                         border: '2px solid #1d3461', fontSize: '0.875rem',
                                         backgroundColor: 'white', color: '#111827', cursor: 'pointer',
-                                        fontWeight: 600, minWidth: '200px'
+                                        fontWeight: 600, width: '100%'
                                     }}
                                 >
                                     <option value="Todos">-- Seleccionar Cliente --</option>
@@ -338,51 +344,54 @@ export default function InformesOperativosPage() {
                         </div>
 
                         {/* Fecha Filter */}
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                            <Calendar size={16} style={{ position: 'absolute', left: '0.75rem', color: '#64748b' }} />
-                            <input 
-                                type="date" 
-                                value={fecha} 
-                                onChange={e => setFecha(e.target.value)}
-                                style={{
-                                    padding: '0.55rem 0.75rem 0.55rem 2.25rem', borderRadius: '8px',
-                                    border: '1px solid #d1d5db', fontSize: '0.875rem',
-                                    backgroundColor: 'white', color: '#111827', cursor: 'pointer'
-                                }}
-                            />
+                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginLeft: '0.2rem' }}>Fecha</span>
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <input 
+                                    type="date" 
+                                    value={fecha} 
+                                    onChange={e => setFecha(e.target.value)}
+                                    style={{
+                                        padding: '0.55rem 0.75rem', borderRadius: '8px',
+                                        border: '1px solid #d1d5db', fontSize: '0.875rem',
+                                        backgroundColor: 'white', color: '#111827', cursor: 'pointer', width: '100%', boxSizing: 'border-box'
+                                    }}
+                                />
+                            </div>
                         </div>
 
                         <button
                             onClick={handlePrint}
                             style={{
-                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                                 padding: '0.55rem 1rem', backgroundColor: '#fff',
                                 border: '1px solid #d1d5db', borderRadius: '8px',
-                                fontSize: '0.875rem', fontWeight: 600, color: '#374151', cursor: 'pointer'
+                                fontSize: '0.875rem', fontWeight: 650, color: '#111827', cursor: 'pointer',
+                                minHeight: '38px', transition: 'all 0.2s', width: '100%', boxSizing: 'border-box'
                             }}
                         >
-                            <Printer size={16} /> Exportar PDF
+                            <Printer size={16} /> <span className="mobile-only-flex">Descargar PDF</span><span className="mobile-hide">Imprimir PDF</span>
                         </button>
                     </div>
                 </div>
 
                 {/* The Virtual Sheet - Printable Area */}
-                <div id="printable-sheet" ref={sheetRef} className="card" style={{ padding: '2rem', minHeight: '1000px', backgroundColor: 'white', border: '1px solid #e2e8f0' }}>
+                <div id="printable-sheet" ref={sheetRef} className="card mobile-no-padding" style={{ padding: '2rem 1.5rem', minHeight: '1000px', backgroundColor: 'white', border: '1px solid #e2e8f0', width: '100%', boxSizing: 'border-box' }}>
                     {/* Sheet Header - shown on print */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: '240px' }}>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src="/logo.png" alt="GSS" style={{ height: '50px' }} />
-                            <div>
-                                <h2 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1d3461' }}>Reporte Operacional de GSS</h2>
+                            <img src="/logo.png" alt="GSS" style={{ height: '44px' }} />
+                            <div style={{ flex: 1 }}>
+                                <h2 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1d3461', lineHeight: '1.2' }} className="report-title">Reporte Operacional</h2>
                                 {clienteSeleccionado !== 'Todos' && (
-                                    <p style={{ fontSize: '0.9rem', color: '#111827', fontWeight: 700, margin: '0.2rem 0 0 0' }}>CLIENTE: {clienteSeleccionado}</p>
+                                    <p style={{ fontSize: '0.85rem', color: '#111827', fontWeight: 700, margin: '0.1rem 0 0 0' }}>CLIENTE: {clienteSeleccionado}</p>
                                 )}
                             </div>
                         </div>
-                        <div style={{ border: '2px solid #000', padding: '0.6rem 1.25rem', borderRadius: '4px', textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', marginBottom: '0.2rem', textTransform: 'uppercase' }}>Fecha del Reporte</div>
-                            <div style={{ fontSize: '1rem', fontWeight: 900, color: '#111827' }}>{fecha.split('-').reverse().join('/')}</div>
+                        <div style={{ border: '2px solid #000', padding: '0.5rem 1rem', borderRadius: '4px', textAlign: 'center', flexShrink: 0, minWidth: '120px' }}>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#64748b', marginBottom: '0.15rem', textTransform: 'uppercase' }}>Fecha del Reporte</div>
+                            <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#111827' }}>{fecha.split('-').reverse().join('/')}</div>
                         </div>
                     </div>
 
@@ -412,8 +421,8 @@ export default function InformesOperativosPage() {
                                     </div>
 
                                     {(expanded.includes(seccion) || seccion !== 'ADICIONALES') && (
-                                        <div className="table-container" style={{ overflowX: 'auto' }}>
-                                            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                                        <div className="scroll-container">
+                                            <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                                                 <thead>
                                                     <tr style={{ backgroundColor: '#fff', borderBottom: '2px solid #000' }}>
                                                         <th style={{ width: '120px', padding: '0.5rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Cédula</th>
@@ -432,7 +441,7 @@ export default function InformesOperativosPage() {
                                                                 <input 
                                                                     readOnly 
                                                                     value={row.cedula} 
-                                                                    placeholder="0.000.000"
+                                                                    placeholder=""
                                                                     style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.8rem', fontWeight: 500, outline: 'none' }} 
                                                                 />
                                                             </td>
@@ -594,9 +603,7 @@ export default function InformesOperativosPage() {
                 />
             )}
 
-            <button onClick={() => { logout(); router.push('/login'); }} className="no-print" style={{ position: 'fixed', bottom: '1.5rem', left: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem 0.9rem', fontSize: '0.8rem', color: '#64748b', cursor: 'pointer', zIndex: 100 }}>
-                <LogOut size={14} /> Cerrar sesión
-            </button>
+            {/* Fixed logout removed from here, now in header */}
 
             <style jsx global>{`
                 @media print {
@@ -637,6 +644,14 @@ export default function InformesOperativosPage() {
                 }
                 .print-only {
                     display: none;
+                }
+                @media (max-width: 768px) {
+                    .report-title {
+                        font-size: 1rem !important;
+                    }
+                    #printable-sheet {
+                        padding: 1.25rem 1rem !important;
+                    }
                 }
             `}</style>
         </div>
