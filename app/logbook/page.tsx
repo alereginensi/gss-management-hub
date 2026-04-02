@@ -303,10 +303,10 @@ export default function LogbookPage() {
 
     const availableLocations = Object.keys(clientSectorMap).sort();
 
-    // Date Filter State - default to today for both from and to
-    const today = new Date().toISOString().split('T')[0];
-    const [dateFilter, setDateFilter] = useState<string>(today);
-    const [dateFilterTo, setDateFilterTo] = useState<string>(today);
+    // Date Filter State - empty by default so that on load ALL records are returned
+    // (respects any explicit date range the user applies)
+    const [dateFilter, setDateFilter] = useState<string>('');
+    const [dateFilterTo, setDateFilterTo] = useState<string>('');
     const [serviceTypeFilter, setServiceTypeFilter] = useState<string>('');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [showFilters, setShowFilters] = useState(false);
