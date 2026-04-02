@@ -419,6 +419,8 @@ class DbWrapper {
         nombre TEXT,
         cedula TEXT,
         cliente TEXT,
+        sector TEXT,
+        puesto TEXT,
         entrada1 TEXT,
         salida1 TEXT,
         entrada2 TEXT,
@@ -452,6 +454,16 @@ class DbWrapper {
         if (!hasCliente) {
           console.log('🏗️ Adding missing "cliente" column to limpieza_asistencia');
           this.sqliteDb.prepare("ALTER TABLE limpieza_asistencia ADD COLUMN cliente TEXT").run();
+        }
+        const hasSector = info.some((c: any) => c.name === 'sector');
+        if (!hasSector) {
+          console.log('🏗️ Adding missing "sector" column to limpieza_asistencia');
+          this.sqliteDb.prepare("ALTER TABLE limpieza_asistencia ADD COLUMN sector TEXT").run();
+        }
+        const hasPuesto = info.some((c: any) => c.name === 'puesto');
+        if (!hasPuesto) {
+          console.log('🏗️ Adding missing "puesto" column to limpieza_asistencia');
+          this.sqliteDb.prepare("ALTER TABLE limpieza_asistencia ADD COLUMN puesto TEXT").run();
         }
       } catch (err) {
         console.error('❌ Error migrate SQLite asistencia:', err);
@@ -500,6 +512,14 @@ class DbWrapper {
           if (existingAsisCols.length > 0 && !existingAsisCols.includes('cliente')) {
             console.log('🐘 Migrating limpieza_asistencia: adding cliente column');
             await this.pgPool!.query('ALTER TABLE limpieza_asistencia ADD COLUMN cliente TEXT');
+          }
+          if (existingAsisCols.length > 0 && !existingAsisCols.includes('sector')) {
+            console.log('🐘 Migrating limpieza_asistencia: adding sector column');
+            await this.pgPool!.query('ALTER TABLE limpieza_asistencia ADD COLUMN sector TEXT');
+          }
+          if (existingAsisCols.length > 0 && !existingAsisCols.includes('puesto')) {
+            console.log('🐘 Migrating limpieza_asistencia: adding puesto column');
+            await this.pgPool!.query('ALTER TABLE limpieza_asistencia ADD COLUMN puesto TEXT');
           }
 
           // Migrate limpieza_usuarios: remove email if exists, make cedula unique

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Pencil, Trash2, Check, X, Users, LogOut } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Check, X, Users, LogOut, Search } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 
 interface LimpiezaUser {
@@ -28,6 +28,7 @@ export default function PersonalLimpiezaPage() {
     const [form, setForm] = useState(emptyForm);
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
     const [clientSectorMap, setClientSectorMap] = useState<Record<string, string[]>>({});
 
     useEffect(() => {
@@ -108,6 +109,11 @@ export default function PersonalLimpiezaPage() {
     };
     const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' };
 
+    const filteredUsuarios = usuarios.filter(u => 
+        u.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        (u.cedula && u.cedula.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
     return (
         <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-color)', display: 'flex', flexDirection: 'column' }}>
             <header style={{ 
@@ -144,6 +150,22 @@ export default function PersonalLimpiezaPage() {
                         <Plus size={16} /> <span className="mobile-hide">Nuevo</span>
                     </button>
                 </div>
+
+                {/* Search Bar */}
+                <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
+                    <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>
+                        <Search size={18} />
+                    </div>
+                    <input 
+                        type="text" 
+                        placeholder="Buscar funcionario por nombre o cédula..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.8rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', fontSize: '0.9rem', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', boxSizing: 'border-box', outline: 'none' }}
+                    />
+                </div>
+
+
 
                 {/* Form modal */}
                 {showForm && (
@@ -201,10 +223,10 @@ export default function PersonalLimpiezaPage() {
                 <div style={{ width: '100%' }}>
                     {fetching ? (
                         <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)' }}>Cargando personal...</div>
-                    ) : usuarios.length === 0 ? (
+                    ) : filteredUsuarios.length === 0 ? (
                         <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
                             <Users size={40} style={{ opacity: 0.2, marginBottom: '0.75rem' }} />
-                            <p>No hay funcionarios registrados.</p>
+                            <p>{usuarios.length === 0 ? 'No hay funcionarios registrados.' : 'No se encontraron resultados para la búsqueda.'}</p>
                         </div>
                     ) : (
                         <>
@@ -219,7 +241,7 @@ export default function PersonalLimpiezaPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {usuarios.map(u => (
+                                        {filteredUsuarios.map(u => (
                                             <tr key={u.id} style={{ borderBottom: '1px solid var(--border-color)', opacity: u.activo ? 1 : 0.5 }}>
                                                 <td style={{ padding: '0.7rem 1rem', fontWeight: 500 }}>{u.nombre}</td>
                                                 <td style={{ padding: '0.7rem 1rem', color: 'var(--text-secondary)' }}>{u.cedula || '-'}</td>
@@ -245,7 +267,7 @@ export default function PersonalLimpiezaPage() {
                             {/* Mobile Card View */}
                             <div className="mobile-view">
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    {usuarios.map(u => (
+                                    {filteredUsuarios.map(u => (
                                         <div key={u.id} className="logbook-card" style={{ opacity: u.activo ? 1 : 0.7 }}>
                                             <div className="logbook-card-header" style={{ borderBottom: '1px solid var(--border-color)' }}>
                                                 <span style={{ fontWeight: 700, color: 'var(--primary-color)' }}>{u.nombre}</span>

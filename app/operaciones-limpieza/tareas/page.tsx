@@ -73,12 +73,37 @@ export default function TareasPage() {
         }
     }, [isAuthenticated, currentUser, fetchRegistros]);
 
-    const handleExport = () => {
+    const handleExport = async () => {
         const params = new URLSearchParams();
         if (desde) params.set('desde', desde);
         if (hasta) params.set('hasta', hasta);
         if (search) params.set('search', search);
-        window.open(`/api/limpieza/registros/export?${params.toString()}`, '_blank');
+        
+        try {
+            const res = await fetch(`/api/limpieza/registros/export?${params.toString()}`, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+            
+            if (!res.ok) {
+                alert('Error al exportar: Permiso denegado o problema en el servidor.');
+                return;
+            }
+            
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `Recuento_Limpieza_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Error al descargar Excel:', error);
+            alert('Ocurrió un error al procesar la descarga del archivo.');
+        }
     };
 
     const clearFilters = () => {

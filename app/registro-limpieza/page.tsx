@@ -124,12 +124,10 @@ export default function RegistroLimpiezaPage() {
                     <div style={{ textAlign: 'center', padding: '1.5rem 1rem' }}>
                         <CheckCircle2 size={56} color="#22c55e" style={{ marginBottom: '1rem' }} />
                         <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#111827', margin: '0 0 0.5rem' }}>¡Registro enviado!</h2>
-                        <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Tus tareas fueron guardadas correctamente.</p>
-                        <button onClick={handleNuevo} style={{ padding: '0.65rem 1.5rem', backgroundColor: '#1d3461', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer' }}>
-                            Registrar otro
-                        </button>
+                        <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: 0 }}>Tus tareas fueron guardadas correctamente por el día de hoy.</p>
                     </div>
                 )}
+
 
                 {/* STEP: CEDULA */}
                 {step === 'cedula' && (
