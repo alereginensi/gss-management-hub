@@ -7,7 +7,7 @@ import { getSession } from '@/lib/auth-server';
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { cedula, tareas, observaciones } = body;
+        const { cedula, tareas, tareas_timestamps, fotos, observaciones } = body;
 
         if (!cedula) {
             return NextResponse.json({ error: 'Cédula es obligatoria' }, { status: 400 });
@@ -47,10 +47,10 @@ export async function POST(request: NextRequest) {
             }
 
             await db.run(
-                `UPDATE limpieza_registros 
-                 SET tareas = ?, observaciones = ?, hora_fin = ?
+                `UPDATE limpieza_registros
+                 SET tareas = ?, tareas_timestamps = ?, fotos = ?, observaciones = ?, hora_fin = ?
                  WHERE id = ?`,
-                [tareas, observaciones || null, hora_fin, existing.id]
+                [tareas, tareas_timestamps || null, fotos || null, observaciones || null, hora_fin, existing.id]
             );
 
             return NextResponse.json({ success: true, message: 'Registro actualizado correctamente', updated: true });
@@ -65,10 +65,10 @@ export async function POST(request: NextRequest) {
             } catch {}
 
             await db.run(
-                `INSERT INTO limpieza_registros (nombre, cedula, sector, cliente, fecha, hora_inicio, hora_fin, tareas, observaciones)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO limpieza_registros (nombre, cedula, sector, cliente, fecha, hora_inicio, hora_fin, tareas, tareas_timestamps, fotos, observaciones)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [worker.nombre, worker.cedula, worker.sector || null, worker.cliente || null,
-                 fecha, hora_inicio, hora_fin, tareas || null, observaciones || null]
+                 fecha, hora_inicio, hora_fin, tareas || null, tareas_timestamps || null, fotos || null, observaciones || null]
             );
 
             return NextResponse.json({ success: true, message: 'Registro guardado correctamente', created: true }, { status: 201 });

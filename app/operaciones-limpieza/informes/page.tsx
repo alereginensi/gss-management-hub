@@ -32,6 +32,7 @@ interface AsistenciaRow {
     salida2: string;
     firma: string | null;
     isSaved?: boolean;
+    isManual?: boolean;
 }
 
 interface SeccionesAsistencia {
@@ -42,7 +43,7 @@ const TURNOS = ['6 A 14', '14 A 22', '22 A 06'];
 const SECCIONES = ['6 A 14', '12 A 20', '14 A 22', '15 A 23', '22 A 06', 'HEMOTERAPIA', 'ADICIONALES'];
 
 const SECTORES_POR_CLIENTE: Record<string, string[]> = {
-    'CASMU': ['Asilo', 'Pisos Vip', 'Torre 1', 'Torre 2', 'Roperia', 'Policlinico'],
+    'CASMU': ['Asilo', 'Pisos Vip', 'Torre 1', 'Torre 2', 'Roperia', 'Policlinico', 'Seguridad'],
 };
 
 function getSectoresForCliente(cliente: string): string[] {
@@ -256,6 +257,28 @@ const PLANILLA_CONFIG: Record<string, Record<string, TurnoConfig>> = {
                 { nombre: '2D',                   cantidad: 1 },
                 { nombre: '1D',                   cantidad: 1 },
                 { nombre: 'PEON',                 cantidad: 1 },
+            ]
+        }
+    },
+    'Seguridad': {
+        '6 A 14':  { puestos: [] },
+        '14 A 22': { puestos: [] },
+        '22 A 06': {
+            puestos: [
+                { nombre: 'Encargado',              cantidad: 1 },
+                { nombre: 'Cabina Urgencia',        cantidad: 1 },
+                { nombre: 'Recorrida (Medisgroup)', cantidad: 1 },
+                { nombre: 'Cabina Abreu',           cantidad: 1 },
+                { nombre: 'Sede Administrativa',    cantidad: 1 },
+                { nombre: 'Tesorería',              cantidad: 1 },
+                { nombre: 'Visita CTI',             cantidad: 1 },
+                { nombre: 'Portería Torre 1',       cantidad: 1 },
+                { nombre: 'Portería Torre 2',       cantidad: 1 },
+                { nombre: 'Local 8',                cantidad: 1 },
+                { nombre: 'Policlínico (puerta 8)', cantidad: 1 },
+                { nombre: 'Salud Mental',           cantidad: 1 },
+                { nombre: 'Alarma Asilo',           cantidad: 1 },
+                { nombre: 'Cocina',                 cantidad: 1 },
             ]
         }
     }
@@ -505,7 +528,7 @@ export default function InformesOperativosPage() {
 
     const saveRowWithData = async (section: string, index: number, rowOverride?: AsistenciaRow) => {
         const row = rowOverride || asistencia[section][index];
-        if (!row.funcionario_id) return;
+        if (!row.funcionario_id && !(row.isManual && row.nombre)) return;
 
         setSaving(`${section}-${index}`);
         try {
@@ -702,6 +725,8 @@ export default function InformesOperativosPage() {
                                                 const isAdicionales = seccion === 'ADICIONALES';
                                 const sectionConfig = !isAdicionales ? getPlanillaConfig(sectorSeleccionado, seccion) : null;
                                 const showPuestoCol = !!sectionConfig && sectionConfig.puestos.length > 0;
+                                const turnoConfig = isAdicionales ? getPlanillaConfig(sectorSeleccionado, turnoSeleccionado) : null;
+                                const adicionalPuestoOpciones = turnoConfig?.puestos.map(p => p.nombre) ?? [];
 
                                 const getTimeOptions = (sec: string) => {
                                     const times = [''];
@@ -748,10 +773,10 @@ export default function InformesOperativosPage() {
 
                                     {(expanded.includes(seccion) || !isAdicionales) && (
                                         <div className="scroll-container">
-                                            <table style={{ width: '100%', minWidth: showPuestoCol ? '880px' : '800px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                                            <table style={{ width: '100%', minWidth: (showPuestoCol || isAdicionales) ? '880px' : '800px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                                                 <thead>
                                                     <tr style={{ backgroundColor: '#fff', borderBottom: '2px solid #000' }}>
-                                                        {showPuestoCol && <th style={{ width: '110px', padding: '0.5rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Puesto</th>}
+                                                        {(showPuestoCol || isAdicionales) && <th style={{ width: '110px', padding: '0.5rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Puesto</th>}
                                                         <th style={{ width: '110px', padding: '0.5rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Cédula</th>
                                                         <th style={{ width: '200px', padding: '0.5rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Nombre y Apellido</th>
                                                         <th style={{ width: '65px', padding: '0.5rem', textAlign: 'center', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Ent.</th>
@@ -764,35 +789,62 @@ export default function InformesOperativosPage() {
                                                 <tbody>
                                                     {asistencia[seccion].map((row, idx) => (
                                                         <tr key={idx} style={{ borderBottom: '1px solid #cbd5e1' }}>
-                                                            {showPuestoCol && (
+                                                            {/* Puesto column */}
+                                                            {showPuestoCol && !isAdicionales && (
                                                                 <td style={{ padding: '0.4rem' }}>
                                                                     <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase' }}>{row.puesto}</span>
                                                                 </td>
                                                             )}
+                                                            {isAdicionales && (
+                                                                <td style={{ padding: '0.4rem' }}>
+                                                                    {adicionalPuestoOpciones.length > 0 ? (
+                                                                        <>
+                                                                            <select
+                                                                                className="no-print"
+                                                                                value={row.puesto || ''}
+                                                                                onChange={e => { updateRow(seccion, idx, { puesto: e.target.value }); if (row.funcionario_id || (row.isManual && row.nombre)) saveRowWithData(seccion, idx, { ...asistencia[seccion][idx], puesto: e.target.value }); }}
+                                                                                style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.75rem', fontWeight: 800, outline: 'none', color: '#1d3461', cursor: 'pointer', textTransform: 'uppercase' }}
+                                                                            >
+                                                                                <option value="">-- Puesto --</option>
+                                                                                {adicionalPuestoOpciones.map(p => <option key={p} value={p}>{p}</option>)}
+                                                                            </select>
+                                                                            <span className="print-only" style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase' }}>{row.puesto || ''}</span>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <input className="no-print" value={row.puesto || ''} placeholder="Puesto..." onChange={e => updateRow(seccion, idx, { puesto: e.target.value })} onBlur={() => { if (row.funcionario_id || (row.isManual && row.nombre)) saveRowWithData(seccion, idx); }} style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.75rem', fontWeight: 800, outline: 'none', color: '#1d3461', textTransform: 'uppercase' }} />
+                                                                            <span className="print-only" style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase' }}>{row.puesto || ''}</span>
+                                                                        </>
+                                                                    )}
+                                                                </td>
+                                                            )}
+                                                            {/* Cédula */}
                                                             <td style={{ padding: '0.4rem' }}>
-                                                                <input
-                                                                    readOnly
-                                                                    value={row.cedula}
-                                                                    placeholder=""
-                                                                    style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.8rem', fontWeight: 500, outline: 'none' }}
-                                                                />
+                                                                {row.isManual ? (
+                                                                    <>
+                                                                        <input className="no-print" value={row.cedula} placeholder="Cédula" onChange={e => updateRow(seccion, idx, { cedula: e.target.value })} onBlur={() => { if (row.nombre) saveRowWithData(seccion, idx); }} style={{ width: '100%', border: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', fontSize: '0.8rem', fontWeight: 500, outline: 'none' }} />
+                                                                        <span className="print-only" style={{ fontSize: '0.8rem' }}>{row.cedula}</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <input readOnly value={row.cedula} placeholder="" style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.8rem', fontWeight: 500, outline: 'none' }} />
+                                                                )}
                                                             </td>
+                                                            {/* Nombre */}
                                                             <td style={{ padding: '0.4rem' }}>
-                                                                <select
-                                                                    className="no-print"
-                                                                    value={row.funcionario_id || ''}
-                                                                    onChange={e => handleWorkerSelect(seccion, idx, e.target.value)}
-                                                                    style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.8rem', fontWeight: 600, outline: 'none', color: '#1d3461', cursor: 'pointer' }}
-                                                                >
-                                                                    <option value="">Seleccione...</option>
-                                                                    {funcionarios
-                                                                        .filter(f => clienteSeleccionado === 'Todos' || f.cliente === clienteSeleccionado)
-                                                                        .map(f => (
-                                                                            <option key={f.id} value={f.id}>{f.nombre}</option>
-                                                                        ))
-                                                                    }
-                                                                </select>
-                                                                <span className="print-only" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{row.nombre || '..........................................'}</span>
+                                                                {row.isManual ? (
+                                                                    <>
+                                                                        <input className="no-print" value={row.nombre} placeholder="Nombre y apellido" onChange={e => updateRow(seccion, idx, { nombre: e.target.value })} onBlur={() => { if (row.nombre) saveRowWithData(seccion, idx); }} style={{ width: '100%', border: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', fontSize: '0.8rem', fontWeight: 600, outline: 'none', color: '#1d3461' }} />
+                                                                        <span className="print-only" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{row.nombre || '..........................................'}</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <select className="no-print" value={row.funcionario_id || ''} onChange={e => handleWorkerSelect(seccion, idx, e.target.value)} style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.8rem', fontWeight: 600, outline: 'none', color: '#1d3461', cursor: 'pointer' }}>
+                                                                            <option value="">Seleccione...</option>
+                                                                            {funcionarios.filter(f => clienteSeleccionado === 'Todos' || f.cliente === clienteSeleccionado).map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+                                                                        </select>
+                                                                        <span className="print-only" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{row.nombre || '..........................................'}</span>
+                                                                    </>
+                                                                )}
                                                             </td>
                                                             {(['entrada1', 'salida1', 'entrada2', 'salida2'] as const).map(field => (
                                                                 <td key={field} style={{ padding: '0.4rem', textAlign: 'center' }}>
@@ -827,14 +879,21 @@ export default function InformesOperativosPage() {
                                                                         <button
                                                                             className="no-print"
                                                                             onClick={() => setShowSignature({ section: seccion, index: idx })}
-                                                                            disabled={!row.funcionario_id}
+                                                                            disabled={!row.funcionario_id && !row.isManual}
                                                                             style={{ padding: '0.3rem 0.6rem', border: '1px solid #d1d5db', backgroundColor: '#fff', borderRadius: '4px', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem' }}
                                                                         >
                                                                             <PenTool size={12} /> Firmar
                                                                         </button>
                                                                     )}
-                                                                    <div className="no-print" style={{ display: 'flex', gap: '0.2rem' }}>
-                                                                        {!row.isSaved && row.funcionario_id && (
+                                                                    <div className="no-print" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                                                                        <button
+                                                                                onClick={() => updateRow(seccion, idx, { isManual: !row.isManual, funcionario_id: null, nombre: '', cedula: '', firma: null, isSaved: false })}
+                                                                                title={row.isManual ? 'Usar lista de funcionarios' : 'Ingresar manualmente'}
+                                                                                style={{ background: row.isManual ? '#dbeafe' : '#f1f5f9', border: `1px solid ${row.isManual ? '#93c5fd' : '#cbd5e1'}`, borderRadius: '4px', cursor: 'pointer', color: row.isManual ? '#1d3461' : '#475569', padding: '2px 4px', display: 'flex', alignItems: 'center' }}
+                                                                            >
+                                                                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                                            </button>
+                                                                        {!row.isSaved && (row.funcionario_id || (row.isManual && row.nombre)) && (
                                                                             <button onClick={() => saveRow(seccion, idx)} disabled={saving === `${seccion}-${idx}`} style={{ background: 'none', border: 'none', color: '#1d3461', cursor: 'pointer' }} title="Guardar fila">
                                                                                 <Save size={16} />
                                                                             </button>
@@ -844,7 +903,7 @@ export default function InformesOperativosPage() {
                                                                                 <CheckCircle2 size={16} />
                                                                             </button>
                                                                         )}
-                                                                        {(isAdicionales || row.funcionario_id) && (
+                                                                        {(isAdicionales || row.funcionario_id || row.isManual) && (
                                                                             <button onClick={() => removeRow(seccion, idx)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title={isAdicionales ? 'Eliminar fila' : 'Limpiar registro'}>
                                                                                 <Trash2 size={16} />
                                                                             </button>

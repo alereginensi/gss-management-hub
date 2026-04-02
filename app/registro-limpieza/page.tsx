@@ -1,43 +1,67 @@
 'use client';
 
-import { useState } from 'react';
-import { CheckCircle2, Check, ArrowRight } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { CheckCircle2, Check, ArrowRight, Camera, X } from 'lucide-react';
 
-const TAREAS_PREDEFINIDAS = [
-    'Limpieza de pisos',
-    'Limpieza de sanitarios',
-    'Limpieza de superficies y escritorios',
-    'Vaciado de papeleros',
-    'Limpieza de cocina / comedor',
-];
+const TAREAS_POR_CLIENTE: Record<string, string[]> = {
+    'schmidth': [
+        'Oficinas',
+        'Oficina de RRHH',
+        'Directorio',
+        'Gerencia',
+        'Sala de reuniones',
+        'Escalera',
+        'Comedor',
+        'Vestuarios',
+        'Baños',
+    ],
+    'default': [
+        'Limpieza de pisos',
+        'Limpieza de sanitarios',
+        'Limpieza de superficies y escritorios',
+        'Vaciado de papeleros',
+        'Limpieza de cocina / comedor',
+    ],
+};
+
+function getTareasForCliente(cliente: string): string[] {
+    const key = Object.keys(TAREAS_POR_CLIENTE).find(
+        k => k !== 'default' && k.toLowerCase() === (cliente || '').toLowerCase().trim()
+    );
+    return key ? TAREAS_POR_CLIENTE[key] : TAREAS_POR_CLIENTE['default'];
+}
 
 type Step = 'cedula' | 'tasks' | 'done';
-
 interface Worker { nombre: string; sector: string; cliente: string; }
 
 export default function RegistroLimpiezaPage() {
     const [step, setStep] = useState<Step>('cedula');
     const [cedula, setCedula] = useState('');
     const [worker, setWorker] = useState<Worker | null>(null);
-    const [tareasChecked, setTareasChecked] = useState<boolean[]>(TAREAS_PREDEFINIDAS.map(() => false));
+    const [tareas, setTareas] = useState<string[]>([]);
+    const [tareasTimestamps, setTareasTimestamps] = useState<Record<string, string>>({});
+    // URLs from Cloudinary (not base64)
+    const [tareasFotos, setTareasFotos] = useState<Record<string, string[]>>({});
+    const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
     const [observaciones, setObservaciones] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [photoTarget, setPhotoTarget] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleCedulaSubmit = async (e: { preventDefault: () => void }) => {
         e.preventDefault();
         setError('');
         setLoading(true);
         try {
-            // 1. Lookup worker
             const res = await fetch(`/api/limpieza/usuarios/lookup?cedula=${encodeURIComponent(cedula.trim())}`);
             if (!res.ok) {
                 setError('Tu cédula no está registrada. Contactá a tu supervisor.');
             } else {
                 const data = await res.json();
                 setWorker(data);
-                
-                // 2. Lookup today's record for persistence
+                const tareasCliente = getTareasForCliente(data.cliente || '');
+
                 try {
                     const recordRes = await fetch(`/api/limpieza/registros/lookup?cedula=${encodeURIComponent(cedula.trim())}`);
                     if (recordRes.ok) {
@@ -46,21 +70,20 @@ export default function RegistroLimpiezaPage() {
                             const reg = recordData.registro;
                             if (reg.tareas) {
                                 try {
-                                    const savedTareas: string[] = JSON.parse(reg.tareas);
-                                    const newChecked = TAREAS_PREDEFINIDAS.map(t => savedTareas.includes(t));
-                                    setTareasChecked(newChecked);
-                                } catch (e) {
-                                    console.error('Error parsing saved tasks:', e);
-                                }
+                                    const saved: string[] = JSON.parse(reg.tareas);
+                                    setTareas(saved.filter((t: string) => tareasCliente.includes(t)));
+                                } catch {}
                             }
-                            if (reg.observaciones) {
-                                setObservaciones(reg.observaciones);
+                            if (reg.tareas_timestamps) {
+                                try { setTareasTimestamps(JSON.parse(reg.tareas_timestamps)); } catch {}
                             }
+                            if (reg.fotos) {
+                                try { setTareasFotos(JSON.parse(reg.fotos)); } catch {}
+                            }
+                            if (reg.observaciones) setObservaciones(reg.observaciones);
                         }
                     }
-                } catch (err) {
-                    console.error('Error fetching today record:', err);
-                }
+                } catch {}
 
                 setStep('tasks');
             }
@@ -71,8 +94,56 @@ export default function RegistroLimpiezaPage() {
         }
     };
 
-    const toggleTarea = (i: number) => {
-        setTareasChecked(prev => prev.map((v, idx) => idx === i ? !v : v));
+    const toggleTarea = (t: string) => {
+        setTareas(prev => {
+            if (prev.includes(t)) {
+                setTareasTimestamps(ts => { const n = { ...ts }; delete n[t]; return n; });
+                return prev.filter(x => x !== t);
+            } else {
+                const hhmm = new Date().toTimeString().slice(0, 5);
+                setTareasTimestamps(ts => ({ ...ts, [t]: hhmm }));
+                return [...prev, t];
+            }
+        });
+    };
+
+    const handlePhotoClick = (tarea: string) => {
+        setPhotoTarget(tarea);
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !photoTarget) return;
+        e.target.value = '';
+
+        setUploadingPhoto(photoTarget);
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch('/api/limpieza/upload', { method: 'POST', body: fd });
+            if (res.ok) {
+                const { url } = await res.json();
+                setTareasFotos(prev => ({
+                    ...prev,
+                    [photoTarget]: [...(prev[photoTarget] || []), url]
+                }));
+            } else {
+                setError('Error al subir la foto. Intentá de nuevo.');
+            }
+        } catch {
+            setError('Error al subir la foto.');
+        } finally {
+            setUploadingPhoto(null);
+            setPhotoTarget(null);
+        }
+    };
+
+    const removePhoto = (tarea: string, idx: number) => {
+        setTareasFotos(prev => ({
+            ...prev,
+            [tarea]: prev[tarea].filter((_, i) => i !== idx)
+        }));
     };
 
     const handleTaskSubmit = async (e: { preventDefault: () => void }) => {
@@ -80,13 +151,14 @@ export default function RegistroLimpiezaPage() {
         setError('');
         setLoading(true);
         try {
-            const tareasSeleccionadas = TAREAS_PREDEFINIDAS.filter((_, i) => tareasChecked[i]);
             const res = await fetch('/api/limpieza/registros', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     cedula: cedula.trim(),
-                    tareas: JSON.stringify(tareasSeleccionadas),
+                    tareas: JSON.stringify(tareas),
+                    tareas_timestamps: JSON.stringify(tareasTimestamps),
+                    fotos: JSON.stringify(tareasFotos),
                     observaciones: observaciones || null,
                 }),
             });
@@ -103,49 +175,46 @@ export default function RegistroLimpiezaPage() {
         }
     };
 
-    const handleNuevo = () => {
-        setStep('cedula');
-        setCedula('');
-        setWorker(null);
-        setTareasChecked(TAREAS_PREDEFINIDAS.map(() => false));
-        setObservaciones('');
-        setError('');
-    };
+
+    const tareasCliente = worker ? getTareasForCliente(worker.cliente || '') : [];
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="GSS" style={{ height: '40px', marginBottom: '2rem' }} />
 
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+            />
+
             <div style={{ width: '100%', maxWidth: '440px', backgroundColor: '#fff', borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.08)', padding: '2.25rem 1.75rem' }}>
 
-                {/* STEP: DONE */}
+                {/* DONE */}
                 {step === 'done' && (
                     <div style={{ textAlign: 'center', padding: '1.5rem 1rem' }}>
                         <CheckCircle2 size={56} color="#22c55e" style={{ marginBottom: '1rem' }} />
-                        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#111827', margin: '0 0 0.5rem' }}>¡Registro enviado!</h2>
-                        <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: 0 }}>Tus tareas fueron guardadas correctamente por el día de hoy.</p>
+                        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#111827', margin: '0 0 0.5rem' }}>¡Listo, {worker?.nombre?.split(' ')[0]}!</h2>
+                        <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: '0 0 0.5rem' }}>Tus tareas fueron registradas correctamente.</p>
+                        <p style={{ color: '#1d3461', fontSize: '1rem', fontWeight: 700, margin: '0' }}>¡Buen descanso!</p>
                     </div>
                 )}
 
-
-                {/* STEP: CEDULA */}
+                {/* CEDULA */}
                 {step === 'cedula' && (
                     <>
                         <h1 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111827', margin: '0 0 0.2rem' }}>Registro de Tareas</h1>
                         <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '1.75rem' }}>Operaciones de Limpieza</p>
 
-                        {error && (
-                            <div style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '0.6rem 0.85rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem' }}>
-                                {error}
-                            </div>
-                        )}
+                        {error && <div style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '0.6rem 0.85rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</div>}
 
                         <form onSubmit={handleCedulaSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                                    Tu Cédula
-                                </label>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Tu Cédula</label>
                                 <input
                                     type="text"
                                     inputMode="numeric"
@@ -157,18 +226,14 @@ export default function RegistroLimpiezaPage() {
                                     style={{ width: '100%', padding: '0.7rem 0.85rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.95rem', backgroundColor: '#fff', color: '#111827', boxSizing: 'border-box' }}
                                 />
                             </div>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', backgroundColor: loading ? '#9ca3af' : '#1d3461', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}
-                            >
+                            <button type="submit" disabled={loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', backgroundColor: loading ? '#9ca3af' : '#1d3461', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}>
                                 {loading ? 'Verificando...' : <><span>Continuar</span><ArrowRight size={16} /></>}
                             </button>
                         </form>
                     </>
                 )}
 
-                {/* STEP: TASKS */}
+                {/* TASKS */}
                 {step === 'tasks' && worker && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <div>
@@ -177,62 +242,63 @@ export default function RegistroLimpiezaPage() {
                             <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0.2rem 0 0' }}>{worker.cliente} - {worker.sector}</p>
                         </div>
 
-                        {error && (
-                            <div style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>
-                                {error}
-                            </div>
-                        )}
+                        {error && <div style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>{error}</div>}
 
                         <form onSubmit={handleTaskSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', marginBottom: '1rem', textTransform: 'uppercase' }}>
-                                    Tareas realizadas hoy:
-                                </label>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', marginBottom: '1rem', textTransform: 'uppercase' }}>Tareas realizadas hoy:</label>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                    {TAREAS_PREDEFINIDAS.map((t, i) => (
-                                        <div 
-                                            key={i} 
-                                            onClick={() => toggleTarea(i)}
-                                            style={{ 
-                                                display: 'flex', alignItems: 'center', gap: '1rem', 
-                                                padding: '1rem', borderRadius: '12px', border: '2px solid',
-                                                borderColor: tareasChecked[i] ? '#1d3461' : '#e5e7eb',
-                                                backgroundColor: tareasChecked[i] ? 'rgba(29,52,97,0.03)' : '#fff',
-                                                cursor: 'pointer', transition: 'all 0.2s',
-                                                userSelect: 'none'
-                                            }}
-                                        >
-                                            <div style={{ 
-                                                width: '24px', height: '24px', borderRadius: '6px', border: '2px solid',
-                                                borderColor: tareasChecked[i] ? '#1d3461' : '#d1d5db',
-                                                backgroundColor: tareasChecked[i] ? '#1d3461' : '#fff',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                color: '#fff', transition: 'all 0.2s'
-                                            }}>
-                                                {tareasChecked[i] && <Check size={16} strokeWidth={4} />}
+                                    {tareasCliente.map((t) => {
+                                        const checked = tareas.includes(t);
+                                        const timestamp = tareasTimestamps[t];
+                                        const fotos = tareasFotos[t] || [];
+                                        const uploading = uploadingPhoto === t;
+                                        return (
+                                            <div key={t} style={{ borderRadius: '12px', border: '2px solid', borderColor: checked ? '#1d3461' : '#e5e7eb', backgroundColor: checked ? 'rgba(29,52,97,0.03)' : '#fff', overflow: 'hidden' }}>
+                                                <div onClick={() => toggleTarea(t)} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', cursor: 'pointer', userSelect: 'none' }}>
+                                                    <div style={{ width: '24px', height: '24px', flexShrink: 0, borderRadius: '6px', border: '2px solid', borderColor: checked ? '#1d3461' : '#d1d5db', backgroundColor: checked ? '#1d3461' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', transition: 'all 0.15s' }}>
+                                                        {checked && <Check size={16} strokeWidth={4} />}
+                                                    </div>
+                                                    <span style={{ flex: 1, fontSize: '0.95rem', fontWeight: 600, color: checked ? '#1d3461' : '#374151' }}>{t}</span>
+                                                    {checked && timestamp && <span style={{ fontSize: '0.72rem', color: '#6b7280', fontWeight: 500, whiteSpace: 'nowrap' }}>{timestamp}</span>}
+                                                </div>
+
+                                                {checked && (
+                                                    <div style={{ borderTop: '1px solid #e5e7eb', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', backgroundColor: 'rgba(29,52,97,0.02)' }}>
+                                                        {fotos.map((src, idx) => (
+                                                            <div key={idx} style={{ position: 'relative', width: '52px', height: '52px', flexShrink: 0 }}>
+                                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                                <img src={src} alt="foto" style={{ width: '52px', height: '52px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #d1d5db' }} />
+                                                                <button type="button" onClick={() => removePhoto(t, idx)} style={{ position: 'absolute', top: '-4px', right: '-4px', width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#ef4444', border: 'none', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
+                                                                    <X size={10} strokeWidth={3} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handlePhotoClick(t)}
+                                                            disabled={uploading}
+                                                            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.75rem', border: '1px dashed #94a3b8', borderRadius: '8px', backgroundColor: 'transparent', color: uploading ? '#9ca3af' : '#64748b', fontSize: '0.75rem', fontWeight: 600, cursor: uploading ? 'not-allowed' : 'pointer' }}
+                                                        >
+                                                            <Camera size={14} /> {uploading ? 'Subiendo...' : 'Foto'}
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <span style={{ fontSize: '0.95rem', fontWeight: 600, color: tareasChecked[i] ? '#1d3461' : '#374151' }}>{t}</span>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
-                                    Observaciones
-                                </label>
-                                <textarea
-                                    value={observaciones}
-                                    onChange={e => setObservaciones(e.target.value)}
-                                    placeholder=""
-                                    style={{ width: '100%', padding: '0.85rem', borderRadius: '12px', border: '1px solid #d1d5db', fontSize: '0.95rem', backgroundColor: '#fff', color: '#111827', minHeight: '100px', boxSizing: 'border-box', outline: 'none' }}
-                                />
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Observaciones</label>
+                                <textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} style={{ width: '100%', padding: '0.85rem', borderRadius: '12px', border: '1px solid #d1d5db', fontSize: '0.95rem', backgroundColor: '#fff', color: '#111827', minHeight: '100px', boxSizing: 'border-box', outline: 'none' }} />
                             </div>
 
                             <button
                                 type="submit"
-                                disabled={loading || !tareasChecked.some(v => v)}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1rem', backgroundColor: (loading || !tareasChecked.some(v => v)) ? '#9ca3af' : '#1d3461', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer' }}
+                                disabled={loading || tareas.length === 0 || !!uploadingPhoto}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1rem', backgroundColor: (loading || tareas.length === 0 || !!uploadingPhoto) ? '#9ca3af' : '#1d3461', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, cursor: 'pointer' }}
                             >
                                 {loading ? 'Enviando...' : 'Finalizar Registro'}
                             </button>

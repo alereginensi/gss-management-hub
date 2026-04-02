@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 
 export const DEPARTMENTS = [
@@ -197,7 +197,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     const router = useRouter(); // Initialize useRouter
 
     // Helper to get headers with fallback token
-    const getAuthHeaders = () => {
+    const getAuthHeaders = useCallback(() => {
         const token = localStorage.getItem('authToken');
         const headers: HeadersInit = {
             'Content-Type': 'application/json' // Default content type for most requests
@@ -206,7 +206,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             headers['Authorization'] = `Bearer ${token}`;
         }
         return headers;
-    };
+    }, []);
 
     const fetchSettings = async () => {
         try {

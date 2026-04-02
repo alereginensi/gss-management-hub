@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Search, Download, X, ClipboardList, LogOut, Edit2, Trash2, Check, Clock, MapPin } from 'lucide-react';
+import { ArrowLeft, Download, X, ClipboardList, LogOut, Edit2, Trash2, Check } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 
 interface Registro {
@@ -16,6 +16,8 @@ interface Registro {
     hora_inicio: string;
     hora_fin: string;
     tareas: string;
+    tareas_timestamps: string;
+    fotos: string;
     observaciones: string;
     created_at: string;
 }
@@ -188,6 +190,18 @@ export default function TareasPage() {
 
     const hasFilters = !!(search || desde || hasta);
 
+    const [photoViewer, setPhotoViewer] = useState<string | null>(null);
+
+    const parseTareas = (r: Registro): { tarea: string; hora: string | null; fotos: string[] }[] => {
+        let tareasArr: string[] = [];
+        let timestamps: Record<string, string> = {};
+        let fotosMap: Record<string, string[]> = {};
+        try { tareasArr = JSON.parse(r.tareas || '[]'); } catch {}
+        try { timestamps = JSON.parse(r.tareas_timestamps || '{}'); } catch {}
+        try { fotosMap = JSON.parse(r.fotos || '{}'); } catch {}
+        return tareasArr.map(t => ({ tarea: t, hora: timestamps[t] || null, fotos: fotosMap[t] || [] }));
+    };
+
     if (loading || !currentUser) return null;
 
     return (
@@ -310,19 +324,19 @@ export default function TareasPage() {
                                                     <td style={{ padding: '0.7rem 1rem', color: 'var(--text-secondary)' }}>{r.sector || '-'}</td>
                                                     <td style={{ padding: '0.7rem 1rem', whiteSpace: 'nowrap' }}>{r.fecha}</td>
                                                     <td style={{ padding: '0.7rem 1rem', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{r.hora_inicio || '--:--'} - {r.hora_fin || '--:--'}</td>
-                                                    <td style={{ padding: '0.7rem 1rem', maxWidth: '240px' }}>
+                                                    <td style={{ padding: '0.7rem 1rem', maxWidth: '260px' }}>
                                                         {r.tareas ? (
-                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
-                                                                {(() => {
-                                                                    try {
-                                                                        const arr: string[] = JSON.parse(r.tareas);
-                                                                        return arr.map((t, i) => (
-                                                                            <span key={i} style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem', borderRadius: '9999px', backgroundColor: 'rgba(29,52,97,0.1)', color: '#1d3461', fontWeight: 500, whiteSpace: 'nowrap' }}>{t}</span>
-                                                                        ));
-                                                                    } catch {
-                                                                        return <span>{r.tareas}</span>;
-                                                                    }
-                                                                })()}
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                                                {parseTareas(r).map(({ tarea, hora, fotos }, i) => (
+                                                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                                                        <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem', borderRadius: '9999px', backgroundColor: 'rgba(29,52,97,0.1)', color: '#1d3461', fontWeight: 500, whiteSpace: 'nowrap' }}>{tarea}</span>
+                                                                        {hora && <span style={{ fontSize: '0.65rem', color: '#6b7280', whiteSpace: 'nowrap' }}>{hora}</span>}
+                                                                        {fotos.map((src, fi) => (
+                                                                            // eslint-disable-next-line @next/next/no-img-element
+                                                                            <img key={fi} src={src} alt="foto" onClick={() => setPhotoViewer(src)} style={{ width: '28px', height: '28px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #d1d5db' }} />
+                                                                        ))}
+                                                                    </div>
+                                                                ))}
                                                             </div>
                                                         ) : '-'}
                                                     </td>
@@ -381,17 +395,23 @@ export default function TareasPage() {
                                                 </div>
                                                 <div style={{ marginTop: '0.75rem' }}>
                                                     <span className="logbook-label" style={{ display: 'block', marginBottom: '0.4rem' }}>Tareas:</span>
-                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                                                        {(() => {
-                                                            try {
-                                                                const arr: string[] = JSON.parse(r.tareas);
-                                                                return arr.map((t, i) => (
-                                                                    <span key={i} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: '6px', backgroundColor: 'var(--primary-color)', color: 'white', fontWeight: 500 }}>{t}</span>
-                                                                ));
-                                                            } catch {
-                                                                return <span style={{ fontSize: '0.8rem' }}>{r.tareas}</span>;
-                                                            }
-                                                        })()}
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                        {parseTareas(r).map(({ tarea, hora, fotos }, i) => (
+                                                            <div key={i}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                                                    <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: '6px', backgroundColor: 'var(--primary-color)', color: 'white', fontWeight: 500 }}>{tarea}</span>
+                                                                    {hora && <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>{hora}</span>}
+                                                                </div>
+                                                                {fotos.length > 0 && (
+                                                                    <div style={{ display: 'flex', gap: '0.3rem', marginTop: '0.3rem', flexWrap: 'wrap' }}>
+                                                                        {fotos.map((src, fi) => (
+                                                                            // eslint-disable-next-line @next/next/no-img-element
+                                                                            <img key={fi} src={src} alt="foto" onClick={() => setPhotoViewer(src)} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '6px', cursor: 'pointer', border: '1px solid #d1d5db' }} />
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </div>
                                                 {r.observaciones && (
@@ -426,6 +446,17 @@ export default function TareasPage() {
                     )}
                 </div>
             </main>
+
+            {/* Photo lightbox */}
+            {photoViewer && (
+                <div onClick={() => setPhotoViewer(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', cursor: 'zoom-out' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photoViewer} alt="foto" style={{ maxWidth: '100%', maxHeight: '90vh', borderRadius: '8px', boxShadow: '0 0 40px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()} />
+                    <button onClick={() => setPhotoViewer(null)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        <X size={20} />
+                    </button>
+                </div>
+            )}
 
             {/* Edit Modal */}
             {editingRegistro && (
