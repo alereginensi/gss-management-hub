@@ -37,7 +37,14 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error) {
-        console.error('Image Download Error:', error);
-        return new NextResponse('Archivo no encontrado', { status: 404 });
+        // File not found (e.g. old local-disk entries lost after deploy)
+        // Return a transparent 1x1 PNG placeholder to avoid 404 noise in console
+        const placeholder = Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+            'base64'
+        );
+        return new NextResponse(placeholder, {
+            headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=60' },
+        });
     }
 }

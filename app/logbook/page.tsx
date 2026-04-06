@@ -1289,6 +1289,7 @@ export default function LogbookPage() {
                                                                     src={url}
                                                                     alt="foto"
                                                                     onClick={() => window.open(url, '_blank')}
+                                                                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                                                                     style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 5, cursor: 'pointer', border: '1px solid var(--border-color)' }}
                                                                 />
                                                             ))}
@@ -1432,6 +1433,7 @@ export default function LogbookPage() {
                                                 src={url}
                                                 alt="foto"
                                                 onClick={() => window.open(url, '_blank')}
+                                                onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                                                 style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border-color)' }}
                                             />
                                         ))}
@@ -1787,6 +1789,7 @@ export default function LogbookPage() {
                                                     style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--border-color)', transition: 'opacity 0.2s' }}
                                                     onMouseOver={e => (e.currentTarget.style.opacity = '0.8')}
                                                     onMouseOut={e => (e.currentTarget.style.opacity = '1')}
+                                                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                                                 />
                                             ))}
                                         </div>
