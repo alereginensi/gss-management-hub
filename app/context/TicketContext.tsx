@@ -9,7 +9,7 @@ export const DEPARTMENTS = [
     'Administración',
     'Logistica',
     'Operaciones Seguridad',
-    'Operaciones Limpieza',
+    'Operaciones Limpieza/Seguridad',
     'Comercial',
     'Dirección',
     'Gestión',

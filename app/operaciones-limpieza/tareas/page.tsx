@@ -212,7 +212,7 @@ export default function TareasPage() {
                 backgroundColor: 'var(--surface-color)', position: 'sticky', top: 0, zIndex: 50
             }}>
                 <Link href="/operaciones-limpieza" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.85rem' }}>
-                    <ArrowLeft size={16} /> <span className="mobile-hide">Operaciones Limpieza</span>
+                    <ArrowLeft size={16} /> <span className="mobile-hide">Operaciones Limpieza/Seguridad</span>
                 </Link>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/logo.png" alt="GSS" style={{ height: '32px' }} className="mobile-hide" />

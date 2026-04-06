@@ -600,7 +600,7 @@ export default function UserManagement() {
                                             { key: 'logistica', label: 'Logística' },
                                             { key: 'tecnico', label: 'Seguridad Electrónica' },
                                             { key: 'cotizacion', label: 'Cotización' },
-                                            { key: 'limpieza', label: 'Operaciones Limpieza' },
+                                            { key: 'limpieza', label: 'Operaciones Limpieza/Seguridad' },
                                         ].map(mod => {
                                             const activeMods = editForm.modules ? editForm.modules.split(',').filter(m => m) : [];
                                             const checked = activeMods.includes(mod.key);
@@ -624,6 +624,9 @@ export default function UserManagement() {
                                     </div>
                                     <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0.35rem 0 0' }}>
                                         Los módulos marcados se suman al rol principal. El Administrador siempre tiene acceso total.
+                                    </p>
+                                    <p style={{ fontSize: '0.75rem', color: '#b45309', margin: '0.25rem 0 0', fontWeight: 600 }}>
+                                        ⚠ El usuario debe cerrar sesión y volver a entrar para que los cambios de acceso tengan efecto.
                                     </p>
                                 </div>
                             )}
@@ -667,6 +670,7 @@ export default function UserManagement() {
                                         type="password"
                                         value={editForm.password}
                                         onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                                        autoComplete="new-password"
                                         className="input"
                                         style={{ width: '100%', padding: '0.6rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }}
                                         placeholder="Mínimo 6 caracteres"
@@ -678,6 +682,7 @@ export default function UserManagement() {
                                         type="password"
                                         value={editForm.confirmPassword}
                                         onChange={(e) => setEditForm({ ...editForm, confirmPassword: e.target.value })}
+                                        autoComplete="new-password"
                                         className="input"
                                         style={{ width: '100%', padding: '0.6rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }}
                                         placeholder="Repetir contraseña"

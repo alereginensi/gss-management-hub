@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-    ArrowLeft, FileText, Plus, Save,
+    ArrowLeft, FileText, Plus, Save, X,
     Trash2, PenTool, CheckCircle2,
     ChevronDown, ChevronUp, Printer, LogOut,
 } from 'lucide-react';
@@ -316,6 +316,7 @@ export default function InformesOperativosPage() {
     const [showSignature, setShowSignature] = useState<{ section: string, index: number } | null>(null);
     const [expanded, setExpanded] = useState<string[]>(SECCIONES);
     const [fromHistory, setFromHistory] = useState(false);
+    const [readOnly, setReadOnly] = useState(false);
 
     const sheetRef = useRef<HTMLDivElement>(null);
 
@@ -325,7 +326,7 @@ export default function InformesOperativosPage() {
             const params = new URLSearchParams(window.location.search);
             const f = params.get('fecha');
             if (f) setFecha(f);
-            if (params.get('from') === 'history') setFromHistory(true);
+            if (params.get('from') === 'history') { setFromHistory(true); setReadOnly(true); }
         }
     }, []);
 
@@ -596,7 +597,7 @@ export default function InformesOperativosPage() {
                     href={fromHistory ? "/operaciones-limpieza/historial" : "/operaciones-limpieza"} 
                     style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#64748b', textDecoration: 'none', fontSize: '0.85rem' }}
                 >
-                    <ArrowLeft size={15} /> {fromHistory ? 'Volver al Historial' : 'Operaciones Limpieza'}
+                    <ArrowLeft size={15} /> {fromHistory ? 'Volver al Historial' : 'Operaciones Limpieza/Seguridad'}
                 </Link>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/logo.png" alt="GSS" style={{ height: '36px' }} className="mobile-hide" />
@@ -678,6 +679,31 @@ export default function InformesOperativosPage() {
                             />
                         </div>
 
+                        {fromHistory && readOnly && (
+                            <button
+                                onClick={() => setReadOnly(false)}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#1d3461', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: 'pointer', minHeight: '38px', width: '100%', boxSizing: 'border-box' }}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                <span>Editar</span>
+                            </button>
+                        )}
+                        {fromHistory && !readOnly && (
+                            <>
+                                <button
+                                    onClick={() => { fetchAsistencia(fecha, clienteSeleccionado, sectorSeleccionado, turnoSeleccionado); setReadOnly(true); }}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#64748b', cursor: 'pointer', minHeight: '38px', width: '100%', boxSizing: 'border-box' }}
+                                >
+                                    <X size={15} /> <span>Cancelar</span>
+                                </button>
+                                <button
+                                    onClick={() => setReadOnly(true)}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#16a34a', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: 'pointer', minHeight: '38px', width: '100%', boxSizing: 'border-box' }}
+                                >
+                                    <CheckCircle2 size={15} /> <span>Confirmar</span>
+                                </button>
+                            </>
+                        )}
                         <button
                             onClick={handlePrint}
                             disabled={!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado}
@@ -822,20 +848,22 @@ export default function InformesOperativosPage() {
                                                             <td style={{ padding: '0.4rem' }}>
                                                                 {row.isManual ? (
                                                                     <>
-                                                                        <input className="no-print" value={row.cedula} placeholder="Cédula" onChange={e => updateRow(seccion, idx, { cedula: e.target.value })} onBlur={() => { if (row.nombre) saveRowWithData(seccion, idx); }} style={{ width: '100%', border: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', fontSize: '0.8rem', fontWeight: 500, outline: 'none' }} />
+                                                                        <input className="no-print" value={row.cedula} placeholder="Cédula" onChange={e => updateRow(seccion, idx, { cedula: e.target.value })} onBlur={() => { if (row.nombre) saveRowWithData(seccion, idx); }} style={{ width: '100%', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', fontSize: '0.8rem', fontWeight: 500, outline: 'none' }} />
                                                                         <span className="print-only" style={{ fontSize: '0.8rem' }}>{row.cedula}</span>
                                                                     </>
                                                                 ) : (
-                                                                    <input readOnly value={row.cedula} placeholder="" style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.8rem', fontWeight: 500, outline: 'none' }} />
+                                                                    <input readOnly value={row.cedula} placeholder="" style={{ width: '100%', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: 'none', background: 'transparent', fontSize: '0.8rem', fontWeight: 500, outline: 'none' }} />
                                                                 )}
                                                             </td>
                                                             {/* Nombre */}
                                                             <td style={{ padding: '0.4rem' }}>
                                                                 {row.isManual ? (
                                                                     <>
-                                                                        <input className="no-print" value={row.nombre} placeholder="Nombre y apellido" onChange={e => updateRow(seccion, idx, { nombre: e.target.value })} onBlur={() => { if (row.nombre) saveRowWithData(seccion, idx); }} style={{ width: '100%', border: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', fontSize: '0.8rem', fontWeight: 600, outline: 'none', color: '#1d3461' }} />
+                                                                        <input className="no-print" value={row.nombre} placeholder="Nombre y apellido" onChange={e => updateRow(seccion, idx, { nombre: e.target.value })} onBlur={() => { if (row.nombre) saveRowWithData(seccion, idx); }} style={{ width: '100%', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', fontSize: '0.8rem', fontWeight: 600, outline: 'none', color: '#1d3461' }} />
                                                                         <span className="print-only" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{row.nombre || '..........................................'}</span>
                                                                     </>
+                                                                ) : readOnly ? (
+                                                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1d3461' }}>{row.nombre || '..........................................'}</span>
                                                                 ) : (
                                                                     <>
                                                                         <select className="no-print" value={row.funcionario_id || ''} onChange={e => handleWorkerSelect(seccion, idx, e.target.value)} style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.8rem', fontWeight: 600, outline: 'none', color: '#1d3461', cursor: 'pointer' }}>
@@ -848,19 +876,23 @@ export default function InformesOperativosPage() {
                                                             </td>
                                                             {(['entrada1', 'salida1', 'entrada2', 'salida2'] as const).map(field => (
                                                                 <td key={field} style={{ padding: '0.4rem', textAlign: 'center' }}>
-                                                                    <select
-                                                                        className="no-print"
-                                                                        value={row[field] || ''}
-                                                                        onChange={e => {
-                                                                            updateRow(seccion, idx, { [field]: e.target.value });
-                                                                            saveRowWithData(seccion, idx, { ...asistencia[seccion][idx], [field]: e.target.value });
-                                                                        }}
-                                                                        style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'center', fontSize: '0.8rem', outline: 'none', fontWeight: 700, appearance: 'none', cursor: 'pointer' }}
-                                                                    >
-                                                                        {timeOptions.map(t => (
-                                                                            <option key={t} value={t}>{t || '--:--'}</option>
-                                                                        ))}
-                                                                    </select>
+                                                                    {!readOnly ? (
+                                                                        <select
+                                                                            className="no-print"
+                                                                            value={row[field] || ''}
+                                                                            onChange={e => {
+                                                                                updateRow(seccion, idx, { [field]: e.target.value });
+                                                                                saveRowWithData(seccion, idx, { ...asistencia[seccion][idx], [field]: e.target.value });
+                                                                            }}
+                                                                            style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'center', fontSize: '0.8rem', outline: 'none', fontWeight: 700, appearance: 'none', cursor: 'pointer' }}
+                                                                        >
+                                                                            {timeOptions.map(t => (
+                                                                                <option key={t} value={t}>{t || '--:--'}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    ) : (
+                                                                        <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{row[field] || '--:--'}</span>
+                                                                    )}
                                                                     <span className="print-only" style={{ fontSize: '0.8rem', fontWeight: 700 }}>
                                                                         {row[field] || '--:--'}
                                                                     </span>
@@ -872,10 +904,10 @@ export default function InformesOperativosPage() {
                                                                         <img
                                                                             src={row.firma}
                                                                             alt="Signature"
-                                                                            onClick={() => { if (!row.isSaved) setShowSignature({ section: seccion, index: idx }); }}
-                                                                            style={{ maxHeight: '35px', cursor: row.isSaved ? 'default' : 'pointer' }}
+                                                                            onClick={() => { if (!readOnly && !row.isSaved) setShowSignature({ section: seccion, index: idx }); }}
+                                                                            style={{ maxHeight: '35px', cursor: (readOnly || row.isSaved) ? 'default' : 'pointer' }}
                                                                         />
-                                                                    ) : (
+                                                                    ) : !readOnly ? (
                                                                         <button
                                                                             className="no-print"
                                                                             onClick={() => setShowSignature({ section: seccion, index: idx })}
@@ -884,8 +916,8 @@ export default function InformesOperativosPage() {
                                                                         >
                                                                             <PenTool size={12} /> Firmar
                                                                         </button>
-                                                                    )}
-                                                                    <div className="no-print" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+                                                                    ) : null}
+                                                                    {!readOnly && <div className="no-print" style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
                                                                         <button
                                                                                 onClick={() => updateRow(seccion, idx, { isManual: !row.isManual, funcionario_id: null, nombre: '', cedula: '', firma: null, isSaved: false })}
                                                                                 title={row.isManual ? 'Usar lista de funcionarios' : 'Ingresar manualmente'}
@@ -908,7 +940,7 @@ export default function InformesOperativosPage() {
                                                                                 <Trash2 size={16} />
                                                                             </button>
                                                                         )}
-                                                                    </div>
+                                                                    </div>}
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -989,6 +1021,20 @@ export default function InformesOperativosPage() {
                         padding: 0 !important;
                         margin: 0 !important;
                         max-width: 100% !important;
+                    }
+                    tr {
+                        page-break-inside: avoid;
+                        break-inside: avoid;
+                    }
+                    .scroll-container {
+                        overflow: visible !important;
+                        page-break-inside: avoid;
+                        break-inside: avoid;
+                    }
+                    img {
+                        page-break-inside: avoid;
+                        break-inside: avoid;
+                        max-width: 100%;
                     }
                 }
                 .print-only {

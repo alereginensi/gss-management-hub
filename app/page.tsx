@@ -230,7 +230,7 @@ export default function Landing() {
               <div style={{ padding: '0.9rem', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>
                 <Droplets size={36} color="white" />
               </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', margin: 0 }}>Operaciones Limpieza</h2>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', margin: 0 }}>Operaciones Limpieza/Seguridad</h2>
               <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', margin: 0 }}>Tareas, informes y control operativo</p>
             </div>
           </Link>
@@ -245,7 +245,7 @@ export default function Landing() {
             <div style={{ padding: '0.9rem', backgroundColor: 'rgba(100,116,139,0.15)', borderRadius: '50%' }}>
               <Droplets size={36} color="#94a3b8" />
             </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#94a3b8', margin: 0 }}>Operaciones Limpieza</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#94a3b8', margin: 0 }}>Operaciones Limpieza/Seguridad</h2>
             <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>Sin acceso a esta sección</p>
           </div>
         )}
