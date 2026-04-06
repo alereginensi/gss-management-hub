@@ -444,8 +444,8 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div className="card">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+                        <div className="card" style={{ overflow: 'hidden', minWidth: 0 }}>
                             <h3 style={{ fontSize: '0.875rem', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '1rem' }}>Detalles</h3>
 
                             <div style={{ marginBottom: '1rem' }}>
