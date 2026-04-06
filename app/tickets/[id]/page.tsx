@@ -512,7 +512,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                         <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Visto por</label>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                                        {ticket.viewedBy.map((viewer: any) => (
+                                        {[...ticket.viewedBy].sort((a: any, b: any) => new Date(a.viewedAt).getTime() - new Date(b.viewedAt).getTime()).map((viewer: any) => (
                                             <div key={viewer.id} style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                     <div style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#3b82f6' }}></div>
