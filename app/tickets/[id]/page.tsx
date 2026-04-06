@@ -577,11 +577,11 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                                             };
 
                                             return (
-                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
                                                     <button onClick={handleDownload} disabled={isDownloading}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 0.75rem', backgroundColor: 'var(--bg-color)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', color: isDownloading ? 'var(--text-secondary)' : 'var(--accent-color)', cursor: isDownloading ? 'wait' : 'pointer', fontSize: '0.875rem', fontWeight: 500, flex: 1, textAlign: 'left', overflow: 'hidden' }}>
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 0.75rem', backgroundColor: 'var(--bg-color)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', color: isDownloading ? 'var(--text-secondary)' : 'var(--accent-color)', cursor: isDownloading ? 'wait' : 'pointer', fontSize: '0.875rem', fontWeight: 500, flex: 1, textAlign: 'left', overflow: 'hidden', minWidth: 0 }}>
                                                         <Paperclip size={16} style={{ flexShrink: 0 }} />
-                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{isDownloading ? 'Descargando...' : fileName}</span>
+                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{isDownloading ? 'Descargando...' : fileName}</span>
                                                     </button>
                                                     {(isOwner || isAdmin || isCollaborator) && (
                                                         <button onClick={() => handleRemoveAttachment(trimmedUrl)}
