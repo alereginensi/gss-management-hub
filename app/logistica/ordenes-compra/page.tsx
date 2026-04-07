@@ -350,7 +350,7 @@ export default function OrdenesCompraPage() {
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', gap: '0.75rem', marginTop: isMobile ? '0.5rem' : 0, width: isMobile ? '100%' : 'auto', borderTop: isMobile ? '1px solid var(--border-color)' : 'none', paddingTop: isMobile ? '0.75rem' : 0 }}>
                                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                             {order.file_url && (
-                                                <a href={order.file_url} target="_blank" rel="noopener noreferrer" title="Ver PDF" style={{ color: 'var(--primary-color)', display: 'flex', padding: '0.3rem' }}>
+                                                <a href={`/api/file-proxy?url=${encodeURIComponent(order.file_url)}`} target="_blank" rel="noopener noreferrer" title="Ver PDF" style={{ color: 'var(--primary-color)', display: 'flex', padding: '0.3rem' }}>
                                                     <FileText size={18} />
                                                 </a>
                                             )}

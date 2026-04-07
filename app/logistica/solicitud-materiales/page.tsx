@@ -382,7 +382,7 @@ export default function SolicitudMaterialesPage() {
                                                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Clock size={13}/> {req.created_at ? new Date(req.created_at).toLocaleDateString('es-UY') : req.needed_date}</span>
                                                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><ArrowLeft size={13} style={{ transform: 'rotate(45deg)' }}/> Por: {req.requested_by}</span>
                                                     {req.file_url && (
-                                                        <a href={req.file_url} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: 'var(--primary-color)', textDecoration: 'none' }}>
+                                                        <a href={`/api/file-proxy?url=${encodeURIComponent(req.file_url)}`} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', color: 'var(--primary-color)', textDecoration: 'none' }}>
                                                             <Paperclip size={13}/> Adjunto
                                                         </a>
                                                     )}

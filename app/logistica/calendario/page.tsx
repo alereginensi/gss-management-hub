@@ -711,7 +711,7 @@ export default function CalendarioPage() {
                                                         )}
                                                     </div>
                                                     {r.file_url && (
-                                                        <a href={r.file_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.72rem', color: 'var(--primary-color)', marginTop: '0.25rem' }}>
+                                                        <a href={`/api/file-proxy?url=${encodeURIComponent(r.file_url)}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.72rem', color: 'var(--primary-color)', marginTop: '0.25rem' }}>
                                                             <FileText size={11} /> Ver adjunto
                                                         </a>
                                                     )}
@@ -829,7 +829,7 @@ export default function CalendarioPage() {
                                                 <td style={{ padding: '0.6rem 0.75rem', color: 'var(--text-secondary)' }}>{ev.created_by}</td>
                                                 <td style={{ padding: '0.6rem 0.75rem' }}>
                                                     {ev.file_url
-                                                        ? <a href={ev.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><FileText size={13} /> Ver</a>
+                                                        ? <a href={`/api/file-proxy?url=${encodeURIComponent(ev.file_url)}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><FileText size={13} /> Ver</a>
                                                         : <span style={{ color: 'var(--text-secondary)' }}>—</span>}
                                                 </td>
                                                 <td style={{ padding: '0.6rem 0.75rem' }}>
@@ -874,7 +874,7 @@ export default function CalendarioPage() {
                                                 <td style={{ padding: '0.6rem 0.75rem', color: 'var(--text-secondary)' }}>{r.requested_by}</td>
                                                 <td style={{ padding: '0.6rem 0.75rem' }}>
                                                     {r.file_url
-                                                        ? <a href={r.file_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><FileText size={13} /> Ver</a>
+                                                        ? <a href={`/api/file-proxy?url=${encodeURIComponent(r.file_url)}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><FileText size={13} /> Ver</a>
                                                         : <span style={{ color: 'var(--text-secondary)' }}>—</span>}
                                                 </td>
                                                 <td style={{ padding: '0.6rem 0.75rem' }}>
@@ -1243,7 +1243,7 @@ function EventSection({ type, items, onDelete, onFirma }: {
                                 {ev.descripcion && <div style={{ color: 'var(--text-secondary)', marginTop: '0.15rem' }}>{ev.descripcion}</div>}
                                 <div style={{ color: 'var(--text-secondary)', fontSize: '0.7rem', marginTop: '0.2rem' }}>por {ev.created_by}</div>
                                 {ev.file_url && (
-                                    <a href={ev.file_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.72rem', color: 'var(--primary-color)', marginTop: '0.2rem' }}>
+                                    <a href={`/api/file-proxy?url=${encodeURIComponent(ev.file_url)}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.72rem', color: 'var(--primary-color)', marginTop: '0.2rem' }}>
                                         <FileText size={11} /> Ver documento
                                     </a>
                                 )}
