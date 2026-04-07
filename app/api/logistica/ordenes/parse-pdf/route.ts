@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
         const buffer = Buffer.from(await file.arrayBuffer());
 
         // Upload to Cloudinary
-        const filename = `orden-${Date.now()}`;
+        const filename = `orden-${Date.now()}.pdf`;
         let fileUrl = '';
         try {
             fileUrl = await uploadToCloudinary(buffer, 'logistica/ordenes', filename, 'raw');
