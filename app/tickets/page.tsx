@@ -124,11 +124,12 @@ export default function TicketList() {
                             padding: '0.25rem',
                             marginBottom: '1.5rem',
                             border: '1px solid var(--border-color)',
-                            width: 'fit-content'
+                            width: '100%'
                         }}>
                             <button
                                 onClick={() => setAdminView('personal')}
                                 style={{
+                                    flex: 1,
                                     padding: '0.5rem 1rem',
                                     borderRadius: 'calc(var(--radius) - 2px)',
                                     border: 'none',
@@ -137,7 +138,8 @@ export default function TicketList() {
                                     fontWeight: 500,
                                     backgroundColor: adminView === 'personal' ? 'var(--accent-color)' : 'transparent',
                                     color: adminView === 'personal' ? 'white' : 'var(--text-secondary)',
-                                    transition: 'all 0.2s'
+                                    transition: 'all 0.2s',
+                                    whiteSpace: 'nowrap'
                                 }}
                             >
                                 Mis Tickets
@@ -145,6 +147,7 @@ export default function TicketList() {
                             <button
                                 onClick={() => setAdminView('all')}
                                 style={{
+                                    flex: 1,
                                     padding: '0.5rem 1rem',
                                     borderRadius: 'calc(var(--radius) - 2px)',
                                     border: 'none',
@@ -153,10 +156,11 @@ export default function TicketList() {
                                     fontWeight: 500,
                                     backgroundColor: adminView === 'all' ? 'var(--accent-color)' : 'transparent',
                                     color: adminView === 'all' ? 'white' : 'var(--text-secondary)',
-                                    transition: 'all 0.2s'
+                                    transition: 'all 0.2s',
+                                    whiteSpace: 'nowrap'
                                 }}
                             >
-                                Todos los Tickets (Control)
+                                {isMobile ? 'Panel Control' : 'Todos los Tickets (Control)'}
                             </button>
                         </div>
                     )}
