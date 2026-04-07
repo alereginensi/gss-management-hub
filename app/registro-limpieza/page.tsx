@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { CheckCircle2, Check, ArrowRight, Camera, X } from 'lucide-react';
+import { CheckCircle2, Check, ArrowRight, Camera, X, PenLine, UserX } from 'lucide-react';
 
 const TAREAS_POR_CLIENTE: Record<string, string[]> = {
     'schmidth': [
@@ -31,16 +31,17 @@ function getTareasForCliente(cliente: string): string[] {
     return key ? TAREAS_POR_CLIENTE[key] : TAREAS_POR_CLIENTE['default'];
 }
 
-type Step = 'cedula' | 'tasks' | 'done';
+type Step = 'cedula' | 'already_done' | 'tasks' | 'done';
 interface Worker { nombre: string; sector: string; cliente: string; }
 
 export default function RegistroLimpiezaPage() {
     const [step, setStep] = useState<Step>('cedula');
     const [cedula, setCedula] = useState('');
     const [worker, setWorker] = useState<Worker | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [existingTareas, setExistingTareas] = useState<string[]>([]);
     const [tareas, setTareas] = useState<string[]>([]);
     const [tareasTimestamps, setTareasTimestamps] = useState<Record<string, string>>({});
-    // URLs from Cloudinary (not base64)
     const [tareasFotos, setTareasFotos] = useState<Record<string, string[]>>({});
     const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
     const [observaciones, setObservaciones] = useState('');
@@ -48,6 +49,19 @@ export default function RegistroLimpiezaPage() {
     const [error, setError] = useState('');
     const [photoTarget, setPhotoTarget] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const resetToStart = () => {
+        setStep('cedula');
+        setCedula('');
+        setWorker(null);
+        setIsEditing(false);
+        setExistingTareas([]);
+        setTareas([]);
+        setTareasTimestamps({});
+        setTareasFotos({});
+        setObservaciones('');
+        setError('');
+    };
 
     const handleCedulaSubmit = async (e: { preventDefault: () => void }) => {
         e.preventDefault();
@@ -57,36 +71,46 @@ export default function RegistroLimpiezaPage() {
             const res = await fetch(`/api/limpieza/usuarios/lookup?cedula=${encodeURIComponent(cedula.trim())}`);
             if (!res.ok) {
                 setError('Tu cédula no está registrada. Contactá a tu supervisor.');
-            } else {
-                const data = await res.json();
-                setWorker(data);
-                const tareasCliente = getTareasForCliente(data.cliente || '');
-
-                try {
-                    const recordRes = await fetch(`/api/limpieza/registros/lookup?cedula=${encodeURIComponent(cedula.trim())}`);
-                    if (recordRes.ok) {
-                        const recordData = await recordRes.json();
-                        if (recordData.found && recordData.registro) {
-                            const reg = recordData.registro;
-                            if (reg.tareas) {
-                                try {
-                                    const saved: string[] = JSON.parse(reg.tareas);
-                                    setTareas(saved.filter((t: string) => tareasCliente.includes(t)));
-                                } catch {}
-                            }
-                            if (reg.tareas_timestamps) {
-                                try { setTareasTimestamps(JSON.parse(reg.tareas_timestamps)); } catch {}
-                            }
-                            if (reg.fotos) {
-                                try { setTareasFotos(JSON.parse(reg.fotos)); } catch {}
-                            }
-                            if (reg.observaciones) setObservaciones(reg.observaciones);
-                        }
-                    }
-                } catch {}
-
-                setStep('tasks');
+                setLoading(false);
+                return;
             }
+
+            const data = await res.json();
+            setWorker(data);
+            const tareasCliente = getTareasForCliente(data.cliente || '');
+
+            // Check if there is already a record for today
+            try {
+                const recordRes = await fetch(`/api/limpieza/registros/lookup?cedula=${encodeURIComponent(cedula.trim())}`);
+                if (recordRes.ok) {
+                    const recordData = await recordRes.json();
+                    if (recordData.found && recordData.registro) {
+                        const reg = recordData.registro;
+                        // Pre-load saved data for potential editing
+                        if (reg.tareas) {
+                            try {
+                                const saved: string[] = JSON.parse(reg.tareas);
+                                const filtered = saved.filter((t: string) => tareasCliente.includes(t));
+                                setTareas(filtered);
+                                setExistingTareas(filtered);
+                            } catch {}
+                        }
+                        if (reg.tareas_timestamps) {
+                            try { setTareasTimestamps(JSON.parse(reg.tareas_timestamps)); } catch {}
+                        }
+                        if (reg.fotos) {
+                            try { setTareasFotos(JSON.parse(reg.fotos)); } catch {}
+                        }
+                        if (reg.observaciones) setObservaciones(reg.observaciones);
+                        // Already registered today — show blocking screen
+                        setStep('already_done');
+                        setLoading(false);
+                        return;
+                    }
+                }
+            } catch {}
+
+            setStep('tasks');
         } catch {
             setError('Error de conexión. Intentá de nuevo.');
         } finally {
@@ -116,7 +140,6 @@ export default function RegistroLimpiezaPage() {
         const file = e.target.files?.[0];
         if (!file || !photoTarget) return;
         e.target.value = '';
-
         setUploadingPhoto(photoTarget);
         try {
             const fd = new FormData();
@@ -175,7 +198,6 @@ export default function RegistroLimpiezaPage() {
         }
     };
 
-
     const tareasCliente = worker ? getTareasForCliente(worker.cliente || '') : [];
 
     return (
@@ -198,9 +220,54 @@ export default function RegistroLimpiezaPage() {
                 {step === 'done' && (
                     <div style={{ textAlign: 'center', padding: '1.5rem 1rem' }}>
                         <CheckCircle2 size={56} color="#22c55e" style={{ marginBottom: '1rem' }} />
-                        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#111827', margin: '0 0 0.5rem' }}>¡Listo, {worker?.nombre?.split(' ')[0]}!</h2>
-                        <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: '0 0 0.5rem' }}>Tus tareas fueron registradas correctamente.</p>
+                        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#111827', margin: '0 0 0.5rem' }}>
+                            {isEditing ? `Actualizado, ${worker?.nombre?.split(' ')[0]}!` : `¡Listo, ${worker?.nombre?.split(' ')[0]}!`}
+                        </h2>
+                        <p style={{ color: '#6b7280', fontSize: '0.9rem', margin: '0 0 0.5rem' }}>
+                            {isEditing ? 'Tu registro fue actualizado correctamente.' : 'Tus tareas fueron registradas correctamente.'}
+                        </p>
                         <p style={{ color: '#1d3461', fontSize: '1rem', fontWeight: 700, margin: '0' }}>¡Buen descanso!</p>
+                    </div>
+                )}
+
+                {/* ALREADY DONE */}
+                {step === 'already_done' && worker && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ textAlign: 'center' }}>
+                            <CheckCircle2 size={44} color="#22c55e" style={{ marginBottom: '0.75rem' }} />
+                            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#111827', margin: '0 0 0.2rem' }}>
+                                Ya registraste hoy, {worker.nombre.split(' ')[0]}
+                            </h2>
+                            <p style={{ fontSize: '0.82rem', color: '#6b7280', margin: 0 }}>
+                                {worker.cliente} — {worker.sector}
+                            </p>
+                        </div>
+
+                        {existingTareas.length > 0 && (
+                            <div style={{ backgroundColor: '#f0fdf4', borderRadius: '10px', padding: '0.85rem 1rem', border: '1px solid #bbf7d0' }}>
+                                <p style={{ fontSize: '0.72rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', margin: '0 0 0.5rem' }}>Tareas registradas</p>
+                                <ul style={{ margin: 0, padding: '0 0 0 1rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                    {existingTareas.map(t => (
+                                        <li key={t} style={{ fontSize: '0.88rem', color: '#166534' }}>{t}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.25rem' }}>
+                            <button
+                                onClick={() => { setIsEditing(true); setStep('tasks'); }}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.85rem', backgroundColor: '#1d3461', color: 'white', border: 'none', borderRadius: '10px', fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer' }}
+                            >
+                                <PenLine size={16} /> Editar mis tareas
+                            </button>
+                            <button
+                                onClick={resetToStart}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', backgroundColor: 'transparent', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: '10px', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer' }}
+                            >
+                                <UserX size={15} /> No soy yo
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -237,7 +304,9 @@ export default function RegistroLimpiezaPage() {
                 {step === 'tasks' && worker && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                         <div>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hola,</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                {isEditing ? 'Editando registro —' : 'Hola,'}
+                            </span>
                             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0' }}>{worker.nombre}</h2>
                             <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0.2rem 0 0' }}>{worker.cliente} - {worker.sector}</p>
                         </div>
@@ -295,13 +364,24 @@ export default function RegistroLimpiezaPage() {
                                 <textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} style={{ width: '100%', padding: '0.85rem', borderRadius: '12px', border: '1px solid #d1d5db', fontSize: '0.95rem', backgroundColor: '#fff', color: '#111827', minHeight: '100px', boxSizing: 'border-box', outline: 'none' }} />
                             </div>
 
-                            <button
-                                type="submit"
-                                disabled={loading || tareas.length === 0 || !!uploadingPhoto}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1rem', backgroundColor: (loading || tareas.length === 0 || !!uploadingPhoto) ? '#9ca3af' : '#1d3461', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, cursor: 'pointer' }}
-                            >
-                                {loading ? 'Enviando...' : 'Finalizar Registro'}
-                            </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <button
+                                    type="submit"
+                                    disabled={loading || tareas.length === 0 || !!uploadingPhoto}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1rem', backgroundColor: (loading || tareas.length === 0 || !!uploadingPhoto) ? '#9ca3af' : '#1d3461', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1rem', fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                    {loading ? 'Enviando...' : isEditing ? 'Actualizar Registro' : 'Finalizar Registro'}
+                                </button>
+                                {isEditing && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep('already_done')}
+                                        style={{ padding: '0.6rem', backgroundColor: 'transparent', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
+                                    >
+                                        Cancelar
+                                    </button>
+                                )}
+                            </div>
                         </form>
                     </div>
                 )}

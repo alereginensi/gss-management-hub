@@ -28,9 +28,9 @@ export async function GET(request: NextRequest) {
             params.push(hasta);
         }
         if (search) {
-            conditions.push('(LOWER(nombre) LIKE ? OR LOWER(cedula) LIKE ? OR LOWER(email) LIKE ? OR LOWER(sector) LIKE ? OR LOWER(ubicacion) LIKE ?)');
+            conditions.push('(LOWER(nombre) LIKE ? OR LOWER(cedula) LIKE ? OR LOWER(sector) LIKE ? OR LOWER(cliente) LIKE ?)');
             const term = `%${search.toLowerCase()}%`;
-            params.push(term, term, term, term, term);
+            params.push(term, term, term, term);
         }
 
         const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -43,9 +43,8 @@ export async function GET(request: NextRequest) {
             { header: 'ID', key: 'id', width: 8 },
             { header: 'Nombre', key: 'nombre', width: 25 },
             { header: 'Cédula', key: 'cedula', width: 15 },
-            { header: 'Email', key: 'email', width: 25 },
+            { header: 'Cliente', key: 'cliente', width: 20 },
             { header: 'Sector', key: 'sector', width: 20 },
-            { header: 'Ubicación', key: 'ubicacion', width: 20 },
             { header: 'Fecha', key: 'fecha', width: 12 },
             { header: 'Hora Inicio', key: 'hora_inicio', width: 12 },
             { header: 'Hora Fin', key: 'hora_fin', width: 12 },
@@ -63,9 +62,8 @@ export async function GET(request: NextRequest) {
                 id: r.id,
                 nombre: r.nombre,
                 cedula: r.cedula,
-                email: r.email || '-',
-                sector: r.sector,
-                ubicacion: r.ubicacion || '-',
+                cliente: r.cliente || '-',
+                sector: r.sector || '-',
                 fecha: r.fecha,
                 hora_inicio: r.hora_inicio || '-',
                 hora_fin: r.hora_fin || '-',
