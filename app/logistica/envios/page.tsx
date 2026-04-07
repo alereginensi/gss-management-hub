@@ -293,7 +293,7 @@ export default function EnviosDACPage() {
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{currentUser.name}</span>
             </header>
 
-            <main className="standalone-page" style={{ flex: 1, padding: isMobile ? '0.5rem 1rem' : '1.5rem', maxWidth: '960px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: isMobile ? '1rem' : '1.5rem' }}>
+            <main style={{ flex: 1, padding: isMobile ? '0.5rem 1rem' : '1.5rem', maxWidth: '960px', width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: isMobile ? '1rem' : '1.5rem' }}>
                 {/* Title + actions */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h1 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Envíos al Interior</h1>

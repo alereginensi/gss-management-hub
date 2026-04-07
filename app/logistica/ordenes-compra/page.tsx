@@ -265,7 +265,7 @@ export default function OrdenesCompraPage() {
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{currentUser.name}</span>
             </header>
 
-            <main className="standalone-page" style={{ maxWidth: '960px', margin: '0 auto', padding: isMobile ? '0.5rem 1rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: isMobile ? '1rem' : '1.5rem' }}>
+            <main style={{ maxWidth: '960px', margin: '0 auto', padding: isMobile ? '0.5rem 1rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: isMobile ? '1rem' : '1.5rem' }}>
                 {/* Title + actions */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <h1 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Órdenes de Compra</h1>
