@@ -49,6 +49,7 @@ export default function RegistroLimpiezaPage() {
     const [error, setError] = useState('');
     const [photoTarget, setPhotoTarget] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [assignedTareas, setAssignedTareas] = useState<string[]>([]);
 
     const resetToStart = () => {
         setStep('cedula');
@@ -61,6 +62,7 @@ export default function RegistroLimpiezaPage() {
         setTareasFotos({});
         setObservaciones('');
         setError('');
+        setAssignedTareas([]);
     };
 
     const handleCedulaSubmit = async (e: { preventDefault: () => void }) => {
@@ -77,6 +79,25 @@ export default function RegistroLimpiezaPage() {
 
             const data = await res.json();
             setWorker(data);
+
+            // Fetch supervisor-assigned tasks for today
+            const hoy = new Date().toISOString().split('T')[0];
+            try {
+                const aRes = await fetch(
+                    `/api/limpieza/tareas-asignadas?cedula=${encodeURIComponent(cedula.trim())}&fecha=${hoy}&cliente=${encodeURIComponent(data.cliente || '')}&sector=${encodeURIComponent(data.sector || '')}`
+                );
+                if (aRes.ok) {
+                    const aData = await aRes.json();
+                    if (aData.length > 0) {
+                        const all: string[] = [];
+                        aData.forEach((a: any) => {
+                            try { JSON.parse(a.tareas).forEach((t: string) => { if (!all.includes(t)) all.push(t); }); } catch {}
+                        });
+                        setAssignedTareas(all);
+                    }
+                }
+            } catch {}
+
             const tareasCliente = getTareasForCliente(data.cliente || '');
 
             // Check if there is already a record for today
@@ -198,7 +219,9 @@ export default function RegistroLimpiezaPage() {
         }
     };
 
-    const tareasCliente = worker ? getTareasForCliente(worker.cliente || '') : [];
+    const tareasCliente = assignedTareas.length > 0
+        ? assignedTareas
+        : (worker ? getTareasForCliente(worker.cliente || '') : []);
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
@@ -309,6 +332,11 @@ export default function RegistroLimpiezaPage() {
                             </span>
                             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: '0' }}>{worker.nombre}</h2>
                             <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0.2rem 0 0' }}>{worker.cliente} - {worker.sector}</p>
+                            {assignedTareas.length > 0 && (
+                                <span style={{ display: 'inline-block', marginTop: '0.5rem', fontSize: '0.68rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '9999px', backgroundColor: 'rgba(29,52,97,0.1)', color: '#1d3461' }}>
+                                    Tareas asignadas por supervisor
+                                </span>
+                            )}
                         </div>
 
                         {error && <div style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>{error}</div>}

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/db';
-
 import { getSession } from '@/lib/auth-server';
 import { NextRequest } from 'next/server';
 
@@ -27,18 +26,18 @@ export async function GET(request: NextRequest) {
 
         const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
         let entriesSql = 'SELECT * FROM logbook' + whereClause;
-        const countSql = 'SELECT count(*) as count FROM logbook' + whereClause;
 
-        let entries;
+        let entries: any[];
         if (limitParam > 0) {
             entriesSql += ' ORDER BY id DESC LIMIT ? OFFSET ?';
-            entries = await db.prepare(entriesSql).all(...params, limitParam, offset);
+            entries = await db.query(entriesSql, [...params, limitParam, offset]);
         } else {
             entriesSql += ' ORDER BY id DESC';
-            entries = await db.prepare(entriesSql).all(...params);
+            entries = await db.query(entriesSql, params);
         }
-        const columns = await db.prepare('SELECT * FROM logbook_columns').all();
-        const totalCount = await db.prepare(countSql).get(...params) as { count: number };
+
+        const columns = await db.query('SELECT * FROM logbook_columns', []);
+        const totalRow = await db.get('SELECT count(*) as count FROM logbook' + whereClause, params);
 
         return NextResponse.json({
             entries: entries.map((e: any) => ({
@@ -51,7 +50,7 @@ export async function GET(request: NextRequest) {
                 ...c,
                 options: c.options ? JSON.parse(c.options) : []
             })),
-            totalCount: totalCount?.count || 0
+            totalCount: totalRow?.count || 0
         });
     } catch (error: any) {
         console.error('Logbook GET Error:', error?.stack || error);
@@ -60,11 +59,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-    const session = await getSession(req);
     try {
         const body = await req.json();
-
-        // Handle both single object and array of objects
         const items = Array.isArray(body) ? body : [body];
 
         const insertSql = `
@@ -72,7 +68,6 @@ export async function POST(req: NextRequest) {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
-        // Use a transaction for multiple inserts
         await db.transaction(async (tx) => {
             for (const entry of items) {
                 await tx.run(insertSql, [
@@ -104,30 +99,18 @@ export async function PUT(req: Request) {
         const body = await req.json();
         const { id, date, sector, supervisor, location, incident, report, staff_member, uniform, extra_data, supervised_by, time, images } = body;
 
-        if (!id) {
-            return NextResponse.json({ error: 'ID is required' }, { status: 400 });
-        }
+        if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 });
 
-        const update = db.prepare(`
-            UPDATE logbook
-            SET date = ?, sector = ?, supervisor = ?, location = ?, incident = ?, report = ?, staff_member = ?, uniform = ?, extra_data = ?, supervised_by = ?, time = ?, images = ?
-            WHERE id = ?
-        `);
-
-        await update.run(
-            date || null,
-            sector || null,
-            supervisor || null,
-            location || null,
-            incident || '',
-            report || '',
-            staff_member || '',
-            uniform || '',
-            JSON.stringify(extra_data || {}),
-            supervised_by || null,
-            time || null,
-            JSON.stringify(images || []),
-            id
+        await db.run(
+            `UPDATE logbook
+             SET date = ?, sector = ?, supervisor = ?, location = ?, incident = ?, report = ?, staff_member = ?, uniform = ?, extra_data = ?, supervised_by = ?, time = ?, images = ?
+             WHERE id = ?`,
+            [
+                date || null, sector || null, supervisor || null, location || null,
+                incident || '', report || '', staff_member || '', uniform || '',
+                JSON.stringify(extra_data || {}), supervised_by || null,
+                time || null, JSON.stringify(images || []), id
+            ]
         );
 
         return NextResponse.json({ success: true });

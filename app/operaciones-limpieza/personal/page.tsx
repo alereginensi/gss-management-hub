@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Pencil, Trash2, Check, X, Users, LogOut } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Check, X, Users, LogOut, Upload } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 
 interface LimpiezaUser {
@@ -29,6 +29,16 @@ export default function PersonalLimpiezaPage() {
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Bulk upload state
+    const [showBulk, setShowBulk] = useState(false);
+    const [bulkCliente, setBulkCliente] = useState('');
+    const [bulkSector, setBulkSector] = useState('');
+    const [bulkWorkers, setBulkWorkers] = useState<{ nombre: string; cedula: string }[]>([]);
+    const [bulkError, setBulkError] = useState('');
+    const [bulkSaving, setBulkSaving] = useState(false);
+    const [bulkResult, setBulkResult] = useState<{ inserted: number; skipped: number } | null>(null);
+    const bulkFileRef = useRef<HTMLInputElement>(null);
     const [filterCliente, setFilterCliente] = useState('');
     const [filterSector, setFilterSector] = useState('');
     const [clientSectorMap, setClientSectorMap] = useState<Record<string, string[]>>({});
@@ -102,6 +112,100 @@ export default function PersonalLimpiezaPage() {
         fetchUsuarios();
     };
 
+    const handleBulkFile = async (file: File) => {
+        setBulkError(''); setBulkWorkers([]); setBulkResult(null);
+        try {
+            const ExcelJS = (await import('exceljs')).default;
+            const wb = new ExcelJS.Workbook();
+            await wb.xlsx.load(await file.arrayBuffer());
+            const ws = wb.worksheets[0];
+            const workers: { nombre: string; cedula: string }[] = [];
+
+            // Step 1: detect columns from header row
+            let nombreCols: number[] = [];
+            let cedulaCol = -1;
+            let startRow = 1;
+
+            const firstRow = ws.getRow(1);
+            const headerMap: Record<number, string> = {};
+            firstRow.eachCell((cell, colNum) => {
+                headerMap[colNum] = (cell.value ?? '').toString().toLowerCase().trim();
+            });
+
+            const headerKeywords = ['nombre', 'apellido', 'cedula', 'cédula', 'ci', 'documento', 'rut'];
+            const hasHeader = Object.values(headerMap).some(h => headerKeywords.some(k => h.includes(k)));
+
+            if (hasHeader) {
+                startRow = 2;
+                Object.entries(headerMap).forEach(([colStr, h]) => {
+                    const col = Number(colStr);
+                    if (h.includes('cedula') || h.includes('cédula') || h === 'ci' || h.includes('documento') || h.includes('rut')) {
+                        cedulaCol = col;
+                    } else if (h.includes('nombre') || h.includes('apellido')) {
+                        nombreCols.push(col);
+                    }
+                });
+            }
+
+            // Step 2: if columns not identified via headers, auto-detect by content
+            if (cedulaCol === -1 || nombreCols.length === 0) {
+                const dataRow = ws.getRow(startRow);
+                let maxCols = 0;
+                dataRow.eachCell((_, c) => { if (c > maxCols) maxCols = c; });
+                // Cédula column = first col whose value looks numeric (digits, dots, dashes)
+                for (let c = 1; c <= maxCols; c++) {
+                    const val = (dataRow.getCell(c).value ?? '').toString().trim();
+                    if (cedulaCol === -1 && /^\d[\d.\-/]*$/.test(val)) {
+                        cedulaCol = c;
+                    }
+                }
+                // Nombre cols = all others
+                for (let c = 1; c <= maxCols; c++) {
+                    if (c !== cedulaCol && nombreCols.length < 2) nombreCols.push(c);
+                }
+            }
+
+            // Step 3: parse rows
+            ws.eachRow((row, rowNum) => {
+                if (rowNum < startRow) return;
+                const nombreParts = nombreCols.map(c => (row.getCell(c).value ?? '').toString().trim()).filter(Boolean);
+                const nombre = nombreParts.join(' ');
+                const cedula = cedulaCol > 0 ? (row.getCell(cedulaCol).value ?? '').toString().trim() : '';
+                if (nombre) workers.push({ nombre, cedula });
+            });
+
+            if (workers.length === 0) { setBulkError('No se encontraron filas válidas. Verificá el formato.'); return; }
+            setBulkWorkers(workers);
+        } catch {
+            setBulkError('Error al leer el archivo. Asegurate de subir un .xlsx válido.');
+        }
+    };
+
+    const handleBulkSave = async () => {
+        if (!bulkCliente) { setBulkError('Seleccioná un cliente.'); return; }
+        if (bulkWorkers.length === 0) { setBulkError('Cargá un archivo primero.'); return; }
+        setBulkSaving(true); setBulkError('');
+        try {
+            const res = await fetch('/api/limpieza/usuarios/bulk', {
+                method: 'POST',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ workers: bulkWorkers, cliente: bulkCliente, sector: bulkSector || null }),
+            });
+            const data = await res.json();
+            if (!res.ok) { setBulkError(data.error || 'Error'); return; }
+            setBulkResult(data);
+            fetchUsuarios();
+        } finally {
+            setBulkSaving(false);
+        }
+    };
+
+    const closeBulk = () => {
+        setShowBulk(false); setBulkCliente(''); setBulkSector('');
+        setBulkWorkers([]); setBulkError(''); setBulkResult(null);
+        if (bulkFileRef.current) bulkFileRef.current.value = '';
+    };
+
     if (loading || !currentUser) return null;
 
     const inputStyle: React.CSSProperties = {
@@ -159,9 +263,14 @@ export default function PersonalLimpiezaPage() {
                         </div>
                         <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Personal</h1>
                     </div>
-                    <button onClick={openNew} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.55rem 1.1rem', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: 'var(--radius)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>
-                        <Plus size={16} /> <span className="mobile-hide">Nuevo</span>
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button onClick={() => setShowBulk(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.55rem 1.1rem', backgroundColor: 'var(--surface-color)', color: 'var(--primary-color)', border: '1px solid var(--primary-color)', borderRadius: 'var(--radius)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>
+                            <Upload size={16} /> <span className="mobile-hide">Carga Masiva</span>
+                        </button>
+                        <button onClick={openNew} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.55rem 1.1rem', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: 'var(--radius)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>
+                            <Plus size={16} /> <span className="mobile-hide">Nuevo</span>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Search + Filters */}
@@ -349,7 +458,111 @@ export default function PersonalLimpiezaPage() {
                 </div>
             </main>
 
-            {/* Logout button removed from here, now in header */}
+            {/* ── Bulk Upload Modal ── */}
+            {showBulk && (
+                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div className="card" style={{ width: '100%', maxWidth: '560px', padding: '1.75rem', overflowY: 'auto', maxHeight: '90vh' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Carga Masiva de Personal</h2>
+                            <button onClick={closeBulk} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={20} /></button>
+                        </div>
+
+                        {/* File format hint */}
+                        <div style={{ backgroundColor: 'rgba(41,65,107,0.07)', border: '1px solid rgba(41,65,107,0.15)', borderRadius: 'var(--radius)', padding: '0.75rem 1rem', marginBottom: '1.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            Se detectan automáticamente las columnas de <strong>Nombre</strong>, <strong>Apellido</strong> y <strong>Cédula</strong> por encabezado o contenido. Si hay nombre y apellido en columnas separadas se combinan.
+                        </div>
+
+                        {/* Cliente */}
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={labelStyle}>Cliente *</label>
+                            <select
+                                value={bulkCliente}
+                                onChange={e => { setBulkCliente(e.target.value); setBulkSector(''); }}
+                                style={inputStyle}
+                            >
+                                <option value="">Seleccionar cliente...</option>
+                                {Object.keys(clientSectorMap).sort().map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+
+                        {/* Sector */}
+                        <div style={{ marginBottom: '1.25rem' }}>
+                            <label style={labelStyle}>Sector (opcional)</label>
+                            <select
+                                value={bulkSector}
+                                onChange={e => setBulkSector(e.target.value)}
+                                disabled={!bulkCliente}
+                                style={{ ...inputStyle, opacity: bulkCliente ? 1 : 0.5 }}
+                            >
+                                <option value="">Sin sector específico</option>
+                                {(clientSectorMap[bulkCliente] || []).map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+
+                        {/* File input */}
+                        <div style={{ marginBottom: '1.25rem' }}>
+                            <label style={labelStyle}>Archivo Excel (.xlsx)</label>
+                            <input
+                                ref={bulkFileRef}
+                                type="file"
+                                accept=".xlsx"
+                                onChange={e => { const f = e.target.files?.[0]; if (f) handleBulkFile(f); }}
+                                style={{ display: 'block', width: '100%', fontSize: '0.85rem' }}
+                            />
+                        </div>
+
+                        {/* Preview */}
+                        {bulkWorkers.length > 0 && !bulkResult && (
+                            <div style={{ marginBottom: '1.25rem' }}>
+                                <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                                    {bulkWorkers.length} funcionario{bulkWorkers.length !== 1 ? 's' : ''} detectado{bulkWorkers.length !== 1 ? 's' : ''}:
+                                </p>
+                                <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', fontSize: '0.8rem' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr style={{ backgroundColor: 'var(--bg-color)' }}>
+                                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Nombre</th>
+                                                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>Cédula</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {bulkWorkers.map((w, i) => (
+                                                <tr key={i} style={{ borderTop: '1px solid var(--border-color)' }}>
+                                                    <td style={{ padding: '0.35rem 0.6rem' }}>{w.nombre}</td>
+                                                    <td style={{ padding: '0.35rem 0.6rem', color: 'var(--text-secondary)' }}>{w.cedula}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Result */}
+                        {bulkResult && (
+                            <div style={{ backgroundColor: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 'var(--radius)', padding: '0.9rem 1rem', marginBottom: '1.25rem', fontSize: '0.88rem' }}>
+                                <strong style={{ color: '#15803d' }}>✓ Carga completada</strong>
+                                <div style={{ marginTop: '0.35rem', color: 'var(--text-secondary)' }}>
+                                    {bulkResult.inserted} insertado{bulkResult.inserted !== 1 ? 's' : ''} · {bulkResult.skipped} omitido{bulkResult.skipped !== 1 ? 's' : ''} (cédula ya existente)
+                                </div>
+                            </div>
+                        )}
+
+                        {bulkError && <p style={{ color: '#ef4444', fontSize: '0.83rem', marginBottom: '1rem' }}>{bulkError}</p>}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button onClick={closeBulk} style={{ padding: '0.55rem 1.1rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.875rem' }}>
+                                {bulkResult ? 'Cerrar' : 'Cancelar'}
+                            </button>
+                            {!bulkResult && (
+                                <button onClick={handleBulkSave} disabled={bulkSaving || bulkWorkers.length === 0} style={{ padding: '0.55rem 1.25rem', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: 'var(--radius)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', opacity: bulkSaving || bulkWorkers.length === 0 ? 0.6 : 1 }}>
+                                    {bulkSaving ? 'Cargando...' : `Cargar ${bulkWorkers.length > 0 ? bulkWorkers.length + ' funcionarios' : ''}`}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

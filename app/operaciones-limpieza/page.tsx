@@ -3,13 +3,14 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ClipboardList, FileText, Users, LogOut, History, BarChart3 } from 'lucide-react';
+import { ArrowLeft, ClipboardList, FileText, Users, LogOut, History, ClipboardCheck } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 
 const MENU_ITEMS = [
     { label: 'Informes\nOperativos', href: '/operaciones-limpieza/informes', icon: FileText },
     { label: 'Historial de\nInformes', href: '/operaciones-limpieza/historial', icon: History },
     { label: 'Recuento\nde Tareas', href: '/operaciones-limpieza/tareas', icon: ClipboardList },
+    { label: 'Asignar\nTareas', href: '/operaciones-limpieza/asignar-tareas', icon: ClipboardCheck },
     { label: 'Personal', href: '/operaciones-limpieza/personal', icon: Users },
 ];
 
@@ -55,8 +56,8 @@ export default function OperacionesLimpiezaPage() {
                 <img src="/logo.png" alt="GSS" style={{ height: '32px' }} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }} className="mobile-hide">{currentUser.name}</span>
-                    <button 
-                        onClick={() => { logout(); router.push('/login'); }} 
+                    <button
+                        onClick={() => { logout(); router.push('/login'); }}
                         style={{ background: 'none', border: 'none', color: 'var(--accent-color)', cursor: 'pointer', padding: '0.4rem' }}
                         title="Cerrar sesión"
                     >

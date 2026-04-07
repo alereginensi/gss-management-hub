@@ -65,12 +65,7 @@ class DbWrapper {
     if (this._initPromise) await this._initPromise;
     const safeParams = params.map(p => p === undefined ? null : p);
 
-    // Convert ? to $1, $2, etc for PG if needed, or vice-versa
-    const normalizedText = this.type === 'pg'
-      ? text.replace(/\?/g, (_, i) => `$${safeParams.indexOf(safeParams[i]) + 1}`) // This is a simplified placeholder conversion
-      : text;
-
-    // Better placeholder conversion for PG
+    // Convert ? to $1, $2, ... for PG
     let pgText = text;
     if (this.type === 'pg') {
       let count = 1;
@@ -408,7 +403,23 @@ class DbWrapper {
         hora_inicio TEXT,
         hora_fin TEXT,
         tareas TEXT,
+        tareas_timestamps TEXT,
+        fotos TEXT,
         observaciones TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS limpieza_tareas_asignadas (
+        id SERIAL PRIMARY KEY,
+        titulo TEXT NOT NULL,
+        descripcion TEXT,
+        tareas TEXT NOT NULL,
+        scope TEXT NOT NULL,
+        cedula TEXT,
+        cliente TEXT,
+        sector TEXT,
+        fecha TEXT NOT NULL,
+        creado_por TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -879,6 +890,35 @@ class DbWrapper {
             await this.pgPool!.query('ALTER TABLE users ADD COLUMN panel_access INTEGER DEFAULT 1');
           }
         } catch (e) {}
+        // limpieza_registros: add tareas_timestamps and fotos columns
+        try {
+          const lrCols = await this.pgPool!.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'limpieza_registros'`);
+          const lrColNames = lrCols.rows.map((r: any) => r.column_name);
+          if (!lrColNames.includes('tareas_timestamps')) {
+            await this.pgPool!.query('ALTER TABLE limpieza_registros ADD COLUMN tareas_timestamps TEXT');
+          }
+          if (!lrColNames.includes('fotos')) {
+            await this.pgPool!.query('ALTER TABLE limpieza_registros ADD COLUMN fotos TEXT');
+          }
+        } catch (e) {}
+        // limpieza_tareas_asignadas: create if not exists
+        try {
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS limpieza_tareas_asignadas (
+              id SERIAL PRIMARY KEY,
+              titulo TEXT NOT NULL,
+              descripcion TEXT,
+              tareas TEXT NOT NULL,
+              scope TEXT NOT NULL,
+              cedula TEXT,
+              cliente TEXT,
+              sector TEXT,
+              fecha TEXT NOT NULL,
+              creado_por TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+        } catch (e) {}
         try {
           await this.pgPool!.query(`
             CREATE TABLE IF NOT EXISTS purchase_orders (
@@ -1207,6 +1247,35 @@ class DbWrapper {
         if (!userCols.includes('panel_access')) {
           this.sqliteDb.exec('ALTER TABLE users ADD COLUMN panel_access INTEGER DEFAULT 1');
         }
+      } catch (e) {}
+      // limpieza_registros: add tareas_timestamps and fotos (SQLite)
+      try {
+        const lrInfo = this.sqliteDb.prepare("PRAGMA table_info(limpieza_registros)").all() as any[];
+        const lrCols = lrInfo.map((c: any) => c.name);
+        if (!lrCols.includes('tareas_timestamps')) {
+          this.sqliteDb.exec('ALTER TABLE limpieza_registros ADD COLUMN tareas_timestamps TEXT');
+        }
+        if (!lrCols.includes('fotos')) {
+          this.sqliteDb.exec('ALTER TABLE limpieza_registros ADD COLUMN fotos TEXT');
+        }
+      } catch (e) {}
+      // limpieza_tareas_asignadas: create if not exists (SQLite)
+      try {
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS limpieza_tareas_asignadas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT NOT NULL,
+            descripcion TEXT,
+            tareas TEXT NOT NULL,
+            scope TEXT NOT NULL,
+            cedula TEXT,
+            cliente TEXT,
+            sector TEXT,
+            fecha TEXT NOT NULL,
+            creado_por TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
       } catch (e) {}
       // limpieza_usuarios: remove email, make cedula unique (SQLite)
       try {
