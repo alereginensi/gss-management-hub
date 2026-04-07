@@ -48,7 +48,8 @@ export default function Login() {
                     email: data.user.email,
                     department: data.user.department,
                     role: data.user.role as any,
-                    rubro: data.user.rubro
+                    rubro: data.user.rubro,
+                    modules: data.user.modules ?? undefined
                 }, data.token);
 
                 router.push('/');

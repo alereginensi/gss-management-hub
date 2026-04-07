@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 
 export const DEPARTMENTS = [
@@ -9,7 +9,7 @@ export const DEPARTMENTS = [
     'Administración',
     'Logistica',
     'Operaciones Seguridad',
-    'Operaciones Limpieza',
+    'Operaciones Limpieza/Seguridad',
     'Comercial',
     'Dirección',
     'Gestión',
@@ -101,7 +101,7 @@ export interface User {
     modules?: string; // comma-separated: "logistica,tecnico,cotizacion"
 }
 
-export function hasModuleAccess(user: User, mod: 'logistica' | 'tecnico' | 'cotizacion'): boolean {
+export function hasModuleAccess(user: User, mod: 'logistica' | 'tecnico' | 'cotizacion' | 'limpieza'): boolean {
     if (user.role === 'admin') return true;
     if (mod === 'logistica' && user.role === 'logistica') return true;
     if (mod === 'tecnico' && user.role === 'tecnico') return true;
@@ -197,7 +197,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     const router = useRouter(); // Initialize useRouter
 
     // Helper to get headers with fallback token
-    const getAuthHeaders = () => {
+    const getAuthHeaders = useCallback(() => {
         const token = localStorage.getItem('authToken');
         const headers: HeadersInit = {
             'Content-Type': 'application/json' // Default content type for most requests
@@ -206,7 +206,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             headers['Authorization'] = `Bearer ${token}`;
         }
         return headers;
-    };
+    }, []);
 
     const fetchSettings = async () => {
         try {

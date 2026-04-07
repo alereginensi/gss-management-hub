@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Briefcase, Shield, LogOut, Package, Calculator } from 'lucide-react';
+import { Briefcase, Shield, LogOut, Package, Calculator, Droplets } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from './context/TicketContext';
 
 const cardHoverOn = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -18,7 +18,7 @@ const cardHoverOff = (e: React.MouseEvent<HTMLDivElement>) => {
 };
 
 export default function Landing() {
-  const { currentUser, isAuthenticated, loading, logout } = useTicketContext();
+  const { currentUser, isAuthenticated, loading, logout, isMobile } = useTicketContext();
   const router = useRouter();
 
   useEffect(() => {
@@ -68,12 +68,12 @@ export default function Landing() {
       {/* Section Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
         gap: '1.5rem',
         width: '100%',
         maxWidth: '900px'
       }}>
-        <Link href="/administracion" style={{ textDecoration: 'none' }}>
+        <Link href="/administracion" style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
           <div
             style={{
               display: 'flex',
@@ -85,6 +85,7 @@ export default function Landing() {
               cursor: 'pointer',
               transition: 'transform 0.18s, box-shadow 0.18s, background-color 0.18s',
               minHeight: '180px',
+              height: '100%',
               textAlign: 'center',
               backgroundColor: 'var(--primary-color)',
               borderRadius: 'var(--radius)',
@@ -102,13 +103,13 @@ export default function Landing() {
         </Link>
 
         {hasModuleAccess(currentUser, 'tecnico') ? (
-          <Link href="/seguridad-electronica" style={{ textDecoration: 'none' }}>
+          <Link href="/seguridad-electronica" style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
             <div
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 padding: '2.5rem 2rem', gap: '1rem', cursor: 'pointer',
                 transition: 'transform 0.18s, box-shadow 0.18s, background-color 0.18s',
-                minHeight: '180px', textAlign: 'center',
+                minHeight: '180px', height: '100%', textAlign: 'center',
                 backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)',
                 boxShadow: '0 4px 12px rgba(41,65,107,0.2)'
               }}
@@ -126,7 +127,7 @@ export default function Landing() {
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             padding: '2.5rem 2rem', gap: '1rem', cursor: 'not-allowed',
-            minHeight: '180px', textAlign: 'center',
+            minHeight: '180px', height: '100%', textAlign: 'center',
             backgroundColor: '#e2e8f0', borderRadius: 'var(--radius)',
             boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
           }}>
@@ -139,13 +140,13 @@ export default function Landing() {
         )}
 
         {hasModuleAccess(currentUser, 'logistica') ? (
-          <Link href="/logistica" style={{ textDecoration: 'none' }}>
+          <Link href="/logistica" style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
             <div
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 padding: '2.5rem 2rem', gap: '1rem', cursor: 'pointer',
                 transition: 'transform 0.18s, box-shadow 0.18s, background-color 0.18s',
-                minHeight: '180px', textAlign: 'center',
+                minHeight: '180px', height: '100%', textAlign: 'center',
                 backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)',
                 boxShadow: '0 4px 12px rgba(41,65,107,0.2)'
               }}
@@ -163,7 +164,7 @@ export default function Landing() {
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             padding: '2.5rem 2rem', gap: '1rem', cursor: 'not-allowed',
-            minHeight: '180px', textAlign: 'center',
+            minHeight: '180px', height: '100%', textAlign: 'center',
             backgroundColor: '#e2e8f0', borderRadius: 'var(--radius)',
             boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
           }}>
@@ -176,13 +177,13 @@ export default function Landing() {
         )}
 
         {hasModuleAccess(currentUser, 'cotizacion') ? (
-          <Link href="/cotizacion" style={{ textDecoration: 'none' }}>
+          <Link href="/cotizacion" style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
             <div
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                 padding: '2.5rem 2rem', gap: '1rem', cursor: 'pointer',
                 transition: 'transform 0.18s, box-shadow 0.18s, background-color 0.18s',
-                minHeight: '180px', textAlign: 'center',
+                minHeight: '180px', height: '100%', textAlign: 'center',
                 backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)',
                 boxShadow: '0 4px 12px rgba(41,65,107,0.2)'
               }}
@@ -200,7 +201,7 @@ export default function Landing() {
           <div style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             padding: '2.5rem 2rem', gap: '1rem', cursor: 'not-allowed',
-            minHeight: '180px', textAlign: 'center',
+            minHeight: '180px', height: '100%', textAlign: 'center',
             backgroundColor: '#e2e8f0', borderRadius: 'var(--radius)',
             boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
           }}>
@@ -208,6 +209,43 @@ export default function Landing() {
               <Calculator size={36} color="#94a3b8" />
             </div>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#94a3b8', margin: 0 }}>Cotización</h2>
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>Sin acceso a esta sección</p>
+          </div>
+        )}
+
+        {hasModuleAccess(currentUser, 'limpieza') ? (
+          <Link href="/operaciones-limpieza" style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
+            <div
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                padding: '2.5rem 2rem', gap: '1rem', cursor: 'pointer',
+                transition: 'transform 0.18s, box-shadow 0.18s, background-color 0.18s',
+                minHeight: '180px', height: '100%', textAlign: 'center',
+                backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)',
+                boxShadow: '0 4px 12px rgba(41,65,107,0.2)'
+              }}
+              onMouseOver={cardHoverOn}
+              onMouseOut={cardHoverOff}
+            >
+              <div style={{ padding: '0.9rem', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>
+                <Droplets size={36} color="white" />
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', margin: 0 }}>Operaciones Limpieza/Seguridad</h2>
+              <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', margin: 0 }}>Tareas, informes y control operativo</p>
+            </div>
+          </Link>
+        ) : (
+          <div style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: '2.5rem 2rem', gap: '1rem', cursor: 'not-allowed',
+            minHeight: '180px', height: '100%', textAlign: 'center',
+            backgroundColor: '#e2e8f0', borderRadius: 'var(--radius)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ padding: '0.9rem', backgroundColor: 'rgba(100,116,139,0.15)', borderRadius: '50%' }}>
+              <Droplets size={36} color="#94a3b8" />
+            </div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#94a3b8', margin: 0 }}>Operaciones Limpieza/Seguridad</h2>
             <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>Sin acceso a esta sección</p>
           </div>
         )}
