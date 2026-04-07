@@ -128,6 +128,14 @@ export default function CalendarioPage() {
     const { currentUser, isAuthenticated, loading } = useTicketContext();
     const router = useRouter();
 
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+
     // ── Data ──────────────────────────────────────────────────────────────
     const [events, setEvents] = useState<CalEvent[]>([]);
     const [requests, setRequests] = useState<MaterialRequest[]>([]);
@@ -800,11 +808,49 @@ export default function CalendarioPage() {
                         })}
                     </div>
 
-                    {/* Table: Entregas / Despachos */}
+                    {/* Table/Cards: Entregas / Despachos */}
                     {(listTab === 'entrega' || listTab === 'despacho') && (() => {
                         const rows = filteredEvents.filter(e => e.tipo === listTab);
                         if (fetching) return <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem', fontSize: '0.85rem' }}>Cargando...</p>;
                         if (rows.length === 0) return <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem', fontSize: '0.85rem' }}>Sin resultados.</p>;
+                        if (isMobile) return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.25rem 0' }}>
+                                {rows.map(ev => (
+                                    <div key={ev.id} style={{ backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.9rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                        {/* Header row */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>{ev.titulo || <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>Sin título</span>}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>{fmtDate(ev.fecha)}</div>
+                                            </div>
+                                            <button onClick={() => handleDeleteEvent(ev.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.15rem', flexShrink: 0 }}><Trash2 size={15} /></button>
+                                        </div>
+                                        {/* Items */}
+                                        {ev.items?.length > 0 && (
+                                            <div style={{ backgroundColor: 'var(--bg-color)', borderRadius: '6px', padding: '0.5rem 0.65rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                {ev.items.map((it, j) => (
+                                                    <div key={j} style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+                                                        <span style={{ fontWeight: 700, color: 'var(--primary-color)' }}>{it.quantity}x</span> {it.article}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {/* Footer row */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.1rem' }}>
+                                            <span style={{ fontSize: '0.73rem', color: 'var(--text-secondary)' }}>por {ev.created_by}</span>
+                                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                                {ev.descripcion && <span style={{ fontSize: '0.73rem', color: 'var(--text-secondary)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.descripcion}</span>}
+                                                {ev.file_url && (
+                                                    <a href={`/api/file-proxy?url=${encodeURIComponent(ev.file_url)}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 600 }}>
+                                                        <FileText size={13} /> Doc
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
                         return (
                             <div className="logistica-table-wrap" style={{ overflowX: 'auto' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
@@ -843,11 +889,53 @@ export default function CalendarioPage() {
                         );
                     })()}
 
-                    {/* Table: Solicitudes */}
+                    {/* Table/Cards: Solicitudes */}
                     {listTab === 'solicitud' && (() => {
                         const rows = filteredRequests;
                         if (fetching) return <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem', fontSize: '0.85rem' }}>Cargando...</p>;
                         if (rows.length === 0) return <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem', fontSize: '0.85rem' }}>Sin resultados.</p>;
+                        if (isMobile) return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.25rem 0' }}>
+                                {rows.map(r => (
+                                    <div key={r.id} style={{ backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.9rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                        {/* Header row */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>{r.client || <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>Sin cliente</span>}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>{fmtDate(r.needed_date)}</div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: '4px', backgroundColor: `${SOL_STATUS_COLORS[r.status]}20`, color: SOL_STATUS_COLORS[r.status], fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                                    {SOL_STATUS_LABELS[r.status]}
+                                                </span>
+                                                {['admin', 'jefe'].includes(currentUser.role) && (
+                                                    <button onClick={() => handleDeleteSolicitud(r.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.15rem' }}><Trash2 size={15} /></button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {/* Items */}
+                                        {r.items?.length > 0 && (
+                                            <div style={{ backgroundColor: 'var(--bg-color)', borderRadius: '6px', padding: '0.5rem 0.65rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                {r.items.map((it, j) => (
+                                                    <div key={j} style={{ fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+                                                        <span style={{ fontWeight: 700, color: 'var(--primary-color)' }}>{it.quantity}x</span> {it.article}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {/* Footer */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.1rem' }}>
+                                            <span style={{ fontSize: '0.73rem', color: 'var(--text-secondary)' }}>por {r.requested_by}</span>
+                                            {r.file_url && (
+                                                <a href={`/api/file-proxy?url=${encodeURIComponent(r.file_url)}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 600 }}>
+                                                    <FileText size={13} /> Doc
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
                         return (
                             <div className="logistica-table-wrap" style={{ overflowX: 'auto' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
