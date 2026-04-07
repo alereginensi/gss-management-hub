@@ -112,7 +112,7 @@ export default function TasksPage() {
                 flex: 1,
                 marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
-                padding: isMobile ? '1rem' : '2rem',
+                padding: isMobile ? '4rem 1rem 1rem' : '2rem',
                 paddingTop: isMobile ? '4.5rem' : '2rem'
             }}>
                 <Header title="Registro de Tareas" />

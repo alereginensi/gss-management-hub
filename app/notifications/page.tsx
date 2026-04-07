@@ -32,7 +32,7 @@ export default function NotificationsPage() {
                 flex: 1,
                 marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
-                padding: isMobile ? '1rem' : '2rem',
+                padding: isMobile ? '4rem 1rem 1rem' : '2rem',
                 backgroundColor: 'var(--bg-color)'
             }}>
                 <Header title="Notificaciones" />

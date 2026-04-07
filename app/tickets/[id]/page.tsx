@@ -253,7 +253,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                     flex: 1,
                     marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                     transition: 'margin-left 0.3s ease-in-out',
-                    padding: isMobile ? '1rem' : '2rem',
+                    padding: isMobile ? '4rem 1rem 1rem' : '2rem',
                     backgroundColor: 'var(--bg-color)',
                     display: 'flex',
                     alignItems: 'center',
@@ -290,7 +290,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                     flex: 1,
                     marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                     transition: 'margin-left 0.3s ease-in-out',
-                    padding: isMobile ? '1rem' : '2rem',
+                    padding: isMobile ? '4rem 1rem 1rem' : '2rem',
                     backgroundColor: 'var(--bg-color)'
                 }}>
                     <Header title="Ticket no encontrado" />
@@ -311,7 +311,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                 flex: 1,
                 marginLeft: (!isMobile && isSidebarOpen) ? '260px' : '0',
                 transition: 'margin-left 0.3s ease-in-out',
-                padding: isMobile ? '1rem' : '2rem',
+                padding: isMobile ? '4rem 1rem 1rem' : '2rem',
                 backgroundColor: 'var(--bg-color)',
                 minWidth: 0 // Prevents flex item from overflowing parent
             }}>
