@@ -1,3 +1,11 @@
+/**
+ * PELIGRO — NO usar contra la base de datos de producción si ya tiene datos reales.
+ *
+ * Este script hace DROP de logbook, tickets, users y el resto de tablas principales y
+ * vuelve a crear el esquema desde cero. Cualquier dato que solo exista en PostgreSQL
+ * (p. ej. bitácora / logbook) se pierde. Para subir solo el personal de limpieza desde
+ * SQLite local, usa: node scripts/migrate_limpieza_personal_only.cjs
+ */
 import Database from 'better-sqlite3';
 import { Pool } from 'pg';
 import path from 'path';

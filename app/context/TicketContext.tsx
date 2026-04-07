@@ -352,8 +352,9 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                         logout();
                     }
                 } else if (res.status === 401) {
-                    console.log('❌ TicketContext: Session unauthorized (401)');
-                    // Only call logout if we actually had a reason to believe we were logged in
+                    if (storedToken) {
+                        console.warn('TicketContext: sesión inválida o expirada (401)');
+                    }
                     if (storedToken || isAuthenticatedRef.current) {
                         logout();
                     }

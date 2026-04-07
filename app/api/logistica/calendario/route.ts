@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth-server';
 import db from '@/lib/db';
+import { parseDbJsonArray } from '@/lib/parse-db-json';
 
 const AUTH_ROLES = ['admin', 'logistica', 'jefe'];
 
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(
             rows.map((r: any) => ({
                 ...r,
-                items: r.items ? JSON.parse(r.items) : [],
+                items: parseDbJsonArray(r.items),
             }))
         );
     } catch (err: any) {

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Clock, Calendar as CalendarIcon, Plus, X, PackageSearch, Download, Search, Trash2, ChevronDown, ChevronUp, Paperclip } from 'lucide-react';
 import { useTicketContext } from '@/app/context/TicketContext';
+import { mergeLogisticaClientNames } from '@/lib/logistica-clients';
 
 interface MaterialItem {
     article: string;
@@ -82,7 +83,7 @@ export default function SolicitudMaterialesPage() {
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState({
         client: '',
-        items: [{ article: '', quantity: '' }]
+        items: [] as MaterialItem[],
     });
     const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
     const [saving, setSaving] = useState(false);
@@ -142,7 +143,7 @@ export default function SolicitudMaterialesPage() {
         fetch('/api/config/locations', { headers: getAuthHeaders() })
             .then(res => res.json())
             .then(locs => {
-                if (Array.isArray(locs)) setLocations(locs.map((l: any) => l.name).sort());
+                if (Array.isArray(locs)) setLocations(mergeLogisticaClientNames(locs.map((l: any) => l.name)));
             })
             .catch(console.error);
             
@@ -155,7 +156,7 @@ export default function SolicitudMaterialesPage() {
 
     const handleCreate = async () => {
         const validItems = form.items.filter(i => i.article.trim() && i.quantity);
-        if (validItems.length === 0) return alert('Debes agregar al menos un artículo válido');
+        if (validItems.length === 0) return alert('Agregá al menos un artículo a la solicitud');
 
         setSaving(true);
         try {
@@ -178,7 +179,7 @@ export default function SolicitudMaterialesPage() {
             });
             if (res.ok) {
                 setShowForm(false);
-                setForm({ client: '', items: [{ article: '', quantity: '' }] });
+                setForm({ client: '', items: [] });
                 setAttachmentFile(null);
                 fetchAllData();
             } else {
@@ -289,7 +290,14 @@ export default function SolicitudMaterialesPage() {
                             </button>
                         )}
                         {['admin', 'jefe'].includes(currentUser.role) && (
-                            <button onClick={() => setShowForm(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: 'var(--radius)', padding: '0.5rem 1rem', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 500 }}>
+                            <button
+                                onClick={() => {
+                                    setForm({ client: '', items: [] });
+                                    setAttachmentFile(null);
+                                    setShowForm(true);
+                                }}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: 'var(--radius)', padding: '0.5rem 1rem', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 500 }}
+                            >
                                 <Plus size={16} /> Nueva Solicitud
                             </button>
                         )}
@@ -595,16 +603,21 @@ export default function SolicitudMaterialesPage() {
                                                 placeholder="Cant."
                                                 style={{ width: '80px', padding: '0.5rem', fontSize: '0.85rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }} 
                                             />
-                                            {form.items.length > 1 && (
-                                                <button 
-                                                    onClick={() => setForm({...form, items: form.items.filter((_, i) => i !== idx)})}
-                                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.3rem' }}
-                                                >
-                                                    <X size={16} />
-                                                </button>
-                                            )}
+                                            <button 
+                                                type="button"
+                                                onClick={() => setForm({...form, items: form.items.filter((_, i) => i !== idx)})}
+                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.3rem', flexShrink: 0 }}
+                                                aria-label="Quitar artículo"
+                                            >
+                                                <X size={16} />
+                                            </button>
                                         </div>
                                     ))}
+                                    {form.items.length === 0 && (
+                                        <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '0.85rem 0.5rem', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', margin: 0 }}>
+                                            Agregá artículos a tu solicitud.
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>

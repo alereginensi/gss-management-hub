@@ -9,6 +9,7 @@ import {
     Download, Search, PenLine
 } from 'lucide-react';
 import { useTicketContext } from '@/app/context/TicketContext';
+import { mergeLogisticaClientNames } from '@/lib/logistica-clients';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type EventType = 'entrega' | 'despacho' | 'solicitud';
@@ -38,8 +39,8 @@ interface MaterialRequest {
 
 // ── Config ─────────────────────────────────────────────────────────────────
 const TYPE_CONFIG: Record<EventType, { label: string; color: string; icon: React.ReactNode }> = {
-    entrega: { label: 'Entrega',   color: '#22c55e', icon: <PackageCheck size={14} /> },
-    despacho: { label: 'Ingreso', color: '#e04951', icon: <Truck size={14} /> },
+    entrega: { label: 'Entrega', color: '#22c55e', icon: <PackageCheck size={14} /> },
+    despacho: { label: 'Ingreso mercadería', color: '#e04951', icon: <Truck size={14} /> },
     solicitud: { label: 'Solicitud', color: '#f59e0b', icon: <ClipboardList size={14} /> },
 };
 
@@ -168,7 +169,7 @@ export default function CalendarioPage() {
     // Solicitud form
     const [solForm, setSolForm] = useState({
         client: '',
-        items: [{ article: '', quantity: '' as string | number }],
+        items: [] as { article: string; quantity: string | number }[],
     });
     const [solFile, setSolFile] = useState<File | null>(null);
     const [solFileUrl, setSolFileUrl] = useState('');
@@ -208,7 +209,9 @@ export default function CalendarioPage() {
         }
         fetch('/api/config/locations', { headers: getAuthHeaders() })
             .then(r => r.json())
-            .then(l => { if (Array.isArray(l)) setLocations(l.map((x: any) => x.name).sort()); })
+            .then(l => {
+                if (Array.isArray(l)) setLocations(mergeLogisticaClientNames(l.map((x: any) => x.name)));
+            })
             .catch(() => {});
         fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -306,7 +309,7 @@ export default function CalendarioPage() {
         setCalForm({ titulo: '', descripcion: '', items: [{ article: '', quantity: '' }] });
         setCalFile(null);
         setCalFileUrl('');
-        setSolForm({ client: '', items: [{ article: '', quantity: '' }] });
+        setSolForm({ client: '', items: [] });
         setSolFile(null);
         setSolFileUrl('');
         // reset creation firma
@@ -324,7 +327,7 @@ export default function CalendarioPage() {
         try {
             if (modalTab === 'solicitud') {
                 const validItems = solForm.items.filter(i => i.article.trim() && i.quantity);
-                if (!validItems.length) { alert('Agregá al menos un artículo'); return; }
+                if (!validItems.length) { alert('Agregá al menos un artículo a la solicitud'); return; }
                 let fileUrl = solFileUrl;
                 if (solFile && !fileUrl) {
                     const fd = new FormData(); fd.append('file', solFile);
@@ -531,7 +534,7 @@ export default function CalendarioPage() {
                         <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                             <CalendarDays size={24} color="var(--primary-color)" /> Calendario Logístico
                         </h1>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.2rem 0 0' }}>Entregas, despachos y solicitudes de materiales</p>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0.2rem 0 0' }}>Entregas, ingresos de mercadería y solicitudes</p>
                     </div>
                     <button
                         onClick={() => openModal(todayStr)}
@@ -682,7 +685,7 @@ export default function CalendarioPage() {
                                     />
                                 )}
 
-                                {/* Despachos */}
+                                {/* Ingresos mercadería */}
                                 {selectedDayData!.despacho.length > 0 && (
                                     <EventSection
                                         type="despacho"
@@ -799,7 +802,8 @@ export default function CalendarioPage() {
                                         transition: 'all 0.15s',
                                     }}
                                 >
-                                    {TYPE_CONFIG[t].icon} {t === 'solicitud' ? 'Solicitudes' : `${TYPE_CONFIG[t].label}s`}
+                                    {TYPE_CONFIG[t].icon}{' '}
+                                    {t === 'solicitud' ? 'Solicitudes' : t === 'despacho' ? 'Ingresos de mercadería' : `${TYPE_CONFIG[t].label}s`}
                                     <span style={{ fontSize: '0.7rem', backgroundColor: listTab === t ? `${TYPE_CONFIG[t].color}20` : 'var(--bg-color)', color: listTab === t ? TYPE_CONFIG[t].color : 'var(--text-secondary)', padding: '0.1rem 0.4rem', borderRadius: '999px', fontWeight: 700 }}>
                                         {count}
                                     </span>
@@ -808,7 +812,7 @@ export default function CalendarioPage() {
                         })}
                     </div>
 
-                    {/* Table/Cards: Entregas / Despachos */}
+                    {/* Table/Cards: Entregas / Ingresos mercadería */}
                     {(listTab === 'entrega' || listTab === 'despacho') && (() => {
                         const rows = filteredEvents.filter(e => e.tipo === listTab);
                         if (fetching) return <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem', fontSize: '0.85rem' }}>Cargando...</p>;
@@ -1195,23 +1199,26 @@ export default function CalendarioPage() {
                                             </select>
                                             <button
                                                 type="button"
-                                                onClick={() => {
-                                                    const sel = document.getElementById('sol-article-select') as HTMLSelectElement;
-                                                    const val = sel?.value;
-                                                    if (!val || solForm.items.some(i => i.article === val)) return;
-                                                    setSolForm({ ...solForm, items: [...solForm.items, { article: val, quantity: '' }] });
-                                                    sel.value = '';
-                                                }}
-                                                style={{ background: 'none', border: 'none', color: 'var(--primary-color)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                                                onClick={() => setSolForm({ ...solForm, items: [...solForm.items, { article: '', quantity: '' }] })}
+                                                style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.35rem 0.55rem', color: 'var(--text-primary)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                                             >
-                                                <Plus size={13} /> Agregar
+                                                <Plus size={13} /> Artículo manual
                                             </button>
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                         {solForm.items.map((item, idx) => (
                                             <div key={idx} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                                <span style={{ flex: 1, fontSize: '0.82rem', color: 'var(--text-primary)', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.45rem 0.6rem' }}>{item.article}</span>
+                                                <input
+                                                    value={item.article}
+                                                    onChange={e => {
+                                                        const c = [...solForm.items];
+                                                        c[idx].article = e.target.value;
+                                                        setSolForm({ ...solForm, items: c });
+                                                    }}
+                                                    placeholder="Nombre del artículo"
+                                                    style={{ flex: 1, fontSize: '0.82rem', color: 'var(--text-primary)', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.45rem 0.6rem' }}
+                                                />
                                                 <input
                                                     type="number"
                                                     value={item.quantity}
@@ -1223,7 +1230,9 @@ export default function CalendarioPage() {
                                             </div>
                                         ))}
                                         {solForm.items.length === 0 && (
-                                            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '0.5rem' }}>Sin artículos agregados.</p>
+                                            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '0.85rem 0.5rem', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)' }}>
+                                                Agregá artículos a tu solicitud.
+                                            </p>
                                         )}
                                     </div>
                                 </div>
@@ -1330,7 +1339,9 @@ function EventSection({ type, items, onDelete, onFirma }: {
         <div style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
                 {cfg.icon}
-                <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: cfg.color }}>{cfg.label}s</span>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: cfg.color }}>
+                    {type === 'despacho' ? 'Ingresos de mercadería' : `${cfg.label}s`}
+                </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {items.map(ev => (

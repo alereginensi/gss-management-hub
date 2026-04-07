@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate:limpieza-personal": "node scripts/migrate_limpieza_personal_only.cjs"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",

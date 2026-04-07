@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
 import ExcelJS from 'exceljs';
+import { parseDbJsonArray } from '@/lib/parse-db-json';
 
 const STATUS_LABELS: Record<string, string> = {
     pending: 'Pendiente',
@@ -77,7 +78,8 @@ export async function GET(request: NextRequest) {
         // Add Data Rows
         let currentRow = 5;
         for (const row of rows) {
-            const items = row.items ? JSON.parse(row.items) : [{ article: row.article, quantity: row.quantity }];
+            const parsed = parseDbJsonArray(row.items);
+            const items = parsed.length > 0 ? parsed : [{ article: row.article, quantity: row.quantity }];
             
             for (const item of items) {
                 const r = sheet.getRow(currentRow);

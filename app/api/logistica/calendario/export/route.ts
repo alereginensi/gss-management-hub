@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { getSession } from '@/lib/auth-server';
 import db from '@/lib/db';
 import ExcelJS from 'exceljs';
+import { parseDbJsonArray } from '@/lib/parse-db-json';
 
 const SOL_STATUS_LABELS: Record<string, string> = {
     pending: 'Pendiente', ordered: 'Ordenada', fulfilled: 'Entregada',
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
             const searchable = `${ev.titulo || ''} ${ev.descripcion || ''} ${ev.created_by || ''} ${ev.tipo || ''}`.toLowerCase();
             if (search && !searchable.includes(search)) continue;
 
-            const items = ev.items ? JSON.parse(ev.items) : [];
+            const items = parseDbJsonArray(ev.items);
             const tipo = ev.tipo === 'entrega' ? 'Entrega' : 'Despacho';
             const tipoColor = ev.tipo === 'entrega' ? 'FF22c55e' : 'FFe04951';
 
@@ -144,7 +145,8 @@ export async function GET(request: NextRequest) {
             const searchable = `${sol.client || ''} ${sol.requested_by || ''}`.toLowerCase();
             if (search && !searchable.includes(search)) continue;
 
-            const items = sol.items ? JSON.parse(sol.items) : [{ article: sol.article, quantity: sol.quantity }];
+            const parsedSol = parseDbJsonArray(sol.items);
+            const items = parsedSol.length > 0 ? parsedSol : [{ article: sol.article, quantity: sol.quantity }];
             for (const item of items) {
                 const r = sheetSol.getRow(srow);
                 r.values = {

@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
+import { parseDbJsonArray } from '@/lib/parse-db-json';
 
 async function checkAuth(request: NextRequest) {
     const session = await getSession(request);
@@ -35,10 +36,13 @@ export async function GET(request: NextRequest) {
     try {
         const rows = await db.query(`SELECT * FROM material_requests${where} ORDER BY needed_date ASC, created_at DESC`, params);
         // Parse items JSON for frontend
-        const parsedRows = rows.map(r => ({
-            ...r,
-            items: r.items ? JSON.parse(r.items) : [{ article: r.article, quantity: r.quantity }]
-        }));
+        const parsedRows = rows.map((r: any) => {
+            const items = parseDbJsonArray(r.items);
+            return {
+                ...r,
+                items: items.length > 0 ? items : [{ article: r.article, quantity: r.quantity }],
+            };
+        });
         return NextResponse.json(parsedRows);
     } catch (error: any) {
         console.error(error);
@@ -69,8 +73,9 @@ export async function POST(request: NextRequest) {
         if (db.type === 'pg') {
             const pgSql = `INSERT INTO material_requests (client, article, quantity, items, needed_date, requested_by, file_url) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`;
             const rows = await db.query(pgSql, values);
-            const r = rows[0];
-            r.items = r.items ? JSON.parse(r.items) : [{ article: r.article, quantity: r.quantity }];
+            const r = rows[0] as any;
+            const parsed = parseDbJsonArray(r.items);
+            r.items = parsed.length > 0 ? parsed : [{ article: r.article, quantity: r.quantity }];
             return NextResponse.json(r, { status: 201 });
         } else {
             const result = await db.run(sql, values);

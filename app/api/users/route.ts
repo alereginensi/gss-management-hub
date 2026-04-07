@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
         ).all();
         return NextResponse.json(users);
     } catch (error) {
+        console.error('GET /api/users:', error);
         return NextResponse.json({ error: 'Error fetching users' }, { status: 500 });
     }
 }
