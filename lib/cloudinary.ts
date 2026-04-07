@@ -6,13 +6,13 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function uploadToCloudinary(buffer: Buffer, folder: string, filename: string): Promise<string> {
+export async function uploadToCloudinary(buffer: Buffer, folder: string, filename: string, resourceType: 'auto' | 'image' | 'raw' = 'auto'): Promise<string> {
     return new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
             {
                 folder,
-                public_id: filename, // keep extension so raw files (docx, xlsx) get proper URLs
-                resource_type: 'auto',
+                public_id: filename,
+                resource_type: resourceType,
             },
             (error, result) => {
                 if (error || !result) return reject(error ?? new Error('Upload failed'));

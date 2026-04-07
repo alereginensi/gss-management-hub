@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
 
         let fileUrl = '';
         try {
-            fileUrl = await uploadToCloudinary(buffer, 'logistica/calendario', `cal-${Date.now()}`);
+            fileUrl = await uploadToCloudinary(buffer, 'logistica/calendario', `cal-${Date.now()}`, 'raw');
         } catch { /* non-critical */ }
 
         const parsed = await pdfParse(buffer);

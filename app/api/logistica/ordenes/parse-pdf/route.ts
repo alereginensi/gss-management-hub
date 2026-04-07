@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
         const filename = `orden-${Date.now()}`;
         let fileUrl = '';
         try {
-            fileUrl = await uploadToCloudinary(buffer, 'logistica/ordenes', filename);
+            fileUrl = await uploadToCloudinary(buffer, 'logistica/ordenes', filename, 'raw');
         } catch { /* non-critical */ }
 
         // Parse PDF

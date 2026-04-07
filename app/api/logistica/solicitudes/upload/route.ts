@@ -14,7 +14,8 @@ export async function POST(request: NextRequest) {
         if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        const fileUrl = await uploadToCloudinary(buffer, 'logistica/solicitudes', file.name);
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        const fileUrl = await uploadToCloudinary(buffer, 'logistica/solicitudes', file.name, isPdf ? 'raw' : 'auto');
         return NextResponse.json({ fileUrl });
     } catch (error: any) {
         console.error('Upload error:', error);
