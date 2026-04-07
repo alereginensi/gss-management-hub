@@ -18,25 +18,31 @@ export async function GET(request: NextRequest) {
     try {
         // Extract resource_type and public_id from Cloudinary URL
         // e.g. https://res.cloudinary.com/cloud/raw/upload/v123/folder/file.pdf
-        const match = url.match(/\/(raw|image|video)\/upload\/(?:v\d+\/)?(.+)$/);
+        // Also handle signed URLs: /raw/upload/s--sig--/v123/...
+        const match = url.match(/\/(raw|image|video)\/upload\/(?:s--[^/]+--\/)?(?:v\d+\/)?(.+?)(?:\?.*)?$/);
         if (!match) {
-            // Not a Cloudinary URL — redirect directly
             return NextResponse.redirect(url);
         }
 
         const resourceType = match[1] as 'raw' | 'image' | 'video';
         const publicId = match[2]; // e.g. logistica/calendario/cal-123.pdf
 
-        const signedUrl = cloudinary.url(publicId, {
-            resource_type: resourceType,
-            sign_url: true,
-            secure: true,
-            type: 'upload',
-        });
+        // Use Cloudinary's private_download_url which goes through the API endpoint
+        // (api.cloudinary.com) and authenticates with API key — bypasses CDN access restrictions
+        const downloadUrl = cloudinary.utils.private_download_url(
+            publicId,
+            '', // format — empty string keeps the extension in the public_id
+            {
+                resource_type: resourceType,
+                type: 'upload',
+                expires_at: Math.floor(Date.now() / 1000) + 300, // 5 minutes
+                attachment: false,
+            }
+        );
 
-        return NextResponse.redirect(signedUrl);
-    } catch {
-        // Fallback: redirect to original URL
+        return NextResponse.redirect(downloadUrl);
+    } catch (err) {
+        console.error('file-proxy error:', err);
         return NextResponse.redirect(url);
     }
 }
