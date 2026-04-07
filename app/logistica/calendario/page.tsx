@@ -770,7 +770,7 @@ export default function CalendarioPage() {
                                     type="text"
                                     value={listSearch}
                                     onChange={e => setListSearch(e.target.value)}
-                                    placeholder="Proveedor, artículo, usuario..."
+                                    placeholder="Cliente, artículo, usuario..."
                                     style={{ width: '100%', padding: '0.4rem 0.6rem 0.4rem 1.8rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', fontSize: '0.82rem', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
                                 />
                             </div>
@@ -856,7 +856,7 @@ export default function CalendarioPage() {
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                                     <thead>
                                         <tr style={{ backgroundColor: 'var(--bg-color)' }}>
-                                            {['Fecha', 'Título / Proveedor', 'Artículos', 'Notas', 'Registrado por', 'Doc.', ''].map(h => (
+                                            {['Fecha', 'Cliente', 'Artículos', 'Notas', 'Registrado por', 'Doc.', ''].map(h => (
                                                 <th key={h} style={{ padding: '0.6rem 0.75rem', textAlign: 'left', fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase', borderBottom: '2px solid var(--border-color)', whiteSpace: 'nowrap' }}>{h}</th>
                                             ))}
                                         </tr>
@@ -1052,13 +1052,17 @@ export default function CalendarioPage() {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem', color: 'var(--text-secondary)' }}>Proveedor / Título</label>
+                                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem', color: 'var(--text-secondary)' }}>Cliente</label>
                                     <input
+                                        list="cal-clientes-list"
                                         value={calForm.titulo}
                                         onChange={e => setCalForm({ ...calForm, titulo: e.target.value })}
-                                        placeholder={modalTab === 'entrega' ? 'Ej: Proveedor ABC' : 'Ej: Envío a CASMU'}
+                                        placeholder="Seleccionar o escribir cliente..."
                                         style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', fontSize: '0.85rem', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
                                     />
+                                    <datalist id="cal-clientes-list">
+                                        {locations.map(loc => <option key={loc} value={loc} />)}
+                                    </datalist>
                                 </div>
 
                                 <div>
@@ -1138,6 +1142,19 @@ export default function CalendarioPage() {
                         {/* ── Solicitud form ── */}
                         {modalTab === 'solicitud' && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {/* Cliente */}
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem', color: 'var(--text-secondary)' }}>Cliente</label>
+                                    <select
+                                        value={solForm.client}
+                                        onChange={e => setSolForm({ ...solForm, client: e.target.value })}
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', fontSize: '0.85rem', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
+                                    >
+                                        <option value="">Seleccionar cliente...</option>
+                                        {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                                    </select>
+                                </div>
+
                                 {/* Lista de artículos — dropdown para seleccionar */}
                                 <div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
