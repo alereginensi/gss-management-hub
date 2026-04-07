@@ -29,6 +29,8 @@ export default function PersonalLimpiezaPage() {
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [filterCliente, setFilterCliente] = useState('');
+    const [filterSector, setFilterSector] = useState('');
     const [clientSectorMap, setClientSectorMap] = useState<Record<string, string[]>>({});
 
     useEffect(() => {
@@ -109,10 +111,21 @@ export default function PersonalLimpiezaPage() {
     };
     const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.25rem' };
 
-    const filteredUsuarios = usuarios.filter(u => 
-        u.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        (u.cedula && u.cedula.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    // Unique clients and sectors derived from loaded data
+    const clientesDisponibles = [...new Set(usuarios.map(u => u.cliente).filter(Boolean))].sort();
+    const sectoresDisponibles = [...new Set(
+        usuarios.filter(u => !filterCliente || u.cliente === filterCliente).map(u => u.sector).filter(Boolean)
+    )].sort();
+
+    const filteredUsuarios = usuarios.filter(u => {
+        if (filterCliente && u.cliente !== filterCliente) return false;
+        if (filterSector && u.sector !== filterSector) return false;
+        if (searchTerm) {
+            const s = searchTerm.toLowerCase();
+            return u.nombre.toLowerCase().includes(s) || (u.cedula && u.cedula.includes(s));
+        }
+        return true;
+    });
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg-color)', display: 'flex', flexDirection: 'column' }}>
@@ -151,18 +164,61 @@ export default function PersonalLimpiezaPage() {
                     </button>
                 </div>
 
-                {/* Search Bar */}
-                <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
-                    <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>
-                        <Search size={18} />
+                {/* Search + Filters */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                    {/* Search */}
+                    <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>
+                            <Search size={18} />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Buscar por nombre o cédula..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.8rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', fontSize: '0.9rem', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', boxSizing: 'border-box', outline: 'none' }}
+                        />
                     </div>
-                    <input 
-                        type="text" 
-                        placeholder="Buscar funcionario por nombre o cédula..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.8rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', fontSize: '0.9rem', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', boxSizing: 'border-box', outline: 'none' }}
-                    />
+
+                    {/* Client + Sector filters */}
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <select
+                            value={filterCliente}
+                            onChange={e => { setFilterCliente(e.target.value); setFilterSector(''); }}
+                            style={{ flex: 1, minWidth: '140px', padding: '0.55rem 0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', fontSize: '0.85rem', backgroundColor: 'var(--surface-color)', color: filterCliente ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: 'pointer' }}
+                        >
+                            <option value="">Todos los clientes</option>
+                            {clientesDisponibles.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+
+                        <select
+                            value={filterSector}
+                            onChange={e => setFilterSector(e.target.value)}
+                            disabled={sectoresDisponibles.length === 0}
+                            style={{ flex: 1, minWidth: '140px', padding: '0.55rem 0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', fontSize: '0.85rem', backgroundColor: 'var(--surface-color)', color: filterSector ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: sectoresDisponibles.length === 0 ? 'not-allowed' : 'pointer', opacity: sectoresDisponibles.length === 0 ? 0.5 : 1 }}
+                        >
+                            <option value="">Todos los sectores</option>
+                            {sectoresDisponibles.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+
+                        {(filterCliente || filterSector) && (
+                            <button
+                                onClick={() => { setFilterCliente(''); setFilterSector(''); }}
+                                style={{ padding: '0.55rem 0.75rem', background: 'none', border: 'none', color: 'var(--primary-color)', fontSize: '0.82rem', cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' }}
+                            >
+                                Limpiar filtros
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Result count */}
+                    {(filterCliente || filterSector || searchTerm) && (
+                        <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0 }}>
+                            {filteredUsuarios.length} resultado{filteredUsuarios.length !== 1 ? 's' : ''}
+                            {filterCliente ? ` · ${filterCliente}` : ''}
+                            {filterSector ? ` › ${filterSector}` : ''}
+                        </p>
+                    )}
                 </div>
 
 
