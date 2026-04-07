@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Globe, Package, ShoppingCart, ClipboardList, LogOut } from 'lucide-react';
+import { ArrowLeft, Globe, Package, ShoppingCart, CalendarDays, LogOut } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 
 const AGENDA_URL = 'https://capable-possibility-production-8da3.up.railway.app/login';
@@ -78,16 +78,16 @@ export default function LogisticaPage() {
                             </div>
                         </Link>
 
-                        {/* Solicitud de Materiales */}
-                        <Link href="/logistica/solicitud-materiales" style={{ textDecoration: 'none' }}>
+                        {/* Calendario */}
+                        <Link href="/logistica/calendario" style={{ textDecoration: 'none' }}>
                             <div
                                 className="hub-menu-card"
                                 style={{ backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)', transition: 'transform 0.15s, background-color 0.15s, box-shadow 0.15s', boxShadow: '0 4px 12px rgba(41,65,107,0.2)' }}
                                 onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#1e3a8a'; e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(41,65,107,0.35)'; }}
                                 onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-color)'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(41,65,107,0.2)'; }}
                             >
-                                <ClipboardList size={32} color="white" />
-                                <span>Solicitud de{'\n'}Materiales</span>
+                                <CalendarDays size={32} color="white" />
+                                <span style={{ minHeight: '2.4em', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Calendario</span>
                             </div>
                         </Link>
                     </div>

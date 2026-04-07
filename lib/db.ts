@@ -480,6 +480,19 @@ class DbWrapper {
         created_by TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS logistica_calendario (
+        id SERIAL PRIMARY KEY,
+        fecha TEXT NOT NULL,
+        tipo TEXT NOT NULL,
+        titulo TEXT,
+        descripcion TEXT,
+        items TEXT,
+        file_url TEXT,
+        firma_url TEXT,
+        created_by TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `;
 
     if (this.type === 'pg') {
@@ -825,6 +838,28 @@ class DbWrapper {
           `);
         } catch (e) {}
 
+        // logistica_calendario
+        try {
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS logistica_calendario (
+              id SERIAL PRIMARY KEY,
+              fecha TEXT NOT NULL,
+              tipo TEXT NOT NULL,
+              titulo TEXT,
+              descripcion TEXT,
+              items TEXT,
+              file_url TEXT,
+              firma_url TEXT,
+              created_by TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+          // Add firma_url column if missing (existing DBs)
+          try {
+            await this.pgPool!.query(`ALTER TABLE logistica_calendario ADD COLUMN IF NOT EXISTS firma_url TEXT`);
+          } catch (e) {}
+        } catch (e) {}
+
         // Ensure folders and ticket_folder tables exist (migration for existing DBs)
         try {
           await this.pgPool!.query(`
@@ -1130,6 +1165,24 @@ class DbWrapper {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
           )
         `);
+      } catch (e) {}
+      // logistica_calendario
+      try {
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS logistica_calendario (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fecha TEXT NOT NULL,
+            tipo TEXT NOT NULL,
+            titulo TEXT,
+            descripcion TEXT,
+            items TEXT,
+            file_url TEXT,
+            firma_url TEXT,
+            created_by TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        try { this.sqliteDb.exec(`ALTER TABLE logistica_calendario ADD COLUMN firma_url TEXT`); } catch (e) {}
       } catch (e) {}
 
       // Seed funcionarios_list for SQLite
