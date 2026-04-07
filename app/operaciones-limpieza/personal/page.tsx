@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Pencil, Trash2, Check, X, Users, LogOut, Search } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, Check, X, Users, LogOut } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 
 interface LimpiezaUser {
@@ -167,18 +167,13 @@ export default function PersonalLimpiezaPage() {
                 {/* Search + Filters */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
                     {/* Search */}
-                    <div style={{ position: 'relative' }}>
-                        <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }}>
-                            <Search size={18} />
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Buscar por nombre o cédula..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.8rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', fontSize: '0.9rem', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', boxSizing: 'border-box', outline: 'none' }}
-                        />
-                    </div>
+                    <input
+                        type="text"
+                        placeholder="Buscar por nombre o cédula..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', fontSize: '0.9rem', backgroundColor: 'var(--surface-color)', color: 'var(--text-primary)', boxSizing: 'border-box', outline: 'none' }}
+                    />
 
                     {/* Client + Sector filters */}
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
