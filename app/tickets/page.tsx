@@ -304,8 +304,8 @@ export default function TicketList() {
                                             </span>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <div style={{ fontWeight: 600, fontSize: '1rem' }}>{ticket.subject}</div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontWeight: 600, fontSize: '1rem', wordBreak: 'break-word' }}>{ticket.subject}</div>
                                                 {ticket.requesterEmail === currentUser?.email && ticket.isViewedByOthers && (
                                                     <div style={{ display: 'flex', alignItems: 'center', color: '#3b82f6' }}>
                                                         <Check size={14} />
