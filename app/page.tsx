@@ -27,6 +27,17 @@ export default function Landing() {
       router.push('/login');
     } else if (currentUser?.role === 'funcionario') {
       router.push('/tasks');
+    } else if (currentUser?.role === 'supervisor' && currentUser.panel_access === 0) {
+      // Supervisor without general panel access → redirect to first assigned module
+      const mods = currentUser.modules?.split(',').map(m => m.trim()).filter(Boolean) ?? [];
+      const moduleRoutes: Record<string, string> = {
+        logistica: '/logistica',
+        tecnico: '/seguridad-electronica',
+        cotizacion: '/cotizacion/panel',
+        limpieza: '/operaciones-limpieza',
+      };
+      const dest = mods.map(m => moduleRoutes[m]).find(Boolean) ?? '/login';
+      router.push(dest);
     }
   }, [loading, isAuthenticated, currentUser, router]);
 

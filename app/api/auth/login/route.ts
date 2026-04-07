@@ -58,7 +58,8 @@ export async function POST(request: Request) {
             department: user.department,
             role: user.role,
             rubro: user.rubro,
-            modules: user.modules ?? null
+            modules: user.modules ?? null,
+            panel_access: user.panel_access ?? 1,
         });
 
         const response = NextResponse.json({
@@ -70,7 +71,8 @@ export async function POST(request: Request) {
                 department: user.department,
                 role: user.role,
                 rubro: user.rubro,
-                modules: user.modules ?? null
+                modules: user.modules ?? null,
+                panel_access: user.panel_access ?? 1,
             },
             token: sessionToken // Return token for client-side storage (fallback)
         });

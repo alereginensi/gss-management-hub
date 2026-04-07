@@ -11,7 +11,7 @@ export default function UserManagement() {
     const [loading, setLoading] = useState(false);
     const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', department: 'Administración' });
     const [editingUser, setEditingUser] = useState<any>(null);
-    const [editForm, setEditForm] = useState({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '', modules: '' });
+    const [editForm, setEditForm] = useState({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '', modules: '', panel_access: 1 });
     const [assignedWorkers, setAssignedWorkers] = useState<number[]>([]);
     const [funcionarios, setFuncionarios] = useState<any[]>([]);
     const [showApprovedUsers, setShowApprovedUsers] = useState(false);
@@ -141,7 +141,8 @@ export default function UserManagement() {
             rubro: user.rubro || '',
             password: '',
             confirmPassword: '',
-            modules: user.modules || ''
+            modules: user.modules || '',
+            panel_access: user.panel_access ?? 1
         });
 
         // Always reset assigned workers first
@@ -183,7 +184,8 @@ export default function UserManagement() {
                 department: editForm.department,
                 role: editForm.role,
                 rubro: editForm.rubro,
-                modules: editForm.modules || null
+                modules: editForm.modules || null,
+                panel_access: editForm.panel_access
             };
 
             // Only include password if it was provided
@@ -236,7 +238,7 @@ export default function UserManagement() {
         setEditingUser(null);
         setAssignedWorkers([]);
         setFuncionarios([]);
-        setEditForm({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '', modules: '' });
+        setEditForm({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '', modules: '', panel_access: 1 });
     };
 
     if (currentUser?.role !== 'admin') {
@@ -634,6 +636,21 @@ export default function UserManagement() {
                             {editForm.role === 'supervisor' && (
                                 <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--accent-color)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Asignación de Supervisor</p>
+
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', padding: '0.75rem', backgroundColor: editForm.panel_access ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.06)', borderRadius: 'var(--radius)', border: `1px solid ${editForm.panel_access ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.2)'}` }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={!!editForm.panel_access}
+                                            onChange={(e) => setEditForm({ ...editForm, panel_access: e.target.checked ? 1 : 0 })}
+                                            style={{ width: '1rem', height: '1rem', accentColor: 'var(--accent-color)', cursor: 'pointer' }}
+                                        />
+                                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: editForm.panel_access ? '#16a34a' : '#dc2626' }}>
+                                            Acceso al panel general
+                                        </span>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
+                                            {editForm.panel_access ? 'Puede ver el hub principal' : 'Solo accede a sus módulos asignados'}
+                                        </span>
+                                    </label>
 
                                     <div>
                                         <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Departamentos supervisados (rubros)</label>

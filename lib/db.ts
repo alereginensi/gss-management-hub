@@ -127,6 +127,7 @@ class DbWrapper {
         role TEXT DEFAULT 'user',
         rubro TEXT,
         approved INTEGER DEFAULT 0,
+        panel_access INTEGER DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -874,6 +875,9 @@ class DbWrapper {
           if (!userColNames.includes('modules')) {
             await this.pgPool!.query('ALTER TABLE users ADD COLUMN modules TEXT');
           }
+          if (!userColNames.includes('panel_access')) {
+            await this.pgPool!.query('ALTER TABLE users ADD COLUMN panel_access INTEGER DEFAULT 1');
+          }
         } catch (e) {}
         try {
           await this.pgPool!.query(`
@@ -1199,6 +1203,9 @@ class DbWrapper {
         const userCols = userInfo.map((c: any) => c.name);
         if (!userCols.includes('modules')) {
           this.sqliteDb.exec('ALTER TABLE users ADD COLUMN modules TEXT');
+        }
+        if (!userCols.includes('panel_access')) {
+          this.sqliteDb.exec('ALTER TABLE users ADD COLUMN panel_access INTEGER DEFAULT 1');
         }
       } catch (e) {}
       // limpieza_usuarios: remove email, make cedula unique (SQLite)

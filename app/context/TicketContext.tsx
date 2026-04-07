@@ -99,6 +99,7 @@ export interface User {
     rubro?: string;
     approved?: boolean;
     modules?: string; // comma-separated: "logistica,tecnico,cotizacion"
+    panel_access?: number; // 1 = can access main hub, 0 = redirect to assigned module
 }
 
 export function hasModuleAccess(user: User, mod: 'logistica' | 'tecnico' | 'cotizacion' | 'limpieza'): boolean {
