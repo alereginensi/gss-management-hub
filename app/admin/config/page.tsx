@@ -5,7 +5,7 @@ import { useTicketContext, DEPARTMENTS } from '../../context/TicketContext';
 import { useRouter } from 'next/navigation';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
-import { Settings, MapPin, Briefcase, Plus, Trash2, Edit, Save, X, Zap, Mail } from 'lucide-react';
+import { MapPin, Briefcase, Plus, Trash2, Edit, Save, X, Zap, Mail, Database, Download } from 'lucide-react';
 
 const LocationItem = ({ location, onDelete, onRefresh }: { location: any, onDelete: (id: number) => void, onRefresh: () => void }) => {
     const [isAddingSector, setIsAddingSector] = useState(false);
@@ -105,9 +105,10 @@ const LocationItem = ({ location, onDelete, onRefresh }: { location: any, onDele
 };
 
 export default function ConfigPage() {
-    const { currentUser, systemSettings, updateSystemSettings, isSidebarOpen, isMobile } = useTicketContext();
+    const { currentUser, systemSettings, updateSystemSettings, isSidebarOpen, isMobile, getAuthHeaders } = useTicketContext() as any;
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<'locations' | 'roles' | 'integrations'>('locations');
+    const [activeTab, setActiveTab] = useState<'locations' | 'roles' | 'integrations' | 'backup'>('locations');
+    const [backupLoading, setBackupLoading] = useState(false);
     const [locations, setLocations] = useState<any[]>([]);
     const [roles, setRoles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -234,6 +235,23 @@ export default function ConfigPage() {
         setRoleTasks(roleTasks.filter((_, i) => i !== idx));
     };
 
+    const handleDownloadBackup = async () => {
+        setBackupLoading(true);
+        try {
+            const res = await fetch('/api/admin/backup', { headers: getAuthHeaders() });
+            if (!res.ok) { alert('Error al generar backup'); return; }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            a.href = url;
+            a.download = `gss_backup_${timestamp}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch { alert('Error de conexión'); }
+        finally { setBackupLoading(false); }
+    };
+
     return (
         <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--bg-color)' }}>
             <Sidebar />
@@ -266,6 +284,12 @@ export default function ConfigPage() {
                         style={{ padding: '0.5rem 1rem', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: activeTab === 'integrations' ? '2px solid #29416b' : '1px solid transparent', fontWeight: activeTab === 'integrations' ? 600 : 400, color: activeTab === 'integrations' ? '#29416b' : '#666', background: 'none', cursor: 'pointer', display: 'flex', gap: '0.5rem', alignItems: 'center' }}
                     >
                         <Zap size={18} /> Integraciones
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('backup')}
+                        style={{ padding: '0.5rem 1rem', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: activeTab === 'backup' ? '2px solid #29416b' : '1px solid transparent', fontWeight: activeTab === 'backup' ? 600 : 400, color: activeTab === 'backup' ? '#29416b' : '#666', background: 'none', cursor: 'pointer', display: 'flex', gap: '0.5rem', alignItems: 'center' }}
+                    >
+                        <Database size={18} /> Respaldo
                     </button>
                 </div>
 
@@ -396,6 +420,41 @@ export default function ConfigPage() {
                                             );
                                         })}
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* BACKUP TAB */}
+                        {activeTab === 'backup' && (
+                            <div className="card" style={{ padding: '2rem', maxWidth: '560px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                                    <Database size={22} color="#29416b" />
+                                    <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>Respaldo de Base de Datos</h2>
+                                </div>
+                                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                                    Descargá un archivo <strong>.json</strong> con todos los datos del sistema (tickets, bitácora, registros de limpieza, usuarios, configuración, etc.).
+                                    Guardá el archivo en un lugar seguro. Podés automatizar la descarga programando una tarea en Windows.
+                                </p>
+                                <button
+                                    onClick={handleDownloadBackup}
+                                    disabled={backupLoading}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 1.5rem', backgroundColor: backupLoading ? '#9ca3af' : '#29416b', color: 'white', border: 'none', borderRadius: 'var(--radius)', fontSize: '0.9rem', fontWeight: 600, cursor: backupLoading ? 'not-allowed' : 'pointer' }}
+                                >
+                                    <Download size={18} />
+                                    {backupLoading ? 'Generando backup...' : 'Descargar Backup Ahora'}
+                                </button>
+                                <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: 'rgba(41,65,107,0.05)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
+                                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', fontWeight: 700, color: '#29416b' }}>Automatizar con Windows Task Scheduler</p>
+                                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Creá un archivo <code>.bat</code> con este contenido y programalo en el Programador de Tareas de Windows:</p>
+                                    <pre style={{ margin: 0, fontSize: '0.72rem', backgroundColor: '#1e293b', color: '#e2e8f0', padding: '0.85rem', borderRadius: '6px', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{`@echo off
+set TIMESTAMP=%DATE:~6,4%-%DATE:~3,2%-%DATE:~0,2%_%TIME:~0,2%-%TIME:~3,2%
+set BACKUP_DIR=C:\\Backups\\GSS
+if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
+curl -s -o "%BACKUP_DIR%\\gss_backup_%TIMESTAMP%.json" ^
+  "https://TU-APP.railway.app/api/admin/backup" ^
+  -H "Cookie: gss_session=TU_SESSION_TOKEN"
+echo Backup guardado en %BACKUP_DIR%`}</pre>
+                                    <p style={{ margin: '0.75rem 0 0', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Reemplazá <strong>TU-APP.railway.app</strong> con tu URL y <strong>TU_SESSION_TOKEN</strong> con el valor de tu cookie de sesión (inspeccioná el navegador → DevTools → Application → Cookies).</p>
                                 </div>
                             </div>
                         )}
