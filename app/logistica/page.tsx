@@ -87,7 +87,7 @@ export default function LogisticaPage() {
                                 onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-color)'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(41,65,107,0.2)'; }}
                             >
                                 <CalendarDays size={32} color="white" />
-                                <span style={{ minHeight: '2.4em', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Calendario</span>
+                                <span style={{ minHeight: '2.4em', display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>Calendario</span>
                             </div>
                         </Link>
                     </div>

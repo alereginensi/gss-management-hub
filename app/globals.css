@@ -479,13 +479,34 @@ textarea {
     gap: 1rem;
     width: 100%;
   }
+  .hub-menu-grid > a {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
   .hub-menu-card {
     padding: 1.5rem 1rem;
     min-height: 100px;
     font-size: 1rem;
     flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 1rem;
+    text-align: left;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .hub-menu-card > *:first-child {
+    flex: 0 0 3.5rem;
+    display: flex;
+    align-items: center;
     justify-content: center;
-    gap: 1.5rem;
+    min-width: 0;
+  }
+  .hub-menu-card > *:last-child:not(:only-child) {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
   }
 }
 
