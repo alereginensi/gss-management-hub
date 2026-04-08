@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo, useRef, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { useTicketContext } from '@/app/context/TicketContext';
 import { mergeLogisticaClientNames } from '@/lib/logistica-clients';
+import { ARTICULOS_MATERIALES } from '@/lib/logistica-articulos';
+import { ArticuloSearchAdd } from '@/app/components/logistica/ArticuloSearchAdd';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type EventType = 'entrega' | 'despacho' | 'solicitud';
@@ -448,6 +450,19 @@ export default function CalendarioPage() {
     if (loading || !currentUser) return null;
 
     const todayStr = todayIso();
+    /** Campos del modal "Nuevo Evento" más compactos en móvil */
+    const m = isMobile;
+    const modalField: CSSProperties = {
+        width: '100%',
+        boxSizing: 'border-box',
+        padding: m ? '0.3rem 0.5rem' : '0.5rem',
+        border: '1px solid var(--border-color)',
+        borderRadius: 'var(--radius)',
+        fontSize: m ? '0.8125rem' : '0.85rem',
+        backgroundColor: 'var(--bg-color)',
+        color: 'var(--text-primary)',
+    };
+    const modalBodyGap = m ? '0.75rem' : '1rem';
     const selectedDayData = selectedDate ? eventsMap[selectedDate] : null;
     const hasSelectedEvents = selectedDayData && (
         selectedDayData.entrega.length > 0 ||
@@ -986,37 +1001,38 @@ export default function CalendarioPage() {
 
             {/* ── Modal ── */}
             {showModal && (
-                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
-                    <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)', padding: '1.5rem', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto' }}>
+                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: m ? '0.5rem' : '1rem' }}>
+                    <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)', padding: m ? '1rem' : '1.5rem', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto' }}>
                         {/* Modal header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>Nuevo Evento</h2>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: m ? '0.85rem' : '1.25rem' }}>
+                            <h2 style={{ fontSize: m ? '0.98rem' : '1.05rem', fontWeight: 700, margin: 0 }}>Nuevo Evento</h2>
                             <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={18} /></button>
                         </div>
 
                         {/* Date input */}
-                        <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem', color: 'var(--text-secondary)' }}>Fecha</label>
+                        <div style={{ marginBottom: modalBodyGap }}>
+                            <label style={{ display: 'block', fontSize: m ? '0.78rem' : '0.82rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>Fecha</label>
                             <input
                                 type="date"
                                 value={modalDate}
                                 onChange={e => setModalDate(e.target.value)}
-                                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', fontSize: '0.85rem', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }}
+                                style={{ ...modalField, minHeight: m ? '2rem' : undefined }}
                             />
                         </div>
 
                         {/* Tab selector */}
-                        <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem', backgroundColor: 'var(--bg-color)', padding: '0.25rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', gap: m ? '0.25rem' : '0.4rem', marginBottom: m ? '0.85rem' : '1.25rem', backgroundColor: 'var(--bg-color)', padding: m ? '0.2rem' : '0.25rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
                             {(['entrega', 'despacho', 'solicitud'] as const).map(t => (
                                 <button
                                     key={t}
                                     onClick={() => setModalTab(t)}
                                     style={{
-                                        flex: 1, padding: '0.45rem', borderRadius: 'calc(var(--radius) - 2px)', border: 'none',
+                                        flex: 1, padding: m ? '0.32rem 0.2rem' : '0.45rem', borderRadius: 'calc(var(--radius) - 2px)', border: 'none',
                                         backgroundColor: modalTab === t ? TYPE_CONFIG[t].color : 'transparent',
                                         color: modalTab === t ? 'white' : 'var(--text-secondary)',
-                                        fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem'
+                                        fontSize: m ? '0.7rem' : '0.78rem', fontWeight: 600, cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: m ? '0.15rem' : '0.3rem',
+                                        lineHeight: 1.2,
                                     }}
                                 >
                                     {TYPE_CONFIG[t].icon} {TYPE_CONFIG[t].label}
@@ -1026,7 +1042,7 @@ export default function CalendarioPage() {
 
                         {/* ── Entrega / Despacho form ── */}
                         {(modalTab === 'entrega' || modalTab === 'despacho') && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: modalBodyGap }}>
                                 {/* PDF upload */}
                                 <div style={{ backgroundColor: 'var(--bg-color)', border: '1px dashed var(--border-color)', borderRadius: 'var(--radius)', padding: '0.75rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-secondary)' }}>
@@ -1056,13 +1072,13 @@ export default function CalendarioPage() {
                                 </div>
 
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem', color: 'var(--text-secondary)' }}>Cliente</label>
+                                    <label style={{ display: 'block', fontSize: m ? '0.78rem' : '0.82rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>Cliente</label>
                                     <input
                                         list="cal-clientes-list"
                                         value={calForm.titulo}
                                         onChange={e => setCalForm({ ...calForm, titulo: e.target.value })}
                                         placeholder="Seleccionar o escribir cliente..."
-                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', fontSize: '0.85rem', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
+                                        style={modalField}
                                     />
                                     <datalist id="cal-clientes-list">
                                         {locations.map(loc => <option key={loc} value={loc} />)}
@@ -1145,14 +1161,14 @@ export default function CalendarioPage() {
 
                         {/* ── Solicitud form ── */}
                         {modalTab === 'solicitud' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: modalBodyGap }}>
                                 {/* Cliente */}
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem', color: 'var(--text-secondary)' }}>Cliente</label>
+                                    <label style={{ display: 'block', fontSize: m ? '0.78rem' : '0.82rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>Cliente</label>
                                     <select
                                         value={solForm.client}
                                         onChange={e => setSolForm({ ...solForm, client: e.target.value })}
-                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', fontSize: '0.85rem', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
+                                        style={{ ...modalField, minHeight: m ? '2rem' : undefined }}
                                     >
                                         <option value="">Seleccionar cliente...</option>
                                         {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
@@ -1161,50 +1177,47 @@ export default function CalendarioPage() {
 
                                 {/* Lista de artículos — dropdown para seleccionar */}
                                 <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                                        <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Artículos Solicitados</label>
-                                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                            <select
-                                                id="sol-article-select"
-                                                defaultValue=""
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    if (!val) return;
-                                                    if (solForm.items.some(i => i.article === val)) {
-                                                        e.target.value = '';
-                                                        return;
-                                                    }
-                                                    setSolForm({ ...solForm, items: [...solForm.items, { article: val, quantity: '' }] });
-                                                    e.target.value = '';
-                                                }}
-                                                style={{ padding: '0.35rem 0.6rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', fontSize: '0.8rem', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)', minWidth: '180px' }}
-                                            >
-                                                <option value="" disabled>Seleccionar artículo...</option>
-                                                {[
-                                                    'Guantes de latex',
-                                                    'Detergente',
-                                                    'Cepillo de piso',
-                                                    'Trapo industrial',
-                                                    'Cera para piso',
-                                                    'Escoba',
-                                                    'Haragón',
-                                                    'Balde',
-                                                    'Microfibra',
-                                                    'Desinfectante',
-                                                ]
-                                                .filter(a => !solForm.items.some(i => i.article === a))
-                                                .map(a => (
-                                                    <option key={a} value={a}>{a}</option>
-                                                ))}
-                                            </select>
-                                            <button
-                                                type="button"
-                                                onClick={() => setSolForm({ ...solForm, items: [...solForm.items, { article: '', quantity: '' }] })}
-                                                style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.35rem 0.55rem', color: 'var(--text-primary)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                                            >
-                                                <Plus size={13} /> Artículo manual
-                                            </button>
-                                        </div>
+                                    <label style={{ display: 'block', fontSize: m ? '0.78rem' : '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.45rem' }}>Artículos Solicitados</label>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: m ? 'column' : 'row',
+                                            gap: m ? '0.45rem' : '0.4rem',
+                                            alignItems: m ? 'stretch' : 'flex-start',
+                                            marginBottom: '0.4rem',
+                                        }}
+                                    >
+                                        <ArticuloSearchAdd
+                                            compact={m}
+                                            options={ARTICULOS_MATERIALES.filter(a => !solForm.items.some(i => i.article === a))}
+                                            onSelect={(article) => {
+                                                if (solForm.items.some(i => i.article === article)) return;
+                                                setSolForm({ ...solForm, items: [...solForm.items, { article, quantity: '' }] });
+                                            }}
+                                            placeholder="Buscar artículo…"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setSolForm({ ...solForm, items: [...solForm.items, { article: '', quantity: '' }] })}
+                                            style={{
+                                                background: 'none',
+                                                border: '1px solid var(--border-color)',
+                                                borderRadius: 'var(--radius)',
+                                                padding: m ? '0.32rem 0.5rem' : '0.35rem 0.55rem',
+                                                color: 'var(--text-primary)',
+                                                fontSize: m ? '0.75rem' : '0.78rem',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: m ? 'center' : 'flex-start',
+                                                gap: '0.25rem',
+                                                flexShrink: 0,
+                                                whiteSpace: m ? undefined : 'nowrap',
+                                            }}
+                                        >
+                                            <Plus size={m ? 12 : 13} /> Artículo manual
+                                        </button>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                         {solForm.items.map((item, idx) => (
@@ -1240,14 +1253,14 @@ export default function CalendarioPage() {
                         )}
 
                         {/* Modal actions */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.5rem' }}>
-                            <button onClick={() => setShowModal(false)} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: m ? '0.4rem' : '0.5rem', marginTop: m ? '1.1rem' : '1.5rem', flexWrap: 'wrap' }}>
+                            <button onClick={() => setShowModal(false)} style={{ padding: m ? '0.4rem 0.85rem' : '0.5rem 1rem', fontSize: m ? '0.8rem' : '0.85rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleSave}
                                 disabled={saving || parsing}
-                                style={{ padding: '0.5rem 1.1rem', fontSize: '0.85rem', border: 'none', borderRadius: 'var(--radius)', backgroundColor: TYPE_CONFIG[modalTab].color, color: 'white', cursor: 'pointer', fontWeight: 600, opacity: saving || parsing ? 0.7 : 1 }}
+                                style={{ padding: m ? '0.4rem 0.95rem' : '0.5rem 1.1rem', fontSize: m ? '0.8rem' : '0.85rem', border: 'none', borderRadius: 'var(--radius)', backgroundColor: TYPE_CONFIG[modalTab].color, color: 'white', cursor: 'pointer', fontWeight: 600, opacity: saving || parsing ? 0.7 : 1 }}
                             >
                                 {saving ? 'Guardando...' : `Guardar ${TYPE_CONFIG[modalTab].label}`}
                             </button>

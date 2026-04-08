@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { ArrowLeft, Clock, Calendar as CalendarIcon, Plus, X, PackageSearch, Download, Search, Trash2, ChevronDown, ChevronUp, Paperclip } from 'lucide-react';
 import { useTicketContext } from '@/app/context/TicketContext';
 import { mergeLogisticaClientNames } from '@/lib/logistica-clients';
+import { ARTICULOS_MATERIALES as ARTICULOS } from '@/lib/logistica-articulos';
+import { ArticuloSearchAdd } from '@/app/components/logistica/ArticuloSearchAdd';
 
 interface MaterialItem {
     article: string;
@@ -546,20 +548,30 @@ export default function SolicitudMaterialesPage() {
 
             {/* Modal Nueva Solicitud (Multiple Items) */}
             {showForm && (
-                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
-                    <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)', padding: '1.5rem', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Nueva Solicitud</h2>
+                <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', zIndex: 100, padding: isMobile ? '0.5rem' : '1rem' }}>
+                    <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)', padding: isMobile ? '1rem' : '1.5rem', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '1rem' : '1.25rem' }}>
+                            <h2 style={{ fontSize: isMobile ? '1rem' : '1.1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Nueva Solicitud</h2>
                             <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={18} /></button>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.75rem' : '1rem' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, marginBottom: '0.3rem', color: 'var(--text-secondary)' }}>Cliente / Ubicación (opcional)</label>
+                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 500, marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>Cliente / Ubicación (opcional)</label>
                                 <select
                                     value={form.client}
                                     onChange={e => setForm({...form, client: e.target.value})}
-                                    style={{ width: '100%', padding: '0.5rem', fontSize: '0.85rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }}
+                                    style={{
+                                        width: '100%',
+                                        boxSizing: 'border-box',
+                                        padding: isMobile ? '0.3rem 0.5rem' : '0.5rem',
+                                        fontSize: isMobile ? '0.8125rem' : '0.85rem',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: 'var(--radius)',
+                                        backgroundColor: 'var(--bg-color)',
+                                        color: 'var(--text-primary)',
+                                        minHeight: isMobile ? '2rem' : undefined,
+                                    }}
                                 >
                                     <option value="">Sin cliente</option>
                                     {locations.map(loc => (
@@ -569,14 +581,47 @@ export default function SolicitudMaterialesPage() {
                             </div>
 
                             <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                    <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Artículos Solicitados</label>
-                                    <button 
-                                        onClick={() => setForm({...form, items: [...form.items, {article: '', quantity: ''}]})}
-                                        style={{ background: 'none', border: 'none', color: 'var(--primary-color)', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                                <div style={{ marginBottom: '0.75rem' }}>
+                                    <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 0.5rem 0', display: 'block' }}>Artículos Solicitados</label>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: isMobile ? 'column' : 'row',
+                                            gap: isMobile ? '0.45rem' : '0.5rem',
+                                            alignItems: isMobile ? 'stretch' : 'flex-start',
+                                        }}
                                     >
-                                        <Plus size={14} /> Agregar Fila
-                                    </button>
+                                        <ArticuloSearchAdd
+                                            compact={isMobile}
+                                            options={ARTICULOS.filter((a) => !form.items.some((i) => i.article === a))}
+                                            onSelect={(article) => {
+                                                if (form.items.some((i) => i.article === article)) return;
+                                                setForm({ ...form, items: [...form.items, { article, quantity: '' }] });
+                                            }}
+                                            placeholder="Buscar artículo…"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm({ ...form, items: [...form.items, { article: '', quantity: '' }] })}
+                                            style={{
+                                                background: 'none',
+                                                border: isMobile ? '1px solid var(--border-color)' : 'none',
+                                                borderRadius: 'var(--radius)',
+                                                color: 'var(--primary-color)',
+                                                fontSize: isMobile ? '0.75rem' : '0.8rem',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: isMobile ? 'center' : 'flex-start',
+                                                gap: '0.2rem',
+                                                flexShrink: 0,
+                                                padding: isMobile ? '0.32rem 0.5rem' : '0.45rem 0',
+                                            }}
+                                        >
+                                            <Plus size={isMobile ? 12 : 14} /> Agregar fila
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -590,7 +635,7 @@ export default function SolicitudMaterialesPage() {
                                                     setForm({...form, items: copy});
                                                 }} 
                                                 placeholder="Ej: Uniformes talle L"
-                                                style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }} 
+                                                style={{ flex: 1, padding: isMobile ? '0.35rem 0.5rem' : '0.5rem', fontSize: isMobile ? '0.8125rem' : '0.85rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }} 
                                             />
                                             <input 
                                                 type="number" 
@@ -601,7 +646,7 @@ export default function SolicitudMaterialesPage() {
                                                     setForm({...form, items: copy});
                                                 }} 
                                                 placeholder="Cant."
-                                                style={{ width: '80px', padding: '0.5rem', fontSize: '0.85rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }} 
+                                                style={{ width: '80px', padding: isMobile ? '0.35rem 0.45rem' : '0.5rem', fontSize: isMobile ? '0.8125rem' : '0.85rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }} 
                                             />
                                             <button 
                                                 type="button"
