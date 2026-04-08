@@ -1003,14 +1003,18 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             const requesterEmail = ticket.requesterEmail || '';
             const requesterName = ticket.requester || 'Usuario';
 
-            // Prepare email recipients: always notify the requester
-            const recipients = [];
+            // Prepare email recipients
+            const recipients: string[] = [];
             if (requesterEmail) recipients.push(requesterEmail);
-
-            // If it's being resolved, also notify the resolver if different
             if (newStatus === 'Resuelto' && resolvedByEmail && resolvedByEmail !== requesterEmail) {
                 recipients.push(resolvedByEmail);
             }
+
+            // Always include dept notification emails (regardless of requesterEmail)
+            const deptEmailKeyEarly = `notification_emails_${ticket.department}`.replace(/\s+/g, '_');
+            const deptEmailStringEarly = systemSettings[deptEmailKeyEarly] || systemSettings.notification_emails || systemSettings.notification_email || '';
+            deptEmailStringEarly.split(',').map((e: string) => e.trim()).filter((e: string) => e.length > 0)
+                .forEach((e: string) => { if (!recipients.includes(e)) recipients.push(e); });
 
             if (recipients.length > 0) {
                 const isResolved = newStatus === 'Resuelto';
@@ -1049,9 +1053,13 @@ export function TicketProvider({ children }: { children: ReactNode }) {
 
                 const supervisorUser = allUsers.find(u => u.name === ticket.supervisor);
 
-                // Fetch department emails from settings
+                // Dept emails already added to recipients above; add supervisor
                 const deptEmailKey = `notification_emails_${ticket.department}`.replace(/\s+/g, '_');
                 const deptEmailString = systemSettings[deptEmailKey] || systemSettings.notification_emails || systemSettings.notification_email || '';
+
+                if (supervisorUser?.email && !recipients.includes(supervisorUser.email)) {
+                    recipients.push(supervisorUser.email);
+                }
 
                 fetch('/api/notify', {
                     method: 'POST',
