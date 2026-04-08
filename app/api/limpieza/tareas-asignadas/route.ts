@@ -11,8 +11,8 @@ export async function GET(request: NextRequest) {
     const sector = searchParams.get('sector') || '';
 
     if (cedula && fecha) {
-        // Public: worker fetches their assigned tasks for today
-        const rows = await db.query(
+        // 1. Exact date match
+        let rows = await db.query(
             `SELECT * FROM limpieza_tareas_asignadas
              WHERE fecha = ?
                AND (
@@ -23,12 +23,53 @@ export async function GET(request: NextRequest) {
              ORDER BY created_at ASC`,
             [fecha, cedula, cliente, cliente, sector]
         );
+        if ((rows as any[]).length === 0) {
+            // 2. Most recent before today
+            rows = await db.query(
+                `SELECT * FROM limpieza_tareas_asignadas
+                 WHERE fecha < ?
+                   AND fecha IS NOT NULL
+                   AND (
+                     (scope = 'individual' AND cedula = ?)
+                     OR (scope = 'cliente' AND cliente = ?)
+                     OR (scope = 'sector' AND cliente = ? AND sector = ?)
+                   )
+                 ORDER BY fecha DESC, created_at DESC`,
+                [fecha, cedula, cliente, cliente, sector]
+            );
+            if ((rows as any[]).length > 0) {
+                const latestFecha = (rows as any[])[0].fecha;
+                rows = (rows as any[]).filter((r: any) => r.fecha === latestFecha);
+            }
+        }
+        if ((rows as any[]).length === 0) {
+            // 3. Permanent tasks (fecha IS NULL)
+            rows = await db.query(
+                `SELECT * FROM limpieza_tareas_asignadas
+                 WHERE fecha IS NULL
+                   AND (
+                     (scope = 'individual' AND cedula = ?)
+                     OR (scope = 'cliente' AND cliente = ?)
+                     OR (scope = 'sector' AND cliente = ? AND sector = ?)
+                   )
+                 ORDER BY created_at ASC`,
+                [cedula, cliente, cliente, sector]
+            );
+        }
         return NextResponse.json(rows);
     }
 
     // Protected: supervisor fetches all
     const session = await getSession(request);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const permanentes = searchParams.get('permanentes');
+    if (permanentes === '1') {
+        const rows = await db.query(
+            `SELECT * FROM limpieza_tareas_asignadas WHERE fecha IS NULL ORDER BY created_at DESC`
+        );
+        return NextResponse.json(rows);
+    }
 
     const conditions: string[] = [];
     const params: any[] = [];
@@ -46,7 +87,7 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { titulo, descripcion, tareas, scope, cedula, cliente, sector, fecha } = await request.json();
-    if (!titulo || !tareas?.length || !scope || !fecha)
+    if (!titulo || !tareas?.length || !scope)
         return NextResponse.json({ error: 'Faltan campos obligatorios' }, { status: 400 });
 
     await db.run(

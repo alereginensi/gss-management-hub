@@ -41,6 +41,7 @@ export default function AsignarTareasPage() {
     const router = useRouter();
 
     const [asignaciones, setAsignaciones] = useState<Asignacion[]>([]);
+    const [permanentes, setPermanentes] = useState<Asignacion[]>([]);
     const [fetching, setFetching] = useState(false);
     const [filterFecha, setFilterFecha] = useState(today());
     const [workers, setWorkers] = useState<Worker[]>([]);
@@ -50,6 +51,7 @@ export default function AsignarTareasPage() {
     const [showModal, setShowModal] = useState(false);
     const [scope, setScope] = useState<'individual' | 'cliente' | 'sector'>('cliente');
     const [formFecha, setFormFecha] = useState(today());
+    const [formPermanente, setFormPermanente] = useState(false);
     const [formCedula, setFormCedula] = useState('');
     const [formCliente, setFormCliente] = useState('');
     const [formSector, setFormSector] = useState('');
@@ -82,8 +84,12 @@ export default function AsignarTareasPage() {
         try {
             const params = new URLSearchParams();
             if (filterFecha) params.set('fecha', filterFecha);
-            const res = await fetch(`/api/limpieza/tareas-asignadas?${params}`, { headers: getAuthHeaders() });
+            const [res, resP] = await Promise.all([
+                fetch(`/api/limpieza/tareas-asignadas?${params}`, { headers: getAuthHeaders() }),
+                fetch(`/api/limpieza/tareas-asignadas?permanentes=1`, { headers: getAuthHeaders() }),
+            ]);
             if (res.ok) setAsignaciones(await res.json());
+            if (resP.ok) setPermanentes(await resP.json());
         } finally { setFetching(false); }
     }, [filterFecha, getAuthHeaders]);
 
@@ -95,10 +101,11 @@ export default function AsignarTareasPage() {
         if (!confirm('¿Eliminar esta asignación?')) return;
         await fetch(`/api/limpieza/tareas-asignadas?id=${id}`, { method: 'DELETE', headers: getAuthHeaders() });
         setAsignaciones(prev => prev.filter(a => a.id !== id));
+        setPermanentes(prev => prev.filter(a => a.id !== id));
     };
 
     const openModal = () => {
-        setScope('cliente'); setFormFecha(today()); setFormCedula('');
+        setScope('cliente'); setFormFecha(today()); setFormPermanente(false); setFormCedula('');
         setFormCliente(''); setFormSector(''); setFormTareas([]);
         setFormTareaInput(''); setError(''); setShowModal(true);
     };
@@ -141,7 +148,7 @@ export default function AsignarTareasPage() {
                     cedula: scope === 'individual' ? formCedula : null,
                     cliente: scope !== 'individual' ? formCliente : null,
                     sector: scope === 'sector' ? formSector : null,
-                    fecha: formFecha,
+                    fecha: formPermanente ? null : formFecha,
                 }),
             });
             if (!res.ok) { const d = await res.json(); setError(d.error || 'Error'); return; }
@@ -223,13 +230,43 @@ export default function AsignarTareasPage() {
                     </span>
                 </div>
 
-                {/* List */}
+                {/* Permanent tasks section */}
+                {permanentes.length > 0 && (
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <p style={{ fontSize: '0.72rem', fontWeight: 800, color: '#92400e', textTransform: 'uppercase', marginBottom: '0.6rem', letterSpacing: '0.05em' }}>Tareas Permanentes</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                            {permanentes.map(a => {
+                                let tareasArr: string[] = [];
+                                try { tareasArr = JSON.parse(a.tareas); } catch {}
+                                return (
+                                    <div key={a.id} className="card" style={{ padding: '0.85rem 1.1rem', borderLeft: '3px solid #d97706' }}>
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
+                                                    <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '0.1rem 0.5rem', borderRadius: '9999px', backgroundColor: 'rgba(217,119,6,0.12)', color: '#92400e' }}>Permanente</span>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{scopeLabel(a)}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                                                    {tareasArr.map((t, i) => (
+                                                        <span key={i} style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem', borderRadius: '6px', backgroundColor: 'rgba(41,65,107,0.08)', color: 'var(--primary-color)', fontWeight: 500 }}>{t}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <button onClick={() => handleDelete(a.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '0.25rem', flexShrink: 0 }} title="Eliminar"><Trash2 size={15} /></button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Date-filtered list */}
                 {fetching ? (
                     <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Cargando...</div>
                 ) : asignaciones.length === 0 ? (
-                    <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
-                        <ClipboardCheck size={36} style={{ opacity: 0.2, marginBottom: '0.75rem' }} />
-                        <p style={{ margin: 0 }}>No hay asignaciones para esta fecha.</p>
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)', backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
+                        <p style={{ margin: 0, fontSize: '0.875rem' }}>No hay asignaciones para esta fecha.</p>
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -276,10 +313,16 @@ export default function AsignarTareasPage() {
 
                         {error && <div style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#b91c1c', padding: '0.6rem 0.85rem', borderRadius: 'var(--radius)', fontSize: '0.83rem', marginBottom: '1rem', border: '1px solid rgba(239,68,68,0.2)' }}>{error}</div>}
 
-                        {/* Fecha */}
+                        {/* Fecha / Permanente */}
                         <div style={{ marginBottom: '1.25rem' }}>
-                            <label style={labelStyle}>Fecha *</label>
-                            <input type="date" value={formFecha} onChange={e => setFormFecha(e.target.value)} style={inputStyle} />
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                                <label style={{ ...labelStyle, marginBottom: 0 }}>Fecha</label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 600, color: formPermanente ? 'var(--primary-color)' : 'var(--text-secondary)', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={formPermanente} onChange={e => setFormPermanente(e.target.checked)} style={{ cursor: 'pointer' }} />
+                                    Permanente (sin fecha)
+                                </label>
+                            </div>
+                            {!formPermanente && <input type="date" value={formFecha} onChange={e => setFormFecha(e.target.value)} style={inputStyle} />}
                         </div>
 
                         {/* Scope */}
@@ -318,11 +361,16 @@ export default function AsignarTareasPage() {
                             </div>
                         )}
 
-                        {scope === 'sector' && formCliente && (
+                        {scope === 'sector' && (
                             <div style={{ marginBottom: '1.25rem' }}>
                                 <label style={labelStyle}>Sector *</label>
-                                <select value={formSector} onChange={e => setFormSector(e.target.value)} style={inputStyle}>
-                                    <option value="">Seleccionar...</option>
+                                <select
+                                    value={formSector}
+                                    onChange={e => setFormSector(e.target.value)}
+                                    disabled={!formCliente}
+                                    style={{ ...inputStyle, backgroundColor: !formCliente ? '#f1f5f9' : 'var(--bg-color)', color: !formCliente ? '#94a3b8' : 'var(--text-primary)', cursor: !formCliente ? 'not-allowed' : 'pointer' }}
+                                >
+                                    <option value="">{formCliente ? 'Seleccionar sector...' : '← Primero elegí un cliente'}</option>
                                     {(clientSectorMap[formCliente] || []).map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>

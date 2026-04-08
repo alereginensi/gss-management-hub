@@ -4,17 +4,6 @@ import { useState, useRef } from 'react';
 import { CheckCircle2, Check, ArrowRight, Camera, X, PenLine, UserX } from 'lucide-react';
 
 const TAREAS_POR_CLIENTE: Record<string, string[]> = {
-    'schmidth': [
-        'Oficinas',
-        'Oficina de RRHH',
-        'Directorio',
-        'Gerencia',
-        'Sala de reuniones',
-        'Escalera',
-        'Comedor',
-        'Vestuarios',
-        'Baños',
-    ],
     'default': [
         'Limpieza de pisos',
         'Limpieza de sanitarios',

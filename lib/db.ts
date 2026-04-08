@@ -418,7 +418,7 @@ class DbWrapper {
         cedula TEXT,
         cliente TEXT,
         sector TEXT,
-        fecha TEXT NOT NULL,
+        fecha TEXT,
         creado_por TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -543,6 +543,20 @@ class DbWrapper {
         }
       } catch (err) {
         console.error('❌ Error migrate SQLite asistencia:', err);
+      }
+      // Seed default permanent tasks for Schmidt (SQLite)
+      try {
+        const schmidtRow = this.sqliteDb.prepare(
+          `SELECT id FROM limpieza_tareas_asignadas WHERE scope = 'cliente' AND cliente = 'Schmidt Premoldeados' AND fecha IS NULL LIMIT 1`
+        ).get();
+        if (!schmidtRow) {
+          this.sqliteDb.prepare(
+            `INSERT INTO limpieza_tareas_asignadas (titulo, tareas, scope, cliente, fecha, creado_por) VALUES (?, ?, 'cliente', 'Schmidt Premoldeados', NULL, 'sistema')`
+          ).run('Tareas Schmidt Premoldeados', JSON.stringify(['Oficinas', 'Oficina de RRHH', 'Directorio', 'Gerencia', 'Sala de reuniones', 'Escalera', 'Comedor', 'Vestuarios', 'Baños']));
+          console.log('✅ Seeded default tasks for Schmidt Premoldeados (SQLite)');
+        }
+      } catch (err) {
+        console.error('❌ Error seeding Schmidt tasks (SQLite):', err);
       }
     }
 
@@ -901,7 +915,7 @@ class DbWrapper {
             await this.pgPool!.query('ALTER TABLE limpieza_registros ADD COLUMN fotos TEXT');
           }
         } catch (e) {}
-        // limpieza_tareas_asignadas: create if not exists
+        // limpieza_tareas_asignadas: create if not exists, allow nullable fecha
         try {
           await this.pgPool!.query(`
             CREATE TABLE IF NOT EXISTS limpieza_tareas_asignadas (
@@ -913,12 +927,28 @@ class DbWrapper {
               cedula TEXT,
               cliente TEXT,
               sector TEXT,
-              fecha TEXT NOT NULL,
+              fecha TEXT,
               creado_por TEXT,
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
           `);
+          // Drop NOT NULL on fecha if it was created with the old schema
+          await this.pgPool!.query('ALTER TABLE limpieza_tareas_asignadas ALTER COLUMN fecha DROP NOT NULL');
         } catch (e) {}
+        // Seed default permanent tasks for clients (only if none exist for that client/scope)
+        try {
+          const schmidtCheck = await this.pgPool!.query(
+            `SELECT id FROM limpieza_tareas_asignadas WHERE scope = 'cliente' AND cliente = 'Schmidt Premoldeados' AND fecha IS NULL LIMIT 1`
+          );
+          if (schmidtCheck.rows.length === 0) {
+            await this.pgPool!.query(
+              `INSERT INTO limpieza_tareas_asignadas (titulo, tareas, scope, cliente, fecha, creado_por)
+               VALUES ($1, $2, 'cliente', 'Schmidt Premoldeados', NULL, 'sistema')`,
+              ['Tareas Schmidt Premoldeados', JSON.stringify(['Oficinas', 'Oficina de RRHH', 'Directorio', 'Gerencia', 'Sala de reuniones', 'Escalera', 'Comedor', 'Vestuarios', 'Baños'])]
+            );
+            console.log('✅ Seeded default tasks for Schmidt Premoldeados');
+          }
+        } catch (e) { console.error('❌ Error seeding Schmidt tasks:', e); }
         try {
           await this.pgPool!.query(`
             CREATE TABLE IF NOT EXISTS purchase_orders (
