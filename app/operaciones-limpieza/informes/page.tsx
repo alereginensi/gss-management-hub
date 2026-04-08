@@ -381,7 +381,7 @@ export default function InformesOperativosPage() {
                         const dbForPuesto = dbRowsForTurno.filter((r: any) => r.puesto === puestoConf.nombre);
                         for (let i = 0; i < puestoConf.cantidad; i++) {
                             structuredRows.push(dbForPuesto[i]
-                                ? { ...dbForPuesto[i], isSaved: true }
+                                ? { ...dbForPuesto[i], isSaved: true, isManual: !dbForPuesto[i].funcionario_id && !!dbForPuesto[i].nombre }
                                 : { puesto: puestoConf.nombre, funcionario_id: null, nombre: '', cedula: '', cliente: client, entrada1: '', salida1: '', entrada2: '', salida2: '', firma: null, isSaved: false }
                             );
                         }
@@ -389,13 +389,13 @@ export default function InformesOperativosPage() {
                     newAsistencia[turno] = structuredRows;
 
                     // ADICIONALES: dynamic rows from DB + one empty
-                    const adicionales = data.filter((r: any) => r.seccion === 'ADICIONALES').map((r: any) => ({ ...r, isSaved: true }));
+                    const adicionales = data.filter((r: any) => r.seccion === 'ADICIONALES').map((r: any) => ({ ...r, isSaved: true, isManual: !r.funcionario_id && !!r.nombre }));
                     newAsistencia['ADICIONALES'] = adicionales.length > 0 ? adicionales : [{ puesto: '', funcionario_id: null, nombre: '', cedula: '', cliente: client, entrada1: '', salida1: '', entrada2: '', salida2: '', firma: null, isSaved: false }];
                 } else {
                     // No config: fill all sections from DB, ensure at least one empty row each
                     data.forEach((row: any) => {
                         if (newAsistencia[row.seccion]) {
-                            newAsistencia[row.seccion].push({ ...row, isSaved: true });
+                            newAsistencia[row.seccion].push({ ...row, isSaved: true, isManual: !row.funcionario_id && !!row.nombre });
                         }
                     });
                     SECCIONES.forEach(sec => {
@@ -838,7 +838,7 @@ export default function InformesOperativosPage() {
                                                                         </>
                                                                     ) : (
                                                                         <>
-                                                                            <input className="no-print" value={row.puesto || ''} placeholder="Puesto..." onChange={e => updateRow(seccion, idx, { puesto: e.target.value })} onBlur={() => { if (row.funcionario_id || (row.isManual && row.nombre)) saveRowWithData(seccion, idx); }} style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.75rem', fontWeight: 800, outline: 'none', color: '#1d3461', textTransform: 'uppercase' }} />
+                                                                            <input className="no-print" value={row.puesto || ''} placeholder="Puesto..." onChange={e => updateRow(seccion, idx, { puesto: e.target.value })} onBlur={e => { if (row.funcionario_id || (row.isManual && row.nombre)) saveRowWithData(seccion, idx, { ...row, puesto: e.target.value }); }} style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.75rem', fontWeight: 800, outline: 'none', color: '#1d3461', textTransform: 'uppercase' }} />
                                                                             <span className="print-only" style={{ fontSize: '0.75rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase' }}>{row.puesto || ''}</span>
                                                                         </>
                                                                     )}
@@ -848,7 +848,7 @@ export default function InformesOperativosPage() {
                                                             <td style={{ padding: '0.4rem' }}>
                                                                 {row.isManual ? (
                                                                     <>
-                                                                        <input className="no-print" value={row.cedula} placeholder="Cédula" onChange={e => updateRow(seccion, idx, { cedula: e.target.value })} onBlur={() => { if (row.nombre) saveRowWithData(seccion, idx); }} style={{ width: '100%', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', fontSize: '0.8rem', fontWeight: 500, outline: 'none' }} />
+                                                                        <input className="no-print" value={row.cedula} placeholder="Cédula" onChange={e => updateRow(seccion, idx, { cedula: e.target.value })} onBlur={e => { const nombre = row.nombre; if (nombre) saveRowWithData(seccion, idx, { ...row, cedula: e.target.value }); }} style={{ width: '100%', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', fontSize: '0.8rem', fontWeight: 500, outline: 'none' }} />
                                                                         <span className="print-only" style={{ fontSize: '0.8rem' }}>{row.cedula}</span>
                                                                     </>
                                                                 ) : (
@@ -859,7 +859,7 @@ export default function InformesOperativosPage() {
                                                             <td style={{ padding: '0.4rem' }}>
                                                                 {row.isManual ? (
                                                                     <>
-                                                                        <input className="no-print" value={row.nombre} placeholder="Nombre y apellido" onChange={e => updateRow(seccion, idx, { nombre: e.target.value })} onBlur={() => { if (row.nombre) saveRowWithData(seccion, idx); }} style={{ width: '100%', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', fontSize: '0.8rem', fontWeight: 600, outline: 'none', color: '#1d3461' }} />
+                                                                        <input className="no-print" value={row.nombre} placeholder="Nombre y apellido" onChange={e => updateRow(seccion, idx, { nombre: e.target.value })} onBlur={e => { const val = e.target.value; if (val) saveRowWithData(seccion, idx, { ...row, nombre: val }); }} style={{ width: '100%', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', fontSize: '0.8rem', fontWeight: 600, outline: 'none', color: '#1d3461' }} />
                                                                         <span className="print-only" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{row.nombre || '..........................................'}</span>
                                                                     </>
                                                                 ) : readOnly ? (
