@@ -1,3 +1,6 @@
+[variables]
+PLAYWRIGHT_BROWSERS_PATH = "/app/.playwright-browsers"
+
 [phases.setup]
 nixPkgs = [
   "chromium",
