@@ -283,8 +283,7 @@ export default function LogbookPage() {
     const [clientSectorMap, setClientSectorMap] = useState<Record<string, string[]>>({});
 
     const getAuthHeaders = (): HeadersInit => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-        return token ? { 'Authorization': `Bearer ${token}` } : {};
+        return {};
     };
 
     // Modals

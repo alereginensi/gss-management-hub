@@ -32,8 +32,7 @@ export default function UserManagement() {
     }, [currentUser]);
 
     const getAuthHeaders = (): HeadersInit => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-        return token ? { 'Authorization': `Bearer ${token}` } : {};
+        return {};
     };
 
     const fetchFuncionarios = async () => {

@@ -40,8 +40,7 @@ export default function MitrabajoPage() {
     const [customDate, setCustomDate] = useState('');
 
     const getAuthHeaders = (): HeadersInit => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-        return token ? { Authorization: `Bearer ${token}` } : {};
+        return {};
     };
 
     const loadFiles = useCallback(async () => {
@@ -65,12 +64,10 @@ export default function MitrabajoPage() {
     }, [loading, isAuthenticated, currentUser, router, loadFiles]);
 
     const handleDownloadFile = (filename: string) => {
-        const token = localStorage.getItem('authToken');
         const url = `/api/mitrabajo/download?file=${encodeURIComponent(filename)}`;
         const a = document.createElement('a');
         a.href = url;
-        a.setAttribute('data-auth', token ?? '');
-        // Descarga vía fetch para incluir header de auth
+        // Descarga vía fetch — la cookie httpOnly 'session' se envía automáticamente
         fetch(url, { headers: getAuthHeaders() })
             .then(res => res.blob())
             .then(blob => {

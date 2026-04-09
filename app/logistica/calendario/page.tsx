@@ -199,8 +199,7 @@ export default function CalendarioPage() {
 
     // ── Auth ──────────────────────────────────────────────────────────────
     const getAuthHeaders = (): HeadersInit => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-        return token ? { Authorization: `Bearer ${token}` } : {};
+        return {};
     };
 
     useEffect(() => {

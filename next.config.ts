@@ -14,27 +14,56 @@ const nextConfig: NextConfig = {
   },
 
   async headers() {
+    const securityHeaders = [
+      {
+        key: 'X-Frame-Options',
+        value: 'DENY',
+      },
+      {
+        key: 'X-Content-Type-Options',
+        value: 'nosniff',
+      },
+      {
+        key: 'Referrer-Policy',
+        value: 'origin-when-cross-origin',
+      },
+      {
+        key: 'Permissions-Policy',
+        value: 'camera=(), microphone=(), geolocation=()',
+      },
+      // HSTS: solo en producción (Railway ya usa HTTPS). En dev con HTTP, un HSTS cacheado rompería el acceso.
+      ...(isProd ? [{
+        key: 'Strict-Transport-Security',
+        value: 'max-age=31536000; includeSubDomains',
+      }] : []),
+      {
+        key: 'Content-Security-Policy',
+        value: [
+          "default-src 'self'",
+          // Next.js necesita unsafe-inline para hydration chunks en el cliente
+          "script-src 'self' 'unsafe-inline'",
+          // ~2600 style={} en JSX requieren unsafe-inline en style-src
+          "style-src 'self' 'unsafe-inline'",
+          // next/font/google auto-hostea fuentes en producción; data: para fuentes embebidas
+          "font-src 'self' data:",
+          // data: para firmas base64 (SignaturePad), blob: para previews de archivos
+          "img-src 'self' data: blob:",
+          // Solo llamadas same-origin (sin APIs externas desde el cliente)
+          "connect-src 'self'",
+          // Service Worker
+          "worker-src 'self' blob:",
+          "frame-src 'none'",
+          "object-src 'none'",
+          "base-uri 'self'",
+          "form-action 'self'",
+        ].join('; '),
+      },
+    ];
+
     return [
       {
         source: '/(.*)',
-        headers: [
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
-          },
-        ],
+        headers: securityHeaders,
       },
       {
         source: '/sw.js',

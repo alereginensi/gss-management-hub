@@ -56,7 +56,7 @@ export default function NewTicket() {
         }
         // Load collaborator list for all roles
         if (currentUser?.id) {
-            fetch('/api/users', { headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` } })
+            fetch('/api/users')
                 .then(r => r.ok ? r.json() : [])
                 .then(data => setCollaboratorList(Array.isArray(data) ? data : []))
                 .catch(() => {});
@@ -122,14 +122,12 @@ export default function NewTicket() {
 
         let attachmentUrls: string[] = [];
         if (files.length > 0) {
-            const token = localStorage.getItem('authToken');
             for (const file of files) {
                 const uploadFormData = new FormData();
                 uploadFormData.append('file', file);
                 try {
                     const uploadRes = await fetch('/api/tickets/upload', {
                         method: 'POST',
-                        headers: token ? { Authorization: `Bearer ${token}` } : {},
                         body: uploadFormData
                     });
                     if (uploadRes.ok) {
