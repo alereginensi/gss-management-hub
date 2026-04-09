@@ -1,6 +1,3 @@
-[variables]
-PLAYWRIGHT_BROWSERS_PATH = "/app/.playwright-browsers"
-
 [phases.setup]
 nixPkgs = [
   "chromium",
@@ -27,7 +24,4 @@ nixPkgs = [
 ]
 
 [phases.build]
-cmds = [
-  "npx playwright install chromium",
-  "npm run build"
-]
+cmds = ["npm run build"]
