@@ -9,8 +9,7 @@
     "lint": "eslint",
     "migrate:limpieza-personal": "node scripts/migrate_limpieza_personal_only.cjs",
     "mitrabajo:download": "node scripts/download-mitrabajo.cjs",
-    "mitrabajo:cron": "node scripts/cron-mitrabajo.cjs",
-    "postinstall": "playwright install chromium --with-deps"
+    "mitrabajo:cron": "node scripts/cron-mitrabajo.cjs"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",
