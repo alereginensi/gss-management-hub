@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth-server';
 
+/** Playwright puede tardar varios minutos (login + panel + descarga). */
+export const maxDuration = 300;
+
 function hasMitrabajoAccess(user: { role: string; modules?: string }) {
     return user.role === 'admin' || user.role === 'mitrabajo' || user.modules?.split(',').includes('mitrabajo');
 }
