@@ -46,8 +46,8 @@ const nextConfig: NextConfig = {
           "style-src 'self' 'unsafe-inline'",
           // next/font/google auto-hostea fuentes en producción; data: para fuentes embebidas
           "font-src 'self' data:",
-          // data: para firmas base64 (SignaturePad), blob: para previews de archivos
-          "img-src 'self' data: blob:",
+          // data: para firmas base64 (SignaturePad), blob: para previews, Cloudinary para adjuntos
+          "img-src 'self' data: blob: https://res.cloudinary.com",
           // Solo llamadas same-origin (sin APIs externas desde el cliente)
           "connect-src 'self'",
           // Service Worker
