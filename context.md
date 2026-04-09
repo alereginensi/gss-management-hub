@@ -83,7 +83,7 @@ Rutas de UI bajo `app/logistica/`:
 
 - **Railway prioriza `Dockerfile` sobre Nixpacks** si hay `Dockerfile` en la raíz: **`nixpacks.toml` no se usa** en ese caso. El `Dockerfile` debe instalar Chromium (`npx playwright install …`) y **copiar** `/app/.playwright-browsers` al stage final; imágenes **Alpine** no sirven para los binarios glibc de Playwright — usar **`node:20-bookworm-slim`** y librerías de sistema en el runner.
 - **`nixpacks.toml`** (solo si el build es Nixpacks): `PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers` y en build `playwright install --with-deps chromium` en la misma línea que el comando.
-- **`lib/mitrabajo-download.js`**: **`channel: 'chromium'`** (headless “nuevo” con Chromium completo) para no depender del binario aparte **chrome-headless-shell**.
+- **`lib/mitrabajo-download.js`**: **`channel: 'chromium'`** (headless “nuevo” con Chromium completo) para no depender del binario aparte **chrome-headless-shell**. Antes del `launch` se fuerza **`HOME` + `XDG_*` en un directorio bajo `os.tmpdir()`** y flags tipo **`--no-zygote`** para evitar **`chrome_crashpad_handler: --database is required`** en contenedores sin home escribible.
 - Variable **`PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers`** en el servicio si hace falta alinear con la imagen.
 
 ---

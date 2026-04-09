@@ -59,6 +59,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# adduser --system no crea $HOME; Crashpad de Chromium necesita directorio escribible
+RUN mkdir -p /home/nextjs/.config /home/nextjs/.cache && chown -R nextjs:nodejs /home/nextjs
+ENV HOME=/home/nextjs
+ENV XDG_CONFIG_HOME=/home/nextjs/.config
+ENV XDG_CACHE_HOME=/home/nextjs/.cache
+
 COPY --from=builder /app/public ./public
 
 RUN mkdir -p .next
