@@ -6,10 +6,18 @@ const nextConfig: NextConfig = {
   output: 'standalone',
 
   // Don't bundle native modules — let Node.js require() them at runtime
-  serverExternalPackages: ['pg', 'pg-native', 'better-sqlite3'],
+  serverExternalPackages: ['pg', 'pg-native', 'better-sqlite3', 'playwright', 'xlsx'],
 
   async headers() {
     return [
+      // favicon.ico en public/ es PNG renombrado; sin esto algunos proxies mandan MIME incorrecto
+      {
+        source: '/favicon.ico',
+        headers: [
+          { key: 'Content-Type', value: 'image/png' },
+          { key: 'Cache-Control', value: 'public, max-age=3600, must-revalidate' },
+        ],
+      },
       {
         source: '/(.*)',
         headers: [

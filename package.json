@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
-    "start": "next start",
+    "start": "node scripts/cron-mitrabajo.cjs & next start",
     "lint": "eslint",
     "migrate:limpieza-personal": "node scripts/migrate_limpieza_personal_only.cjs",
     "mitrabajo:download": "node scripts/download-mitrabajo.cjs",
