@@ -79,6 +79,12 @@ Rutas de UI bajo `app/logistica/`:
 - Desarrollo local: **`env.local.example`** y `.env.local` (no commitear secretos).
 - Otros: VAPID para push, Cloudinary, correo, etc., según despliegue.
 
+### Mitrabajo (Playwright en Railway)
+
+- **`nixpacks.toml`**: `PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers` y en build se ejecuta `playwright install --with-deps chromium` con esa variable **en la misma línea** para que los binarios queden en la imagen.
+- **`lib/mitrabajo-download.js`**: arranca Chromium con **`channel: 'chromium'`** (headless “nuevo”) para no depender del ejecutable separado **chrome-headless-shell** (`chromium_headless_shell-*`), que es lo que fallaba si el install quedaba incompleto o desalineado.
+- En Railway conviene definir también **`PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers`** en variables del servicio (además del `nixpacks.toml`).
+
 ---
 
 ## UI móvil — modales de logística
@@ -110,4 +116,4 @@ npm run migrate:limpieza-personal  # migración segura limpieza → Postgres
 
 ---
 
-*Última actualización de este archivo: alineado con la base del código (logística, artículos, parse JSON Postgres, migraciones, UX móvil en modales y alineación de iconos en hubs móviles).*
+*Última actualización de este archivo: alineado con la base del código (logística, artículos, parse JSON Postgres, migraciones, UX móvil en modales, Mitrabajo/Playwright en Railway).*

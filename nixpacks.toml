@@ -3,6 +3,6 @@ PLAYWRIGHT_BROWSERS_PATH = "/app/.playwright-browsers"
 
 [phases.build]
 cmds = [
-  "npx playwright install --with-deps chromium",
+  "PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers npx playwright install --with-deps chromium",
   "npm run build"
 ]
