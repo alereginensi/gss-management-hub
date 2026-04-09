@@ -26,13 +26,11 @@ export async function middleware(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // For protected pages, check if any auth token exists
-    // (The actual validation happens server-side in route handlers)
+    // Para páginas protegidas: verificar cookie httpOnly 'session'
+    // La validación real ocurre server-side en cada route handler via getSession()
     const sessionCookie = request.cookies.get('session')?.value;
-    const authTokenCookie = request.cookies.get('auth_token')?.value;
-    const authHeader = request.headers.get('Authorization');
 
-    const hasAnyToken = !!(sessionCookie || authTokenCookie || authHeader);
+    const hasAnyToken = !!sessionCookie;
 
     if (!hasAnyToken) {
         // No token at all - redirect to login

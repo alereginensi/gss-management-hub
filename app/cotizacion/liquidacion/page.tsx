@@ -34,8 +34,7 @@ export default function LiquidacionPage() {
     const [entryForm, setEntryForm] = useState({ funcionario: '', category_id: '', date: today, regular_hours: '8', overtime_hours: '0', location: '', sector: '', service_type: '', notes: '' });
 
     const getAuthHeaders = (): HeadersInit => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-        return token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+        return { 'Content-Type': 'application/json' };
     };
 
     useEffect(() => {

@@ -13,8 +13,7 @@ export default function FolderPage({ params }: { params: Promise<{ id: string }>
     const router = useRouter();
 
     const getAuthHeaders = (): Record<string, string> => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-        return token ? { Authorization: `Bearer ${token}` } : {};
+        return {};
     };
 
     const resolvedParams = use(params);

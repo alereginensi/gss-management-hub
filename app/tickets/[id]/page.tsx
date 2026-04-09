@@ -72,9 +72,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
         // Check if we need to fetch (missing in context OR missing viewedBy info)
         const inContext = tickets.find((t: any) => t.id === ticketId);
         if (inContext && inContext.viewedBy) return;
-
-        const token = localStorage.getItem('authToken');
-        fetch(`/api/tickets/${ticketId}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+        fetch(`/api/tickets/${ticketId}`, { headers: {} })
             .then(r => r.ok ? r.json() : Promise.reject(r.status))
             .then(setFetchedTicket)
             .catch(() => setFetchError(true));
@@ -92,8 +90,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
     }, [ticket?.attachmentUrl]);
 
     const patchAttachments = async (newUrls: string[]) => {
-        const token = localStorage.getItem('authToken');
-        const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         await fetch(`/api/tickets/${ticketId}`, {
             method: 'PATCH',
             headers,
@@ -107,8 +104,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
         try {
             const fd = new FormData();
             fd.append('file', file);
-            const token = localStorage.getItem('authToken');
-            const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+            const headers: Record<string, string> = {};
             const res = await fetch('/api/tickets/upload', { method: 'POST', headers, body: fd });
             if (!res.ok) { alert('Error al subir el archivo'); return; }
             const { url } = await res.json();
@@ -134,9 +130,8 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
     useEffect(() => {
         const isTeamTicket = ticket?.is_team_ticket || ticket?.isTeamTicket;
         if (isTeamTicket && ticketId) {
-            const token = localStorage.getItem('authToken');
             fetch(`/api/tickets/${ticketId}/tasks`, {
-                headers: token ? { Authorization: `Bearer ${token}` } : {}
+                headers: {}
             })
                 .then(r => r.ok ? r.json() : [])
                 .then(setTeamTasks);
@@ -156,10 +151,9 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
             if (isSupervisorMatch || isDeptMatch || isCollaborator || isTeamMember) {
                 const hasAlreadyViewed = ticket.viewedBy?.some((v: any) => v.id === currentUser.id);
                 if (!hasAlreadyViewed) {
-                    const token = localStorage.getItem('authToken');
                     fetch(`/api/tickets/${ticketId}/view`, {
                         method: 'POST',
-                        headers: token ? { Authorization: `Bearer ${token}` } : {}
+                        headers: {}
                     }).catch(err => console.error('Error recording view:', err));
                 }
             }
@@ -169,7 +163,6 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
     const handleCompleteTask = async (taskId: number) => {
         setCompletingTask(taskId);
         try {
-            const token = localStorage.getItem('authToken');
             const res = await fetch(`/api/tickets/${ticketId}/tasks`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -180,8 +173,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
                 setTeamTasks((prev: any[]) => prev.map((t: any) => t.id === taskId ? { ...t, completed: 1 } : t));
                 if (data.allDone) {
                     // Refresh ticket from API so status reflects "Resuelto"
-                    const token = localStorage.getItem('authToken');
-                    fetch(`/api/tickets/${ticketId}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+                    fetch(`/api/tickets/${ticketId}`, { headers: {} })
                         .then(r => r.ok ? r.json() : null)
                         .then(updated => { if (updated) setFetchedTicket(updated); });
                     fetchTickets();

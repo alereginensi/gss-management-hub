@@ -68,8 +68,7 @@ export default function InactivityGuard() {
         try {
             await fetch('/api/auth/logout', { method: 'POST' });
         } catch { /* ignore network errors during logout */ }
-        // Clear localStorage so TicketContext doesn't re-authenticate on next load
-        localStorage.removeItem('authToken');
+        // Clear localStorage
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('user');
         router.push('/login');

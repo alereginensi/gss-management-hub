@@ -2,10 +2,29 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { comparePassword } from '@/lib/auth';
 import { createSession } from '@/lib/auth-server';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { LoginSchema } from '@/lib/schemas/auth';
 
 export async function POST(request: Request) {
     try {
-        const { email, password, isAdminLogin } = await request.json();
+        const ip = getClientIp(request);
+        const limit = rateLimit(ip, 'login', { windowMs: 15 * 60 * 1000, max: 5 });
+        if (!limit.success) {
+            return NextResponse.json(
+                { error: 'Demasiados intentos. Intente nuevamente en unos minutos.' },
+                { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+            );
+        }
+
+        const body = await request.json();
+        const parsed = LoginSchema.safeParse(body);
+        if (!parsed.success) {
+            return NextResponse.json(
+                { error: parsed.error.issues[0]?.message ?? 'Datos inválidos' },
+                { status: 400 }
+            );
+        }
+        const { email, password, isAdminLogin } = parsed.data;
 
         if (!email) {
             return NextResponse.json({ error: 'Email es obligatorio' }, { status: 400 });
@@ -20,7 +39,7 @@ export async function POST(request: Request) {
         const user = await db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
 
         if (!user) {
-            return NextResponse.json({ error: 'El usuario no existe o no ha sido aprobado' }, { status: 401 });
+            return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
         }
 
         if (isAdminLogin) {
@@ -74,12 +93,12 @@ export async function POST(request: Request) {
                 modules: user.modules ?? null,
                 panel_access: user.panel_access ?? 1,
             },
-            token: sessionToken // Return token for client-side storage (fallback)
+            // token eliminado del body — la sesión se maneja por la cookie httpOnly 'session'
         });
 
         // FORCE cookie on the response object to ensure it is sent
         response.cookies.set('session', sessionToken, {
-            maxAge: 2 * 60 * 60, // 2 hours
+            maxAge: 8 * 60 * 60, // 8 hours — consistente con createSession en auth-server.ts
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',

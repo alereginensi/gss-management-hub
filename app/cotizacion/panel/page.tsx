@@ -24,8 +24,7 @@ export default function CotizacionPanelPage() {
     const [fetching, setFetching] = useState(true);
 
     const getAuthHeaders = (): HeadersInit => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-        return token ? { Authorization: `Bearer ${token}` } : {};
+        return {};
     };
 
     useEffect(() => {

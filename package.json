@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
-    "start": "node scripts/cron-mitrabajo.cjs & next start",
+    "start": "next start",
     "lint": "eslint",
     "migrate:limpieza-personal": "node scripts/migrate_limpieza_personal_only.cjs",
     "mitrabajo:download": "node scripts/download-mitrabajo.cjs",
@@ -30,7 +30,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "web-push": "^3.6.7",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "20.19.37",

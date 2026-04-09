@@ -197,15 +197,11 @@ export function TicketProvider({ children }: { children: ReactNode }) {
 
     const router = useRouter(); // Initialize useRouter
 
-    // Helper to get headers with fallback token
+    // Helper to get headers — la cookie httpOnly 'session' se envía automáticamente en same-origin fetch
     const getAuthHeaders = useCallback(() => {
-        const token = localStorage.getItem('authToken');
         const headers: HeadersInit = {
-            'Content-Type': 'application/json' // Default content type for most requests
+            'Content-Type': 'application/json'
         };
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
         return headers;
     }, []);
 
@@ -325,16 +321,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         const restoreSession = async () => {
             console.log('🔄 TicketContext: Attempting session restoration...');
             try {
-                // CRITICAL: Re-set the auth_token cookie from localStorage on every page load
-                // This ensures the cookie is present for all requests even after a full page refresh
-                const storedToken = localStorage.getItem('authToken');
-                if (storedToken) {
-                    console.log('🎫 TicketContext: Found stored token, setting cookie');
-                    const expires = new Date(Date.now() + 2 * 60 * 60 * 1000).toUTCString();
-                    document.cookie = `auth_token=${storedToken}; path=/; expires=${expires}; SameSite=Lax`;
-                }
-
-                // Try to restore from server (cookie OR header)
+                // Restaurar sesión desde el servidor via cookie httpOnly 'session'
                 console.log('🔍 TicketContext: Fetching /api/auth/me');
                 const res = await fetch('/api/auth/me', { headers: getAuthHeaders() });
                 if (res.ok) {
@@ -344,18 +331,13 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                         setIsAuthenticated(true);
                         isAuthenticatedRef.current = true;
                         setCurrentUser(data.user);
-                        // Fetch data ONLY if authenticated
-                        // Note: refreshData will internally check roles for sensitive APIs
                         refreshData(data.user);
                     } else {
                         console.log('⚠️ TicketContext: /api/auth/me returned ok but no user');
                         logout();
                     }
                 } else if (res.status === 401) {
-                    if (storedToken) {
-                        console.warn('TicketContext: sesión inválida o expirada (401)');
-                    }
-                    if (storedToken || isAuthenticatedRef.current) {
+                    if (isAuthenticatedRef.current) {
                         logout();
                     }
                     setLoading(false);
@@ -486,19 +468,13 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     };
 
     const login = (userData: User, token?: string) => {
-        // CRITICAL: Save token BEFORE calling refreshData so getAuthHeaders() works
-        if (token) {
-            localStorage.setItem('authToken', token);
-            // Also set as a regular browser cookie so it's sent automatically in ALL requests
-            const expires = new Date(Date.now() + 2 * 60 * 60 * 1000).toUTCString(); // 2 hours
-            document.cookie = `auth_token=${token}; path=/; expires=${expires}; SameSite=Lax`;
-        }
+        // token ya no se usa — la auth se maneja por la cookie httpOnly 'session' del servidor
+        void token;
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('user', JSON.stringify(userData));
-        isAuthenticatedRef.current = true; // Sync ref BEFORE setTimeout fires
+        isAuthenticatedRef.current = true;
         setIsAuthenticated(true);
         setCurrentUser(userData);
-        // Give time for cookies to propagate
         setTimeout(() => refreshData(userData), 300);
     };
 
@@ -506,9 +482,6 @@ export function TicketProvider({ children }: { children: ReactNode }) {
         console.log('🔐 TicketContext: Logging out, clearing session data');
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('user');
-        localStorage.removeItem('authToken');
-        // Clear the client-set auth cookie
-        document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
         isAuthenticatedRef.current = false;
         setIsAuthenticated(false);
         setCurrentUser(null);

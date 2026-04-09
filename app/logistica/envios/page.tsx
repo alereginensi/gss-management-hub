@@ -88,8 +88,7 @@ export default function EnviosDACPage() {
     }, []);
 
     const getAuthHeaders = (): HeadersInit => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-        return token ? { Authorization: `Bearer ${token}` } : {};
+        return {};
     };
 
     const buildUrl = (s: string, q: string, df: string, dt: string) => {

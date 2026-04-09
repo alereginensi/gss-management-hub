@@ -22,8 +22,7 @@ export default function ReportesPage() {
     const [exporting, setExporting] = useState(false);
 
     const getAuthHeaders = (): HeadersInit => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-        return token ? { Authorization: `Bearer ${token}` } : {};
+        return {};
     };
 
     useEffect(() => {

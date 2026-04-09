@@ -108,8 +108,7 @@ export default function SolicitudMaterialesPage() {
     }, []);
 
     const getAuthHeaders = (): HeadersInit => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-        return token ? { Authorization: `Bearer ${token}` } : {};
+        return {};
     };
 
     const fetchAllData = async (df = dateFrom, dt = dateTo) => {
