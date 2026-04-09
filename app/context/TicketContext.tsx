@@ -95,14 +95,14 @@ export interface User {
     name: string;
     email?: string;
     department: string;
-    role: 'user' | 'admin' | 'supervisor' | 'funcionario' | 'jefe' | 'tecnico' | 'contador' | 'logistica';
+    role: 'user' | 'admin' | 'supervisor' | 'funcionario' | 'jefe' | 'tecnico' | 'contador' | 'logistica' | 'mitrabajo';
     rubro?: string;
     approved?: boolean;
     modules?: string; // comma-separated: "logistica,tecnico,cotizacion"
     panel_access?: number; // 1 = can access main hub, 0 = redirect to assigned module
 }
 
-export function hasModuleAccess(user: User, mod: 'logistica' | 'tecnico' | 'cotizacion' | 'limpieza'): boolean {
+export function hasModuleAccess(user: User, mod: 'logistica' | 'tecnico' | 'cotizacion' | 'limpieza' | 'rrhh'): boolean {
     if (user.role === 'admin') return true;
     if (mod === 'logistica' && user.role === 'logistica') return true;
     if (mod === 'tecnico' && user.role === 'tecnico') return true;
