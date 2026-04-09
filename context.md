@@ -81,9 +81,10 @@ Rutas de UI bajo `app/logistica/`:
 
 ### Mitrabajo (Playwright en Railway)
 
-- **`nixpacks.toml`**: `PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers` y en build se ejecuta `playwright install --with-deps chromium` con esa variable **en la misma línea** para que los binarios queden en la imagen.
-- **`lib/mitrabajo-download.js`**: arranca Chromium con **`channel: 'chromium'`** (headless “nuevo”) para no depender del ejecutable separado **chrome-headless-shell** (`chromium_headless_shell-*`), que es lo que fallaba si el install quedaba incompleto o desalineado.
-- En Railway conviene definir también **`PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers`** en variables del servicio (además del `nixpacks.toml`).
+- **Railway prioriza `Dockerfile` sobre Nixpacks** si hay `Dockerfile` en la raíz: **`nixpacks.toml` no se usa** en ese caso. El `Dockerfile` debe instalar Chromium (`npx playwright install …`) y **copiar** `/app/.playwright-browsers` al stage final; imágenes **Alpine** no sirven para los binarios glibc de Playwright — usar **`node:20-bookworm-slim`** y librerías de sistema en el runner.
+- **`nixpacks.toml`** (solo si el build es Nixpacks): `PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers` y en build `playwright install --with-deps chromium` en la misma línea que el comando.
+- **`lib/mitrabajo-download.js`**: **`channel: 'chromium'`** (headless “nuevo” con Chromium completo) para no depender del binario aparte **chrome-headless-shell**.
+- Variable **`PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers`** en el servicio si hace falta alinear con la imagen.
 
 ---
 
