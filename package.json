@@ -7,7 +7,10 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "migrate:limpieza-personal": "node scripts/migrate_limpieza_personal_only.cjs"
+    "migrate:limpieza-personal": "node scripts/migrate_limpieza_personal_only.cjs",
+    "mitrabajo:download": "node scripts/download-mitrabajo.cjs",
+    "mitrabajo:cron": "node scripts/cron-mitrabajo.cjs",
+    "postinstall": "playwright install chromium --with-deps"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -20,12 +23,15 @@
     "exceljs": "^4.4.0",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
+    "node-cron": "^4.2.1",
     "nodemailer": "^8.0.1",
     "pdf-parse": "^1.1.1",
     "pg": "^8.18.0",
+    "playwright": "^1.59.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "20.19.37",
