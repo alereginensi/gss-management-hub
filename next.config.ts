@@ -6,7 +6,12 @@ const nextConfig: NextConfig = {
   output: 'standalone',
 
   // Don't bundle native modules — let Node.js require() them at runtime
-  serverExternalPackages: ['pg', 'pg-native', 'better-sqlite3'],
+  serverExternalPackages: ['pg', 'pg-native', 'better-sqlite3', 'playwright', 'xlsx'],
+
+  // Incluir scripts en el output standalone (Railway no los copia automáticamente)
+  outputFileTracingIncludes: {
+    '/api/mitrabajo/trigger': ['./scripts/download-mitrabajo.cjs'],
+  },
 
   async headers() {
     return [
