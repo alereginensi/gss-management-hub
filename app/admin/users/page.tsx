@@ -590,6 +590,7 @@ export default function UserManagement() {
                                 >
                                     <option value="supervisor">Supervisor</option>
                                     <option value="jefe">Jefe de Departamento</option>
+                                    <option value="mitrabajo">Mitrabajo Panel de Control</option>
                                     <option value="admin">Administrador</option>
                                 </select>
                             </div>
@@ -603,6 +604,8 @@ export default function UserManagement() {
                                             { key: 'tecnico', label: 'Seguridad Electrónica' },
                                             { key: 'cotizacion', label: 'Cotización' },
                                             { key: 'limpieza', label: 'Operaciones Limpieza/Seguridad' },
+                                            { key: 'rrhh', label: 'Recursos Humanos' },
+                                            { key: 'mitrabajo', label: 'Mitrabajo Panel de Control' },
                                         ].map(mod => {
                                             const activeMods = editForm.modules ? editForm.modules.split(',').filter(m => m) : [];
                                             const checked = activeMods.includes(mod.key);

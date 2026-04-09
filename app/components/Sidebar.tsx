@@ -18,7 +18,8 @@ import {
     Trash2,
     Pencil,
     Check,
-    Home
+    Home,
+    Monitor
 } from 'lucide-react';
 import { useTicketContext } from '../context/TicketContext';
 import { useRouter, usePathname } from 'next/navigation';
@@ -206,21 +207,33 @@ export default function Sidebar() {
                     </div>
                 )}
 
-                {/* --- SECCIÓN BITÁCORA --- */}
-                {(currentUser.role === 'admin' || currentUser.role === 'supervisor' || currentUser.role === 'jefe') && (
+                {/* --- SECCIÓN OPERACIONES --- */}
+                {(currentUser.role === 'admin' || currentUser.role === 'supervisor' || currentUser.role === 'jefe' || currentUser.role === 'mitrabajo' || currentUser.modules?.split(',').includes('mitrabajo')) && (
                     <div style={{ marginBottom: '2rem' }}>
                         <div style={{ paddingLeft: '1rem', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.5, marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
                             Operaciones
                         </div>
                         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.25rem', padding: 0, margin: 0 }}>
-                            <li>
-                                <NavItem
-                                    href="/logbook"
-                                    icon={<BookOpen size={18} />}
-                                    label="Bitácora"
-                                    active={pathname === '/logbook'}
-                                />
-                            </li>
+                            {(currentUser.role === 'admin' || currentUser.role === 'supervisor' || currentUser.role === 'jefe') && (
+                                <li>
+                                    <NavItem
+                                        href="/logbook"
+                                        icon={<BookOpen size={18} />}
+                                        label="Bitácora"
+                                        active={pathname === '/logbook'}
+                                    />
+                                </li>
+                            )}
+                            {(currentUser.role === 'admin' || currentUser.role === 'mitrabajo' || currentUser.modules?.split(',').includes('mitrabajo')) && (
+                                <li>
+                                    <NavItem
+                                        href="/mitrabajo"
+                                        icon={<Monitor size={18} />}
+                                        label="Mitrabajo"
+                                        active={pathname.startsWith('/mitrabajo')}
+                                    />
+                                </li>
+                            )}
                         </ul>
                     </div>
                 )}
