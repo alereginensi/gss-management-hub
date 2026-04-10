@@ -9,3 +9,4 @@ README.md
 ! .env.example
 backups
 scripts
+!scripts/download-mitrabajo.cjs
