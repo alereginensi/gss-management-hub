@@ -3,13 +3,21 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Globe, Package, ShoppingCart, CalendarDays, LogOut } from 'lucide-react';
+import { ArrowLeft, Globe, Package, ShoppingCart, CalendarDays } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
+import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 
 const AGENDA_URL = 'https://capable-possibility-production-8da3.up.railway.app/login';
 
+const MENU_ITEMS = [
+    { label: 'Agenda Web', description: 'Acceso al sistema de agenda externo', href: AGENDA_URL, icon: Globe, external: true },
+    { label: 'Envíos al Interior', description: 'Seguimiento de envíos con tracking y estados', href: '/logistica/envios', icon: Package, external: false },
+    { label: 'Órdenes de Compra', description: 'Gestión de órdenes con OCR de PDF', href: '/logistica/ordenes-compra', icon: ShoppingCart, external: false },
+    { label: 'Calendario', description: 'Entregas, ingresos de mercadería y solicitudes', href: '/logistica/calendario', icon: CalendarDays, external: false },
+];
+
 export default function LogisticaPage() {
-    const { currentUser, isAuthenticated, loading, logout } = useTicketContext();
+    const { currentUser, isAuthenticated, loading, logout, isMobile } = useTicketContext();
     const router = useRouter();
 
     useEffect(() => {
@@ -21,82 +29,76 @@ export default function LogisticaPage() {
     if (loading || !currentUser) return null;
 
     return (
-        <div style={{ height: '100vh', backgroundColor: 'var(--bg-color)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--surface-color)' }}>
-                <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', textDecoration: 'none', fontSize: '0.85rem' }}>
-                    <ArrowLeft size={15} /> Inicio
-                </Link>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="GSS" style={{ height: '36px' }} />
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{currentUser.name}</span>
+        <div style={{ minHeight: '100vh', backgroundColor: '#f5f7fa' }}>
+
+            <header style={{
+                position: 'fixed', top: 0, left: 0, right: 0, height: '56px',
+                backgroundColor: '#29416b',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: isMobile ? '0 1rem' : '0 1.5rem',
+                zIndex: 100, borderBottom: '3px solid #e04951', boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '0.78rem', transition: 'color 200ms' }}
+                        onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,1)')}
+                        onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}>
+                        <ArrowLeft size={13} />{!isMobile && ' Inicio'}
+                    </Link>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {isMobile
+                      ? <img src="/logo.png" alt="GSS" style={{ maxHeight: '32px', width: 'auto', filter: 'brightness(0) invert(1)' }} />
+                      : <img src="/logo.png" alt="GSS Facility Services" style={{ maxHeight: '30px', width: 'auto', filter: 'brightness(0) invert(1)' }} />
+                    }
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {!isMobile && (
+                        <>
+                            <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.8rem', fontWeight: 500 }}>{currentUser.name}</span>
+                            <span style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', padding: '0.2rem 0.6rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', borderRadius: '4px' }}>
+                                {currentUser.role}
+                            </span>
+                        </>
+                    )}
+                    <LogoutExpandButton onClick={() => { logout(); router.push('/login'); }} />
+                </div>
             </header>
 
-            <main className="hub-main standalone-page" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 0 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
-                    <div style={{ textAlign: 'center' }}>
-                        <h1 style={{ color: 'var(--text-primary)', fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.35rem' }}>MENÚ PRINCIPAL</h1>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>Logística y Operaciones</p>
+            <main className="standalone-page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start', minHeight: 'calc(100vh - 56px)', marginTop: '56px', padding: isMobile ? '1.5rem 1rem 2rem' : '2rem 1.5rem', marginLeft: 0 }}>
+                <div style={{ width: '100%', maxWidth: '960px', margin: '0 auto', padding: 0 }}>
+
+                    <h1 style={{ fontSize: isMobile ? '1.1rem' : '1.3rem', fontWeight: 700, color: '#0f172a', margin: '0 0 0.2rem', letterSpacing: '-0.01em' }}>
+                        Logística
+                    </h1>
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1.25rem' }}>
+                        GSS Management Hub · Logística y operaciones
+                    </p>
+
+                    <div className="landing-modules-grid">
+                        {MENU_ITEMS.map((item) => {
+                            const Icon = item.icon;
+                            const cardContent = (
+                                <>
+                                    <div className="landing-card-icon"><Icon size={26} color="white" /></div>
+                                    <div className="landing-card-content">
+                                        <p className="landing-card-label">{item.label}</p>
+                                        <p className="landing-card-desc">{item.description}</p>
+                                    </div>
+                                </>
+                            );
+                            return item.external ? (
+                                <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer" className="landing-card-btn">
+                                    {cardContent}
+                                </a>
+                            ) : (
+                                <Link key={item.href} href={item.href} className="landing-card-btn">
+                                    {cardContent}
+                                </Link>
+                            );
+                        })}
                     </div>
 
-                    <div className="hub-menu-grid">
-                        {/* Agenda Web — external link */}
-                        <a href={AGENDA_URL} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-                            <div
-                                className="hub-menu-card"
-                                style={{ backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)', transition: 'transform 0.15s, background-color 0.15s, box-shadow 0.15s', boxShadow: '0 4px 12px rgba(41,65,107,0.2)' }}
-                                onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#1e3a8a'; e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(41,65,107,0.35)'; }}
-                                onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-color)'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(41,65,107,0.2)'; }}
-                            >
-                                <Globe size={32} color="white" />
-                                <span>Agenda{'\n'}Web</span>
-                            </div>
-                        </a>
-
-                        {/* Envíos al Interior — internal link */}
-                        <Link href="/logistica/envios" style={{ textDecoration: 'none' }}>
-                            <div
-                                className="hub-menu-card"
-                                style={{ backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)', transition: 'transform 0.15s, background-color 0.15s, box-shadow 0.15s', boxShadow: '0 4px 12px rgba(41,65,107,0.2)' }}
-                                onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#1e3a8a'; e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(41,65,107,0.35)'; }}
-                                onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-color)'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(41,65,107,0.2)'; }}
-                            >
-                                <Package size={32} color="white" />
-                                <span>Envíos al{'\n'}Interior</span>
-                            </div>
-                        </Link>
-
-                        {/* Órdenes de Compra */}
-                        <Link href="/logistica/ordenes-compra" style={{ textDecoration: 'none' }}>
-                            <div
-                                className="hub-menu-card"
-                                style={{ backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)', transition: 'transform 0.15s, background-color 0.15s, box-shadow 0.15s', boxShadow: '0 4px 12px rgba(41,65,107,0.2)' }}
-                                onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#1e3a8a'; e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(41,65,107,0.35)'; }}
-                                onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-color)'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(41,65,107,0.2)'; }}
-                            >
-                                <ShoppingCart size={32} color="white" />
-                                <span>Órdenes de{'\n'}Compra</span>
-                            </div>
-                        </Link>
-
-                        {/* Calendario */}
-                        <Link href="/logistica/calendario" style={{ textDecoration: 'none' }}>
-                            <div
-                                className="hub-menu-card"
-                                style={{ backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)', transition: 'transform 0.15s, background-color 0.15s, box-shadow 0.15s', boxShadow: '0 4px 12px rgba(41,65,107,0.2)' }}
-                                onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#1e3a8a'; e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(41,65,107,0.35)'; }}
-                                onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'var(--primary-color)'; e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(41,65,107,0.2)'; }}
-                            >
-                                <CalendarDays size={32} color="white" />
-                                <span style={{ minHeight: '2.4em', display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>Calendario</span>
-                            </div>
-                        </Link>
-                    </div>
                 </div>
             </main>
-
-            <button onClick={() => { logout(); router.push('/login'); }} style={{ position: 'fixed', bottom: '1.5rem', left: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.5rem 0.9rem', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                <LogOut size={14} /> Cerrar sesión
-            </button>
         </div>
     );
 }

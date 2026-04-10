@@ -1,19 +1,15 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import { TicketProvider } from './context/TicketContext'
 import ThemeWrapper from './components/ThemeWrapper'
 import SWRegistration from './components/SWRegistration'
 import InactivityGuard from './components/InactivityGuard'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-
+// Iconos solo en <head> con rutas relativas: en Docker/Railway el build a veces no tiene URL pública,
+// y metadataBase incorrecta rompe el favicon (apunta a localhost).
 export const metadata: Metadata = {
   title: 'GSS Management Hub',
   description: 'Central Administrative Portal for GSS Facility Services',
-  icons: {
-    icon: '/icon.svg',
-  },
 }
 
 export const viewport = {
@@ -32,8 +28,12 @@ export default function RootLayout({
     <html lang="es">
       <head>
         <meta charSet="utf-8" />
+        {/* Refuerzo: muchos browsers solo miran /favicon.ico o cachean fuerte; ?v= fuerza recarga tras cambios */}
+        <link rel="icon" href="/logo.png?v=5" type="image/png" sizes="any" />
+        <link rel="shortcut icon" href="/favicon.ico?v=5" type="image/png" />
+        <link rel="apple-touch-icon" href="/logo.png?v=5" />
       </head>
-      <body className={inter.variable}>
+      <body>
         <TicketProvider>
           <ThemeWrapper>
             <InactivityGuard />

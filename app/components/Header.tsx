@@ -61,7 +61,7 @@ export default function Header({ title, actions }: { title: string, actions?: Re
             paddingBottom: '1rem',
             borderBottom: '1px solid var(--border-color)'
         }}>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h1>
+            <h1 style={{ fontSize: 'clamp(1.35rem, 1.1vw + 1.1rem, 1.85rem)', fontWeight: 700, color: 'var(--text-primary)' }}>{title}</h1>
 
             <div className="header-controls" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                 {actions && <div className="header-actions">{actions}</div>}
@@ -74,11 +74,11 @@ export default function Header({ title, actions }: { title: string, actions?: Re
                             value={searchQuery}
                             onChange={handleSearchChange}
                             style={{
-                                padding: '0.5rem 1rem',
+                                padding: '0.55rem 1.1rem',
                                 borderRadius: 'var(--radius)',
                                 border: '1px solid var(--border-color)',
-                                fontSize: '0.875rem',
-                                width: '250px',
+                                fontSize: '1rem',
+                                width: 'min(320px, 42vw)',
                                 backgroundColor: 'var(--surface-color)',
                                 color: 'var(--text-primary)',
                                 boxSizing: 'border-box'

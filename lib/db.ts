@@ -5,11 +5,19 @@ import fs from 'fs';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
+/** Evita CREATE TABLE / migraciones durante `next build` (workers importan db sin DB accesible). */
+const DEFER_DB_SCHEMA_INIT =
+  process.env.NEXT_PHASE === 'phase-production-build' ||
+  process.env.SKIP_DB_INIT === '1';
+
 class DbWrapper {
   private pgPool: any | null = null;
   private sqliteDb: any | null = null;
   public type: 'pg' | 'sqlite' = 'sqlite';
   private _initPromise: Promise<void> | null = null;
+  /** Si true, `initialize()` se ejecuta en el primer `query`/`get`/`run`/`exec` en runtime. */
+  private _deferredSchemaInit = false;
+  private _lazySchemaPromise: Promise<void> | null = null;
 
   constructor() {
     const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
@@ -36,7 +44,33 @@ class DbWrapper {
     } else {
       this.fallbackToSqlite();
     }
-    this._initPromise = this.initialize().then(() => { this._initPromise = null; });
+
+    if (DEFER_DB_SCHEMA_INIT) {
+      console.log('⏭️ DB schema init deferred until first request (build / SKIP_DB_INIT).');
+      this._deferredSchemaInit = true;
+      this._initPromise = null;
+    } else {
+      this._initPromise = this.initialize().then(() => { this._initPromise = null; });
+    }
+  }
+
+  private async ensureSchemaReady(): Promise<void> {
+    if (this._deferredSchemaInit) {
+      if (!this._lazySchemaPromise) {
+        this._lazySchemaPromise = this.initialize()
+          .then(() => {
+            this._deferredSchemaInit = false;
+            this._lazySchemaPromise = null;
+          })
+          .catch((err) => {
+            this._lazySchemaPromise = null;
+            throw err;
+          });
+      }
+      await this._lazySchemaPromise;
+      return;
+    }
+    if (this._initPromise) await this._initPromise;
   }
 
   private fallbackToSqlite() {
@@ -62,7 +96,7 @@ class DbWrapper {
   }
 
   async query(text: string, params: any[] = []): Promise<any[]> {
-    if (this._initPromise) await this._initPromise;
+    await this.ensureSchemaReady();
     const safeParams = params.map(p => p === undefined ? null : p);
 
     // Convert ? to $1, $2, ... for PG
@@ -86,7 +120,7 @@ class DbWrapper {
   }
 
   async run(text: string, params: any[] = []): Promise<{ lastInsertRowid?: number | string, changes: number }> {
-    if (this._initPromise) await this._initPromise;
+    await this.ensureSchemaReady();
     const safeParams = params.map(p => p === undefined ? null : p);
     let pgText = text;
     if (this.type === 'pg') {
@@ -103,6 +137,7 @@ class DbWrapper {
   }
 
   async exec(text: string): Promise<void> {
+    await this.ensureSchemaReady();
     if (this.type === 'pg') {
       await this.pgPool!.query(text);
     } else {

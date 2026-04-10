@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gss-hub-v5';
+const CACHE_NAME = 'gss-hub-v7';
 const urlsToCache = [
     '/offline.html'
 ];
@@ -33,6 +33,19 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     // Exclude API calls and non-GET requests
     if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
+        return;
+    }
+
+    const path = new URL(event.request.url).pathname;
+    // Favicon / marca: NO pasar por cache-first del SW (evita icono viejo, 503 cacheado, MIME raro en Railway).
+    if (
+        path === '/favicon.ico' ||
+        path === '/logo.png' ||
+        path === '/logo-2.png' ||
+        path === '/icon.png' ||
+        path === '/manifest.webmanifest' ||
+        path.startsWith('/icon')
+    ) {
         return;
     }
 
@@ -73,8 +86,8 @@ self.addEventListener('push', function (event) {
         const data = event.data.json();
         const options = {
             body: data.body,
-            icon: '/icon.svg',
-            badge: '/icon.svg',
+            icon: '/logo.png',
+            badge: '/logo.png',
             vibrate: [100, 50, 100],
             data: {
                 dateOfArrival: Date.now(),

@@ -1,33 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0f172a;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#1e293b;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  
-  <!-- Background: Rounded Square -->
-  <rect x="0" y="0" width="512" height="512" rx="110" fill="url(#grad1)" />
-  
-  <!-- Subtle Grid Pattern for "Engineering/Tech" feel -->
-  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#334155" stroke-width="1" opacity="0.3"/>
-  </pattern>
-  <rect width="512" height="512" fill="url(#grid)" rx="110" opacity="0.5" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- White background -->
+  <circle cx="100" cy="100" r="100" fill="white"/>
 
-  <!-- Center Text: GSS -->
-  <text x="50%" y="48%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900" font-size="200" fill="#f8fafc" letter-spacing="-5">GSS</text>
-  
-  <!-- Subtext: HUB (Red Accent) -->
-  <text x="50%" y="68%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="50" fill="#ef4444" letter-spacing="15">HUB</text>
+  <!-- Green segment: top → CCW → lower-left (left side of circle) -->
+  <path d="M 100,100 L 100,8 A 92,92 0 0,0 20,146 Z" fill="#6b8f3a"/>
 
-  <!-- Wrench Icon (Stylized, Integrated) -->
-  <!-- A wrench wrapping slightly around the bottom right -->
-  <g transform="translate(320, 320) rotate(-45)">
-     <path d="M0 0 L40 0 L40 100 L0 100 Z" fill="#94a3b8" opacity="0.8" />
-     <circle cx="20" cy="-20" r="35" fill="none" stroke="#94a3b8" stroke-width="12" opacity="0.8" />
-  </g>
-  
-  <!-- Border stroke -->
-  <rect x="10" y="10" width="492" height="492" rx="100" fill="none" stroke="#334155" stroke-width="10" opacity="0.5" />
+  <!-- Red segment: top → CW → lower-right (right side of circle) -->
+  <path d="M 100,100 L 100,8 A 92,92 0 0,1 180,146 Z" fill="#bb2e26"/>
+
+  <!-- Blue segment: lower-right → CW → lower-left (bottom arc) -->
+  <path d="M 100,100 L 180,146 A 92,92 0 0,1 20,146 Z" fill="#2471a3"/>
+
+  <!-- White center triangle creating the void -->
+  <polygon points="100,52 124,106 76,106" fill="white"/>
+
+  <!-- Head circles (darker shade of each color) -->
+  <circle cx="43" cy="128" r="13" fill="#3d5a18"/>
+  <circle cx="157" cy="128" r="13" fill="#8b1a10"/>
+  <circle cx="100" cy="157" r="16" fill="#1a4a72"/>
+
+  <!-- Outer border ring -->
+  <circle cx="100" cy="100" r="95" fill="none" stroke="#3d5269" stroke-width="9"/>
 </svg>
