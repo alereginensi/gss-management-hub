@@ -76,6 +76,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/playwright ./node_modules/playwright
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/playwright-core ./node_modules/playwright-core
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/xlsx ./node_modules/xlsx
 
 RUN mkdir -p ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/download-mitrabajo.cjs ./scripts/download-mitrabajo.cjs
