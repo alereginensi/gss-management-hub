@@ -3,19 +3,9 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Briefcase, Shield, LogOut, Package, Calculator, Droplets } from 'lucide-react';
+import { Briefcase, Shield, Package, Calculator, Droplets, Users, Lock } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from './context/TicketContext';
-
-const cardHoverOn = (e: React.MouseEvent<HTMLDivElement>) => {
-  e.currentTarget.style.transform = 'translateY(-4px)';
-  e.currentTarget.style.boxShadow = '0 16px 32px rgba(41,65,107,0.35)';
-  e.currentTarget.style.backgroundColor = '#1e3a8a';
-};
-const cardHoverOff = (e: React.MouseEvent<HTMLDivElement>) => {
-  e.currentTarget.style.transform = 'translateY(0)';
-  e.currentTarget.style.boxShadow = '0 4px 12px rgba(41,65,107,0.2)';
-  e.currentTarget.style.backgroundColor = 'var(--primary-color)';
-};
+import LogoutExpandButton from './components/LogoutExpandButton';
 
 export default function Landing() {
   const { currentUser, isAuthenticated, loading, logout, isMobile } = useTicketContext();
@@ -28,13 +18,13 @@ export default function Landing() {
     } else if (currentUser?.role === 'funcionario') {
       router.push('/tasks');
     } else if (currentUser?.role === 'supervisor' && currentUser.panel_access === 0) {
-      // Supervisor without general panel access → redirect to first assigned module
       const mods = currentUser.modules?.split(',').map(m => m.trim()).filter(Boolean) ?? [];
       const moduleRoutes: Record<string, string> = {
         logistica: '/logistica',
         tecnico: '/seguridad-electronica',
         cotizacion: '/cotizacion/panel',
         limpieza: '/operaciones-limpieza',
+        rrhh: '/rrhh',
       };
       const dest = mods.map(m => moduleRoutes[m]).find(Boolean) ?? '/login';
       router.push(dest);
@@ -43,232 +33,137 @@ export default function Landing() {
 
   if (loading || !currentUser) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-color)' }}>
-        <div style={{ width: '32px', height: '32px', border: '3px solid var(--border-color)', borderTopColor: 'var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: '1rem',
+        height: '100vh',
+        backgroundColor: 'var(--bg-color)',
+      }}>
+        <div style={{ width: '32px', height: '32px', border: '3px solid #e2e2e2', borderTopColor: 'var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+          Cargando, espere por favor…
+        </p>
       </div>
     );
   }
 
   if (currentUser.role === 'funcionario') {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: 'var(--bg-color)' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f7fa' }}>
         Redirigiendo...
       </div>
     );
   }
 
+  const moduleList = [
+    { key: 'panel',      label: 'Panel General',                 description: 'Tickets, bitácora y gestión operativa',         icon: Briefcase,  href: '/administracion',        access: true },
+    { key: 'tecnico',    label: 'Seguridad Electrónica',          description: 'Monitoreo, mantenimiento e historial',           icon: Shield,     href: '/seguridad-electronica', access: hasModuleAccess(currentUser, 'tecnico') },
+    { key: 'logistica',  label: 'Logística',                      description: 'Solicitudes de materiales y órdenes de compra', icon: Package,    href: '/logistica',             access: hasModuleAccess(currentUser, 'logistica') },
+    { key: 'cotizacion', label: 'Cotización',                     description: 'Tarifas, liquidaciones y reportes',              icon: Calculator, href: '/cotizacion',            access: hasModuleAccess(currentUser, 'cotizacion') },
+    { key: 'limpieza',   label: 'Operaciones Limpieza/Seguridad', description: 'Tareas, informes y control operativo',           icon: Droplets,   href: '/operaciones-limpieza',  access: hasModuleAccess(currentUser, 'limpieza') },
+    { key: 'rrhh',       label: 'Recursos Humanos',               description: 'Gestión de personal y RRHH',                    icon: Users,      href: '/rrhh',                  access: hasModuleAccess(currentUser, 'rrhh') },
+  ];
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: 'var(--bg-color)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem',
-      gap: '2rem'
-    }}>
-      {/* Logo */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo.png" alt="GSS Facility Services" style={{ maxWidth: '220px', height: 'auto' }} />
+    <div style={{ minHeight: '100vh', backgroundColor: '#f5f7fa' }}>
 
-      <h1 style={{ color: 'var(--text-primary)', fontSize: '1.25rem', fontWeight: 600, textAlign: 'center', margin: 0 }}>
-        Seleccione una sección
-      </h1>
-
-      {/* Section Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-        gap: '1.5rem',
-        width: '100%',
-        maxWidth: '900px'
+      {/* Header fijo */}
+      <header style={{
+        position: 'fixed', top: 0, left: 0, right: 0, height: '56px',
+        backgroundColor: '#29416b',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: isMobile ? '0 1rem' : '0 2rem',
+        zIndex: 100,
+        borderBottom: '3px solid #e04951',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
       }}>
-        <Link href="/administracion" style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '2.5rem 2rem',
-              gap: '1rem',
-              cursor: 'pointer',
-              transition: 'transform 0.18s, box-shadow 0.18s, background-color 0.18s',
-              minHeight: '180px',
-              height: '100%',
-              textAlign: 'center',
-              backgroundColor: 'var(--primary-color)',
-              borderRadius: 'var(--radius)',
-              boxShadow: '0 4px 12px rgba(41,65,107,0.2)'
-            }}
-            onMouseOver={cardHoverOn}
-            onMouseOut={cardHoverOff}
-          >
-            <div style={{ padding: '0.9rem', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>
-              <Briefcase size={36} color="white" />
-            </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', margin: 0 }}>Panel General</h2>
-            <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', margin: 0 }}>Tickets, bitácora y gestión operativa</p>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="GSS Facility Services" style={{ maxHeight: isMobile ? '32px' : '30px', width: 'auto', filter: 'brightness(0) invert(1)' }} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {!isMobile && (
+            <>
+              <span style={{ color: 'rgba(255,255,255,0.9)', fontSize: '0.8rem', fontWeight: 500 }}>{currentUser.name}</span>
+              <span style={{ backgroundColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', padding: '0.2rem 0.6rem', fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', borderRadius: '4px' }}>
+                {currentUser.role}
+              </span>
+            </>
+          )}
+          <LogoutExpandButton onClick={() => { logout(); router.push('/login'); }} />
+        </div>
+      </header>
+
+      {/* Contenido: escritorio ocupa casi todo el ancho y alinea arriba; móvil sin cambios */}
+      <main
+        className="standalone-page"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          justifyContent: 'flex-start',
+          minHeight: 'calc(100vh - 56px)',
+          marginTop: '56px',
+          padding: isMobile ? '1.5rem 1rem 2rem' : '2rem clamp(1.5rem, 5vw, 4rem)',
+          marginLeft: 0,
+          width: '100%',
+          boxSizing: 'border-box',
+        }}
+      >
+        <div style={{ width: '100%', maxWidth: isMobile ? '1100px' : 'min(1680px, 100%)', margin: isMobile ? undefined : '0 auto', padding: 0 }}>
+
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: isMobile ? '1.25rem' : '1.75rem' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt="GSS Facility Services"
+              style={{ maxWidth: isMobile ? '168px' : 'min(320px, 28vw)', width: '100%', height: 'auto', objectFit: 'contain' }}
+            />
           </div>
-        </Link>
 
-        {hasModuleAccess(currentUser, 'tecnico') ? (
-          <Link href="/seguridad-electronica" style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
-            <div
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                padding: '2.5rem 2rem', gap: '1rem', cursor: 'pointer',
-                transition: 'transform 0.18s, box-shadow 0.18s, background-color 0.18s',
-                minHeight: '180px', height: '100%', textAlign: 'center',
-                backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)',
-                boxShadow: '0 4px 12px rgba(41,65,107,0.2)'
-              }}
-              onMouseOver={cardHoverOn}
-              onMouseOut={cardHoverOff}
-            >
-              <div style={{ padding: '0.9rem', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>
-                <Shield size={36} color="white" />
-              </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', margin: 0 }}>Seguridad Electrónica</h2>
-              <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', margin: 0 }}>Monitoreo, mantenimiento e historial</p>
-            </div>
-          </Link>
-        ) : (
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            padding: '2.5rem 2rem', gap: '1rem', cursor: 'not-allowed',
-            minHeight: '180px', height: '100%', textAlign: 'center',
-            backgroundColor: '#e2e8f0', borderRadius: 'var(--radius)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-          }}>
-            <div style={{ padding: '0.9rem', backgroundColor: 'rgba(100,116,139,0.15)', borderRadius: '50%' }}>
-              <Shield size={36} color="#94a3b8" />
-            </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#94a3b8', margin: 0 }}>Seguridad Electrónica</h2>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>Necesitás ser Técnico para acceder a esta sección</p>
+          <h1 style={{ fontSize: isMobile ? '1.1rem' : 'clamp(1.5rem, 2.2vw, 2rem)', fontWeight: 700, color: '#0f172a', margin: '0 0 0.35rem', letterSpacing: '-0.02em' }}>
+            Módulos del Sistema
+          </h1>
+          <p style={{ fontSize: isMobile ? '0.8rem' : 'clamp(0.9rem, 1.1vw, 1.05rem)', color: '#64748b', margin: '0 0 1.5rem', maxWidth: isMobile ? undefined : '48rem' }}>
+            GSS Management Hub · Seleccione un módulo para continuar
+          </p>
+
+          <div className="landing-modules-grid">
+            {moduleList.map((mod) => {
+              const IconComp = mod.icon;
+              if (mod.access) {
+                return (
+                  <Link key={mod.key} href={mod.href} className="landing-card-btn">
+                    <div className="landing-card-icon">
+                      <IconComp size={26} color="white" />
+                    </div>
+                    <div className="landing-card-content">
+                      <p className="landing-card-label">{mod.label}</p>
+                      <p className="landing-card-desc">{mod.description}</p>
+                    </div>
+                  </Link>
+                );
+              }
+              return (
+                <div key={mod.key} className="landing-card-btn landing-card-btn--locked">
+                  <div className="landing-card-icon landing-card-icon--locked">
+                    <IconComp size={26} color="#94a3b8" />
+                  </div>
+                  <div className="landing-card-content">
+                    <p className="landing-card-label landing-card-label--locked">{mod.label}</p>
+                    <span className="landing-card-no-access">
+                      <Lock size={11} /> Sin acceso asignado
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        )}
 
-        {hasModuleAccess(currentUser, 'logistica') ? (
-          <Link href="/logistica" style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
-            <div
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                padding: '2.5rem 2rem', gap: '1rem', cursor: 'pointer',
-                transition: 'transform 0.18s, box-shadow 0.18s, background-color 0.18s',
-                minHeight: '180px', height: '100%', textAlign: 'center',
-                backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)',
-                boxShadow: '0 4px 12px rgba(41,65,107,0.2)'
-              }}
-              onMouseOver={cardHoverOn}
-              onMouseOut={cardHoverOff}
-            >
-              <div style={{ padding: '0.9rem', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>
-                <Package size={36} color="white" />
-              </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', margin: 0 }}>Logística</h2>
-              <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', margin: 0 }}>Solicitudes de materiales y órdenes de compra</p>
-            </div>
-          </Link>
-        ) : (
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            padding: '2.5rem 2rem', gap: '1rem', cursor: 'not-allowed',
-            minHeight: '180px', height: '100%', textAlign: 'center',
-            backgroundColor: '#e2e8f0', borderRadius: 'var(--radius)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-          }}>
-            <div style={{ padding: '0.9rem', backgroundColor: 'rgba(100,116,139,0.15)', borderRadius: '50%' }}>
-              <Package size={36} color="#94a3b8" />
-            </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#94a3b8', margin: 0 }}>Logística</h2>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>Sin acceso a esta sección</p>
-          </div>
-        )}
-
-        {hasModuleAccess(currentUser, 'cotizacion') ? (
-          <Link href="/cotizacion" style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
-            <div
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                padding: '2.5rem 2rem', gap: '1rem', cursor: 'pointer',
-                transition: 'transform 0.18s, box-shadow 0.18s, background-color 0.18s',
-                minHeight: '180px', height: '100%', textAlign: 'center',
-                backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)',
-                boxShadow: '0 4px 12px rgba(41,65,107,0.2)'
-              }}
-              onMouseOver={cardHoverOn}
-              onMouseOut={cardHoverOff}
-            >
-              <div style={{ padding: '0.9rem', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>
-                <Calculator size={36} color="white" />
-              </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', margin: 0 }}>Cotización</h2>
-              <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', margin: 0 }}>Tarifas, liquidaciones y reportes</p>
-            </div>
-          </Link>
-        ) : (
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            padding: '2.5rem 2rem', gap: '1rem', cursor: 'not-allowed',
-            minHeight: '180px', height: '100%', textAlign: 'center',
-            backgroundColor: '#e2e8f0', borderRadius: 'var(--radius)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-          }}>
-            <div style={{ padding: '0.9rem', backgroundColor: 'rgba(100,116,139,0.15)', borderRadius: '50%' }}>
-              <Calculator size={36} color="#94a3b8" />
-            </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#94a3b8', margin: 0 }}>Cotización</h2>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>Sin acceso a esta sección</p>
-          </div>
-        )}
-
-        {hasModuleAccess(currentUser, 'limpieza') ? (
-          <Link href="/operaciones-limpieza" style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
-            <div
-              style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                padding: '2.5rem 2rem', gap: '1rem', cursor: 'pointer',
-                transition: 'transform 0.18s, box-shadow 0.18s, background-color 0.18s',
-                minHeight: '180px', height: '100%', textAlign: 'center',
-                backgroundColor: 'var(--primary-color)', borderRadius: 'var(--radius)',
-                boxShadow: '0 4px 12px rgba(41,65,107,0.2)'
-              }}
-              onMouseOver={cardHoverOn}
-              onMouseOut={cardHoverOff}
-            >
-              <div style={{ padding: '0.9rem', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>
-                <Droplets size={36} color="white" />
-              </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', margin: 0 }}>Operaciones Limpieza/Seguridad</h2>
-              <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', margin: 0 }}>Tareas, informes y control operativo</p>
-            </div>
-          </Link>
-        ) : (
-          <div style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            padding: '2.5rem 2rem', gap: '1rem', cursor: 'not-allowed',
-            minHeight: '180px', height: '100%', textAlign: 'center',
-            backgroundColor: '#e2e8f0', borderRadius: 'var(--radius)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-          }}>
-            <div style={{ padding: '0.9rem', backgroundColor: 'rgba(100,116,139,0.15)', borderRadius: '50%' }}>
-              <Droplets size={36} color="#94a3b8" />
-            </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#94a3b8', margin: 0 }}>Operaciones Limpieza/Seguridad</h2>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>Sin acceso a esta sección</p>
-          </div>
-        )}
-      </div>
-
-      <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
-        {currentUser.name} · {currentUser.role}
-      </p>
-
-      <button onClick={() => { logout(); router.push('/login'); }} style={{ position: 'fixed', bottom: '1.5rem', left: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.5rem 0.9rem', fontSize: '0.8rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-        <LogOut size={14} /> Cerrar sesión
-      </button>
+        </div>
+      </main>
     </div>
   );
 }

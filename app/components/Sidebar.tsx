@@ -6,7 +6,6 @@ import {
     Ticket as TicketIcon,
     PlusCircle,
     Settings,
-    LogOut,
     Users,
     BookOpen,
     Menu,
@@ -22,6 +21,7 @@ import {
     Monitor
 } from 'lucide-react';
 import { useTicketContext } from '../context/TicketContext';
+import LogoutExpandButton from './LogoutExpandButton';
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
@@ -267,29 +267,9 @@ export default function Sidebar() {
                     </div>
                 </div>
 
-                <button
-                    onClick={handleLogout}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        padding: '0.6rem',
-                        borderRadius: 'var(--radius)',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        color: '#ef4444',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontWeight: 500,
-                        fontSize: '0.875rem',
-                        width: '100%',
-                        transition: 'background-color 0.2s'
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
-                >
-                    <LogOut size={18} />
-                    Cerrar Sesión
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                    <LogoutExpandButton onClick={handleLogout} />
+                </div>
             </div>
         </>
     );

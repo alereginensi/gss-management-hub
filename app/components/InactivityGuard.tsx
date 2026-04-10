@@ -48,7 +48,7 @@ export default function InactivityGuard() {
             padding: 1rem 1.5rem;
             border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-            font-family: var(--font-inter, sans-serif);
+            font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
             font-size: 0.9rem;
             max-width: 320px;
             border-left: 4px solid #f59e0b;
@@ -68,7 +68,8 @@ export default function InactivityGuard() {
         try {
             await fetch('/api/auth/logout', { method: 'POST' });
         } catch { /* ignore network errors during logout */ }
-        // Clear localStorage
+        // Clear localStorage so TicketContext doesn't re-authenticate on next load
+        localStorage.removeItem('authToken');
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('user');
         router.push('/login');

@@ -51,7 +51,7 @@
 body {
   background-color: var(--bg-color);
   color: var(--text-primary);
-  font-family: var(--font-inter), sans-serif;
+  font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -107,9 +107,9 @@ textarea {
 }
 
 .tag {
-  padding: 0.25rem 0.75rem;
+  padding: 0.3rem 0.85rem;
   border-radius: 9999px;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: white;
 }
@@ -540,4 +540,286 @@ textarea {
   .mobile-hide {
     display: none !important;
   }
+}
+
+/* ── Pantalla de carga inicial (sesión / hidratación) ── */
+.app-initial-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  background-color: var(--bg-color);
+}
+
+.app-initial-loader-sub {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: inherit;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 20rem;
+  padding: 0 1.25rem;
+  line-height: 1.45;
+}
+
+.loader {
+  width: 65px;
+  aspect-ratio: 1;
+  position: relative;
+}
+
+.loader::before,
+.loader::after {
+  content: "";
+  position: absolute;
+  border-radius: 50px;
+  box-shadow: 0 0 0 3px inset var(--primary-color);
+  animation: app-loader-l5 2.5s infinite;
+}
+
+.loader::after {
+  animation-delay: -1.25s;
+  border-radius: 0;
+}
+
+@keyframes app-loader-l5 {
+  0% {
+    inset: 0 35px 35px 0;
+  }
+  12.5% {
+    inset: 0 35px 0 0;
+  }
+  25% {
+    inset: 35px 35px 0 0;
+  }
+  37.5% {
+    inset: 35px 0 0 0;
+  }
+  50% {
+    inset: 35px 0 0 35px;
+  }
+  62.5% {
+    inset: 0 0 0 35px;
+  }
+  75% {
+    inset: 0 0 35px 35px;
+  }
+  87.5% {
+    inset: 0 0 35px 0;
+  }
+  100% {
+    inset: 0 35px 35px 0;
+  }
+}
+
+/* ── Skew button (landing cards) ── */
+.skew-btn {
+  background: #fff;
+  border: 2px solid #29416b;
+  padding: 7px 18px;
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  cursor: pointer;
+  transform: skew(-21deg);
+  position: relative;
+  overflow: hidden;
+  color: #29416b;
+  flex-shrink: 0;
+  transition: color 0.35s;
+}
+
+.skew-btn > span {
+  display: inline-block;
+  transform: skew(21deg);
+}
+
+.skew-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 100%;
+  left: 0;
+  background: #29416b;
+  opacity: 0;
+  z-index: -1;
+  transition: all 0.4s;
+}
+
+.skew-btn:hover {
+  color: #fff;
+}
+
+.skew-btn:hover::before {
+  left: 0;
+  right: 0;
+  opacity: 1;
+}
+
+/* ── Landing módulos: 2 col desktop, 3 col en pantallas muy anchas; 1 col en móvil ── */
+.landing-modules-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 767px) {
+  .landing-modules-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .landing-card-btn {
+    min-height: 0;
+    padding: 1rem 1rem;
+    align-items: flex-start;
+  }
+
+  .landing-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+  }
+
+  .landing-card-label {
+    font-size: 1rem;
+  }
+
+  .landing-card-desc {
+    font-size: 0.85rem;
+  }
+}
+
+@media (min-width: 1500px) {
+  .landing-modules-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ── Landing: tarjeta-botón de módulo (fill azul de izquierda a derecha) ── */
+.landing-card-btn {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  border: 2px solid #29416b;
+  border-radius: 4px;
+  padding: clamp(1.35rem, 2vw, 1.85rem) clamp(1.25rem, 2vw, 2rem);
+  display: flex;
+  align-items: center;
+  gap: 1.35rem;
+  cursor: pointer;
+  min-height: 108px;
+  height: 100%;
+  box-sizing: border-box;
+  text-decoration: none;
+  transition: box-shadow 0.25s;
+}
+
+.landing-card-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 100%;
+  background: #29416b;
+  opacity: 0;
+  z-index: 0;
+  transition: right 0.45s ease, opacity 0.45s ease;
+}
+
+.landing-card-btn:hover {
+  box-shadow: 0 4px 18px rgba(41, 65, 107, 0.28);
+}
+
+.landing-card-btn:hover::before {
+  right: 0;
+  opacity: 1;
+}
+
+.landing-card-icon {
+  position: relative;
+  z-index: 1;
+  width: 56px;
+  height: 56px;
+  background: #29416b;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.35s, border-color 0.35s;
+  border: 1px solid transparent;
+}
+
+.landing-card-btn:hover .landing-card-icon {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.landing-card-content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+}
+
+.landing-card-label {
+  font-size: clamp(1rem, 1.15vw, 1.125rem);
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+  transition: color 0.35s;
+}
+
+.landing-card-desc {
+  font-size: clamp(0.85rem, 0.95vw, 0.95rem);
+  color: #64748b;
+  margin: 0.35rem 0 0;
+  line-height: 1.45;
+  transition: color 0.35s;
+}
+
+.landing-card-btn:hover .landing-card-label,
+.landing-card-btn:hover .landing-card-desc {
+  color: #fff;
+}
+
+/* Locked (sin acceso) */
+.landing-card-btn--locked {
+  border-color: #e2e8f0;
+  background: #fafbfc;
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none !important;
+}
+
+.landing-card-btn--locked::before {
+  display: none;
+}
+
+.landing-card-icon--locked {
+  background: #e2e8f0;
+  border-color: transparent !important;
+}
+
+.landing-card-label--locked {
+  color: #94a3b8 !important;
+}
+
+.landing-card-no-access {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-weight: 500;
 }

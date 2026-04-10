@@ -29,7 +29,16 @@ export default function ThemeWrapper({ children }: { children: React.ReactNode }
         }
     }, [isAuthenticated, pathname, isMounted, router, currentUser?.role, loading]);
 
-    if (!isMounted) return null;
+    const showLoader = !isMounted || loading;
+
+    if (showLoader) {
+        return (
+            <div className="app-initial-loader" role="status" aria-live="polite" aria-label="Cargando aplicación">
+                <div className="loader" aria-hidden />
+                <p className="app-initial-loader-sub">Cargando, espere por favor…</p>
+            </div>
+        );
+    }
 
     return (
         <div style={{ minHeight: '100vh' }}>

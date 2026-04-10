@@ -165,7 +165,7 @@ export default function TicketDetail({ params }: { params: Promise<{ id: string 
         try {
             const res = await fetch(`/api/tickets/${ticketId}/tasks`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify({ taskId })
             });
             const data = await res.json();

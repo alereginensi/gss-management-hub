@@ -1,0 +1,85 @@
+/* Basado en Uiverse.io (vinodjangid07); compacto para header GSS */
+
+.btn {
+  display: inline-flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition:
+    width 0.28s ease,
+    border-radius 0.28s ease,
+    box-shadow 0.2s ease;
+  box-shadow: 1px 1px 6px rgba(0, 0, 0, 0.15);
+  background-color: rgb(255, 65, 65);
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.sign {
+  flex: 0 0 30px;
+  width: 30px;
+  min-width: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: flex-basis 0.28s ease;
+}
+
+.sign svg {
+  width: 12px;
+  height: auto;
+}
+
+.sign svg path {
+  fill: white;
+}
+
+.text {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  padding-right: 0;
+  transition:
+    opacity 0.22s ease,
+    max-width 0.28s ease,
+    padding 0.28s ease;
+}
+
+/* Expandido: solo el ancho que pide el texto (sin banda roja vacía a la derecha) */
+.btn:hover,
+.btn:focus-visible {
+  width: fit-content;
+  max-width: 148px;
+  border-radius: 15px;
+}
+
+.btn:hover .text,
+.btn:focus-visible .text {
+  opacity: 1;
+  max-width: 110px;
+  padding-right: 6px;
+}
+
+.btn:active {
+  transform: translate(1px, 1px);
+}
+
+.btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 2px;
+}
