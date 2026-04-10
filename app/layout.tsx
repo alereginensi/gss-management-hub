@@ -28,10 +28,6 @@ export default function RootLayout({
     <html lang="es">
       <head>
         <meta charSet="utf-8" />
-        {/* Refuerzo: muchos browsers solo miran /favicon.ico o cachean fuerte; ?v= fuerza recarga tras cambios */}
-        <link rel="icon" href="/logo.png?v=5" type="image/png" sizes="any" />
-        <link rel="shortcut icon" href="/favicon.ico?v=5" type="image/png" />
-        <link rel="apple-touch-icon" href="/logo.png?v=5" />
       </head>
       <body>
         <TicketProvider>
