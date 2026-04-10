@@ -75,6 +75,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 
+# Script de descarga Mitrabajo (outputFileTracingIncludes no es fiable para .cjs externos)
+RUN mkdir -p ./scripts
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/download-mitrabajo.cjs ./scripts/download-mitrabajo.cjs
+
 # Binarios de Playwright (no vienen en standalone)
 COPY --from=builder --chown=nextjs:nodejs /app/.playwright-browsers ./.playwright-browsers
 
