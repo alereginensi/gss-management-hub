@@ -164,19 +164,16 @@ async function downloadMitrabajo(targetDate) {
     ]);
 
     // 4. Descargar el Excel
-    // Busca botones/links de export Excel con selectores comunes
+    // Busca links de export Excel con selectores comunes
     const excelSelectors = [
       'a[href*="excel"]',
       'a[href*="export"]',
       'a[href*="xls"]',
-      'button:has-text("Excel")',
-      'button:has-text("Exportar")',
-      'button:has-text("Descargar")',
       'a:has-text("Excel")',
       'a:has-text("Exportar")',
       'a:has-text("Descargar")',
-      '[class*="excel"]',
-      '[class*="export"]',
+      '[class*="excel"] a',
+      '[class*="export"] a',
     ];
 
     let downloadTriggered = false;
@@ -184,22 +181,62 @@ async function downloadMitrabajo(targetDate) {
     for (const selector of excelSelectors) {
       const el = page.locator(selector).first();
       const visible = await el.isVisible().catch(() => false);
-      if (visible) {
-        console.log(`[mitrabajo] Botón de descarga encontrado con selector: "${selector}"`);
+      if (!visible) continue;
 
+      const href = await el.getAttribute('href').catch(() => null);
+      console.log(`[mitrabajo] Botón de descarga encontrado: "${selector}" → href="${href}"`);
+
+      if (href) {
+        // Construir URL completa
+        const fullUrl = href.startsWith('http')
+          ? href
+          : href.startsWith('/')
+            ? `${BASE_URL}${href}`
+            : `${BASE_URL}/${href}`;
+
+        console.log(`[mitrabajo] Descargando via request directo: ${fullUrl}`);
+
+        // Usar page.request para aprovechar las cookies de sesión ya establecidas
+        const response = await page.request.get(fullUrl, { timeout: 90_000 });
+
+        if (!response.ok()) {
+          throw new Error(`HTTP ${response.status()} al descargar el archivo`);
+        }
+
+        const contentType = response.headers()['content-type'] || '';
+        const contentDisp = response.headers()['content-disposition'] || '';
+        console.log(`[mitrabajo] Content-Type: ${contentType}`);
+        console.log(`[mitrabajo] Content-Disposition: ${contentDisp}`);
+
+        // Detectar extensión por content-type o content-disposition
+        let ext = '.xls';
+        if (contentType.includes('spreadsheetml')) ext = '.xlsx';
+        else if (contentDisp.includes('.xlsx')) ext = '.xlsx';
+
+        const tempPath = path.join(downloadDir, `_tmp_mitrabajo_${fecha}${ext}`);
+        const buffer = await response.body();
+        fs.writeFileSync(tempPath, buffer);
+        console.log(`[mitrabajo] Archivo temporal descargado: ${tempPath} (${buffer.length} bytes)`);
+
+        // Convertir a .xlsx y eliminar fila 2 vacía
+        const destPath = path.join(downloadDir, `mitrabajo_${fecha}.xlsx`);
+        convertirXlsAXlsx(tempPath, destPath, fecha);
+        fs.unlinkSync(tempPath);
+        console.log(`[mitrabajo] Archivo convertido y guardado en: ${destPath}`);
+        downloadTriggered = true;
+        break;
+      } else {
+        // Sin href — intentar con evento download (fallback para botones JS)
+        console.log(`[mitrabajo] Sin href, intentando con evento download (fallback)...`);
         const [download] = await Promise.all([
-          page.waitForEvent('download'),
+          page.waitForEvent('download', { timeout: 60_000 }),
           el.click(),
         ]);
-
         const suggestedName = download.suggestedFilename() || `mitrabajo_${fecha}.xls`;
         const ext = path.extname(suggestedName) || '.xls';
         const tempPath = path.join(downloadDir, `_tmp_mitrabajo_${fecha}${ext}`);
-
         await download.saveAs(tempPath);
         console.log(`[mitrabajo] Archivo temporal descargado: ${tempPath}`);
-
-        // Convertir a .xlsx y eliminar fila 2 vacía
         const destPath = path.join(downloadDir, `mitrabajo_${fecha}.xlsx`);
         convertirXlsAXlsx(tempPath, destPath, fecha);
         fs.unlinkSync(tempPath);
@@ -217,7 +254,6 @@ async function downloadMitrabajo(targetDate) {
       );
       console.warn('[mitrabajo] No se encontró botón de Excel. Links disponibles en la página:');
       allLinks.forEach(l => console.warn(`  - "${l.text}" → ${l.href}`));
-      console.warn('[mitrabajo] Revisá el screenshot para diagnosticar el problema.');
     }
 
   } finally {
