@@ -41,7 +41,8 @@ const nextConfig: NextConfig = {
         value: [
           "default-src 'self'",
           // Next.js necesita unsafe-inline para hydration chunks en el cliente
-          "script-src 'self' 'unsafe-inline'",
+          // En dev, react-refresh usa eval() — requiere unsafe-eval
+          `script-src 'self' 'unsafe-inline'${isProd ? '' : " 'unsafe-eval'"}`,
           // ~2600 style={} en JSX requieren unsafe-inline en style-src
           "style-src 'self' 'unsafe-inline'",
           // next/font/google auto-hostea fuentes en producción; data: para fuentes embebidas
