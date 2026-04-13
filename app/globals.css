@@ -163,8 +163,8 @@ textarea {
     min-height: 44px;
   }
 
-  /* Stack form grids vertically */
-  [style*="grid-template-columns"] {
+  /* Stack form grids vertically (except those with specific overrides) */
+  [style*="grid-template-columns"]:not(.grid-no-stack) {
     grid-template-columns: 1fr !important;
   }
 
@@ -201,10 +201,13 @@ textarea {
   }
 }
 
-/* Desktop: > 1024px */
+/* Desktop: > 1024px
+   Only apply large margin if sidebar is present (detected by parent class) */
 @media (min-width: 1025px) {
-  main {
+  .with-sidebar main {
     margin-left: 260px;
+  }
+  main {
     padding: 2rem;
   }
 }
@@ -227,7 +230,76 @@ textarea {
     display: none;
   }
 
-  /* Logbook Card Styles */
+  /* Agenda Card Mobile (New) */
+  .agenda-mobile-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border: 1px solid #e2e8f0;
+  }
+  .agenda-mobile-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.25rem;
+  }
+  .agenda-mobile-card-subtitle {
+    font-size: 0.82rem;
+    color: #64748b;
+    margin-bottom: 0.75rem;
+  }
+  .agenda-mobile-card-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
+  }
+  .agenda-mobile-card-label {
+    color: #94a3b8;
+    font-weight: 500;
+  }
+  .agenda-mobile-card-value {
+    color: #334155;
+    font-weight: 600;
+    text-align: right;
+  }
+  .agenda-mobile-card-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+  }
+  .agenda-mobile-chip {
+    font-size: 0.72rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+    font-weight: 500;
+  }
+  .agenda-mobile-card-actions {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    gap: 0.5rem;
+  }
+  .agenda-mobile-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.65rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid #e2e8f0;
+  }
   .logbook-card {
     background: var(--surface-color);
     border-radius: 12px;
@@ -586,6 +658,11 @@ textarea {
   border-radius: 0;
 }
 
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 @keyframes app-loader-l5 {
   0% {
     inset: 0 35px 35px 0;
@@ -822,4 +899,72 @@ textarea {
   font-size: 0.8rem;
   color: #94a3b8;
   font-weight: 500;
+}
+
+/* ─── Impresión (agenda web) ──────────────────────────────────────────────── */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+  }
+
+  .print-comprobante {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    page-break-inside: avoid;
+  }
+
+  header,
+  nav,
+  aside,
+  footer {
+    display: none !important;
+  }
+
+  main {
+    margin-top: 0 !important;
+    padding: 0 !important;
+  }
+
+  @page {
+    margin: 1.5cm;
+  }
+}
+
+.print-only {
+  display: none;
+}
+/* ── Dashboard Stats Grid ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important; /* Force 2 columns on mobile */
+    gap: 0.6rem !important;
+  }
+}
+
+.grid-no-stack {
+  /* This class prevents the global [style*="grid-template-columns"] override */
+}
+
+.grid-2-mobile {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 0.6rem !important;
 }
