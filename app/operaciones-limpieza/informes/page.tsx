@@ -48,21 +48,20 @@ interface SeccionesAsistencia {
 const TURNOS = ['6 A 14', '14 A 22', '22 A 06'];
 const SECCIONES = ['6 A 14', '12 A 20', '14 A 22', '15 A 23', '22 A 06', 'HEMOTERAPIA', 'ADICIONALES'];
 
-const SECTORES_POR_CLIENTE: Record<string, string[]> = {
-    'CASMU': ['Asilo', 'Pisos Vip', 'Torre 1', 'Torre 2', 'Roperia', 'Policlinico', 'Seguridad'],
-};
-
-function getSectoresForCliente(cliente: string): string[] {
-    const key = Object.keys(SECTORES_POR_CLIENTE).find(
-        k => k.toLowerCase() === cliente.toLowerCase()
-    );
-    return key ? SECTORES_POR_CLIENTE[key] : [];
-}
-
 interface PuestoConfig { nombre: string; cantidad: number; }
 interface TurnoConfig { puestos: PuestoConfig[]; }
 
-const PLANILLA_CONFIG: Record<string, Record<string, TurnoConfig>> = {
+// PLANILLA_CONFIG se carga ahora en runtime desde /api/limpieza/planilla-config/full.
+// Este mapa se hidrata desde la API al montar el componente.
+let PLANILLA_CONFIG: Record<string, Record<string, TurnoConfig>> = {};
+let SECTORES_POR_CLIENTE: Record<string, string[]> = {};
+function getSectoresForCliente(cliente: string): string[] {
+    if (!cliente) return [];
+    const key = Object.keys(SECTORES_POR_CLIENTE).find(k => k.toLowerCase() === cliente.toLowerCase());
+    return key ? SECTORES_POR_CLIENTE[key] : [];
+}
+// Mapa descartado (el editor de planillas ahora es fuente de verdad).
+const _OLD_PLANILLA_CONFIG_HARDCODED: Record<string, Record<string, TurnoConfig>> = {
     'Asilo': {
         '6 A 14': {
             puestos: [
@@ -354,14 +353,33 @@ export default function InformesOperativosPage() {
 
     const fetchClientes = useCallback(async () => {
         try {
-            const res = await fetch('/api/config/locations', { headers: getAuthHeaders() });
+            const res = await fetch('/api/limpieza/planilla-config/full', { headers: getAuthHeaders() });
             if (res.ok) {
                 const data = await res.json();
-                const names = data.map((l: any) => l.name);
+                const names = (data.clientes || []).map((l: any) => l.name);
                 setClientes(names.sort());
             }
         } catch (e) {
-            console.error('Error fetching official clients:', e);
+            console.error('Error fetching planilla-config clientes:', e);
+        }
+    }, [getAuthHeaders]);
+
+    // Hidrata el mapa PLANILLA_CONFIG y SECTORES_POR_CLIENTE desde la API cuando cambia el cliente
+    const fetchPlanillaConfig = useCallback(async (cliente: string) => {
+        if (!cliente) return;
+        try {
+            const res = await fetch(`/api/limpieza/planilla-config/full?cliente=${encodeURIComponent(cliente)}`, { headers: getAuthHeaders() });
+            if (!res.ok) return;
+            const data = await res.json();
+            SECTORES_POR_CLIENTE[cliente] = (data.sectores || []).map((s: any) => s.name);
+            for (const s of (data.sectores || [])) {
+                PLANILLA_CONFIG[s.name] = {};
+                for (const t of (s.turnos || [])) {
+                    PLANILLA_CONFIG[s.name][t.turno] = { puestos: t.puestos };
+                }
+            }
+        } catch (e) {
+            console.error('Error hidratando planilla config:', e);
         }
     }, [getAuthHeaders]);
 
@@ -433,6 +451,16 @@ export default function InformesOperativosPage() {
                     });
                 }
 
+                // Auto-rellenar fila del puesto ENCARGADO/A con el usuario actual si es encargado_limpieza
+                const u: any = currentUser;
+                if (u?.role === 'encargado_limpieza' && u?.name && turno && newAsistencia[turno]) {
+                    const rows = newAsistencia[turno];
+                    const idx = rows.findIndex(r => /ENCARG/i.test(r.puesto || '') && !r.nombre && !r.funcionario_id && !r.isSaved);
+                    if (idx !== -1) {
+                        rows[idx] = { ...rows[idx], nombre: u.name, cedula: u.cedula || '', isManual: true };
+                    }
+                }
+
                 setAsistencia(newAsistencia);
             }
         } catch (e) {
@@ -440,7 +468,7 @@ export default function InformesOperativosPage() {
         } finally {
             setFetching(false);
         }
-    }, [getAuthHeaders]);
+    }, [getAuthHeaders, currentUser]);
 
     useEffect(() => {
         if (isAuthenticated && currentUser) {
@@ -448,6 +476,11 @@ export default function InformesOperativosPage() {
             fetchFuncionarios();
         }
     }, [isAuthenticated, currentUser, fetchClientes, fetchFuncionarios]);
+
+    // Cargar config de planilla al cambiar cliente
+    useEffect(() => {
+        if (clienteSeleccionado) fetchPlanillaConfig(clienteSeleccionado);
+    }, [clienteSeleccionado, fetchPlanillaConfig]);
 
     // Auto-fill y lock de filtros cuando es encargado_limpieza
     useEffect(() => {
@@ -519,6 +552,10 @@ export default function InformesOperativosPage() {
 
     const handleAsistioToggle = async (section: string, index: number, value: 1 | 0) => {
         const row = asistencia[section][index];
+        if (value === 1 && !row.entrada1) {
+            alert('Completá la hora de entrada antes de confirmar la asistencia.');
+            return;
+        }
         if (value === 1 && !row.firma) {
             // Abrir pad de firma antes de confirmar
             setShowSignature({ section, index });
@@ -660,6 +697,13 @@ export default function InformesOperativosPage() {
             if (res.ok) {
                 const data = await res.json();
                 updateRow(section, index, { id: data.id, isSaved: true });
+            } else {
+                let msg = 'Error al guardar la fila';
+                try { const err = await res.json(); if (err?.error) msg = err.error; } catch {}
+                alert(msg);
+                if (row.asistio === 1) {
+                    updateRow(section, index, { asistio: null });
+                }
             }
         } catch (e) {
             console.error('Error saving row:', e);
@@ -816,21 +860,21 @@ export default function InformesOperativosPage() {
                         <button
                             onClick={handlePrint}
                             disabled={!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: (!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado) ? '#94a3b8' : '#111827', cursor: (!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado) ? 'not-allowed' : 'pointer', minHeight: '38px', width: '100%', boxSizing: 'border-box' }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: (!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado) ? '#94a3b8' : '#111827', cursor: (!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado) ? 'not-allowed' : 'pointer', minHeight: '38px', height: '38px', width: '100%', boxSizing: 'border-box', whiteSpace: 'nowrap' }}
                         >
-                            <Printer size={16} /> <span>PDF (Imprimir)</span>
+                            <Printer size={16} /> <span>PDF</span>
                         </button>
                         <button
                             onClick={() => handleExport('excel')}
                             disabled={!clienteSeleccionado || exporting === 'excel'}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#16a34a', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: clienteSeleccionado ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || exporting === 'excel') ? 0.6 : 1, minHeight: '38px', width: '100%', boxSizing: 'border-box' }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#2e9b3a', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: clienteSeleccionado ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || exporting === 'excel') ? 0.6 : 1, minHeight: '38px', height: '38px', width: '100%', boxSizing: 'border-box', whiteSpace: 'nowrap' }}
                         >
                             <Download size={16} /> <span>{exporting === 'excel' ? 'Exportando...' : 'Excel'}</span>
                         </button>
                         <button
                             onClick={() => handleExport('versus')}
                             disabled={!clienteSeleccionado || exporting === 'versus'}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#1d3461', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: clienteSeleccionado ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || exporting === 'versus') ? 0.6 : 1, minHeight: '38px', width: '100%', boxSizing: 'border-box' }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#1d3461', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: clienteSeleccionado ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || exporting === 'versus') ? 0.6 : 1, minHeight: '38px', height: '38px', width: '100%', boxSizing: 'border-box', whiteSpace: 'nowrap' }}
                         >
                             <Download size={16} /> <span>{exporting === 'versus' ? 'Exportando...' : 'Versus'}</span>
                         </button>
@@ -838,7 +882,7 @@ export default function InformesOperativosPage() {
                             <button
                                 onClick={() => setShowUpload(true)}
                                 disabled={!clienteSeleccionado || !turnoSeleccionado}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#f59e0b', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: (clienteSeleccionado && turnoSeleccionado) ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || !turnoSeleccionado) ? 0.6 : 1, minHeight: '38px', width: '100%', boxSizing: 'border-box' }}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#d32e2e', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: (clienteSeleccionado && turnoSeleccionado) ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || !turnoSeleccionado) ? 0.6 : 1, minHeight: '38px', height: '38px', width: '100%', boxSizing: 'border-box', whiteSpace: 'nowrap' }}
                                 title="Subir planilla del turno desde Excel (solo admin)"
                             >
                                 <Upload size={16} /> <span>Subir planilla</span>
@@ -1090,7 +1134,7 @@ export default function InformesOperativosPage() {
                                                                             >
                                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                                                             </button>
-                                                                        {!row.isSaved && (row.funcionario_id || (row.isManual && row.nombre)) && (
+                                                                        {!row.isSaved && !!(row.funcionario_id || (row.isManual && row.nombre)) && (
                                                                             <button onClick={() => saveRow(seccion, idx)} disabled={saving === `${seccion}-${idx}`} style={{ background: 'none', border: 'none', color: '#1d3461', cursor: 'pointer' }} title="Guardar fila">
                                                                                 <Save size={16} />
                                                                             </button>
@@ -1100,12 +1144,12 @@ export default function InformesOperativosPage() {
                                                                                 <CheckCircle2 size={16} />
                                                                             </button>
                                                                         )}
-                                                                        {(isAdicionales || row.funcionario_id || row.isManual) && (!row.planificado || isAdmin) && (
+                                                                        {!!(isAdicionales || row.funcionario_id || row.isManual) && (!row.planificado || isAdmin) && (
                                                                             <button onClick={() => removeRow(seccion, idx)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title={row.planificado ? 'Eliminar fila planificada (solo admin)' : isAdicionales ? 'Eliminar fila' : 'Limpiar registro'}>
                                                                                 <Trash2 size={16} />
                                                                             </button>
                                                                         )}
-                                                                        {row.planificado && !isAdmin && (
+                                                                        {!!row.planificado && !isAdmin && (
                                                                             <Lock size={13} color="#94a3b8" />
                                                                         )}
                                                                     </div>}

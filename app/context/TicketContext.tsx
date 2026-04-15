@@ -102,6 +102,7 @@ export interface User {
     panel_access?: number; // 1 = can access main hub, 0 = redirect to assigned module
     cliente_asignado?: string | null;
     sector_asignado?: string | null;
+    cedula?: string | null;
 }
 
 export function hasModuleAccess(user: User, mod: 'logistica' | 'tecnico' | 'cotizacion' | 'limpieza' | 'rrhh'): boolean {

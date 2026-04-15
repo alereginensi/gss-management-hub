@@ -273,3 +273,141 @@ Se guardan en `public/uploads/agenda/{firmas|remitos}/` por defecto. Si `CLOUDIN
 ---
 
 *Última actualización de este archivo: rama `agenda-web` — cambios de prenda con devolución, historial entregas, toggle allow\_reorder, vista logística en citas, AgendaSignatureCanvas.*
+
+---
+
+## Módulo Operaciones Limpieza — Planilla por turno (rama `operaciones-limpieza`)
+
+Rediseño del flujo de planilla/informes de limpieza: soporte de **planificado vs asistió**, importación masiva desde Excel del turno y exportaciones a formato **Excel GSS** y **Versus** (sistema de nómina).
+
+### Rol nuevo: `encargado_limpieza`
+
+Rol dedicado para supervisores que solo gestionan la planilla de **un cliente (y opcionalmente un sector)**.
+
+- Campos nuevos en `users`: **`cliente_asignado TEXT`**, **`sector_asignado TEXT`** (migración aditiva en SQLite y Postgres).
+- Si `sector_asignado` es null → el encargado ve todos los sectores del cliente.
+- `panel_access = 0` por defecto: el login lo lleva directo a `/operaciones-limpieza/informes`.
+- Helper `hasModuleAccess(user, 'limpieza')` reconoce el rol (ver `app/context/TicketContext.tsx`).
+- Union `User.role` extendida con `'encargado_limpieza'`.
+- Campo adicional en `users`: **`cedula TEXT`** (obligatorio para el rol). El informe autocompleta la fila del puesto cuyo nombre matchea `/ENCARG/i` con `currentUser.name` + `cedula` marcándola como `isManual: true`.
+- `/api/auth/login` y `/api/auth/me` devuelven `cliente_asignado`, `sector_asignado`, `cedula` en el payload de sesión; el JWT también los embebe.
+- **`/api/limpieza/asistencia`**: si el caller tiene rol `encargado_limpieza`, el endpoint **sobrescribe** los query params `cliente` y `sector` con los del usuario (no se pueden consultar otros clientes aunque se manipule la URL).
+- UI admin (`app/admin/users/page.tsx`): al elegir rol `encargado_limpieza`, se muestra bloque con dropdown de clientes (poblado desde `/api/limpieza/planilla-config/full`) + selector de sectores (cascading desde el mismo endpoint) + input obligatorio de cédula. Acción POST nueva `create_encargado_limpieza` en `/api/admin/users`.
+
+### DB — cambios en `limpieza_asistencia`
+
+Columnas agregadas (ALTER TABLE aditivo en ambos motores):
+
+- **`planificado INTEGER DEFAULT 0`** — fila generada por importación del turno (vs. creada manualmente por el supervisor en el día).
+- **`asistio INTEGER`** — `null` = sin marcar, `0` = no asistió, `1` = asistió. Si `asistio = 1` el POST valida **firma obligatoria** + `entrada1` (solo hora de entrada). Salida puede completarse después (permite guardar progreso durante el turno y continuar).
+- **`import_batch_id INTEGER`** — FK a `limpieza_planilla_imports.id`.
+- **`observaciones TEXT`**, **`categoria TEXT`** — observación por fila y categoría del funcionario en esta planilla.
+
+### Tabla nueva: `limpieza_planilla_imports`
+
+Registro de cada importación de planilla por turno:
+
+```
+id | fecha | seccion | cliente | sector | filename | uploaded_by | rows_created | created_at
+```
+
+### Helpers: `lib/limpieza-hours.ts`
+
+- **`calcHorasTrabajadas({ entrada1, salida1, entrada2, salida2 })`** → horas decimales (p. ej. `8.5`). Soporta **turnos nocturnos** cruzando medianoche (`diff += 24*60` si negativo).
+- **`normalizarCategoria(raw)`** → `'LIMPIADOR' | 'AUXILIAR' | 'VIDRIERO' | 'ENCARGADO' | 'OTRA'` (regex sobre string normalizado en mayúsculas).
+
+### API de importación: `/api/limpieza/planilla/import`
+
+- POST solo admin: recibe `multipart/form-data` con Excel del turno + metadata (`fecha`, `seccion`, `cliente`, `sector`, columna de categoría opcional).
+- Crea filas en `limpieza_asistencia` con `planificado = 1`, `asistio = null`, y linkea todas vía `import_batch_id` a un nuevo registro en `limpieza_planilla_imports`.
+
+### APIs de exportación
+
+- **`/api/limpieza/planilla/export/excel`** — planilla formato **GSS** (estilo tabla operativa).
+- **`/api/limpieza/planilla/export/versus`** — formato para cargar en **Versus** (sistema de nómina). Usa `calcHorasTrabajadas` para volcar horas decimales por funcionario/día.
+
+Ambas soportan filtros `cliente`, `sector`, `turno`, `fecha`. Para `encargado_limpieza` aplica el mismo override de `cliente`/`sector` que en asistencia.
+
+### UI: `app/operaciones-limpieza/informes/page.tsx`
+
+Vista unificada de planilla del día + histórico:
+
+- Selector **Cliente / Sector / Turno / Fecha** arriba, fila de acciones con **PDF (imprimir), Excel, Versus** y **Subir planilla** (solo admin).
+- Para filas `planificado = 1` sin asistencia marcada: muestra toggle **Asistió / No asistió**. Al marcar "Asistió" exige firma + hora de entrada (salida opcional, se completa al cerrar el turno).
+- Cualquier cambio (hora, firma, toggle, observación) autoguarda inmediatamente al backend → permite al supervisor cerrar la app y retomar más tarde sin perder nada; `fetchAsistencia` rehidrata todos los campos al reabrir.
+- Manejo de errores del POST: si el backend rechaza (p.ej. falta firma), muestra el `error` devuelto y revierte el `asistio` optimista a `null`.
+- Evitar `0` literal en JSX: todos los `&&` sobre valores numéricos de SQLite (`planificado`, `isManual`) se envuelven en `!!(...)` para no renderizar `0` como texto.
+- Filas **no-planificadas** (agregadas a mano en el día) se agrupan por encargado en el render del Excel.
+- Botones del toolbar usan colores del logo GSS: **verde `#2e9b3a`** (Excel), **azul `#1d3461`** (Versus), **rojo `#d32e2e`** (Subir planilla). Altura fija 38px + `whiteSpace: nowrap` para alinear con el input de fecha.
+- Modal "Subir planilla del turno": drag-and-drop de xlsx, vista previa, dropdown para override de columna categoría, botón enviar al endpoint de import.
+
+### Scripts y deploy
+
+Sin cambios en cron ni deploy — solo migraciones aditivas en `lib/db.ts` que corren al primer `query` en runtime (compatibles con `SKIP_DB_INIT=1` durante `next build`).
+
+---
+
+## Editor de planillas (admin) — rama `operaciones-limpieza`
+
+Configuración de clientes/sectores/turnos/puestos movida de constantes TypeScript a DB, editable por admin desde la UI. Reemplaza los ~230 líneas de `PLANILLA_CONFIG` hardcoded y el mapa `SECTORES_POR_CLIENTE` (archivo `lib/limpieza-sectores.ts` eliminado).
+
+### Tablas nuevas (DB) — `lib/db.ts`
+
+**Aisladas de datos históricos.** No se agrega FK ni se modifica ninguna tabla existente (`limpieza_asistencia`, `limpieza_planilla_imports`, etc). Los registros históricos siguen guardando `cliente` / `sector` / `puesto` como string snapshot, independientes del config.
+
+- **`limpieza_clientes`** — `id | name UNIQUE | active | created_at`.
+- **`limpieza_sectores`** — `id | cliente_id | name | active | created_at` (UNIQUE `cliente_id+name`).
+- **`limpieza_puestos`** — `id | sector_id | turno | nombre | cantidad | orden | active | created_at`.
+
+### Seed inicial
+
+[lib/limpieza-planilla-seed.ts](lib/limpieza-planilla-seed.ts) contiene los datos extraídos del hardcode anterior (CASMU con 7 sectores y todos sus puestos). El seed es idempotente: solo inserta si `SELECT COUNT(*) FROM limpieza_clientes === 0`. Métodos privados `seedPlanillaConfigSqlite()` / `seedPlanillaConfigPg()` en `lib/db.ts`.
+
+Turnos vacíos (ej. `Roperia 6 A 14`) se preservan insertando un puesto placeholder con `active = 0`.
+
+### APIs
+
+**Admin (guard `role === 'admin'`):**
+
+- `app/api/limpieza/admin/clientes/route.ts` + `[id]/route.ts` — CRUD. DELETE = soft (`active = 0`).
+- `app/api/limpieza/admin/sectores/route.ts` + `[id]/route.ts` — CRUD. Soft delete.
+- `app/api/limpieza/admin/puestos/route.ts` + `[id]/route.ts` — CRUD. Puestos usan **hard-delete** (no afectan históricos porque no hay FK hacia ellos).
+
+**Lectura (sesión válida, cualquier rol):**
+
+- `app/api/limpieza/planilla-config/full/route.ts` — endpoint consolidado:
+  - Sin query: `{ clientes: [{id,name}] }`.
+  - Con `?cliente=X`: `{ clientes, cliente, sectores: [{ id, name, turnos: [{ turno, puestos: [{nombre,cantidad}] }] }] }`.
+  - Usado por informes (hidrata `PLANILLA_CONFIG` + `SECTORES_POR_CLIENTE` al montar) y por admin/users (dropdown cliente/sector para `encargado_limpieza`).
+
+### UI editor: `app/operaciones-limpieza/planillas-config/page.tsx`
+
+Guard admin: `role !== 'admin'` → "Acceso denegado". Layout 3 columnas responsive:
+
+1. **Clientes** — lista con inline rename (botón Edit2), soft-delete (Trash2), creación inline.
+2. **Sectores** del cliente activo — mismo patrón.
+3. **Turnos y puestos** del sector activo:
+   - Input con `<datalist>` de sugerencias (`6 A 14`, `14 A 22`, `22 A 06`, `12 A 20`, `15 A 23`, `HEMOTERAPIA`) para nuevo turno.
+   - Cada turno agrupa sus puestos: inputs inline para `nombre` (onBlur autosave) y `cantidad` (number, min 1). Botón eliminar puesto (hard delete).
+   - Botón "+ Puesto" por turno agrega uno con nombre "NUEVO" y cantidad 1.
+
+Banner amarillo permanente: *"Los cambios solo afectan planillas futuras. Los informes ya guardados conservan su configuración original."*
+
+### Integración con informes
+
+[app/operaciones-limpieza/informes/page.tsx](app/operaciones-limpieza/informes/page.tsx):
+
+- Dos mapas **module-level mutables** (`let PLANILLA_CONFIG`, `let SECTORES_POR_CLIENTE`) que los helpers `getPlanillaConfig` / `getTurnosForSector` / `getSectoresForCliente` siguen leyendo (misma API interna que antes).
+- Hook `fetchPlanillaConfig(cliente)` hidrata ambos mapas al cambiar `clienteSeleccionado`. Se dispara vía `useEffect`.
+- `fetchClientes` cambió: ahora lee de `/api/limpieza/planilla-config/full` (clientes del editor), no de `/api/config/locations` (clientes de logística). Son registros separados.
+
+### Acceso en el hub
+
+[app/operaciones-limpieza/page.tsx](app/operaciones-limpieza/page.tsx): el array `MENU_ITEMS` incluye `{ label: 'Editor de Planillas', adminOnly: true, icon: Settings, href: '/operaciones-limpieza/planillas-config' }`. Filtrado por `currentUser.role === 'admin'` antes del render.
+
+### Garantías
+
+- **Cero cambios** en tablas históricas (`limpieza_asistencia`, `limpieza_planilla_imports`, `limpieza_registros`, `limpieza_tareas_asignadas`, `limpieza_usuarios`).
+- **Renombrar** un cliente/sector en el editor NO actualiza strings ya guardados en informes viejos — esos se siguen leyendo con el nombre original.
+- **Eliminar** un cliente/sector solo lo quita del dropdown de informes nuevos; históricos intactos.
+- Migración en `lib/db.ts` usa exclusivamente `CREATE TABLE IF NOT EXISTS` + INSERT condicional. Cero `ALTER`/`DROP`/`UPDATE` sobre tablas preexistentes.

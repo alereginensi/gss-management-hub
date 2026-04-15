@@ -3,16 +3,17 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ClipboardList, FileText, Users, History, ClipboardCheck } from 'lucide-react';
+import { ArrowLeft, ClipboardList, FileText, Users, History, ClipboardCheck, Settings } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 
-const MENU_ITEMS = [
+const MENU_ITEMS: Array<{ label: string; description: string; href: string; icon: any; adminOnly?: boolean }> = [
     { label: 'Informes Operativos', description: 'Planilla de asistencia y firma digital', href: '/operaciones-limpieza/informes', icon: FileText },
     { label: 'Historial de Informes', description: 'Vista por meses con buscador', href: '/operaciones-limpieza/historial', icon: History },
     { label: 'Recuento de Tareas', description: 'Historial de registros con filtros y exportación', href: '/operaciones-limpieza/tareas', icon: ClipboardList },
     { label: 'Asignar Tareas', description: 'Asignación de tareas al personal', href: '/operaciones-limpieza/asignar-tareas', icon: ClipboardCheck },
     { label: 'Personal', description: 'CRUD de funcionarios de limpieza', href: '/operaciones-limpieza/personal', icon: Users },
+    { label: 'Editor de Planillas', description: 'Clientes, sectores, turnos y puestos (solo admin)', href: '/operaciones-limpieza/planillas-config', icon: Settings, adminOnly: true },
 ];
 
 export default function OperacionesLimpiezaPage() {
@@ -73,7 +74,7 @@ export default function OperacionesLimpiezaPage() {
                     </p>
 
                     <div className="landing-modules-grid">
-                        {MENU_ITEMS.map((item) => {
+                        {MENU_ITEMS.filter(i => !i.adminOnly || currentUser.role === 'admin').map((item) => {
                             const Icon = item.icon;
                             return (
                                 <Link key={item.href} href={item.href} className="landing-card-btn">

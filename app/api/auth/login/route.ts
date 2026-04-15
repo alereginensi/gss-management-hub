@@ -81,6 +81,7 @@ export async function POST(request: Request) {
             panel_access: user.panel_access ?? 1,
             cliente_asignado: user.cliente_asignado ?? null,
             sector_asignado: user.sector_asignado ?? null,
+            cedula: user.cedula ?? null,
         });
 
         const response = NextResponse.json({

@@ -65,14 +65,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Fecha y sección son obligatorias' }, { status: 400 });
         }
 
-        // Validación: si asistio=1, requerir firma + al menos entrada1/salida1
+        // Validación: si asistio=1, requerir firma + hora de entrada al turno
         if (asistio === 1) {
             const finalFirmaCheck = firma ?? (id ? (await db.get('SELECT firma FROM limpieza_asistencia WHERE id = ?', [id]))?.firma : null);
             if (!finalFirmaCheck) {
                 return NextResponse.json({ error: 'Firma obligatoria cuando el funcionario asiste' }, { status: 400 });
             }
-            if (!entrada1 || !salida1) {
-                return NextResponse.json({ error: 'Entrada y salida obligatorias cuando el funcionario asiste' }, { status: 400 });
+            if (!entrada1) {
+                return NextResponse.json({ error: 'Hora de entrada obligatoria cuando el funcionario asiste' }, { status: 400 });
             }
         }
 
