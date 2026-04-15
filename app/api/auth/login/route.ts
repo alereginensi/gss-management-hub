@@ -79,6 +79,8 @@ export async function POST(request: Request) {
             rubro: user.rubro,
             modules: user.modules ?? null,
             panel_access: user.panel_access ?? 1,
+            cliente_asignado: user.cliente_asignado ?? null,
+            sector_asignado: user.sector_asignado ?? null,
         });
 
         const response = NextResponse.json({
@@ -92,6 +94,8 @@ export async function POST(request: Request) {
                 rubro: user.rubro,
                 modules: user.modules ?? null,
                 panel_access: user.panel_access ?? 1,
+                cliente_asignado: user.cliente_asignado ?? null,
+                sector_asignado: user.sector_asignado ?? null,
             },
             // token eliminado del body — la sesión se maneja por la cookie httpOnly 'session'
         });

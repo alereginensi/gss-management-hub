@@ -10,8 +10,15 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
     const fecha = searchParams.get('fecha');
-    const cliente = searchParams.get('cliente');
-    const sector = searchParams.get('sector');
+    let cliente = searchParams.get('cliente');
+    let sector = searchParams.get('sector');
+
+    // Encargado limpieza: forzar cliente/sector a los suyos
+    const sUser = session.user as any;
+    if (sUser.role === 'encargado_limpieza') {
+        if (sUser.cliente_asignado) cliente = sUser.cliente_asignado;
+        if (sUser.sector_asignado) sector = sUser.sector_asignado;
+    }
 
     try {
         if (action === 'list_dates') {
@@ -51,11 +58,22 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const {
             id, fecha, seccion, funcionario_id, nombre, cedula, cliente, sector, puesto,
-            entrada1, salida1, entrada2, salida2, firma
+            entrada1, salida1, entrada2, salida2, firma, asistio, observaciones, categoria
         } = body;
 
         if (!fecha || !seccion) {
             return NextResponse.json({ error: 'Fecha y sección son obligatorias' }, { status: 400 });
+        }
+
+        // Validación: si asistio=1, requerir firma + al menos entrada1/salida1
+        if (asistio === 1) {
+            const finalFirmaCheck = firma ?? (id ? (await db.get('SELECT firma FROM limpieza_asistencia WHERE id = ?', [id]))?.firma : null);
+            if (!finalFirmaCheck) {
+                return NextResponse.json({ error: 'Firma obligatoria cuando el funcionario asiste' }, { status: 400 });
+            }
+            if (!entrada1 || !salida1) {
+                return NextResponse.json({ error: 'Entrada y salida obligatorias cuando el funcionario asiste' }, { status: 400 });
+            }
         }
 
         if (id !== undefined && id !== null) {
@@ -69,9 +87,10 @@ export async function POST(request: NextRequest) {
                 `UPDATE limpieza_asistencia SET
                     funcionario_id = ?, nombre = ?, cedula = ?, cliente = ?, sector = ?, puesto = ?,
                     entrada1 = ?, salida1 = ?, entrada2 = ?, salida2 = ?,
-                    firma = ?, updated_at = CURRENT_TIMESTAMP
+                    firma = ?, asistio = ?, observaciones = ?, categoria = COALESCE(?, categoria),
+                    updated_at = CURRENT_TIMESTAMP
                  WHERE id = ?`,
-                [funcionario_id, nombre, cedula, cliente, sector ?? null, puesto ?? null, entrada1, salida1, entrada2, salida2, finalFirma, id]
+                [funcionario_id, nombre, cedula, cliente, sector ?? null, puesto ?? null, entrada1, salida1, entrada2, salida2, finalFirma, asistio ?? null, observaciones ?? null, categoria ?? null, id]
             );
             return NextResponse.json({ success: true, id });
         } else {
@@ -86,17 +105,18 @@ export async function POST(request: NextRequest) {
                     `UPDATE limpieza_asistencia SET
                         nombre = ?, cedula = ?, cliente = ?, sector = ?, puesto = ?,
                         entrada1 = ?, salida1 = ?, entrada2 = ?, salida2 = ?,
-                        firma = ?, updated_at = CURRENT_TIMESTAMP
+                        firma = ?, asistio = ?, observaciones = ?, categoria = COALESCE(?, categoria),
+                        updated_at = CURRENT_TIMESTAMP
                      WHERE id = ?`,
-                    [nombre, cedula, cliente, sector ?? null, puesto ?? null, entrada1, salida1, entrada2, salida2, finalFirma, existing.id]
+                    [nombre, cedula, cliente, sector ?? null, puesto ?? null, entrada1, salida1, entrada2, salida2, finalFirma, asistio ?? null, observaciones ?? null, categoria ?? null, existing.id]
                 );
                 return NextResponse.json({ success: true, id: Number(existing.id) });
             } else {
                 const result = await db.run(
                     `INSERT INTO limpieza_asistencia
-                     (fecha, seccion, funcionario_id, nombre, cedula, cliente, sector, puesto, entrada1, salida1, entrada2, salida2, firma)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [fecha, seccion, funcionario_id, nombre, cedula, cliente, sector ?? null, puesto ?? null, entrada1, salida1, entrada2, salida2, firma]
+                     (fecha, seccion, funcionario_id, nombre, cedula, cliente, sector, puesto, entrada1, salida1, entrada2, salida2, firma, asistio, observaciones, categoria, planificado)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+                    [fecha, seccion, funcionario_id, nombre, cedula, cliente, sector ?? null, puesto ?? null, entrada1, salida1, entrada2, salida2, firma, asistio ?? null, observaciones ?? null, categoria ?? null]
                 );
                 const newId = result.lastInsertRowid ? Number(result.lastInsertRowid) : null;
                 return NextResponse.json({ success: true, id: newId }, { status: 201 });
@@ -120,6 +140,11 @@ export async function DELETE(request: NextRequest) {
     if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
 
     try {
+        const row = await db.get('SELECT planificado FROM limpieza_asistencia WHERE id = ?', [id]);
+        if (!row) return NextResponse.json({ error: 'Registro no encontrado' }, { status: 404 });
+        if (row.planificado && session.user.role !== 'admin') {
+            return NextResponse.json({ error: 'No se puede eliminar un funcionario planificado. Solo admin puede borrar filas del Excel.' }, { status: 403 });
+        }
         await db.run('DELETE FROM limpieza_asistencia WHERE id = ?', [id]);
         return NextResponse.json({ success: true });
     } catch (error: any) {

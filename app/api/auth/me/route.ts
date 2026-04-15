@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     try {
         // Fetch up-to-date user data from DB to reflect permission changes without relogging
-        const user = await db.prepare('SELECT id, name, email, role, department, rubro, approved, modules FROM users WHERE id = ?').get(session.user.id);
+        const user = await db.prepare('SELECT id, name, email, role, department, rubro, approved, modules, panel_access, cliente_asignado, sector_asignado FROM users WHERE id = ?').get(session.user.id);
         
         if (!user) {
             return NextResponse.json({ error: 'User no longer exists' }, { status: 404 });

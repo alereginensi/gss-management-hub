@@ -158,6 +158,8 @@ class DbWrapper {
         rubro TEXT,
         approved INTEGER DEFAULT 0,
         panel_access INTEGER DEFAULT 1,
+        cliente_asignado TEXT,
+        sector_asignado TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -473,8 +475,25 @@ class DbWrapper {
         entrada2 TEXT,
         salida2 TEXT,
         firma TEXT,
+        planificado INTEGER DEFAULT 0,
+        asistio INTEGER,
+        import_batch_id INTEGER,
+        observaciones TEXT,
+        categoria TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS limpieza_planilla_imports (
+        id SERIAL PRIMARY KEY,
+        fecha TEXT NOT NULL,
+        seccion TEXT NOT NULL,
+        cliente TEXT,
+        sector TEXT,
+        filename TEXT,
+        uploaded_by INTEGER,
+        rows_created INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS billing_categories (
@@ -778,8 +797,55 @@ class DbWrapper {
           console.log('🏗️ Adding missing "puesto" column to limpieza_asistencia');
           this.sqliteDb.prepare("ALTER TABLE limpieza_asistencia ADD COLUMN puesto TEXT").run();
         }
+        const planillaCols: Array<[string, string]> = [
+          ['planificado', 'INTEGER DEFAULT 0'],
+          ['asistio', 'INTEGER'],
+          ['import_batch_id', 'INTEGER'],
+          ['observaciones', 'TEXT'],
+          ['categoria', 'TEXT'],
+        ];
+        for (const [col, type] of planillaCols) {
+          if (!info.some((c: any) => c.name === col)) {
+            console.log(`🏗️ Adding missing "${col}" column to limpieza_asistencia`);
+            this.sqliteDb.prepare(`ALTER TABLE limpieza_asistencia ADD COLUMN ${col} ${type}`).run();
+          }
+        }
       } catch (err) {
         console.error('❌ Error migrate SQLite asistencia:', err);
+      }
+      // Migración users: cliente_asignado / sector_asignado
+      try {
+        const info = this.sqliteDb.prepare("PRAGMA table_info(users)").all();
+        const userCols: Array<[string, string]> = [
+          ['cliente_asignado', 'TEXT'],
+          ['sector_asignado', 'TEXT'],
+        ];
+        for (const [col, type] of userCols) {
+          if (!info.some((c: any) => c.name === col)) {
+            console.log(`🏗️ Adding missing "${col}" column to users`);
+            this.sqliteDb.prepare(`ALTER TABLE users ADD COLUMN ${col} ${type}`).run();
+          }
+        }
+      } catch (err) {
+        console.error('❌ Error migrate SQLite users:', err);
+      }
+      // Tabla limpieza_planilla_imports (SQLite)
+      try {
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS limpieza_planilla_imports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fecha TEXT NOT NULL,
+            seccion TEXT NOT NULL,
+            cliente TEXT,
+            sector TEXT,
+            filename TEXT,
+            uploaded_by INTEGER,
+            rows_created INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+      } catch (err) {
+        console.error('❌ Error creando limpieza_planilla_imports (SQLite):', err);
       }
       // Seed default permanent tasks for Schmidt (SQLite)
       try {
@@ -847,6 +913,31 @@ class DbWrapper {
           if (existingAsisCols.length > 0 && !existingAsisCols.includes('puesto')) {
             console.log('🐘 Migrating limpieza_asistencia: adding puesto column');
             await this.pgPool!.query('ALTER TABLE limpieza_asistencia ADD COLUMN puesto TEXT');
+          }
+          const planillaColsPG: Array<[string, string]> = [
+            ['planificado', 'INTEGER DEFAULT 0'],
+            ['asistio', 'INTEGER'],
+            ['import_batch_id', 'INTEGER'],
+            ['observaciones', 'TEXT'],
+            ['categoria', 'TEXT'],
+          ];
+          for (const [col, type] of planillaColsPG) {
+            if (existingAsisCols.length > 0 && !existingAsisCols.includes(col)) {
+              console.log(`🐘 Migrating limpieza_asistencia: adding ${col} column`);
+              await this.pgPool!.query(`ALTER TABLE limpieza_asistencia ADD COLUMN ${col} ${type}`);
+            }
+          }
+
+          // Migrate users: cliente_asignado / sector_asignado
+          const userColsPG = await this.pgPool!.query(`
+            SELECT column_name FROM information_schema.columns WHERE table_name = 'users'
+          `);
+          const existingUserCols = userColsPG.rows.map((r: any) => r.column_name);
+          for (const col of ['cliente_asignado', 'sector_asignado']) {
+            if (existingUserCols.length > 0 && !existingUserCols.includes(col)) {
+              console.log(`🐘 Migrating users: adding ${col} column`);
+              await this.pgPool!.query(`ALTER TABLE users ADD COLUMN ${col} TEXT`);
+            }
           }
 
           // Migrate limpieza_usuarios: remove email if exists, make cedula unique

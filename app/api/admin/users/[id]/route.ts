@@ -18,7 +18,7 @@ export async function PUT(
     try {
         const { id: userId } = await params;
         const body = await request.json();
-        const { email, name, department, role, rubro, password, modules, panel_access } = body;
+        const { email, name, department, role, rubro, password, modules, panel_access, cliente_asignado, sector_asignado } = body;
 
         // Verify user exists
         const existingUser = await db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
@@ -65,6 +65,14 @@ export async function PUT(
         if (panel_access !== undefined) {
             updates.push('panel_access = ?');
             values.push(panel_access ? 1 : 0);
+        }
+        if (cliente_asignado !== undefined) {
+            updates.push('cliente_asignado = ?');
+            values.push(cliente_asignado || null);
+        }
+        if (sector_asignado !== undefined) {
+            updates.push('sector_asignado = ?');
+            values.push(sector_asignado || null);
         }
         if (password && password.trim() !== '') {
             // Hash password with bcrypt

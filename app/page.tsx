@@ -17,6 +17,8 @@ export default function Landing() {
       router.push('/login');
     } else if (currentUser?.role === 'funcionario') {
       router.push('/tasks');
+    } else if (currentUser?.role === 'encargado_limpieza') {
+      router.push('/operaciones-limpieza/informes');
     } else if (currentUser?.role === 'supervisor' && currentUser.panel_access === 0) {
       const mods = currentUser.modules?.split(',').map(m => m.trim()).filter(Boolean) ?? [];
       const moduleRoutes: Record<string, string> = {

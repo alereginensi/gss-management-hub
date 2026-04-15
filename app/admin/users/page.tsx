@@ -11,7 +11,8 @@ export default function UserManagement() {
     const [loading, setLoading] = useState(false);
     const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '', department: 'Administración' });
     const [editingUser, setEditingUser] = useState<any>(null);
-    const [editForm, setEditForm] = useState({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '', modules: '', panel_access: 1 });
+    const [editForm, setEditForm] = useState({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '', modules: '', panel_access: 1, cliente_asignado: '', sector_asignado: '' });
+    const [locations, setLocations] = useState<Array<{ name: string; sectors?: string[] }>>([]);
     const [assignedWorkers, setAssignedWorkers] = useState<number[]>([]);
     const [funcionarios, setFuncionarios] = useState<any[]>([]);
     const [showApprovedUsers, setShowApprovedUsers] = useState(false);
@@ -141,8 +142,16 @@ export default function UserManagement() {
             password: '',
             confirmPassword: '',
             modules: user.modules || '',
-            panel_access: user.panel_access ?? 1
+            panel_access: user.panel_access ?? 1,
+            cliente_asignado: user.cliente_asignado || '',
+            sector_asignado: user.sector_asignado || ''
         });
+        if (user.role === 'encargado_limpieza' && locations.length === 0) {
+            try {
+                const res = await fetch('/api/config/locations', { headers: getAuthHeaders() });
+                if (res.ok) setLocations(await res.json());
+            } catch {}
+        }
 
         // Always reset assigned workers first
         setAssignedWorkers([]);
@@ -184,7 +193,9 @@ export default function UserManagement() {
                 role: editForm.role,
                 rubro: editForm.rubro,
                 modules: editForm.modules || null,
-                panel_access: editForm.panel_access
+                panel_access: editForm.panel_access,
+                cliente_asignado: editForm.role === 'encargado_limpieza' ? (editForm.cliente_asignado || null) : null,
+                sector_asignado: editForm.role === 'encargado_limpieza' ? (editForm.sector_asignado || null) : null
             };
 
             // Only include password if it was provided
@@ -237,7 +248,7 @@ export default function UserManagement() {
         setEditingUser(null);
         setAssignedWorkers([]);
         setFuncionarios([]);
-        setEditForm({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '', modules: '', panel_access: 1 });
+        setEditForm({ name: '', email: '', department: '', role: 'user', rubro: '', password: '', confirmPassword: '', modules: '', panel_access: 1, cliente_asignado: '', sector_asignado: '' });
     };
 
     if (currentUser?.role !== 'admin') {
@@ -583,16 +594,61 @@ export default function UserManagement() {
                                 <select
                                     required
                                     value={editForm.role}
-                                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                                    onChange={async (e) => {
+                                        const newRole = e.target.value;
+                                        setEditForm({ ...editForm, role: newRole });
+                                        if (newRole === 'encargado_limpieza' && locations.length === 0) {
+                                            try {
+                                                const res = await fetch('/api/config/locations', { headers: getAuthHeaders() });
+                                                if (res.ok) setLocations(await res.json());
+                                            } catch {}
+                                        }
+                                    }}
                                     className="input"
                                     style={{ width: '100%', padding: '0.6rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }}
                                 >
                                     <option value="supervisor">Supervisor</option>
                                     <option value="jefe">Jefe de Departamento</option>
                                     <option value="mitrabajo">Mitrabajo Panel de Control</option>
+                                    <option value="encargado_limpieza">Encargado Limpieza (cliente/sector)</option>
                                     <option value="admin">Administrador</option>
                                 </select>
                             </div>
+
+                            {editForm.role === 'encargado_limpieza' && (
+                                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--accent-color)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Asignación encargado limpieza</p>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.82rem', fontWeight: 600 }}>Cliente asignado *</label>
+                                        <select
+                                            value={editForm.cliente_asignado}
+                                            onChange={(e) => setEditForm({ ...editForm, cliente_asignado: e.target.value, sector_asignado: '' })}
+                                            className="input"
+                                            required
+                                            style={{ width: '100%', padding: '0.6rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }}
+                                        >
+                                            <option value="">Seleccionar cliente...</option>
+                                            {locations.map((l: any) => (
+                                                <option key={l.name} value={l.name}>{l.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.82rem', fontWeight: 600 }}>Sector asignado (opcional)</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.sector_asignado}
+                                            onChange={(e) => setEditForm({ ...editForm, sector_asignado: e.target.value })}
+                                            placeholder="Ej: TORRE 2 - LIMPIADORAS. Dejar vacío = ve todos los sectores del cliente."
+                                            className="input"
+                                            style={{ width: '100%', padding: '0.6rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)' }}
+                                        />
+                                    </div>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+                                        El encargado solo verá la planilla de su cliente/sector y no podrá acceder a otros módulos.
+                                    </p>
+                                </div>
+                            )}
 
                             {editForm.role !== 'admin' && (
                                 <div>

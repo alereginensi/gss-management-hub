@@ -95,11 +95,13 @@ export interface User {
     name: string;
     email?: string;
     department: string;
-    role: 'user' | 'admin' | 'supervisor' | 'funcionario' | 'jefe' | 'tecnico' | 'contador' | 'logistica' | 'mitrabajo';
+    role: 'user' | 'admin' | 'supervisor' | 'funcionario' | 'jefe' | 'tecnico' | 'contador' | 'logistica' | 'mitrabajo' | 'encargado_limpieza';
     rubro?: string;
     approved?: boolean;
     modules?: string; // comma-separated: "logistica,tecnico,cotizacion"
     panel_access?: number; // 1 = can access main hub, 0 = redirect to assigned module
+    cliente_asignado?: string | null;
+    sector_asignado?: string | null;
 }
 
 export function hasModuleAccess(user: User, mod: 'logistica' | 'tecnico' | 'cotizacion' | 'limpieza' | 'rrhh'): boolean {
@@ -107,6 +109,7 @@ export function hasModuleAccess(user: User, mod: 'logistica' | 'tecnico' | 'coti
     if (mod === 'logistica' && user.role === 'logistica') return true;
     if (mod === 'tecnico' && user.role === 'tecnico') return true;
     if (mod === 'cotizacion' && user.role === 'contador') return true;
+    if (mod === 'limpieza' && user.role === 'encargado_limpieza') return true;
     if (user.modules) {
         return user.modules.split(',').map(m => m.trim()).includes(mod);
     }
