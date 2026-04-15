@@ -36,9 +36,12 @@ export default function EntregasPage() {
   const [filterSearch, setFilterSearch] = useState('');
   const [filterEmpresa, setFilterEmpresa] = useState('');
 
+  const PAGE_SIZE = 10;
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [fetching, setFetching] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -47,26 +50,33 @@ export default function EntregasPage() {
     if (currentUser && !hasModuleAccess(currentUser, 'logistica')) { router.push('/'); return; }
   }, [loading, isAuthenticated, currentUser, router]);
 
-  const fetchEntregas = useCallback(async () => {
-    setFetching(true);
+  const fetchEntregas = useCallback(async (targetPage: number, append: boolean) => {
+    if (append) setLoadingMore(true); else setFetching(true);
     try {
-      const params = new URLSearchParams({ status: 'completada', limit: '200' });
+      const params = new URLSearchParams({
+        status: 'completada',
+        limit: String(PAGE_SIZE),
+        page: String(targetPage),
+      });
       if (filterFrom) params.set('from', filterFrom);
       if (filterTo) params.set('to', filterTo);
       if (filterSearch) params.set('search', filterSearch);
       if (filterEmpresa) params.set('empresa', filterEmpresa);
       const res = await fetch(`/api/logistica/agenda/appointments?${params}`);
       const data = await res.json();
-      setAppointments(data.appointments || []);
+      const incoming: Appointment[] = data.appointments || [];
+      setAppointments(prev => append ? [...prev, ...incoming] : incoming);
       setTotal(data.total || 0);
+      setPage(targetPage);
     } finally {
       setFetching(false);
+      setLoadingMore(false);
     }
   }, [filterFrom, filterTo, filterSearch, filterEmpresa]);
 
   useEffect(() => {
     if (!isAuthenticated || loading) return;
-    const timer = setTimeout(fetchEntregas, 350);
+    const timer = setTimeout(() => fetchEntregas(1, false), 350);
     return () => clearTimeout(timer);
   }, [fetchEntregas, isAuthenticated, loading]);
 
@@ -313,9 +323,19 @@ export default function EntregasPage() {
           </div>
 
           {!fetching && appointments.length > 0 && (
-            <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.78rem', marginTop: '0.75rem' }}>
-              Mostrando {appointments.length} de {total} entregas
-            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
+              <p style={{ color: '#94a3b8', fontSize: '0.78rem', margin: 0 }}>
+                Mostrando {appointments.length} de {total} entregas
+              </p>
+              {appointments.length < total && (
+                <button
+                  onClick={() => fetchEntregas(page + 1, true)}
+                  disabled={loadingMore}
+                  style={{ background: '#29416b', color: 'white', border: 'none', borderRadius: '6px', padding: '0.5rem 1.1rem', fontSize: '0.8rem', fontWeight: 600, cursor: loadingMore ? 'wait' : 'pointer', opacity: loadingMore ? 0.7 : 1 }}>
+                  {loadingMore ? 'Cargando...' : `Mostrar ${Math.min(PAGE_SIZE, total - appointments.length)} más`}
+                </button>
+              )}
+            </div>
           )}
         </div>
       </main>

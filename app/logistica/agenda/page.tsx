@@ -1,22 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Shirt, Search, AlertCircle, CheckCircle, Phone, ArrowRight, ArrowLeft } from 'lucide-react';
 import Image from 'next/image';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 
 export default function AgendaLookupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const previewMode = searchParams.get('preview') === '1';
   const { currentUser, isAuthenticated, loading } = useTicketContext();
 
   // Usuario logueado con acceso logística → redirección automática al panel admin
+  // (salvo que venga en modo preview desde el panel admin)
   useEffect(() => {
     if (loading) return;
+    if (previewMode) return;
     if (isAuthenticated && currentUser && hasModuleAccess(currentUser, 'logistica')) {
       router.replace('/logistica/agenda/admin');
     }
-  }, [loading, isAuthenticated, currentUser, router]);
+  }, [loading, isAuthenticated, currentUser, router, previewMode]);
 
   const [documento, setDocumento] = useState('');
   const [submitting, setSubmitting] = useState(false);

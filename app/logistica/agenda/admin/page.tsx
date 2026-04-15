@@ -25,7 +25,7 @@ const QUICK_LINKS = [
   { label: 'Catálogo', href: '/logistica/agenda/admin/catalogo', icon: Shirt, desc: 'Prendas por empresa/sector' },
   { label: 'Solicitudes', href: '/logistica/agenda/admin/solicitudes', icon: ClipboardList, desc: 'Casos especiales / emergentes' },
   { label: 'Artículos', href: '/logistica/agenda/admin/articulos', icon: Shirt, desc: 'Entregas y renovaciones' },
-  { label: 'Cambios', href: '/logistica/agenda/admin/cambios', icon: RefreshCw, desc: 'Intercambio de prendas (Dual Remito)' },
+  { label: 'Cambios', href: '/logistica/agenda/admin/cambios', icon: RefreshCw, desc: 'Intercambio de prendas (Doble Remito)' },
   { label: 'Interior', href: '/logistica/agenda/admin/envios-interior', icon: Truck, desc: 'Envíos al interior del país' },
   { label: 'Importar', href: '/logistica/agenda/admin/importaciones', icon: Upload, desc: 'Carga masiva de empleados' },
   { label: 'Migración', href: '/logistica/agenda/admin/migracion', icon: History, desc: 'Historial del sistema anterior' },
@@ -91,13 +91,13 @@ export default function AgendaAdminDashboard() {
           </div>
 
           {/* Stats del día */}
-          {!statsLoading && stats && (
+          {!statsLoading && stats && stats.hoy && stats.empleados && stats.alertas && (
             <div className="stats-grid">
               {[
-                { label: 'Citas hoy', value: stats.hoy.citas_total, sub: `${stats.hoy.citas_pendientes} pend.`, color: '#29416b', icon: Calendar },
-                { label: 'Historial', value: stats.hoy.total_historico, sub: 'registros', color: '#065f46', icon: History },
-                { label: 'Empleados', value: stats.empleados.total, sub: `${stats.empleados.habilitados} hab.`, color: '#1e40af', icon: Users },
-                { label: 'Alertas', value: stats.alertas.articulos_vencidos + stats.alertas.solicitudes_pendientes, sub: `${stats.alertas.solicitudes_pendientes} sol.`, color: '#92400e', icon: AlertTriangle },
+                { label: 'Citas hoy', value: stats.hoy.citas_total ?? 0, sub: `${stats.hoy.citas_pendientes ?? 0} pend.`, color: '#29416b', icon: Calendar },
+                { label: 'Historial', value: stats.hoy.total_historico ?? 0, sub: 'registros', color: '#065f46', icon: History },
+                { label: 'Empleados', value: stats.empleados.total ?? 0, sub: `${stats.empleados.habilitados ?? 0} hab.`, color: '#1e40af', icon: Users },
+                { label: 'Alertas', value: (stats.alertas.articulos_vencidos ?? 0) + (stats.alertas.solicitudes_pendientes ?? 0), sub: `${stats.alertas.solicitudes_pendientes ?? 0} sol.`, color: '#92400e', icon: AlertTriangle },
               ].map(({ label, value, sub, color, icon: Icon }) => (
                 <div key={label} className="card" style={{ 
                   padding: isMobile ? '0.85rem 0.5rem' : '1.25rem 1rem', 
@@ -168,7 +168,7 @@ export default function AgendaAdminDashboard() {
               <p style={{ margin: 0, fontWeight: 700, fontSize: '0.82rem', color: '#065f46' }}>Acceso público para empleados</p>
               <p style={{ margin: 0, fontSize: '0.74rem', color: '#047857' }}>/logistica/agenda — Sin login requerido</p>
             </div>
-            <a href="/logistica/agenda" target="_blank" rel="noopener noreferrer" 
+            <a href="/logistica/agenda?preview=1" target="_blank" rel="noopener noreferrer"
               style={{ fontSize: '0.78rem', color: '#065f46', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none' }}>
               <TrendingUp size={13} /> Ver flujo del empleado →
             </a>

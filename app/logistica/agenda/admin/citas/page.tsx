@@ -119,29 +119,31 @@ export default function CitasPage() {
               </div>
             )}
             
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr 0.8fr 1.1fr 1.1fr', 
-              gap: '0.6rem' 
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.6rem'
             }}>
-              <div style={{ position: 'relative' }}>
+              <div style={{ flex: isMobile ? '1 1 100%' : '2 1 220px', minWidth: 0 }}>
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Nombre o documento..."
                   style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.55rem 0.75rem', fontSize: '0.85rem', boxSizing: 'border-box' }} />
               </div>
-              
-              <div className="grid-2-mobile" style={{ display: isMobile ? 'grid' : 'contents', gap: '0.6rem' }}>
+              <div style={{ flex: isMobile ? '1 1 48%' : '1 1 140px', minWidth: 0 }}>
                 <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
-                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.55rem 0.7rem', fontSize: '0.85rem' }} />
-                <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
-                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.55rem 0.7rem', fontSize: '0.85rem' }} />
+                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.55rem 0.7rem', fontSize: '0.85rem', boxSizing: 'border-box' }} />
               </div>
-
-              <div className="grid-2-mobile" style={{ display: isMobile ? 'grid' : 'contents', gap: '0.6rem' }}>
-                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.55rem 0.4rem', fontSize: '0.85rem' }}>
+              <div style={{ flex: isMobile ? '1 1 48%' : '1 1 140px', minWidth: 0 }}>
+                <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
+                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.55rem 0.7rem', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+              </div>
+              <div style={{ flex: isMobile ? '1 1 48%' : '1 1 180px', minWidth: 0 }}>
+                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.55rem 1.8rem 0.55rem 0.6rem', fontSize: '0.85rem', boxSizing: 'border-box' }}>
                   <option value="">Todos los estados</option>
                   {STATUSES.map(s => <option key={s} value={s} style={{ textTransform: 'capitalize' }}>{s.replace('_', ' ')}</option>)}
                 </select>
-                <select value={filterEmpresa} onChange={e => setFilterEmpresa(e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.55rem 0.4rem', fontSize: '0.85rem' }}>
+              </div>
+              <div style={{ flex: isMobile ? '1 1 48%' : '1 1 180px', minWidth: 0 }}>
+                <select value={filterEmpresa} onChange={e => setFilterEmpresa(e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.55rem 1.8rem 0.55rem 0.6rem', fontSize: '0.85rem', boxSizing: 'border-box' }}>
                   <option value="">Todas las empresas</option>
                   {EMPRESAS.map(e => <option key={e} value={e}>{e}</option>)}
                 </select>
