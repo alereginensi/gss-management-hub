@@ -49,8 +49,8 @@ const nextConfig: NextConfig = {
           "font-src 'self' data:",
           // data: para firmas base64 (SignaturePad), blob: para previews, Cloudinary para adjuntos
           "img-src 'self' data: blob: https://res.cloudinary.com",
-          // Solo llamadas same-origin (sin APIs externas desde el cliente)
-          "connect-src 'self'",
+          // Solo llamadas same-origin + Cloudinary (para SW y firmas)
+          "connect-src 'self' https://res.cloudinary.com",
           // Service Worker
           "worker-src 'self' blob:",
           "frame-src 'none'",

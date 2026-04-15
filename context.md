@@ -177,4 +177,99 @@ npm run migrate:limpieza-personal  # migración segura limpieza → Postgres
 
 ---
 
-*Última actualización de este archivo: alineado con la base del código (logística, artículos, parse JSON Postgres, migraciones, UX móvil en modales, Mitrabajo/Playwright en Railway).*
+---
+
+## Módulo Agenda Web de Uniformes (`app/logistica/agenda/`)
+
+Sistema integral de gestión de turnos y uniformes bajo Logística.
+
+### Frentes
+
+**Flujo público (sin auth):**
+- `app/logistica/agenda/` — Lookup por documento (paso 1)
+- `app/logistica/agenda/pedido/` — Selección del pedido (paso 2)
+- `app/logistica/agenda/turno/` — Selección de turno con hold temporal (paso 3)
+- `app/logistica/agenda/confirmacion/` — Confirmación (paso 4)
+
+**Panel admin (requiere `logistica` o `admin`):**
+- `app/logistica/agenda/admin/` — Dashboard con stats
+- Sub-páginas: `citas/`, `citas/[id]/`, `horarios/`, `empleados/`, `catalogo/`, `solicitudes/`, `envios-interior/`, `articulos/`, `importaciones/`, `migracion/`, `configuracion/`, `auditoria/`
+
+### APIs públicas (`/api/logistica/agenda/public/`)
+- `lookup/` — POST por documento, registra intentos fallidos
+- `slots/` — GET slots disponibles
+- `slots/[id]/hold/` — POST/DELETE hold atómico (UPDATE condicional SQLite/PG)
+- `appointments/` — POST confirmar cita
+
+### APIs admin (`/api/logistica/agenda/`)
+- `stats/`, `employees/`, `employees/[id]/`, `catalog/`, `catalog/[id]/`
+- `slots/`, `slots/[id]/`, `slots/generate/`
+- `appointments/`, `appointments/[id]/`, `appointments/[id]/delivery/`, `/sign/`, `/remito/`
+- `remito/parse/` — parseo texto remito → items estructurados
+- `requests/`, `requests/[id]/`, `requests/[id]/sign/`
+- `shipments/`, `shipments/[id]/`, `shipments/[id]/sign/`
+- `articles/`, `articles/[id]/`, `articles/renewal/`
+- `changes/`, `changes/[id]/`, `changes/[id]/sign/`, `changes/[id]/complete/`
+- `import/`, `import/template/` — importación masiva Excel/CSV (xlsx)
+- `export/` — exportación Excel (citas, empleados, entregas); soporta filtros `status` y `search`
+- `config/` — GET/PUT configuración global (solo admin PUT)
+- `failed-attempts/` — solo admin
+- `audit/` — solo admin
+
+### Panel admin — páginas nuevas o rediseñadas (rama `agenda-web`)
+
+**`admin/empleados/`** — lista paginada (50/página). Columna extra con toggle **Habilitado para cambio** (icono `PackagePlus`): activa `allow_reorder = 1` en el empleado vía PUT. Badge azul si habilitado, gris si no.
+
+**`admin/entregas/`** — historial de entregas completadas. Filtros: búsqueda (nombre/CI), desde, hasta, empresa. Tabla con columnas: Fecha, Empleado, CI, Empresa, Ítems, Remito, Firma emp., Firma resp., Fecha entrega, Ver. Botón exportar Excel.
+
+**`admin/citas/`** — para el rol `logistica`, al cargar la página se aplican filtros iniciales `desde=hoy`, `hasta=hoy`, `estado=confirmada`. Botones rápidos: "Hoy", "Solo confirmadas", "Restablecer".
+
+**`admin/cambios/`** — rediseño completo:
+- Toolbar con contador y botón "Nuevo cambio".
+- Filtros: buscar, desde, hasta, empresa, estado.
+- Tabla historial: Fecha | Empleado | CI | Empresa | Prenda devuelta | Prenda entregada | Estado (badge) | Acciones.
+- Badge de estado: `pendiente`=amarillo, `completado`=verde, `cancelado`=rojo.
+- Modal "Nuevo cambio": busca empleado con badge de elegibilidad (`allow_reorder=1` → "Habilitado" azul; `renewal_enabled_at <= hoy` → "Renovación disponible" verde; sin ninguno → aviso naranja). Dropdown artículo a devolver (artículos activos del empleado). Dropdown artículo a entregar (del catálogo). Al crear → POST → redirige a `/cambios/[id]`.
+
+**`admin/cambios/[id]/`** — vista de completar cambio (equivalente a `citas/[id]/` pero con devolución):
+- Info del cambio: empleado, artículo devuelto, artículo a entregar, badge de estado.
+- **Remito ENTREGA** (borde verde): number input, textarea raw, botón "Analizar remito" (llama `parseRemitoText` client-side), file upload, lista editable de ítems.
+- **Remito DEVOLUCIÓN** (borde rojo): misma estructura; pre-rellena con el artículo devuelto del cambio.
+- **Descargo legal + firmas**: texto legal, checkbox "Acepto…", dos `AgendaSignatureCanvas` (empleado + responsable).
+- **Botón "Completar cambio"**: requiere disclaimer ✓ + ambas firmas ✓ + al menos un ítem entregado. Flujo: `POST sign (employee)` → `POST sign (responsible)` → `PUT [id]` (ítems/remitos) → `PUT [id]/complete`.
+- **Sección de impresión** (`@media print`): encabezado con datos del empleado, tabla de ítems entregados (verde), tabla de ítems devueltos (rojo), números de remito, texto legal, espacios de firma.
+- Botón "Imprimir constancia" → `window.print()`.
+
+### Libs de soporte
+- `lib/agenda-types.ts` — interfaces TypeScript completas; incluye `ChangeEventStatus = 'pendiente' | 'completado' | 'cancelado'`; `AgendaChangeEvent` actualizado con `status`, `employee_signature_url`, `responsible_signature_url`, `disclaimer_accepted`, `delivered_items`, `returned_items`, `remito_delivery_number`, `remito_return_number`, `completed_at`, `completed_by`, `delivery_notes`; `AgendaUniformCatalogItem` acepta `null` en campos opcionales.
+- `lib/agenda-helpers.ts` — hold/release slot, logAudit, badges, generateSlotsForMonth
+- `lib/agenda-catalog.ts` — catálogo por empresa + normalización de pedidos; re-exporta `ARTICLE_NAME_ALIASES` desde `agenda-article-aliases.ts`
+- `lib/agenda-article-aliases.ts` — **nuevo**: mapa de aliases de artículos sin imports de servidor; importable en componentes cliente
+- `lib/agenda-remito-parser.ts` — parseo texto libre de remito → items + reconciliación; importa aliases desde `agenda-article-aliases.ts` (client-safe)
+- `lib/agenda-import.ts` — parser Excel/CSV para empleados y migración histórica
+- `lib/agenda-storage.ts` — abstracción de almacenamiento (filesystem local por defecto; si `CLOUDINARY_URL` → Cloudinary)
+- `app/components/AgendaSignatureCanvas.tsx` — canvas de firma con `signature_pad`; `forwardRef` con ref `{ clear(), isEmpty() }`; props `onChange(dataUrl)`, `disabled?`, `label?`
+
+### Cron y scripts
+- `scripts/cron-agenda.cjs` — auto-generación mensual de slots con `node-cron` (día 5 de cada mes, 09:00 Montevideo)
+- `npm run agenda:slots -- --manual 2025-08` — genera slots de un mes específico
+
+### DB — `agenda_change_events` (columnas agregadas vía ALTER TABLE)
+Columnas nuevas añadidas con migración aditiva (PostgreSQL: `information_schema.columns`; SQLite: `PRAGMA table_info`) para no romper producción existente:
+`status TEXT DEFAULT 'pendiente'`, `employee_signature_url TEXT`, `responsible_signature_url TEXT`, `disclaimer_accepted INTEGER DEFAULT 0`, `delivery_notes TEXT`, `delivered_items TEXT`, `returned_items TEXT`, `remito_delivery_number TEXT`, `remito_return_number TEXT`, `completed_at TIMESTAMP`, `completed_by INTEGER`.
+
+### DB (14 tablas en `lib/db.ts`)
+`agenda_employees`, `agenda_time_slots`, `agenda_appointments`, `agenda_appointment_item_changes`, `agenda_config`, `agenda_failed_attempts`, `agenda_uniform_catalog`, `agenda_articles`, `agenda_requests`, `agenda_shipments`, `agenda_shipment_articles`, `agenda_change_events`, `agenda_import_jobs`, `agenda_audit_log`.
+
+### Print CSS
+`app/globals.css` — clases `.no-print`, `.print-only`, `.print-comprobante` para impresión de comprobantes de entrega, solicitudes emergentes, envíos y **constancias de cambio de prenda**.
+
+### Rutas públicas en middleware
+`/logistica/agenda`, `/logistica/agenda/pedido`, `/logistica/agenda/turno`, `/logistica/agenda/confirmacion` — sin auth requerida.
+
+### Archivos subidos
+Se guardan en `public/uploads/agenda/{firmas|remitos}/` por defecto. Si `CLOUDINARY_URL` → Cloudinary. Abstracción en `lib/agenda-storage.ts`.
+
+---
+
+*Última actualización de este archivo: rama `agenda-web` — cambios de prenda con devolución, historial entregas, toggle allow\_reorder, vista logística en citas, AgendaSignatureCanvas.*

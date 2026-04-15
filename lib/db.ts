@@ -540,6 +540,208 @@ class DbWrapper {
         created_by TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS agenda_employees (
+        id SERIAL PRIMARY KEY,
+        documento TEXT NOT NULL UNIQUE,
+        nombre TEXT NOT NULL,
+        empresa TEXT,
+        sector TEXT,
+        puesto TEXT,
+        workplace_category TEXT,
+        fecha_ingreso TEXT,
+        talle_superior TEXT,
+        talle_inferior TEXT,
+        calzado TEXT,
+        enabled INTEGER DEFAULT 1,
+        allow_reorder INTEGER DEFAULT 0,
+        estado TEXT DEFAULT 'activo',
+        observaciones TEXT,
+        created_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS agenda_time_slots (
+        id SERIAL PRIMARY KEY,
+        fecha TEXT NOT NULL,
+        start_time TEXT NOT NULL,
+        end_time TEXT NOT NULL,
+        capacity INTEGER DEFAULT 1,
+        current_bookings INTEGER DEFAULT 0,
+        held_until TEXT,
+        hold_token TEXT,
+        estado TEXT DEFAULT 'activo',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(fecha, start_time, end_time)
+      );
+
+      CREATE TABLE IF NOT EXISTS agenda_appointments (
+        id SERIAL PRIMARY KEY,
+        employee_id INTEGER NOT NULL REFERENCES agenda_employees(id),
+        time_slot_id INTEGER NOT NULL REFERENCES agenda_time_slots(id),
+        status TEXT DEFAULT 'confirmada',
+        order_items TEXT,
+        delivered_order_items TEXT,
+        remito_number TEXT,
+        remito_pdf_url TEXT,
+        parsed_remito_text TEXT,
+        parsed_remito_data TEXT,
+        employee_signature_url TEXT,
+        responsible_signature_url TEXT,
+        delivery_notes TEXT,
+        delivered_at TEXT,
+        delivered_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(employee_id, time_slot_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS agenda_appointment_item_changes (
+        id SERIAL PRIMARY KEY,
+        appointment_id INTEGER NOT NULL REFERENCES agenda_appointments(id),
+        before_items TEXT NOT NULL,
+        after_items TEXT NOT NULL,
+        reason TEXT,
+        changed_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS agenda_config (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        min_advance_hours INTEGER DEFAULT 2,
+        hold_duration_seconds INTEGER DEFAULT 60,
+        public_contact_whatsapp TEXT,
+        allow_reorder_global INTEGER DEFAULT 0,
+        slot_duration_minutes INTEGER DEFAULT 30,
+        slots_per_day INTEGER DEFAULT 8,
+        auto_generate_day INTEGER DEFAULT 5,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS agenda_failed_attempts (
+        id SERIAL PRIMARY KEY,
+        documento TEXT NOT NULL,
+        motivo TEXT NOT NULL,
+        ip TEXT,
+        user_agent TEXT,
+        context TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS agenda_uniform_catalog (
+        id SERIAL PRIMARY KEY,
+        empresa TEXT,
+        sector TEXT,
+        puesto TEXT,
+        workplace_category TEXT,
+        article_type TEXT NOT NULL,
+        article_name_normalized TEXT,
+        quantity INTEGER DEFAULT 1,
+        useful_life_months INTEGER DEFAULT 12,
+        initial_enabled INTEGER DEFAULT 1,
+        renewable INTEGER DEFAULT 1,
+        reusable_allowed INTEGER DEFAULT 0,
+        special_authorization_required INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS agenda_articles (
+        id SERIAL PRIMARY KEY,
+        employee_id INTEGER NOT NULL REFERENCES agenda_employees(id),
+        appointment_id INTEGER REFERENCES agenda_appointments(id),
+        article_type TEXT NOT NULL,
+        size TEXT,
+        condition_status TEXT DEFAULT 'nuevo',
+        delivery_date TEXT NOT NULL,
+        useful_life_months INTEGER DEFAULT 12,
+        expiration_date TEXT,
+        renewal_enabled_at TEXT,
+        current_status TEXT DEFAULT 'activo',
+        origin_type TEXT DEFAULT 'entrega_inicial',
+        notes TEXT,
+        created_by INTEGER,
+        migrated_flag INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS agenda_requests (
+        id SERIAL PRIMARY KEY,
+        employee_id INTEGER NOT NULL REFERENCES agenda_employees(id),
+        article_type TEXT NOT NULL,
+        size TEXT,
+        reason TEXT NOT NULL,
+        requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        requested_by INTEGER,
+        approved_by INTEGER,
+        approved_at TEXT,
+        approval_signature_url TEXT,
+        status TEXT DEFAULT 'pendiente',
+        legal_text_version TEXT DEFAULT 'v1',
+        notes TEXT,
+        resulting_article_id INTEGER REFERENCES agenda_articles(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS agenda_shipments (
+        id SERIAL PRIMARY KEY,
+        employee_id INTEGER NOT NULL REFERENCES agenda_employees(id),
+        appointment_id INTEGER REFERENCES agenda_appointments(id),
+        tracking_number TEXT,
+        carrier TEXT,
+        destination TEXT,
+        weight REAL,
+        declared_value REAL,
+        description TEXT,
+        invoice_image_url TEXT,
+        shipment_status TEXT DEFAULT 'preparado',
+        dispatched_at TEXT,
+        delivered_at TEXT,
+        receiver_signature_url TEXT,
+        supervisor_signature_url TEXT,
+        notes TEXT,
+        created_by INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS agenda_shipment_articles (
+        shipment_id INTEGER NOT NULL REFERENCES agenda_shipments(id),
+        article_id INTEGER NOT NULL REFERENCES agenda_articles(id),
+        PRIMARY KEY (shipment_id, article_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS agenda_change_events (
+        id SERIAL PRIMARY KEY,
+        employee_id INTEGER NOT NULL REFERENCES agenda_employees(id),
+        new_article_id INTEGER REFERENCES agenda_articles(id),
+        returned_article_id INTEGER REFERENCES agenda_articles(id),
+        delivery_receipt_url TEXT,
+        return_receipt_url TEXT,
+        changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        processed_by INTEGER,
+        notes TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS agenda_import_jobs (
+        id SERIAL PRIMARY KEY,
+        type TEXT NOT NULL,
+        file_name TEXT,
+        processed_rows INTEGER DEFAULT 0,
+        successful_rows INTEGER DEFAULT 0,
+        failed_rows INTEGER DEFAULT 0,
+        error_log TEXT,
+        processed_by INTEGER,
+        processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS agenda_audit_log (
+        id SERIAL PRIMARY KEY,
+        module TEXT DEFAULT 'agenda',
+        action TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id INTEGER,
+        user_id INTEGER,
+        details TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `;
 
     // Migration for limpieza_registros
@@ -1039,6 +1241,24 @@ class DbWrapper {
           `);
         } catch (e) {}
 
+        // Migrate agenda_shipments columns (Postgres)
+        try {
+          const sCols = await this.pgPool!.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'agenda_shipments'`);
+          const sColNames = sCols.rows.map((r: any) => r.column_name);
+          if (!sColNames.includes('destination')) {
+            await this.pgPool!.query('ALTER TABLE agenda_shipments ADD COLUMN destination TEXT');
+            await this.pgPool!.query('ALTER TABLE agenda_shipments ADD COLUMN weight REAL');
+            await this.pgPool!.query('ALTER TABLE agenda_shipments ADD COLUMN declared_value REAL');
+            await this.pgPool!.query('ALTER TABLE agenda_shipments ADD COLUMN description TEXT');
+            await this.pgPool!.query('ALTER TABLE agenda_shipments ADD COLUMN invoice_image_url TEXT');
+            await this.pgPool!.query('ALTER TABLE agenda_shipments ADD COLUMN appointment_id INTEGER REFERENCES agenda_appointments(id)');
+            await this.pgPool!.query('ALTER TABLE agenda_shipments ADD COLUMN supervisor_signature_url TEXT');
+            console.log('🐘 Migrated agenda_shipments: added logistics columns (Postgres)');
+          }
+        } catch (e) {
+          console.error('❌ Error migrating agenda_shipments Postgres:', e);
+        }
+
         // logistica_calendario
         try {
           await this.pgPool!.query(`
@@ -1080,6 +1300,44 @@ class DbWrapper {
           `);
         } catch (folderErr) {
           console.error('❌ Error creating folders tables in Postgres:', folderErr);
+        }
+
+        // Agenda Web: seed default config row if not exists
+        try {
+          const cfgCheck = await this.pgPool!.query('SELECT id FROM agenda_config WHERE id = 1');
+          if (cfgCheck.rows.length === 0) {
+            await this.pgPool!.query(`INSERT INTO agenda_config (id) VALUES (1) ON CONFLICT DO NOTHING`);
+            console.log('✅ agenda_config default row created (Postgres)');
+          }
+        } catch (e) {
+          console.error('❌ Error seeding agenda_config (Postgres):', e);
+        }
+
+        // Migrate agenda_change_events: add new columns for completion flow
+        try {
+          const ceCols = await this.pgPool!.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'agenda_change_events'`);
+          const ceColNames = ceCols.rows.map((r: any) => r.column_name);
+          const newCeCols: [string, string][] = [
+            ['status', "TEXT DEFAULT 'pendiente'"],
+            ['employee_signature_url', 'TEXT'],
+            ['responsible_signature_url', 'TEXT'],
+            ['disclaimer_accepted', 'INTEGER DEFAULT 0'],
+            ['delivery_notes', 'TEXT'],
+            ['delivered_items', 'TEXT'],
+            ['returned_items', 'TEXT'],
+            ['remito_delivery_number', 'TEXT'],
+            ['remito_return_number', 'TEXT'],
+            ['completed_at', 'TIMESTAMP'],
+            ['completed_by', 'INTEGER'],
+          ];
+          for (const [col, def] of newCeCols) {
+            if (!ceColNames.includes(col)) {
+              await this.pgPool!.query(`ALTER TABLE agenda_change_events ADD COLUMN ${col} ${def}`);
+              console.log(`🐘 Migrated agenda_change_events: added ${col}`);
+            }
+          }
+        } catch (e) {
+          console.error('❌ Error migrating agenda_change_events (Postgres):', e);
         }
 
       } catch (err) {
@@ -1255,6 +1513,61 @@ class DbWrapper {
 
       this.sqliteDb.exec(schema.replace(/SERIAL/g, 'INTEGER').replace(/TIMESTAMP/g, 'DATETIME').replace(/REFERENCES\s+\w+\(\w+\)\s+ON DELETE CASCADE/g, '').replace(/REFERENCES\s+\w+\(\w+\)/g, ''));
       console.log('✅ SQLite tables verified/created');
+
+      // Agenda Web: seed default config row for SQLite
+      try {
+        const cfgRow = this.sqliteDb.prepare('SELECT id FROM agenda_config WHERE id = 1').get();
+        if (!cfgRow) {
+          this.sqliteDb.prepare('INSERT OR IGNORE INTO agenda_config (id) VALUES (1)').run();
+          console.log('✅ agenda_config default row created (SQLite)');
+        }
+      } catch (e) {
+        console.error('❌ Error seeding agenda_config (SQLite):', e);
+      }
+
+      // Migrate agenda_shipments columns (SQLite)
+      try {
+        const sInfo = this.sqliteDb.prepare("PRAGMA table_info(agenda_shipments)").all() as any[];
+        const sCols = sInfo.map((c: any) => c.name);
+        if (!sCols.includes('destination')) {
+          this.sqliteDb.exec('ALTER TABLE agenda_shipments ADD COLUMN destination TEXT');
+          this.sqliteDb.exec('ALTER TABLE agenda_shipments ADD COLUMN weight REAL');
+          this.sqliteDb.exec('ALTER TABLE agenda_shipments ADD COLUMN declared_value REAL');
+          this.sqliteDb.exec('ALTER TABLE agenda_shipments ADD COLUMN description TEXT');
+          this.sqliteDb.exec('ALTER TABLE agenda_shipments ADD COLUMN invoice_image_url TEXT');
+          this.sqliteDb.exec('ALTER TABLE agenda_shipments ADD COLUMN appointment_id INTEGER');
+          this.sqliteDb.exec('ALTER TABLE agenda_shipments ADD COLUMN supervisor_signature_url TEXT');
+          console.log('✅ Migrated agenda_shipments: added logistics columns (SQLite)');
+        }
+      } catch (e) {
+        console.error('❌ Error migrating agenda_shipments SQLite:', e);
+      }
+
+      // Migrate agenda_change_events: add new columns for completion flow (SQLite)
+      try {
+        const ceInfo = this.sqliteDb.prepare("PRAGMA table_info(agenda_change_events)").all() as any[];
+        const ceCols = ceInfo.map((c: any) => c.name);
+        const newCeCols: [string, string][] = [
+          ['status', "TEXT DEFAULT 'pendiente'"],
+          ['employee_signature_url', 'TEXT'],
+          ['responsible_signature_url', 'TEXT'],
+          ['disclaimer_accepted', 'INTEGER DEFAULT 0'],
+          ['delivery_notes', 'TEXT'],
+          ['delivered_items', 'TEXT'],
+          ['returned_items', 'TEXT'],
+          ['remito_delivery_number', 'TEXT'],
+          ['remito_return_number', 'TEXT'],
+          ['completed_at', 'TEXT'],
+          ['completed_by', 'INTEGER'],
+        ];
+        for (const [col, def] of newCeCols) {
+          if (!ceCols.includes(col)) {
+            this.sqliteDb.exec(`ALTER TABLE agenda_change_events ADD COLUMN ${col} ${def}`);
+          }
+        }
+      } catch (e) {
+        console.error('❌ Error migrating agenda_change_events (SQLite):', e);
+      }
 
       // Fix notifications table: ensure id column is INTEGER PRIMARY KEY (auto-increment)
       // Old schema had BIGSERIAL which SQLite converted to BIGINTEGER, not auto-incrementing

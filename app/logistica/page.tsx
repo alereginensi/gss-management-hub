@@ -3,15 +3,13 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Globe, Package, ShoppingCart, CalendarDays } from 'lucide-react';
+import { ArrowLeft, Shirt, Package, ShoppingCart, CalendarDays } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 
-const AGENDA_URL = 'https://capable-possibility-production-8da3.up.railway.app/login';
-
 const MENU_ITEMS = [
-    { label: 'Agenda Web', description: 'Acceso al sistema de agenda externo', href: AGENDA_URL, icon: Globe, external: true },
-    { label: 'Envíos al Interior', description: 'Seguimiento de envíos con tracking y estados', href: '/logistica/envios', icon: Package, external: false },
+    { label: 'Agenda Web', description: 'Gestión de uniformes, turnos y entregas por empleado', href: '/logistica/agenda/admin', icon: Shirt, external: false },
+    { label: 'Envíos al Interior', description: 'Seguimiento de envíos con tracking y estados', href: '/logistica/agenda/admin/envios-interior', icon: Package, external: false },
     { label: 'Órdenes de Compra', description: 'Gestión de órdenes con OCR de PDF', href: '/logistica/ordenes-compra', icon: ShoppingCart, external: false },
     { label: 'Calendario', description: 'Entregas, ingresos de mercadería y solicitudes', href: '/logistica/calendario', icon: CalendarDays, external: false },
 ];

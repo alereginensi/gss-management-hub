@@ -28,6 +28,13 @@ export default function RootLayout({
     <html lang="es">
       <head>
         <meta charSet="utf-8" />
+        {process.env.NODE_ENV !== 'production' && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){var w=window.console&&window.console.warn;if(!w)return;window.console.warn=function(){var a=arguments[0];if(typeof a==='string'&&a.indexOf('was preloaded using link preload')!==-1)return;return w.apply(window.console,arguments);};})();`,
+            }}
+          />
+        )}
       </head>
       <body>
         <TicketProvider>

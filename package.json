@@ -9,7 +9,8 @@
     "lint": "eslint",
     "migrate:limpieza-personal": "node scripts/migrate_limpieza_personal_only.cjs",
     "mitrabajo:download": "node scripts/download-mitrabajo.cjs",
-    "mitrabajo:cron": "node scripts/cron-mitrabajo.cjs"
+    "mitrabajo:cron": "node scripts/cron-mitrabajo.cjs",
+    "agenda:slots": "node scripts/cron-agenda.cjs --manual"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -29,6 +30,8 @@
     "playwright": "^1.59.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "signature_pad": "^5.1.3",
+    "tesseract.js": "^7.0.0",
     "web-push": "^3.6.7",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"
