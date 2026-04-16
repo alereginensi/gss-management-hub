@@ -20,23 +20,39 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!row) return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 });
 
   const kind = request.nextUrl.searchParams.get('kind') || 'delivery';
-  const url = kind === 'return' ? row.remito_return_pdf_url : row.remito_pdf_url;
-  if (!url) return NextResponse.json({ error: 'Remito no disponible' }, { status: 404 });
+  const originalUrl = kind === 'return' ? row.remito_return_pdf_url : row.remito_pdf_url;
+  if (!originalUrl) return NextResponse.json({ error: 'Remito no disponible' }, { status: 404 });
 
-  // Si es una URL de Cloudinary raw (delivery bloqueado por default en algunas cuentas),
-  // descargamos con Basic auth usando api_key:api_secret.
-  const isCloudinaryRaw = /res\.cloudinary\.com\/.+\/raw\/upload\//.test(url);
-  const headers: Record<string, string> = {};
-  if (isCloudinaryRaw) {
-    const apiKey = process.env.CLOUDINARY_API_KEY;
-    const apiSecret = process.env.CLOUDINARY_API_SECRET;
-    if (apiKey && apiSecret) {
-      headers['Authorization'] = 'Basic ' + Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
+  // Si es una URL de Cloudinary raw (delivery de PDF bloqueado por default en
+  // algunas cuentas), regeneramos una URL firmada con el SDK para bypassear
+  // la restricción. Requiere CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET.
+  let fetchUrl = originalUrl as string;
+  const rawMatch = /res\.cloudinary\.com\/([^/]+)\/raw\/upload\/(?:v\d+\/)?(.+?)\.(pdf)$/i.exec(fetchUrl);
+  if (rawMatch) {
+    try {
+      const { v2: cloudinary } = await import('cloudinary');
+      const cloudName = rawMatch[1];
+      const publicId = rawMatch[2];
+      cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME || cloudName,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+        secure: true,
+      });
+      fetchUrl = cloudinary.url(publicId, {
+        resource_type: 'raw',
+        type: 'upload',
+        format: 'pdf',
+        sign_url: true,
+        secure: true,
+      });
+    } catch (err) {
+      console.error('No se pudo firmar la URL de Cloudinary:', err);
     }
   }
 
   try {
-    const upstream = await fetch(url, { headers, cache: 'no-store' });
+    const upstream = await fetch(fetchUrl, { cache: 'no-store' });
     if (!upstream.ok) {
       return NextResponse.json(
         { error: `No se pudo obtener el PDF (upstream ${upstream.status})` },
