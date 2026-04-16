@@ -530,15 +530,15 @@ export default function SolicitudesPage() {
               <button onClick={closeAuthorize} disabled={authing} style={{ background: 'none', border: 'none', cursor: authing ? 'wait' : 'pointer', color: '#94a3b8' }}><X size={18} /></button>
             </div>
 
-            <div style={{ background: '#fef9c3', border: '1px solid #fde68a', borderRadius: '6px', padding: '0.85rem 1rem', fontSize: '0.78rem', color: '#78350f', marginBottom: '1rem', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
-              <strong>Descargo Legal</strong>{'\n'}{LEGAL_TEXT_EMERGENCY}
-            </div>
-
             {authError && (
               <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.55rem 0.8rem', marginBottom: '0.8rem', fontSize: '0.8rem', color: '#7f1d1d' }}>{authError}</div>
             )}
 
-            <div style={{ marginBottom: '1rem' }}>
+            {/* Bloque supervisor */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <div style={{ background: '#fef9c3', border: '1px solid #fde68a', borderRadius: '6px', padding: '0.75rem 0.9rem', fontSize: '0.75rem', color: '#78350f', marginBottom: '0.6rem', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                <strong>Responsabilidad del supervisor</strong>{'\n'}{LEGAL_TEXT_V1}
+              </div>
               <AgendaSignatureCanvas
                 ref={approverRef}
                 onChange={setApproverSig}
@@ -546,7 +546,11 @@ export default function SolicitudesPage() {
               />
             </div>
 
+            {/* Bloque funcionario */}
             <div style={{ marginBottom: '1.25rem' }}>
+              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '0.75rem 0.9rem', fontSize: '0.75rem', color: '#1e3a8a', marginBottom: '0.6rem', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                <strong>Declaración del funcionario que recibe</strong>{'\n'}{LEGAL_TEXT_EMERGENCY}
+              </div>
               <AgendaSignatureCanvas
                 ref={receiverRef}
                 onChange={setReceiverSig}
