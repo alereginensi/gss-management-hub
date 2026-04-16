@@ -59,7 +59,9 @@ export default function AgendaAdminDashboard() {
     if (!isAuthenticated || loading) return;
     fetch('/api/logistica/agenda/stats')
       .then(r => r.json())
-      .then(setStats)
+      .then((data: any) => {
+        if (data && data.hoy && data.empleados && data.alertas) setStats(data as Stats);
+      })
       .catch(() => {})
       .finally(() => setStatsLoading(false));
   }, [isAuthenticated, loading]);
@@ -142,7 +144,7 @@ export default function AgendaAdminDashboard() {
           )}
 
           {/* Alertas destacadas */}
-          {stats && (stats.alertas.articulos_vencidos > 0 || (stats.alertas.solicitudes_emergentes ?? 0) > 0) && (
+          {stats && stats.alertas && ((stats.alertas.articulos_vencidos ?? 0) > 0 || (stats.alertas.solicitudes_emergentes ?? 0) > 0) && (
             <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '0.85rem 1rem', marginBottom: '1.25rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
               <AlertTriangle size={16} color="#92400e" style={{ marginTop: '2px', flexShrink: 0 }} />
               <div style={{ fontSize: '0.8rem', color: '#92400e' }}>
