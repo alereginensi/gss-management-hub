@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, LogOut } from 'lucide-react';
-import { useTicketContext } from '@/app/context/TicketContext';
+import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 
 const RECORD_TYPES = ['Evento de Seguridad', 'Intervención Móvil', 'Bitácora Técnica'];
 const SECURITY_EVENTS = ['Intrusión confirmado', 'Sospechoso', 'Falla técnica', 'Pánico / Emergencia humana', 'Falsa alarma', 'Otro'];
@@ -82,7 +82,7 @@ export default function MonitoreoPage() {
 
     useEffect(() => {
         if (isAuthenticated === false) router.push('/login');
-        else if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'tecnico') router.push('/');
+        else if (currentUser && !hasModuleAccess(currentUser, 'tecnico')) router.push('/');
     }, [isAuthenticated, currentUser, router]);
 
     // Pre-fill supervisor and technician with current user

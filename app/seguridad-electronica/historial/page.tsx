@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, X, LogOut } from 'lucide-react';
-import { useTicketContext } from '@/app/context/TicketContext';
+import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 import type * as ExcelJS from 'exceljs';
 
 interface SecurityRecord {
@@ -121,7 +121,7 @@ function HistorialContent() {
 
     useEffect(() => {
         if (isAuthenticated === false) router.push('/login');
-        else if (currentUser && currentUser.role !== 'admin' && currentUser.role !== 'tecnico') router.push('/');
+        else if (currentUser && !hasModuleAccess(currentUser, 'tecnico')) router.push('/');
     }, [isAuthenticated, currentUser, router]);
 
     useEffect(() => {
