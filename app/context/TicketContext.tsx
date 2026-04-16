@@ -334,7 +334,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             try {
                 // Restaurar sesión desde el servidor via cookie httpOnly 'session'
                 console.log('🔍 TicketContext: Fetching /api/auth/me');
-                const res = await fetch('/api/auth/me', { headers: getAuthHeaders() });
+                const res = await fetch('/api/auth/me', { headers: getAuthHeaders(), cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
                     if (data.user) {

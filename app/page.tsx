@@ -11,27 +11,40 @@ export default function Landing() {
   const { currentUser, isAuthenticated, loading, logout, isMobile } = useTicketContext();
   const router = useRouter();
 
+  const moduleRoutes: Record<string, string> = {
+    logistica: '/logistica',
+    tecnico: '/seguridad-electronica',
+    cotizacion: '/cotizacion/panel',
+    limpieza: '/operaciones-limpieza',
+    rrhh: '/rrhh',
+  };
+
+  const noPanelAccess = !!currentUser
+    && currentUser.role !== 'admin'
+    && Number(currentUser.panel_access) === 0;
+
+  const assignedDest = (() => {
+    if (!currentUser) return '/login';
+    const roleRoute = moduleRoutes[currentUser.role as string];
+    const mods = currentUser.modules?.split(',').map(m => m.trim()).filter(Boolean) ?? [];
+    const moduleRoute = mods.map(m => moduleRoutes[m]).find(Boolean);
+    return roleRoute || moduleRoute || '/login';
+  })();
+
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) {
-      router.push('/login');
+      router.replace('/login');
     } else if (currentUser?.role === 'funcionario') {
-      router.push('/tasks');
-    } else if (currentUser?.role === 'supervisor' && currentUser.panel_access === 0) {
-      const mods = currentUser.modules?.split(',').map(m => m.trim()).filter(Boolean) ?? [];
-      const moduleRoutes: Record<string, string> = {
-        logistica: '/logistica',
-        tecnico: '/seguridad-electronica',
-        cotizacion: '/cotizacion/panel',
-        limpieza: '/operaciones-limpieza',
-        rrhh: '/rrhh',
-      };
-      const dest = mods.map(m => moduleRoutes[m]).find(Boolean) ?? '/login';
-      router.push(dest);
+      router.replace('/tasks');
+    } else if (noPanelAccess) {
+      router.replace(assignedDest);
     }
-  }, [loading, isAuthenticated, currentUser, router]);
+  }, [loading, isAuthenticated, currentUser, noPanelAccess, assignedDest, router]);
 
-  if (loading || !currentUser) {
+  // Mostrar loader mientras cargamos O cuando el usuario NO debe ver el hub.
+  // Esto evita que el hub aparezca durante el split-second antes del redirect.
+  if (loading || !currentUser || currentUser.role === 'funcionario' || noPanelAccess) {
     return (
       <div style={{
         display: 'flex',
@@ -44,16 +57,8 @@ export default function Landing() {
       }}>
         <div style={{ width: '32px', height: '32px', border: '3px solid #e2e2e2', borderTopColor: 'var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
-          Cargando, espere por favor…
+          {noPanelAccess ? 'Redirigiendo a tu módulo…' : 'Cargando, espere por favor…'}
         </p>
-      </div>
-    );
-  }
-
-  if (currentUser.role === 'funcionario') {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f5f7fa' }}>
-        Redirigiendo...
       </div>
     );
   }
