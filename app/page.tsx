@@ -11,25 +11,8 @@ export default function Landing() {
   const { currentUser, isAuthenticated, loading, logout, isMobile } = useTicketContext();
   const router = useRouter();
 
-  const moduleRoutes: Record<string, string> = {
-    logistica: '/logistica',
-    tecnico: '/seguridad-electronica',
-    cotizacion: '/cotizacion/panel',
-    limpieza: '/operaciones-limpieza',
-    rrhh: '/rrhh',
-  };
-
-  const noPanelAccess = !!currentUser
-    && currentUser.role !== 'admin'
-    && Number(currentUser.panel_access) === 0;
-
-  const assignedDest = (() => {
-    if (!currentUser) return '/login';
-    const roleRoute = moduleRoutes[currentUser.role as string];
-    const mods = currentUser.modules?.split(',').map(m => m.trim()).filter(Boolean) ?? [];
-    const moduleRoute = mods.map(m => moduleRoutes[m]).find(Boolean);
-    return roleRoute || moduleRoute || '/login';
-  })();
+  const hasPanelAccess = !!currentUser
+    && (currentUser.role === 'admin' || Number(currentUser.panel_access ?? 1) === 1);
 
   useEffect(() => {
     if (loading) return;
@@ -37,14 +20,10 @@ export default function Landing() {
       router.replace('/login');
     } else if (currentUser?.role === 'funcionario') {
       router.replace('/tasks');
-    } else if (noPanelAccess) {
-      router.replace(assignedDest);
     }
-  }, [loading, isAuthenticated, currentUser, noPanelAccess, assignedDest, router]);
+  }, [loading, isAuthenticated, currentUser, router]);
 
-  // Mostrar loader mientras cargamos O cuando el usuario NO debe ver el hub.
-  // Esto evita que el hub aparezca durante el split-second antes del redirect.
-  if (loading || !currentUser || currentUser.role === 'funcionario' || noPanelAccess) {
+  if (loading || !currentUser || currentUser.role === 'funcionario') {
     return (
       <div style={{
         display: 'flex',
@@ -57,14 +36,14 @@ export default function Landing() {
       }}>
         <div style={{ width: '32px', height: '32px', border: '3px solid #e2e2e2', borderTopColor: 'var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
-          {noPanelAccess ? 'Redirigiendo a tu módulo…' : 'Cargando, espere por favor…'}
+          Cargando, espere por favor…
         </p>
       </div>
     );
   }
 
   const moduleList = [
-    { key: 'panel',      label: 'Panel General',                 description: 'Tickets, bitácora y gestión operativa',         icon: Briefcase,  href: '/administracion',        access: true },
+    { key: 'panel',      label: 'Panel General',                 description: 'Tickets, bitácora y gestión operativa',         icon: Briefcase,  href: '/administracion',        access: hasPanelAccess },
     { key: 'tecnico',    label: 'Seguridad Electrónica',          description: 'Monitoreo, mantenimiento e historial',           icon: Shield,     href: '/seguridad-electronica', access: hasModuleAccess(currentUser, 'tecnico') },
     { key: 'logistica',  label: 'Logística',                      description: 'Solicitudes de materiales y órdenes de compra', icon: Package,    href: '/logistica',             access: hasModuleAccess(currentUser, 'logistica') },
     { key: 'cotizacion', label: 'Cotización',                     description: 'Tarifas, liquidaciones y reportes',              icon: Calculator, href: '/cotizacion',            access: hasModuleAccess(currentUser, 'cotizacion') },

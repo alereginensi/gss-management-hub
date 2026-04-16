@@ -15,6 +15,10 @@ import { verifyJWT } from './lib/auth-edge';
  * general" y lo mandamos a su módulo asignado.
  */
 
+// Rutas propias del "Panel General". Si el usuario no tiene panel_access lo
+// sacamos de estas rutas y lo devolvemos al landing (/) donde verá sus módulos.
+// NOTA: `/` NO está en esta lista — el landing debe ser visible para todos
+// los usuarios autenticados; la card Panel General se deshabilita ahí.
 const PANEL_GENERAL_PREFIXES = [
     '/administracion',
     '/tickets',
@@ -24,25 +28,7 @@ const PANEL_GENERAL_PREFIXES = [
     '/settings',
     '/admin',
     '/mitrabajo',
-    '/tasks',
 ];
-
-const ROLE_TO_MODULE_ROUTE: Record<string, string> = {
-    logistica: '/logistica',
-    tecnico: '/seguridad-electronica',
-    cotizacion: '/cotizacion/panel',
-    contador: '/cotizacion/panel',
-    limpieza: '/operaciones-limpieza',
-    rrhh: '/rrhh',
-};
-
-const MODULE_TO_ROUTE: Record<string, string> = {
-    logistica: '/logistica',
-    tecnico: '/seguridad-electronica',
-    cotizacion: '/cotizacion/panel',
-    limpieza: '/operaciones-limpieza',
-    rrhh: '/rrhh',
-};
 
 function getJwtSecret(): string {
     const secret = process.env.JWT_SECRET;
@@ -51,21 +37,7 @@ function getJwtSecret(): string {
 }
 
 function isPanelGeneralPath(pathname: string): boolean {
-    if (pathname === '/') return true;
     return PANEL_GENERAL_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'));
-}
-
-function resolveAssignedDest(user: any): string {
-    if (!user) return '/login';
-    const roleRoute = ROLE_TO_MODULE_ROUTE[user.role];
-    if (roleRoute) return roleRoute;
-    const mods = typeof user.modules === 'string'
-        ? user.modules.split(',').map((m: string) => m.trim()).filter(Boolean)
-        : [];
-    for (const m of mods) {
-        if (MODULE_TO_ROUTE[m]) return MODULE_TO_ROUTE[m];
-    }
-    return '/login';
 }
 
 export async function middleware(request: NextRequest) {
@@ -96,12 +68,10 @@ export async function middleware(request: NextRequest) {
         const user = result?.payload?.user;
 
         // Si el usuario NO es admin y tiene panel_access=0, bloquear rutas del panel general
+        // y mandarlo de vuelta al landing donde verá sus módulos.
         if (user && user.role !== 'admin' && Number(user.panel_access) === 0) {
             if (isPanelGeneralPath(pathname)) {
-                const dest = resolveAssignedDest(user);
-                if (dest !== pathname) {
-                    return NextResponse.redirect(new URL(dest, request.url));
-                }
+                return NextResponse.redirect(new URL('/', request.url));
             }
         }
     } catch {

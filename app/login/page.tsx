@@ -54,27 +54,8 @@ export default function Login() {
                     panel_access: u.panel_access ?? 1,
                 }, data.token);
 
-                // Redirigir según panel_access:
-                // - funcionario → /tasks
-                // - sin panel_access (y no admin) → módulo asignado
-                // - resto → /
-                if (u.role === 'funcionario') {
-                    router.push('/tasks');
-                } else if (u.role !== 'admin' && Number(u.panel_access) === 0) {
-                    const moduleRoutes: Record<string, string> = {
-                        logistica: '/logistica',
-                        tecnico: '/seguridad-electronica',
-                        cotizacion: '/cotizacion/panel',
-                        limpieza: '/operaciones-limpieza',
-                        rrhh: '/rrhh',
-                    };
-                    const roleRoute = moduleRoutes[u.role];
-                    const mods = (u.modules ?? '').split(',').map((m: string) => m.trim()).filter(Boolean);
-                    const moduleRoute = mods.map((m: string) => moduleRoutes[m]).find(Boolean);
-                    router.push(roleRoute || moduleRoute || '/login');
-                } else {
-                    router.push('/');
-                }
+                // Funcionario a su pantalla; el resto a la landing con módulos.
+                router.push(u.role === 'funcionario' ? '/tasks' : '/');
             } else {
                 if (res.status === 403) {
                     setPendingApproval(true);

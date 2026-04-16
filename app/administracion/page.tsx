@@ -12,13 +12,6 @@ export default function AdminDashboard() {
   const { tickets, searchQuery, getAverageResolutionTime, currentUser, isSidebarOpen, deleteTicket, isMobile } = useTicketContext();
   const router = useRouter();
 
-  const moduleRoutes: Record<string, string> = {
-    logistica: '/logistica',
-    tecnico: '/seguridad-electronica',
-    cotizacion: '/cotizacion/panel',
-    limpieza: '/operaciones-limpieza',
-    rrhh: '/rrhh',
-  };
   const noPanelAccess = !!currentUser
     && currentUser.role !== 'admin'
     && Number(currentUser.panel_access) === 0;
@@ -28,12 +21,9 @@ export default function AdminDashboard() {
     if (currentUser.role === 'funcionario') {
       router.replace('/tasks');
     } else if (noPanelAccess) {
-      const roleRoute = moduleRoutes[currentUser.role as string];
-      const mods = currentUser.modules?.split(',').map(m => m.trim()).filter(Boolean) ?? [];
-      const moduleRoute = mods.map(m => moduleRoutes[m]).find(Boolean);
-      router.replace(roleRoute || moduleRoute || '/login');
+      // Sin acceso al panel general → volver al landing con módulos.
+      router.replace('/');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, noPanelAccess, router]);
 
   if (!currentUser || currentUser.role === 'funcionario' || noPanelAccess) {
