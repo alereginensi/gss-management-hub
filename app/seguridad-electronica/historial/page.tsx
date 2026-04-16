@@ -108,7 +108,7 @@ function DetailModal({ record, tipo, onClose }: { record: SecurityRecord; tipo: 
 }
 
 function HistorialContent() {
-    const { getAuthHeaders, isAuthenticated, logout } = useTicketContext();
+    const { getAuthHeaders, isAuthenticated, logout, loading: authLoading } = useTicketContext();
     const router = useRouter();
     const searchParams = useSearchParams();
     const tipo = searchParams?.get('tipo') || 'monitoreo';
@@ -120,9 +120,10 @@ function HistorialContent() {
     const { currentUser } = useTicketContext();
 
     useEffect(() => {
-        if (isAuthenticated === false) router.push('/login');
-        else if (currentUser && !hasModuleAccess(currentUser, 'tecnico')) router.push('/');
-    }, [isAuthenticated, currentUser, router]);
+        if (authLoading) return;
+        if (!isAuthenticated) { router.push('/login'); return; }
+        if (currentUser && !hasModuleAccess(currentUser, 'tecnico')) router.push('/');
+    }, [authLoading, isAuthenticated, currentUser, router]);
 
     useEffect(() => {
         setLoading(true);

@@ -54,7 +54,7 @@ const req = (text: string) => (
 );
 
 export default function MonitoreoPage() {
-    const { currentUser, isAuthenticated, getAuthHeaders, logout } = useTicketContext();
+    const { currentUser, isAuthenticated, getAuthHeaders, logout, loading: authLoading } = useTicketContext();
     const router = useRouter();
 
     const makeEmpty = (user: typeof currentUser): FormState => ({
@@ -81,9 +81,10 @@ export default function MonitoreoPage() {
     const [clientSectorMap, setClientSectorMap] = useState<Record<string, string[]>>({});
 
     useEffect(() => {
-        if (isAuthenticated === false) router.push('/login');
-        else if (currentUser && !hasModuleAccess(currentUser, 'tecnico')) router.push('/');
-    }, [isAuthenticated, currentUser, router]);
+        if (authLoading) return;
+        if (!isAuthenticated) { router.push('/login'); return; }
+        if (currentUser && !hasModuleAccess(currentUser, 'tecnico')) router.push('/');
+    }, [authLoading, isAuthenticated, currentUser, router]);
 
     // Pre-fill supervisor and technician with current user
     useEffect(() => {
