@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
 import { logAudit } from '@/lib/agenda-helpers';
-import { saveAgendaFile } from '@/lib/agenda-storage';
 
 const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
@@ -75,19 +74,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 }
 
-async function storeSignature(input: File | string, baseName: string): Promise<string | null> {
+// Las firmas se guardan como data URL (base64 inline) en la columna TEXT.
+// Esto evita depender del filesystem efímero de Railway o de config externa
+// como Cloudinary; una firma canvas pesa ~5-25 KB, perfectamente manejable.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function storeSignature(input: File | string, _baseName: string): Promise<string | null> {
   if (typeof input === 'string') {
-    // Se asume data URL tipo `data:image/png;base64,...`
-    const match = input.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/);
-    if (!match) return null;
-    const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
-    const buffer = Buffer.from(match[2], 'base64');
-    const filename = `${baseName}-${Date.now()}.${ext}`;
-    return saveAgendaFile(buffer, filename, 'firmas');
+    if (input.startsWith('data:image/')) return input;
+    return null;
   }
-  // File
   const buffer = Buffer.from(await input.arrayBuffer());
-  const ext = input.type === 'image/png' ? 'png' : 'jpg';
-  const filename = `${baseName}-${Date.now()}.${ext}`;
-  return saveAgendaFile(buffer, filename, 'firmas');
+  const mime = input.type === 'image/png' ? 'image/png'
+    : input.type === 'image/jpeg' || input.type === 'image/jpg' ? 'image/jpeg'
+    : 'image/png';
+  return `data:${mime};base64,${buffer.toString('base64')}`;
 }
