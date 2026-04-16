@@ -9,6 +9,7 @@ import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 import { LEGAL_TEXT_V1, LEGAL_TEXT_EMERGENCY } from '@/lib/agenda-types';
 import type { RequestStatus } from '@/lib/agenda-types';
 import AgendaSignatureCanvas, { type AgendaSignatureCanvasRef } from '@/app/components/AgendaSignatureCanvas';
+import SignatureReplaceButton from '@/app/components/SignatureReplaceButton';
 
 const STATUS_LABELS: Record<RequestStatus, string> = {
   pendiente: 'Pendiente', aprobada: 'Aprobada', rechazada: 'Rechazada', entregada: 'Entregada',
@@ -432,13 +433,37 @@ export default function SolicitudesPage() {
             {/* Firmas */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
               <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.75rem' }}>
-                <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#374151', marginBottom: '0.4rem' }}>Firma autorizante</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#374151' }}>Firma autorizante</div>
+                  <SignatureReplaceButton
+                    endpoint={`/api/logistica/agenda/requests/${selected.id}/sign`}
+                    fieldName="approver_signature"
+                    title="Reemplazar firma del autorizante"
+                    onSaved={(r) => {
+                      setSelected((s: any) => ({ ...s, approval_signature_url: r.approverUrl, receiver_signature_url: r.receiverUrl ?? s.receiver_signature_url }));
+                      fetchRequests();
+                    }}
+                  />
+                </div>
                 {selected.approval_signature_url
                   ? <img src={selected.approval_signature_url} alt="Firma autorizante" style={{ maxWidth: '100%', maxHeight: '100px', objectFit: 'contain' }} />
                   : <div style={{ color: '#cbd5e1', fontSize: '0.72rem' }}>Sin firma</div>}
               </div>
               <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.75rem' }}>
-                <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#374151', marginBottom: '0.4rem' }}>Firma funcionario</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#374151' }}>Firma funcionario</div>
+                  {selected.approval_signature_url && (
+                    <SignatureReplaceButton
+                      endpoint={`/api/logistica/agenda/requests/${selected.id}/sign`}
+                      fieldName="receiver_signature"
+                      title="Reemplazar firma del funcionario"
+                      onSaved={(r) => {
+                        setSelected((s: any) => ({ ...s, receiver_signature_url: r.receiverUrl }));
+                        fetchRequests();
+                      }}
+                    />
+                  )}
+                </div>
                 {selected.receiver_signature_url
                   ? <img src={selected.receiver_signature_url} alt="Firma funcionario" style={{ maxWidth: '100%', maxHeight: '100px', objectFit: 'contain' }} />
                   : <div style={{ color: '#cbd5e1', fontSize: '0.72rem' }}>Sin firma (opcional)</div>}

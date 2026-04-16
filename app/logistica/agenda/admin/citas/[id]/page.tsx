@@ -7,6 +7,7 @@ import { ArrowLeft, Printer, Save, Upload, FileText, CheckCircle, X, Truck, Pack
 import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 import AgendaSignatureCanvas, { AgendaSignatureCanvasRef } from '@/app/components/AgendaSignatureCanvas';
+import SignatureReplaceButton from '@/app/components/SignatureReplaceButton';
 import { getAppointmentStatusBadge, renderOrderItemLabel } from '@/lib/agenda-ui';
 import type { AppointmentStatus, OrderItem } from '@/lib/agenda-types';
 
@@ -486,7 +487,7 @@ export default function CitaDetallePage() {
                   <h3 style={{ margin: '0 0 1rem', fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>Remito PDF</h3>
                   {appt.remito_pdf_url && (
                     <div style={{ marginBottom: '0.75rem', fontSize: '0.82rem' }}>
-                      <a href={appt.remito_pdf_url} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <a href={`/api/logistica/agenda/appointments/${appt.id}/remito-pdf`} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                         <FileText size={14} /> Ver remito actual
                       </a>
                     </div>
@@ -579,7 +580,7 @@ export default function CitaDetallePage() {
                       </div>
                       {appt.remito_return_pdf_url && (
                         <div style={{ marginBottom: '0.75rem', fontSize: '0.82rem' }}>
-                          <a href={appt.remito_return_pdf_url} target="_blank" rel="noopener noreferrer" style={{ color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <a href={`/api/logistica/agenda/appointments/${appt.id}/remito-pdf?kind=return`} target="_blank" rel="noopener noreferrer" style={{ color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                             <FileText size={14} /> Ver remito devolución
                           </a>
                         </div>
@@ -629,12 +630,32 @@ export default function CitaDetallePage() {
                   {appt.status === 'completada' && (
                     <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
                       <div>
-                        <span style={{ fontSize: '0.7rem', display: 'block', color: '#64748b', marginBottom: '0.25rem' }}>Firma Empleado (Archivo)</span>
-                        {appt.employee_signature_url ? <img src={appt.employee_signature_url} alt="Emp" style={{ maxHeight: '60px' }} /> : '—'}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+                          <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Firma Empleado</span>
+                          <SignatureReplaceButton
+                            endpoint={`/api/logistica/agenda/appointments/${appt.id}/sign`}
+                            fieldName="file"
+                            extraFields={{ type: 'employee' }}
+                            title="Reemplazar firma del empleado"
+                            label="Dibuje la nueva firma"
+                            onSaved={(r) => setAppt((prev: any) => prev ? { ...prev, employee_signature_url: r.fileUrl } : prev)}
+                          />
+                        </div>
+                        {appt.employee_signature_url ? <img src={appt.employee_signature_url} alt="Emp" style={{ maxHeight: '70px' }} /> : <span style={{ color: '#cbd5e1', fontSize: '0.78rem' }}>—</span>}
                       </div>
                       <div>
-                        <span style={{ fontSize: '0.7rem', display: 'block', color: '#64748b', marginBottom: '0.25rem' }}>Firma Responsable (Archivo)</span>
-                        {appt.responsible_signature_url ? <img src={appt.responsible_signature_url} alt="Resp" style={{ maxHeight: '60px' }} /> : '—'}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+                          <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Firma Responsable</span>
+                          <SignatureReplaceButton
+                            endpoint={`/api/logistica/agenda/appointments/${appt.id}/sign`}
+                            fieldName="file"
+                            extraFields={{ type: 'responsible' }}
+                            title="Reemplazar firma del responsable"
+                            label="Dibuje la nueva firma"
+                            onSaved={(r) => setAppt((prev: any) => prev ? { ...prev, responsible_signature_url: r.fileUrl } : prev)}
+                          />
+                        </div>
+                        {appt.responsible_signature_url ? <img src={appt.responsible_signature_url} alt="Resp" style={{ maxHeight: '70px' }} /> : <span style={{ color: '#cbd5e1', fontSize: '0.78rem' }}>—</span>}
                       </div>
                     </div>
                   )}

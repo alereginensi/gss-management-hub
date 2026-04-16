@@ -7,6 +7,7 @@ import { ArrowLeft, Plus, Search, Upload, Truck, X, Scan, FileText, Image as Ima
 import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 import AgendaSignatureCanvas, { AgendaSignatureCanvasRef } from '@/app/components/AgendaSignatureCanvas';
+import SignatureReplaceButton from '@/app/components/SignatureReplaceButton';
 import { getShipmentStatusBadge } from '@/lib/agenda-ui';
 import type { ShipmentStatus } from '@/lib/agenda-types';
 
@@ -476,8 +477,16 @@ function EnviosInteriorContent() {
                 </div>
                 
                 {selected.receiver_signature_url ? (
-                  <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '1rem', textAlign: 'center' }}>
+                  <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '1rem', textAlign: 'center', position: 'relative' }}>
                     <img src={selected.receiver_signature_url} alt="Firma" style={{ maxHeight: '120px', margin: '0 auto' }} />
+                    <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem' }}>
+                      <SignatureReplaceButton
+                        endpoint={`/api/logistica/agenda/shipments/${selected.id}/sign`}
+                        fieldName="file"
+                        title="Reemplazar firma de recepción"
+                        onSaved={(r) => setSelected((s: any) => ({ ...s, receiver_signature_url: r.fileUrl }))}
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div style={{ textAlign: 'center', padding: '2rem', border: '2px dashed #f1f5f9', borderRadius: '8px' }}>

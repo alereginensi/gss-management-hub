@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gss-hub-v7';
+const CACHE_NAME = 'gss-hub-v8';
 const urlsToCache = [
     '/offline.html'
 ];
@@ -36,7 +36,14 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    const path = new URL(event.request.url).pathname;
+    // No interceptar requests cross-origin (Cloudinary, CDNs externos, etc.).
+    // El browser los hace directo bajo su propio CSP del documento.
+    const url = new URL(event.request.url);
+    if (url.origin !== self.location.origin) {
+        return;
+    }
+
+    const path = url.pathname;
     // Favicon / marca: NO pasar por cache-first del SW (evita icono viejo, 503 cacheado, MIME raro en Railway).
     if (
         path === '/favicon.ico' ||
