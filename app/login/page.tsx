@@ -42,17 +42,39 @@ export default function Login() {
             console.log('Login Response Data:', data);
 
             if (res.ok) {
+                const u = data.user;
                 login({
-                    id: data.user.id,
-                    name: data.user.name,
-                    email: data.user.email,
-                    department: data.user.department,
-                    role: data.user.role as any,
-                    rubro: data.user.rubro,
-                    modules: data.user.modules ?? undefined
+                    id: u.id,
+                    name: u.name,
+                    email: u.email,
+                    department: u.department,
+                    role: u.role as any,
+                    rubro: u.rubro,
+                    modules: u.modules ?? undefined,
+                    panel_access: u.panel_access ?? 1,
                 }, data.token);
 
-                router.push('/');
+                // Redirigir según panel_access:
+                // - funcionario → /tasks
+                // - sin panel_access (y no admin) → módulo asignado
+                // - resto → /
+                if (u.role === 'funcionario') {
+                    router.push('/tasks');
+                } else if (u.role !== 'admin' && Number(u.panel_access) === 0) {
+                    const moduleRoutes: Record<string, string> = {
+                        logistica: '/logistica',
+                        tecnico: '/seguridad-electronica',
+                        cotizacion: '/cotizacion/panel',
+                        limpieza: '/operaciones-limpieza',
+                        rrhh: '/rrhh',
+                    };
+                    const roleRoute = moduleRoutes[u.role];
+                    const mods = (u.modules ?? '').split(',').map((m: string) => m.trim()).filter(Boolean);
+                    const moduleRoute = mods.map((m: string) => moduleRoutes[m]).find(Boolean);
+                    router.push(roleRoute || moduleRoute || '/login');
+                } else {
+                    router.push('/');
+                }
             } else {
                 if (res.status === 403) {
                     setPendingApproval(true);
