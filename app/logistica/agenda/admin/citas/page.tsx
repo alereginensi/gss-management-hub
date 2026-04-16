@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Search, ClipboardList, Eye, Calendar, X } from 'lucide-react';
-import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
+import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 import { getAppointmentStatusBadge } from '@/lib/agenda-ui';
 import type { AppointmentStatus } from '@/lib/agenda-types';
@@ -33,7 +33,7 @@ export default function CitasPage() {
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) { router.push('/login'); return; }
-    if (currentUser && !hasModuleAccess(currentUser, 'logistica')) { router.push('/'); return; }
+    if (currentUser && !canAccessAgenda(currentUser)) { router.push('/'); return; }
     // Para rol logística: default hoy + solo confirmadas
     if (currentUser && !filtersInitialized.current) {
       filtersInitialized.current = true;

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Search, Upload, Printer, X, Check, XCircle, Trash2, Edit2, Eye } from 'lucide-react';
-import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
+import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 import { LEGAL_TEXT_V1 } from '@/lib/agenda-types';
 import type { RequestStatus } from '@/lib/agenda-types';
@@ -28,6 +28,8 @@ export default function SolicitudesPage() {
   const [fetching, setFetching] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterSource, setFilterSource] = useState('');
+  const [filterEmergency, setFilterEmergency] = useState('');
 
   const [showModal, setShowModal] = useState(false);
   const [selected, setSelected] = useState<any | null>(null);
@@ -44,7 +46,7 @@ export default function SolicitudesPage() {
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) { router.push('/login'); return; }
-    if (currentUser && !hasModuleAccess(currentUser, 'logistica')) { router.push('/'); return; }
+    if (currentUser && !canAccessAgenda(currentUser)) { router.push('/'); return; }
   }, [loading, isAuthenticated, currentUser, router]);
 
   const fetchRequests = useCallback(async () => {
@@ -53,12 +55,21 @@ export default function SolicitudesPage() {
       const p = new URLSearchParams({ limit: '100' });
       if (search) p.set('search', search);
       if (filterStatus) p.set('status', filterStatus);
+      if (filterSource) p.set('source', filterSource);
+      if (filterEmergency) p.set('emergency', filterEmergency);
       const res = await fetch(`/api/logistica/agenda/requests?${p}`);
       const data = await res.json();
       setRequests(data.requests || []);
       setTotal(data.total || 0);
     } finally { setFetching(false); }
-  }, [search, filterStatus]);
+  }, [search, filterStatus, filterSource, filterEmergency]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const qp = new URLSearchParams(window.location.search);
+    if (qp.get('emergency') === '1') setFilterEmergency('1');
+    if (qp.get('source')) setFilterSource(qp.get('source') || '');
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated || loading) return;
@@ -187,6 +198,18 @@ export default function SolicitudesPage() {
                 <option value="">Todos los estados</option>
                 {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
+              <select value={filterSource} onChange={e => setFilterSource(e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.55rem 0.7rem', fontSize: '0.85rem' }}>
+                <option value="">Todos los orígenes</option>
+                <option value="logistica">Logística</option>
+                <option value="limpieza">Limpieza</option>
+                <option value="seguridad">Seguridad Electrónica</option>
+                <option value="rrhh">RRHH</option>
+              </select>
+              <select value={filterEmergency} onChange={e => setFilterEmergency(e.target.value)} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.55rem 0.7rem', fontSize: '0.85rem' }}>
+                <option value="">Emergentes y normales</option>
+                <option value="1">Solo emergentes</option>
+                <option value="0">Sin emergencia</option>
+              </select>
             </div>
           </div>
 
@@ -198,16 +221,16 @@ export default function SolicitudesPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    {['Empleado', 'Empresa', 'Artículo', 'Motivo', 'Estado', 'Firma', 'Acciones'].map(h => (
+                    {['Empleado', 'Empresa', 'Artículo', 'Motivo', 'Origen', 'Estado', 'Firma', 'Acciones'].map(h => (
                       <th key={h} style={{ padding: '0.7rem 1rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.75rem' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {fetching ? (
-                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>Cargando...</td></tr>
+                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>Cargando...</td></tr>
                   ) : requests.length === 0 ? (
-                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Sin solicitudes</td></tr>
+                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Sin solicitudes</td></tr>
                   ) : requests.map((r: any) => {
                     const sc = STATUS_COLORS[r.status as RequestStatus] || { color: '#374151', bg: '#f9fafb' };
                     return (
@@ -227,6 +250,12 @@ export default function SolicitudesPage() {
                         </td>
                         <td style={{ padding: '0.7rem 1rem', color: '#64748b', maxWidth: '180px' }}>
                           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.reason}</div>
+                        </td>
+                        <td style={{ padding: '0.7rem 1rem' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                            <span style={{ fontSize: '0.7rem', color: '#475569', textTransform: 'capitalize' }}>{r.source || 'logistica'}</span>
+                            {r.is_emergency === 1 && <span style={{ background: '#fed7aa', color: '#9a3412', borderRadius: '4px', padding: '0.05rem 0.35rem', fontSize: '0.65rem', fontWeight: 700, width: 'fit-content' }}>EMERGENTE</span>}
+                          </div>
                         </td>
                         <td style={{ padding: '0.7rem 1rem' }}>
                           <span style={{ background: sc.bg, color: sc.color, borderRadius: '4px', padding: '0.15rem 0.5rem', fontSize: '0.72rem', fontWeight: 700 }}>{STATUS_LABELS[r.status as RequestStatus] || r.status}</span>

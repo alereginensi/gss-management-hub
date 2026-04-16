@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Search, Download, PackageCheck, CheckCircle, FileText } from 'lucide-react';
-import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
+import { ArrowLeft, Search, Download, PackageCheck, CheckCircle, FileText, RotateCcw, Printer, AlertTriangle, X } from 'lucide-react';
+import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 import { getAppointmentStatusBadge, parseOrderItems, renderOrderItemLabel } from '@/lib/agenda-ui';
 
@@ -24,6 +24,8 @@ interface Appointment {
   employee_signature_url: string | null;
   responsible_signature_url: string | null;
   remito_pdf_url?: string | null;
+  has_return?: number | null;
+  remito_return_number?: string | null;
 }
 
 export default function EntregasPage() {
@@ -43,11 +45,15 @@ export default function EntregasPage() {
   const [fetching, setFetching] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [revertTarget, setRevertTarget] = useState<Appointment | null>(null);
+  const [revertReason, setRevertReason] = useState('');
+  const [reverting, setReverting] = useState(false);
+  const [revertError, setRevertError] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) { router.push('/login'); return; }
-    if (currentUser && !hasModuleAccess(currentUser, 'logistica')) { router.push('/'); return; }
+    if (currentUser && !canAccessAgenda(currentUser)) { router.push('/'); return; }
   }, [loading, isAuthenticated, currentUser, router]);
 
   const fetchEntregas = useCallback(async (targetPage: number, append: boolean) => {
@@ -190,137 +196,98 @@ export default function EntregasPage() {
             </div>
           </div>
 
-          {/* Listado (Tabla Desktop / Citas Mobile) */}
-          <div className="card" style={{ padding: 0, overflow: 'hidden', border: isMobile ? 'none' : undefined, background: isMobile ? 'transparent' : undefined }}>
-            
-            {/* VISTA DESKTOP: Tabla */}
-            <div className="desktop-view" style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    {['Fecha turno', 'Empleado', 'Cédula', 'Empresa', 'Ítems entregados', 'Remito', 'Firma emp.', 'Firma resp.', 'Fecha entrega', ''].map(h => (
-                      <th key={h} style={{ padding: '0.7rem 1rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {fetching ? (
-                    <tr><td colSpan={10} style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>Cargando...</td></tr>
-                  ) : appointments.length === 0 ? (
-                    <tr><td colSpan={10} style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>No hay entregas con los filtros aplicados</td></tr>
-                  ) : appointments.map(appt => {
-                    const items = parseOrderItems(appt.delivered_order_items);
-                    const itemsLabel = items.length > 0
-                      ? items.map(i => renderOrderItemLabel(i)).join(', ')
-                      : '—';
-                    return (
-                      <tr key={appt.id} style={{ borderBottom: '1px solid #f1f5f9' }}
-                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}>
-                        <td style={{ padding: '0.7rem 1rem', whiteSpace: 'nowrap', color: '#374151' }}>
-                          {appt.fecha} {appt.start_time && <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>{appt.start_time}</span>}
-                        </td>
-                        <td style={{ padding: '0.7rem 1rem', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap' }}>{appt.employee_nombre}</td>
-                        <td style={{ padding: '0.7rem 1rem', fontFamily: 'monospace', color: '#374151' }}>{appt.employee_documento}</td>
-                        <td style={{ padding: '0.7rem 1rem' }}>
+          {/* Listado (grid de cards, responsive) */}
+          {fetching ? (
+            <div className="card" style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>Cargando...</div>
+          ) : appointments.length === 0 ? (
+            <div className="card" style={{ textAlign: 'center', padding: '2.5rem', color: '#64748b' }}>No hay entregas con los filtros aplicados</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.9rem' }}>
+              {appointments.map(appt => {
+                const items = parseOrderItems(appt.delivered_order_items);
+                return (
+                  <div key={appt.id} className="card" style={{ padding: '0.95rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                    {/* Header: nombre + empresa badge + acciones */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.9rem' }}>{appt.employee_nombre}</span>
+                          {appt.has_return ? (
+                            <span title={`Con cambio${appt.remito_return_number ? ` · Remito dev. ${appt.remito_return_number}` : ''}`}
+                              style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d', borderRadius: '4px', padding: '0.05rem 0.3rem', fontSize: '0.62rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                              <RotateCcw size={9} /> Con cambio
+                            </span>
+                          ) : null}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.15rem' }}>
+                          CI <span style={{ fontFamily: 'monospace' }}>{appt.employee_documento}</span>
                           {appt.employee_empresa && (
-                            <span style={{ background: '#eff6ff', color: '#1e40af', borderRadius: '4px', padding: '0.1rem 0.4rem', fontSize: '0.72rem', fontWeight: 700 }}>{appt.employee_empresa}</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '0.7rem 1rem', color: '#374151', maxWidth: '220px' }}>
-                          <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.78rem' }}>{itemsLabel}</span>
-                        </td>
-                        <td style={{ padding: '0.7rem 1rem', color: '#64748b', fontFamily: 'monospace', fontSize: '0.78rem' }}>
-                          {appt.remito_number ? (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                              <FileText size={12} color="#2563eb" />{appt.remito_number}
-                            </span>
-                          ) : '—'}
-                        </td>
-                        <td style={{ padding: '0.7rem 1rem', textAlign: 'center' }}>
-                          {appt.employee_signature_url ? <CheckCircle size={16} color="#059669" /> : <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>—</span>}
-                        </td>
-                        <td style={{ padding: '0.7rem 1rem', textAlign: 'center' }}>
-                          {appt.responsible_signature_url ? <CheckCircle size={16} color="#059669" /> : <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>—</span>}
-                        </td>
-                        <td style={{ padding: '0.7rem 1rem', whiteSpace: 'nowrap', color: '#64748b', fontSize: '0.78rem' }}>
-                          {appt.delivered_at ? appt.delivered_at.split('T')[0] : '—'}
-                        </td>
-                        <td style={{ padding: '0.7rem 1rem', display: 'flex', gap: '0.4rem', flexWrap: 'nowrap' }}>
-                          <Link href={`/logistica/agenda/admin/citas/${appt.id}`}
-                            style={{ fontSize: '0.72rem', color: '#2563eb', textDecoration: 'none', border: '1px solid #bfdbfe', borderRadius: '4px', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}>
-                            Detalle
-                          </Link>
-                          {appt.remito_pdf_url && (
-                             <a href={appt.remito_pdf_url} target="_blank" rel="noopener noreferrer"
-                               style={{ fontSize: '0.72rem', color: '#059669', textDecoration: 'none', border: '1px solid #bbf7d0', borderRadius: '4px', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}>
-                               Remito
-                             </a>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* VISTA MOBILE: Tarjetas */}
-            <div className="mobile-view">
-              {fetching ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>Cargando...</div>
-              ) : appointments.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No hay registros</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {appointments.map(appt => {
-                    const items = parseOrderItems(appt.delivered_order_items);
-                    return (
-                      <div key={appt.id} className="agenda-mobile-card">
-                        <div className="agenda-mobile-card-title">{appt.employee_nombre}</div>
-                        <div className="agenda-mobile-card-subtitle">
-                          CI: {appt.employee_documento} • {appt.employee_empresa}
-                        </div>
-
-                        <div className="agenda-mobile-card-row">
-                          <span className="agenda-mobile-card-label">Turno:</span>
-                          <span className="agenda-mobile-card-value">{appt.fecha} {appt.start_time}</span>
-                        </div>
-                        <div className="agenda-mobile-card-row">
-                          <span className="agenda-mobile-card-label">Entregado:</span>
-                          <span className="agenda-mobile-card-value">{appt.delivered_at ? appt.delivered_at.split('T')[0] : '—'}</span>
-                        </div>
-                        <div className="agenda-mobile-card-row">
-                          <span className="agenda-mobile-card-label">Remito:</span>
-                          <span className="agenda-mobile-card-value">{appt.remito_number || '—'}</span>
-                        </div>
-
-                        <div className="agenda-mobile-card-chips">
-                          {items.length > 0 ? items.map((item, idx) => (
-                            <span key={idx} className="agenda-mobile-chip">
-                              {renderOrderItemLabel(item)}
-                            </span>
-                          )) : <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Sin prendas registradas</span>}
-                        </div>
-
-                        <div className="agenda-mobile-card-actions">
-                          <Link href={`/logistica/agenda/admin/citas/${appt.id}`} className="agenda-mobile-btn" style={{ color: '#2563eb' }}>
-                            <FileText size={14} /> Ver Detalle
-                          </Link>
-                          {appt.remito_pdf_url && (
-                             <a href={appt.remito_pdf_url} target="_blank" rel="noopener noreferrer" className="agenda-mobile-btn" style={{ color: '#059669' }}>
-                               <Download size={14} /> Ver Remito
-                             </a>
+                            <> · <span style={{ background: '#eff6ff', color: '#1e40af', borderRadius: '4px', padding: '0.02rem 0.35rem', fontSize: '0.65rem', fontWeight: 700 }}>{appt.employee_empresa}</span></>
                           )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                      <button
+                        onClick={() => { setRevertTarget(appt); setRevertReason(''); setRevertError(null); }}
+                        title="Entrega errónea: revierte la entrega y rehabilita al empleado"
+                        style={{ flexShrink: 0, background: 'none', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.3rem', cursor: 'pointer', color: '#b45309', display: 'inline-flex' }}>
+                        <AlertTriangle size={14} />
+                      </button>
+                    </div>
 
-          </div>
+                    {/* Fechas */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.72rem', color: '#475569' }}>
+                      <span>Turno: <strong style={{ color: '#1e293b' }}>{appt.fecha}{appt.start_time ? ` · ${appt.start_time}` : ''}</strong></span>
+                      <span>Entregado: <strong style={{ color: '#1e293b' }}>{appt.delivered_at ? appt.delivered_at.split('T')[0] : '—'}</strong></span>
+                    </div>
+
+                    {/* Remito + firmas */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', fontSize: '0.72rem', color: '#475569', alignItems: 'center' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <FileText size={12} color="#2563eb" />
+                        Remito {appt.remito_number ? <strong style={{ color: '#1e293b', fontFamily: 'monospace' }}>{appt.remito_number}</strong> : <span style={{ color: '#94a3b8' }}>—</span>}
+                      </span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                        Emp. {appt.employee_signature_url ? <CheckCircle size={12} color="#059669" /> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+                        Resp. {appt.responsible_signature_url ? <CheckCircle size={12} color="#059669" /> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </span>
+                    </div>
+
+                    {/* Prendas chips */}
+                    <div>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '0.3rem' }}>Prendas entregadas</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                        {items.length > 0 ? items.map((item, idx) => (
+                          <span key={idx} style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', borderRadius: '4px', padding: '0.1rem 0.4rem', fontSize: '0.72rem' }}>
+                            {renderOrderItemLabel(item)}
+                          </span>
+                        )) : <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Sin prendas registradas</span>}
+                      </div>
+                    </div>
+
+                    {/* Links de acción */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', paddingTop: '0.3rem', borderTop: '1px solid #f1f5f9' }}>
+                      <Link href={`/logistica/agenda/admin/citas/${appt.id}`}
+                        style={{ fontSize: '0.72rem', color: '#2563eb', textDecoration: 'none', background: '#eff6ff', borderRadius: '4px', padding: '0.2rem 0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <FileText size={12} /> Detalle
+                      </Link>
+                      <Link href={`/logistica/agenda/admin/citas/${appt.id}?print=1`} target="_blank"
+                        style={{ fontSize: '0.72rem', color: '#7c3aed', textDecoration: 'none', background: '#faf5ff', borderRadius: '4px', padding: '0.2rem 0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <Printer size={12} /> Constancia
+                      </Link>
+                      {appt.remito_pdf_url && (
+                        <a href={appt.remito_pdf_url} target="_blank" rel="noopener noreferrer"
+                          style={{ fontSize: '0.72rem', color: '#059669', textDecoration: 'none', background: '#f0fdf4', borderRadius: '4px', padding: '0.2rem 0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <Download size={12} /> Remito
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {!fetching && appointments.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
@@ -339,6 +306,70 @@ export default function EntregasPage() {
           )}
         </div>
       </main>
+
+      {revertTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div className="card modal-responsive" style={{ width: '520px', maxWidth: '95vw', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <AlertTriangle size={18} /> Marcar entrega como errónea
+                </h3>
+                <p style={{ margin: '0.3rem 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                  <strong>{revertTarget.employee_nombre}</strong> · CI {revertTarget.employee_documento}
+                </p>
+              </div>
+              <button onClick={() => setRevertTarget(null)} disabled={reverting} style={{ background: 'none', border: 'none', cursor: reverting ? 'wait' : 'pointer', color: '#94a3b8' }}><X size={18} /></button>
+            </div>
+
+            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', padding: '0.65rem 0.85rem', marginBottom: '1rem', fontSize: '0.78rem', color: '#92400e' }}>
+              Esta acción <strong>cancela</strong> la entrega, da de baja los artículos registrados y habilita al empleado para volver a reservar un turno.
+            </div>
+
+            {revertError && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.55rem 0.8rem', marginBottom: '0.8rem', fontSize: '0.8rem', color: '#7f1d1d' }}>{revertError}</div>
+            )}
+
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.3rem' }}>Motivo *</label>
+            <textarea
+              value={revertReason}
+              onChange={e => setRevertReason(e.target.value)}
+              rows={3}
+              placeholder="Ej: se entregó talle XXL en lugar de M"
+              style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.55rem 0.75rem', fontSize: '0.85rem', boxSizing: 'border-box', resize: 'vertical' }}
+            />
+
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+              <button onClick={() => setRevertTarget(null)} disabled={reverting} className="btn btn-secondary" style={{ fontSize: '0.82rem' }}>Cancelar</button>
+              <button
+                onClick={async () => {
+                  if (!revertTarget) return;
+                  if (!revertReason.trim()) { setRevertError('Motivo requerido'); return; }
+                  setReverting(true);
+                  setRevertError(null);
+                  try {
+                    const res = await fetch(`/api/logistica/agenda/appointments/${revertTarget.id}/revert-delivery`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ reason: revertReason.trim() }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) { setRevertError(data.error || 'Error al revertir'); return; }
+                    setRevertTarget(null);
+                    setRevertReason('');
+                    fetchEntregas(1, false);
+                  } finally {
+                    setReverting(false);
+                  }
+                }}
+                disabled={reverting}
+                style={{ background: '#b45309', color: 'white', border: 'none', borderRadius: '6px', padding: '0.5rem 1rem', fontSize: '0.82rem', fontWeight: 600, cursor: reverting ? 'wait' : 'pointer', opacity: reverting ? 0.7 : 1 }}>
+                {reverting ? 'Revirtiendo...' : 'Confirmar reversión'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

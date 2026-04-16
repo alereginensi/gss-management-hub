@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Printer, Save, Upload, FileText, CheckCircle, X, Truck } from 'lucide-react';
-import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
+import { ArrowLeft, Printer, Save, Upload, FileText, CheckCircle, X, Truck, PackagePlus, RotateCcw } from 'lucide-react';
+import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 import AgendaSignatureCanvas, { AgendaSignatureCanvasRef } from '@/app/components/AgendaSignatureCanvas';
 import { getAppointmentStatusBadge, renderOrderItemLabel } from '@/lib/agenda-ui';
@@ -28,6 +28,8 @@ export default function CitaDetallePage() {
   const { currentUser, isAuthenticated, loading, logout, isMobile } = useTicketContext();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
+  const autoPrint = searchParams?.get('print') === '1';
   const id = params?.id as string;
 
   const [appt, setAppt] = useState<any>(null);
@@ -41,7 +43,13 @@ export default function CitaDetallePage() {
   const [deliveryNotes, setDeliveryNotes] = useState('');
   const [remitoNumber, setRemitoNumber] = useState('');
   const [deliveredItems, setDeliveredItems] = useState<OrderItem[]>([]);
-  const [rawRemitoText, setRawRemitoText] = useState('');
+
+  // Devolución opcional (con cambio)
+  const [hasReturn, setHasReturn] = useState(false);
+  const [remitoReturnNumber, setRemitoReturnNumber] = useState('');
+  const [returnedItems, setReturnedItems] = useState<OrderItem[]>([]);
+  const [uploadingReturnRemito, setUploadingReturnRemito] = useState(false);
+  const returnFileRef = useRef<HTMLInputElement>(null);
 
   // Firma (Canvas)
   const [empSignData, setEmpSignData] = useState<string | null>(null);
@@ -57,13 +65,20 @@ export default function CitaDetallePage() {
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) { router.push('/login'); return; }
-    if (currentUser && !hasModuleAccess(currentUser, 'logistica')) { router.push('/'); return; }
+    if (currentUser && !canAccessAgenda(currentUser)) { router.push('/'); return; }
   }, [loading, isAuthenticated, currentUser, router]);
 
   useEffect(() => {
     if (!isAuthenticated || loading || !id) return;
     fetchAppt();
   }, [isAuthenticated, loading, id]);
+
+  // Auto-abrir diálogo de impresión si viene con ?print=1 (cita ya completada)
+  useEffect(() => {
+    if (!autoPrint || fetching || !appt || appt.status !== 'completada') return;
+    const t = setTimeout(() => { try { window.print(); } catch {} }, 600);
+    return () => clearTimeout(t);
+  }, [autoPrint, fetching, appt]);
 
   const fetchAppt = async () => {
     setFetching(true);
@@ -79,6 +94,11 @@ export default function CitaDetallePage() {
         ? data.delivered_order_items
         : (Array.isArray(data.order_items) ? data.order_items : []);
       setDeliveredItems(items.map(i => ({ ...i })));
+
+      setHasReturn(!!data.has_return);
+      setRemitoReturnNumber(data.remito_return_number || '');
+      const retItems: OrderItem[] = Array.isArray(data.returned_order_items) ? data.returned_order_items : [];
+      setReturnedItems(retItems.map(i => ({ ...i })));
     } finally {
       setFetching(false);
     }
@@ -110,6 +130,11 @@ export default function CitaDetallePage() {
     if (!respSignData) { showMessage('La firma del responsable es obligatoria', true); return; }
     if (!disclaimerAccepted) { showMessage('Debe aceptar el descargo legal', true); return; }
 
+    if (hasReturn) {
+      if (!remitoReturnNumber.trim()) { showMessage('El número de remito de devolución es obligatorio', true); return; }
+      if (returnedItems.length === 0) { showMessage('Debe agregar al menos un ítem devuelto', true); return; }
+    }
+
     if (!confirm('¿Marcar entrega como completada y crear artículos en el inventario?')) return;
     setSaving(true);
     try {
@@ -132,11 +157,21 @@ export default function CitaDetallePage() {
       // 2. Completar entrega
       const res = await fetch(`/api/logistica/agenda/appointments/${id}/delivery`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ delivered_order_items: deliveredItems, delivery_notes: deliveryNotes, remito_number: remitoNumber, create_articles: true }),
+        body: JSON.stringify({
+          delivered_order_items: deliveredItems,
+          delivery_notes: deliveryNotes,
+          remito_number: remitoNumber,
+          create_articles: true,
+          has_return: hasReturn ? 1 : 0,
+          returned_order_items: hasReturn ? returnedItems : [],
+          remito_return_number: hasReturn ? remitoReturnNumber : null,
+        }),
       });
       if (!res.ok) { const d = await res.json(); showMessage(d.error || 'Error al completar', true); return; }
       showMessage('Entrega completada — artículos creados en inventario');
-      fetchAppt();
+      await fetchAppt();
+      // Auto-abrir diálogo de impresión para la constancia
+      setTimeout(() => { try { window.print(); } catch {} }, 500);
     } catch (err) {
       console.error(err);
       showMessage('Error al procesar la entrega', true);
@@ -164,14 +199,48 @@ export default function CitaDetallePage() {
     try {
       const fd = new FormData();
       fd.append('file', file);
+      fd.append('kind', 'delivery');
       if (remitoNumber) fd.append('remito_number', remitoNumber);
-      if (rawRemitoText.trim()) fd.append('raw_text', rawRemitoText);
       const res = await fetch(`/api/logistica/agenda/appointments/${id}/remito`, { method: 'POST', body: fd });
-      if (!res.ok) { const d = await res.json(); showMessage(d.error || 'Error al subir remito', true); return; }
-      showMessage('Remito subido');
+      const data = await res.json();
+      if (!res.ok) { showMessage(data.error || 'Error al subir remito', true); return; }
+
+      const items = (data.items || []) as OrderItem[];
+      if (items.length > 0) {
+        setDeliveredItems(items.map(it => ({ ...it, qty: it.qty || 1 })));
+        showMessage(`Remito subido — ${items.length} artículo(s) detectado(s)`);
+      } else {
+        showMessage('Remito subido, pero no se pudieron detectar artículos. Cargalos a mano.', true);
+      }
+      if (data.remitoNumber && !remitoNumber) setRemitoNumber(data.remitoNumber);
       fetchAppt();
     } finally {
       setUploadingRemito(false);
+    }
+  };
+
+  const handleUploadReturnRemito = async (file: File) => {
+    setUploadingReturnRemito(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('kind', 'return');
+      if (remitoReturnNumber) fd.append('remito_number', remitoReturnNumber);
+      const res = await fetch(`/api/logistica/agenda/appointments/${id}/remito`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) { showMessage(data.error || 'Error al subir remito de devolución', true); return; }
+
+      const items = (data.items || []) as OrderItem[];
+      if (items.length > 0) {
+        setReturnedItems(items.map(it => ({ ...it, qty: it.qty || 1 })));
+        showMessage(`Remito de devolución subido — ${items.length} artículo(s) detectado(s)`);
+      } else {
+        showMessage('Remito de devolución subido, pero no se detectaron artículos. Cargalos a mano.', true);
+      }
+      if (data.remitoNumber && !remitoReturnNumber) setRemitoReturnNumber(data.remitoNumber);
+      fetchAppt();
+    } finally {
+      setUploadingReturnRemito(false);
     }
   };
 
@@ -185,6 +254,18 @@ export default function CitaDetallePage() {
 
   const addDeliveredItem = () => {
     setDeliveredItems(items => [...items, { article_type: '', qty: 1 }]);
+  };
+
+  const addReturnedItem = () => {
+    setReturnedItems(items => [...items, { article_type: '', qty: 1 }]);
+  };
+
+  const removeReturnedItem = (idx: number) => {
+    setReturnedItems(items => items.filter((_, i) => i !== idx));
+  };
+
+  const updateReturnedItem = (idx: number, field: keyof OrderItem, value: string | number) => {
+    setReturnedItems(items => items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
   };
 
   if (loading || !currentUser) return null;
@@ -244,7 +325,8 @@ export default function CitaDetallePage() {
             <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>Cita no encontrada.</div>
           ) : (
             <>
-              {/* ── Constancia de Entrega (Imprimible) ── */}
+              {/* ── Constancia de Entrega (solo se renderiza si ya está completada) ── */}
+              {appt.status === 'completada' && (
               <div className="print-comprobante card" style={{ padding: '2rem', marginBottom: '1.25rem' }}>
                 <h1 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#000', marginBottom: '4px' }}>Constancia de Entrega de Uniformes</h1>
                 <p style={{ fontSize: '0.8rem', color: '#555', marginBottom: '1.5rem' }}>
@@ -297,6 +379,31 @@ export default function CitaDetallePage() {
                   <p style={{ fontSize: '0.8rem', color: '#555', marginBottom: '1.5rem' }}>Remito N° {appt.remito_number}</p>
                 )}
 
+                {(appt.has_return || hasReturn) && returnedItems.length > 0 && (
+                  <>
+                    <h2 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#991b1b', marginTop: '1rem', marginBottom: '0.5rem' }}>Prendas devueltas</h2>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ backgroundColor: '#fef2f2', padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, border: '1px solid #fecaca', color: '#991b1b' }}>Prenda</th>
+                          <th style={{ backgroundColor: '#fef2f2', padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, border: '1px solid #fecaca', width: '200px', color: '#991b1b' }}>Talla / Color</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {returnedItems.map((item, i) => (
+                          <tr key={i}>
+                            <td style={{ padding: '0.5rem 0.75rem', border: '1px solid #fecaca' }}>{item.article_type || 'Artículo'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', border: '1px solid #fecaca' }}>{[item.size, (item as any).color].filter(Boolean).join(' · ') || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {(appt.remito_return_number || remitoReturnNumber) && (
+                      <p style={{ fontSize: '0.8rem', color: '#555', marginBottom: '1.5rem' }}>Remito devolución N° {appt.remito_return_number || remitoReturnNumber}</p>
+                    )}
+                  </>
+                )}
+
                 <div style={{ border: '1px solid #e2e8f0', borderLeft: '4px solid #29416b', borderRadius: '4px', padding: '1rem', background: '#f8fafc', marginBottom: '1.5rem' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#29416b', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>Descargo Legal</div>
                   <div style={{ fontSize: '0.72rem', color: '#334155', whiteSpace: 'pre-wrap', fontStyle: 'italic', lineHeight: 1.5 }}>
@@ -319,6 +426,7 @@ export default function CitaDetallePage() {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* ── Panel de edición (no print) ── */}
               <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -368,11 +476,8 @@ export default function CitaDetallePage() {
                       </div>
                     ))}
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-start', flexWrap: 'wrap' }}>
                     <button onClick={addDeliveredItem} className="btn btn-secondary" style={{ fontSize: '0.78rem' }}>+ Agregar ítem</button>
-                    <button onClick={handleCompleteDelivery} disabled={saving} className="btn btn-primary" style={{ fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                      <CheckCircle size={13} /> Completar entrega
-                    </button>
                   </div>
                 </div>
 
@@ -386,12 +491,9 @@ export default function CitaDetallePage() {
                       </a>
                     </div>
                   )}
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>Texto del remito (para parse automático)</label>
-                    <textarea value={rawRemitoText} onChange={e => setRawRemitoText(e.target.value)} rows={4}
-                      placeholder="Pegar el texto del remito aquí para parse automático..."
-                      style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.45rem 0.7rem', fontSize: '0.78rem', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'monospace' }} />
-                  </div>
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
+                    Al subir el PDF, los artículos y el número de remito se detectan automáticamente del archivo y se cargan en la lista de arriba.
+                  </p>
                   <input type="file" ref={remitoFileRef} style={{ display: 'none' }} accept=".pdf,image/*"
                     onChange={e => { if (e.target.files?.[0]) handleUploadRemito(e.target.files[0]); }} />
                   <button onClick={() => remitoFileRef.current?.click()} disabled={uploadingRemito} className="btn btn-secondary"
@@ -399,6 +501,101 @@ export default function CitaDetallePage() {
                     <Upload size={13} /> {uploadingRemito ? 'Subiendo...' : 'Subir PDF de remito'}
                   </button>
                 </div>
+
+                {/* Toggle devolución */}
+                <div className="card" style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <RotateCcw size={15} /> Entrega con cambio
+                    </div>
+                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                      Activalo si, además de entregar, el empleado devuelve prendas. Se agrega un segundo remito y se imprime en la constancia.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setHasReturn(v => !v)}
+                    disabled={appt.status === 'completada' || saving}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '0.35rem',
+                      padding: '0.4rem 0.75rem',
+                      border: `1px solid ${hasReturn ? '#93c5fd' : '#e2e8f0'}`,
+                      borderRadius: '6px',
+                      background: hasReturn ? '#eff6ff' : '#fff',
+                      color: hasReturn ? '#2563eb' : '#64748b',
+                      fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    <PackagePlus size={14} /> {hasReturn ? 'Devolución habilitada' : 'Habilitar devolución'}
+                  </button>
+                </div>
+
+                {hasReturn && (
+                  <>
+                    {/* Ítems devueltos */}
+                    <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #dc2626' }}>
+                      <h3 style={{ margin: '0 0 1rem', fontSize: '0.9rem', fontWeight: 700, color: '#991b1b' }}>Ítems devueltos por el empleado</h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.75rem' }}>
+                        {returnedItems.map((item, i) => (
+                          <div key={i} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                            <input
+                              value={item.article_type || ''}
+                              onChange={e => updateReturnedItem(i, 'article_type', e.target.value)}
+                              placeholder="Prenda devuelta"
+                              style={{ flex: 3, border: '1px solid #fecaca', borderRadius: '6px', padding: '0.35rem 0.6rem', fontSize: '0.8rem', boxSizing: 'border-box' }}
+                            />
+                            <input
+                              value={item.size || ''}
+                              onChange={e => updateReturnedItem(i, 'size', e.target.value)}
+                              placeholder="Talla"
+                              style={{ flex: 1, border: '1px solid #fecaca', borderRadius: '6px', padding: '0.35rem 0.6rem', fontSize: '0.8rem', boxSizing: 'border-box' }}
+                            />
+                            <input
+                              type="number"
+                              min={1}
+                              value={item.qty || 1}
+                              onChange={e => updateReturnedItem(i, 'qty', parseInt(e.target.value, 10) || 1)}
+                              style={{ width: '60px', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.35rem 0.6rem', fontSize: '0.8rem', boxSizing: 'border-box' }}
+                            />
+                            <button onClick={() => removeReturnedItem(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                        {returnedItems.length === 0 && (
+                          <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>Sin ítems devueltos. Agregá al menos uno.</p>
+                        )}
+                      </div>
+                      <button onClick={addReturnedItem} className="btn btn-secondary" style={{ fontSize: '0.78rem' }}>+ Agregar ítem devuelto</button>
+                    </div>
+
+                    {/* Remito devolución */}
+                    <div className="card" style={{ padding: '1.25rem', borderLeft: '4px solid #dc2626' }}>
+                      <h3 style={{ margin: '0 0 1rem', fontSize: '0.9rem', fontWeight: 700, color: '#991b1b' }}>Remito de devolución</h3>
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>Nro. Remito (devolución)</label>
+                        <input value={remitoReturnNumber} onChange={e => setRemitoReturnNumber(e.target.value)}
+                          placeholder="Ej: REM-DEV-0001"
+                          style={{ width: '100%', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.45rem 0.7rem', fontSize: '0.82rem', boxSizing: 'border-box' }} />
+                      </div>
+                      {appt.remito_return_pdf_url && (
+                        <div style={{ marginBottom: '0.75rem', fontSize: '0.82rem' }}>
+                          <a href={appt.remito_return_pdf_url} target="_blank" rel="noopener noreferrer" style={{ color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <FileText size={14} /> Ver remito devolución
+                          </a>
+                        </div>
+                      )}
+                      <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#991b1b' }}>
+                        Al subir el PDF, los artículos devueltos se detectan automáticamente y se cargan en la lista de arriba.
+                      </p>
+                      <input type="file" ref={returnFileRef} style={{ display: 'none' }} accept=".pdf,image/*"
+                        onChange={e => { if (e.target.files?.[0]) handleUploadReturnRemito(e.target.files[0]); }} />
+                      <button onClick={() => returnFileRef.current?.click()} disabled={uploadingReturnRemito}
+                        style={{ padding: '0.5rem 0.8rem', border: '1px solid #fecaca', background: '#fff', color: '#991b1b', borderRadius: '6px', fontSize: '0.82rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 600 }}>
+                        <Upload size={13} /> {uploadingReturnRemito ? 'Subiendo...' : 'Subir PDF de remito devolución'}
+                      </button>
+                    </div>
+                  </>
+                )}
 
                 {/* Firmas */}
                 <div className="card" style={{ padding: '1.25rem' }}>
@@ -442,6 +639,34 @@ export default function CitaDetallePage() {
                     </div>
                   )}
                 </div>
+
+                {/* Botón final — Completar entrega */}
+                {appt.status !== 'completada' && (
+                  <div className="card" style={{ padding: '1.25rem', borderTop: '4px solid #059669' }}>
+                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem', fontWeight: 800, color: '#065f46' }}>Finalizar entrega</h3>
+                    <p style={{ margin: '0 0 1rem', fontSize: '0.78rem', color: '#64748b' }}>
+                      Al completar, se crean los artículos en inventario, se imprime la constancia y la cita pasa a estado <strong>Completada</strong>.
+                    </p>
+                    <button
+                      onClick={handleCompleteDelivery}
+                      disabled={saving}
+                      className="btn btn-primary"
+                      style={{ width: '100%', fontSize: '0.9rem', padding: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 800 }}
+                    >
+                      <CheckCircle size={16} /> {saving ? 'Procesando...' : 'Completar entrega e imprimir constancia'}
+                    </button>
+                  </div>
+                )}
+
+                {appt.status === 'completada' && (
+                  <div className="card" style={{ padding: '1.25rem', borderTop: '4px solid #2563eb', textAlign: 'center' }}>
+                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem', fontWeight: 800, color: '#1e40af' }}>Constancia lista</h3>
+                    <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: '#64748b' }}>La cita ya fue completada. Podés imprimir la constancia cuando lo necesites.</p>
+                    <button onClick={() => window.print()} className="btn btn-primary" style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <Printer size={14} /> Imprimir constancia
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}

@@ -655,7 +655,8 @@ export default function UserManagement() {
                                     </label>
 
                                     <div>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>Departamentos supervisados (rubros)</label>
+                                        <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Departamentos supervisados (rubros)</label>
+                                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.72rem', color: '#64748b' }}>Usado en Bitácora para filtrar las entradas que el supervisor puede ver y firmar.</p>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: 'var(--radius)' }}>
                                             {RUBROS.map(rubro => (
                                                 <label key={rubro} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>

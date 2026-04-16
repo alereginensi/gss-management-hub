@@ -83,12 +83,16 @@ export default function LogisticaPage() {
                                     </div>
                                 </>
                             );
+                            const onNav = () => {
+                                if (typeof window === 'undefined') return;
+                                try { sessionStorage.removeItem('agenda_origin'); } catch {}
+                            };
                             return item.external ? (
                                 <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer" className="landing-card-btn">
                                     {cardContent}
                                 </a>
                             ) : (
-                                <Link key={item.href} href={item.href} className="landing-card-btn">
+                                <Link key={item.href} href={item.href} className="landing-card-btn" onClick={onNav}>
                                     {cardContent}
                                 </Link>
                             );

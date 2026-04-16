@@ -5,7 +5,7 @@ import { parseImportBuffer, importEmployees, importArticlesMigration } from '@/l
 import { logAudit } from '@/lib/agenda-helpers';
 import type { ImportJobType } from '@/lib/agenda-types';
 
-const AUTH_ROLES = ['admin', 'logistica', 'jefe'];
+const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh'];
 
 export async function POST(request: NextRequest) {
   const session = await getSession(request);

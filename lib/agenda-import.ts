@@ -243,36 +243,200 @@ export function buildArticlesTemplate(): Buffer {
 
 // ─── Importación de catálogo de uniformes ─────────────────────────────────────
 
-export async function importCatalogItems(
-  rows: Record<string, string>[],
-  createdBy: number
+export interface CatalogImportItem {
+  row: number;
+  empresa: string | null;
+  sector: string | null;
+  puesto: string | null;
+  workplace_category: string | null;
+  article_type: string;
+  quantity: number;
+  useful_life_months: number;
+}
+
+export interface CatalogPreview {
+  total: number;
+  byEmpresa: Record<string, CatalogImportItem[]>;
+  invalid: ImportError[];
+  items: CatalogImportItem[];
+}
+
+function parseCantidad(raw: string): number {
+  const n = parseInt(String(raw).replace(/[^\d]/g, ''), 10);
+  return n > 0 ? n : 1;
+}
+
+function parseVidaUtil(raw: string): number {
+  const n = parseInt(String(raw).replace(/[^\d]/g, ''), 10);
+  return n > 0 ? n : 12;
+}
+
+// Parser específico para el formato multi-sección: cada empresa tiene su
+// header "EMPRESA (N artículos)" seguido de fila "Artículo | Sector/Puesto | Cantidad | Vida útil | ..."
+// y sus filas de datos. Devuelve items normalizados o null si no coincide el formato.
+export function parseCatalogMatrix(buffer: Buffer): CatalogImportItem[] | null {
+  const XLSX = require('xlsx') as typeof import('xlsx');
+  const wb = XLSX.read(buffer, { type: 'buffer' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const matrix = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: '' });
+
+  const items: CatalogImportItem[] = [];
+  let currentEmpresa: string | null = null;
+  let colIdx: { articulo: number; sector: number; cantidad: number; vida: number } | null = null;
+  let sectionsFound = 0;
+
+  const empresaRe = /^([A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑáéíóúñ0-9 .\-]{1,40})\s*\(\s*\d+\s*art[ií]culos?\s*\)\s*$/;
+
+  for (let i = 0; i < matrix.length; i++) {
+    const row = matrix[i] || [];
+    const first = String(row[0] || '').trim();
+    const rowNum = i + 1;
+
+    if (!first && row.every(c => String(c || '').trim() === '')) continue;
+
+    const m = first.match(empresaRe);
+    if (m) {
+      currentEmpresa = m[1].trim();
+      colIdx = null;
+      sectionsFound++;
+      continue;
+    }
+
+    const lower = first.toLowerCase();
+    if (lower === 'artículo' || lower === 'articulo') {
+      colIdx = { articulo: -1, sector: -1, cantidad: -1, vida: -1 };
+      for (let c = 0; c < row.length; c++) {
+        const h = String(row[c] || '').toLowerCase().trim();
+        if (h === 'artículo' || h === 'articulo') colIdx.articulo = c;
+        else if (h.startsWith('sector')) colIdx.sector = c;
+        else if (h.startsWith('cantidad')) colIdx.cantidad = c;
+        else if (h.startsWith('vida')) colIdx.vida = c;
+      }
+      continue;
+    }
+
+    if (currentEmpresa && colIdx && colIdx.articulo >= 0) {
+      const articulo = String(row[colIdx.articulo] || '').trim();
+      if (!articulo) continue;
+      const sectorPuesto = colIdx.sector >= 0 ? String(row[colIdx.sector] || '').trim() : '';
+      const cantidadRaw = colIdx.cantidad >= 0 ? String(row[colIdx.cantidad] ?? '') : '1';
+      const vidaRaw = colIdx.vida >= 0 ? String(row[colIdx.vida] ?? '') : '12';
+      items.push({
+        row: rowNum,
+        empresa: currentEmpresa,
+        sector: null,
+        puesto: null,
+        workplace_category: sectorPuesto || null,
+        article_type: articulo,
+        quantity: parseCantidad(cantidadRaw),
+        useful_life_months: parseVidaUtil(vidaRaw),
+      });
+    }
+  }
+
+  if (sectionsFound === 0 || items.length === 0) return null;
+  return items;
+}
+
+export function parseCatalogPreviewFromBuffer(buffer: Buffer): CatalogPreview {
+  const multi = parseCatalogMatrix(buffer);
+  if (multi) {
+    const byEmpresa: Record<string, CatalogImportItem[]> = {};
+    for (const it of multi) {
+      const key = it.empresa || '(sin empresa)';
+      if (!byEmpresa[key]) byEmpresa[key] = [];
+      byEmpresa[key].push(it);
+    }
+    return { total: multi.length, byEmpresa, invalid: [], items: multi };
+  }
+  const { rows } = parseImportBuffer(buffer);
+  return parseCatalogRows(rows);
+}
+
+export function parseCatalogRows(rows: Record<string, string>[]): CatalogPreview {
+  const items: CatalogImportItem[] = [];
+  const invalid: ImportError[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const rowNum = i + 2;
+    const articleType = (row.article_type || row.artículo || row.articulo || row.prenda || row.nombre || '').trim();
+    if (!articleType) {
+      invalid.push({ row: rowNum, field: 'article_type', message: 'Tipo de artículo vacío' });
+      continue;
+    }
+    const empresa = (row.empresa || row.compañía || row.compania || '').trim() || null;
+    const categoriaRaw = (
+      row.categoria || row.categoría ||
+      row.sector_puesto || row['sector/puesto'] ||
+      row.workplace_category || row.puesto || row.sector || ''
+    ).trim();
+    const quantity = parseCantidad(row.cantidad || row.quantity || '1');
+    const usefulLifeMonths = parseVidaUtil(row.vida_util || row.vida_útil || row.useful_life_months || row.meses || '12');
+    items.push({
+      row: rowNum,
+      empresa,
+      sector: null,
+      puesto: null,
+      workplace_category: categoriaRaw || null,
+      article_type: articleType,
+      quantity,
+      useful_life_months: usefulLifeMonths,
+    });
+  }
+  const byEmpresa: Record<string, CatalogImportItem[]> = {};
+  for (const it of items) {
+    const key = it.empresa || '(sin empresa)';
+    if (!byEmpresa[key]) byEmpresa[key] = [];
+    byEmpresa[key].push(it);
+  }
+  return { total: items.length, byEmpresa, invalid, items };
+}
+
+function dedupCatalogItems(items: CatalogImportItem[]): CatalogImportItem[] {
+  const seen = new Map<string, CatalogImportItem>();
+  for (const it of items) {
+    const key = [
+      (it.empresa || '').toLowerCase().trim(),
+      (it.workplace_category || '').toLowerCase().trim(),
+      it.article_type.toLowerCase().trim(),
+    ].join('||');
+    if (!seen.has(key)) seen.set(key, it);
+  }
+  return Array.from(seen.values());
+}
+
+export async function importCatalogFromItems(
+  items: CatalogImportItem[],
+  createdBy: number,
+  options: { replaceEmpresas?: boolean } = {}
 ): Promise<ImportResult> {
   const errors: ImportError[] = [];
   let successful = 0;
   const isPg = (db as any).type === 'pg';
 
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const rowNum = i + 2;
+  const deduped = dedupCatalogItems(items);
 
-    const articleType = (row.article_type || row.artículo || row.prenda || row.nombre || '').trim();
-    if (!articleType) {
-      errors.push({ row: rowNum, field: 'article_type', message: 'Tipo de artículo vacío' });
-      continue;
+  if (options.replaceEmpresas) {
+    const empresas = Array.from(new Set(deduped.map(i => i.empresa).filter(Boolean))) as string[];
+    for (const emp of empresas) {
+      if (isPg) {
+        await db.query('DELETE FROM agenda_uniform_catalog WHERE empresa = $1', [emp]);
+      } else {
+        await db.run('DELETE FROM agenda_uniform_catalog WHERE empresa = ?', [emp]);
+      }
     }
+  }
 
-    const empresa = (row.empresa || row.compañía || '').trim() || null;
-    const usefulLifeMonths = parseInt(row.useful_life_months || row.vida_útil || row.meses || '12', 10) || 12;
-
+  for (const it of deduped) {
     const params = [
-      empresa, 
-      null, // sector
-      null, // puesto
-      null, // workplace_category
-      articleType,
+      it.empresa,
+      it.sector,
+      it.puesto,
+      it.workplace_category,
+      it.article_type,
       null, // article_name_normalized
-      1,    // quantity
-      usefulLifeMonths,
+      it.quantity,
+      it.useful_life_months,
       1,    // initial_enabled
       1,    // renewable
       0,    // reusable_allowed
@@ -295,20 +459,30 @@ export async function importCatalogItems(
       }
       successful++;
     } catch (err: any) {
-      errors.push({ row: rowNum, message: err.message || 'Error al insertar en catálogo' });
+      errors.push({ row: it.row, message: err.message || 'Error al insertar en catálogo' });
     }
   }
 
-  return { success: errors.length === 0, processed: rows.length, successful, failed: errors.length, errors };
+  return { success: errors.length === 0, processed: items.length, successful, failed: errors.length, errors };
+}
+
+export async function importCatalogItems(
+  rows: Record<string, string>[],
+  createdBy: number,
+  options: { replaceEmpresas?: boolean } = {}
+): Promise<ImportResult> {
+  const { items, invalid } = parseCatalogRows(rows);
+  const res = await importCatalogFromItems(items, createdBy, options);
+  return { ...res, errors: [...invalid, ...res.errors], failed: invalid.length + res.failed, processed: rows.length };
 }
 
 export function buildCatalogTemplate(): Buffer {
   const wb = XLSX.utils.book_new();
-  const headers = ['article_type', 'empresa', 'useful_life_months'];
+  const headers = ['article_type', 'empresa', 'categoria', 'cantidad', 'vida_util'];
   const sample = [
-    ['Camisa manga larga', 'REIMA', '12'],
-    ['Pantalón cargo', 'ORBIS', '12'],
-    ['Zapatos de seguridad', 'SCOUT', '6'],
+    ['Camisa manga larga', 'REIMA', 'Portero o Vigilante de Espacios Interiores', '2', '6'],
+    ['Pantalón cargo', 'ERGON', 'Mantenimiento de Areas Verdes', '1', '6'],
+    ['Zapatos de seguridad', 'SCOUT', 'Servicios Hospitalarios', '1', '12'],
   ];
   const ws = XLSX.utils.aoa_to_sheet([headers, ...sample]);
   XLSX.utils.book_append_sheet(wb, ws, 'Catálogo');

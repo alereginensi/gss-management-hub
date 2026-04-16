@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ClipboardList, FileText, Users, History, ClipboardCheck } from 'lucide-react';
+import { ArrowLeft, ClipboardList, FileText, Users, History, ClipboardCheck, Shirt } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 
@@ -13,6 +13,7 @@ const MENU_ITEMS = [
     { label: 'Recuento de Tareas', description: 'Historial de registros con filtros y exportación', href: '/operaciones-limpieza/tareas', icon: ClipboardList },
     { label: 'Asignar Tareas', description: 'Asignación de tareas al personal', href: '/operaciones-limpieza/asignar-tareas', icon: ClipboardCheck },
     { label: 'Personal', description: 'CRUD de funcionarios de limpieza', href: '/operaciones-limpieza/personal', icon: Users },
+    { label: 'Solicitudes de Uniformes', description: 'Crear solicitudes emergentes al área de logística', href: '/operaciones-limpieza/solicitudes-uniforme', icon: Shirt },
 ];
 
 export default function OperacionesLimpiezaPage() {

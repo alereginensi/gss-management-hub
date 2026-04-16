@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth-server';
 import { generateSlotsForMonth, logAudit } from '@/lib/agenda-helpers';
 
-const AUTH_ROLES = ['admin', 'logistica', 'jefe'];
+const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh'];
 
 export async function POST(request: NextRequest) {
   const session = await getSession(request);

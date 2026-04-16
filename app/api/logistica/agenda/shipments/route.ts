@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth-server';
 import { logAudit } from '@/lib/agenda-helpers';
 import { uploadToCloudinary } from '@/lib/cloudinary';
 
-const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'supervisor'];
+const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
 export async function GET(request: NextRequest) {
   const session = await getSession(request);

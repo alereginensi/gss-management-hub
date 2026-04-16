@@ -224,24 +224,22 @@ Sistema integral de gestión de turnos y uniformes bajo Logística.
 
 **`admin/citas/`** — para el rol `logistica`, al cargar la página se aplican filtros iniciales `desde=hoy`, `hasta=hoy`, `estado=confirmada`. Botones rápidos: "Hoy", "Solo confirmadas", "Restablecer".
 
-**`admin/cambios/`** — rediseño completo:
-- Toolbar con contador y botón "Nuevo cambio".
-- Filtros: buscar, desde, hasta, empresa, estado.
-- Tabla historial: Fecha | Empleado | CI | Empresa | Prenda devuelta | Prenda entregada | Estado (badge) | Acciones.
-- Badge de estado: `pendiente`=amarillo, `completado`=verde, `cancelado`=rojo.
-- Modal "Nuevo cambio": busca empleado con badge de elegibilidad (`allow_reorder=1` → "Habilitado" azul; `renewal_enabled_at <= hoy` → "Renovación disponible" verde; sin ninguno → aviso naranja). Dropdown artículo a devolver (artículos activos del empleado). Dropdown artículo a entregar (del catálogo). Al crear → POST → redirige a `/cambios/[id]`.
+**Devolución opcional dentro de cita** (reemplaza al módulo `admin/cambios` viejo):
 
-**`admin/cambios/[id]/`** — vista de completar cambio (equivalente a `citas/[id]/` pero con devolución):
-- Info del cambio: empleado, artículo devuelto, artículo a entregar, badge de estado.
-- **Remito ENTREGA** (borde verde): number input, textarea raw, botón "Analizar remito" (llama `parseRemitoText` client-side), file upload, lista editable de ítems.
-- **Remito DEVOLUCIÓN** (borde rojo): misma estructura; pre-rellena con el artículo devuelto del cambio.
-- **Descargo legal + firmas**: texto legal, checkbox "Acepto…", dos `AgendaSignatureCanvas` (empleado + responsable).
-- **Botón "Completar cambio"**: requiere disclaimer ✓ + ambas firmas ✓ + al menos un ítem entregado. Flujo: `POST sign (employee)` → `POST sign (responsible)` → `PUT [id]` (ítems/remitos) → `PUT [id]/complete`.
-- **Sección de impresión** (`@media print`): encabezado con datos del empleado, tabla de ítems entregados (verde), tabla de ítems devueltos (rojo), números de remito, texto legal, espacios de firma.
-- Botón "Imprimir constancia" → `window.print()`.
+En `admin/citas/[id]` hay un toggle "Habilitar devolución" (icono `PackagePlus`, mismo estilo que `allow_reorder` en empleados). Al activarlo aparecen dos tarjetas con borde rojo:
+- **Ítems devueltos**: lista editable (prenda / talla / cantidad).
+- **Remito de devolución**: número de remito, texto raw, subida de PDF (`/api/logistica/agenda/appointments/[id]/remito` con `kind=return`).
+
+Al "Completar entrega" con el toggle activo, el PUT a `/api/.../delivery` envía también `has_return=1`, `returned_order_items`, `remito_return_number`. La constancia impresa agrega una tabla roja "Prendas devueltas" + el número de remito de devolución.
+
+`admin/entregas` muestra un badge naranja "Con cambio" en las filas con `has_return=1` (tooltip con el nro de remito devolución).
+
+Columnas nuevas en `agenda_appointments` (ALTER TABLE aditivo): `has_return`, `returned_order_items`, `remito_return_number`, `remito_return_pdf_url`, `parsed_remito_return_text`, `parsed_remito_return_data`.
+
+El módulo legacy `admin/cambios` y sus endpoints `/api/logistica/agenda/changes/*` fueron eliminados. La tabla `agenda_change_events` queda intacta con todos sus registros históricos.
 
 ### Libs de soporte
-- `lib/agenda-types.ts` — interfaces TypeScript completas; incluye `ChangeEventStatus = 'pendiente' | 'completado' | 'cancelado'`; `AgendaChangeEvent` actualizado con `status`, `employee_signature_url`, `responsible_signature_url`, `disclaimer_accepted`, `delivered_items`, `returned_items`, `remito_delivery_number`, `remito_return_number`, `completed_at`, `completed_by`, `delivery_notes`; `AgendaUniformCatalogItem` acepta `null` en campos opcionales.
+- `lib/agenda-types.ts` — interfaces TypeScript. `AgendaUniformCatalogItem` acepta `null` en campos opcionales. (Los tipos `ChangeEventStatus` / `AgendaChangeEvent` fueron removidos junto con el módulo Cambios.)
 - `lib/agenda-helpers.ts` — hold/release slot, logAudit, badges, generateSlotsForMonth
 - `lib/agenda-catalog.ts` — catálogo por empresa + normalización de pedidos; re-exporta `ARTICLE_NAME_ALIASES` desde `agenda-article-aliases.ts`
 - `lib/agenda-article-aliases.ts` — **nuevo**: mapa de aliases de artículos sin imports de servidor; importable en componentes cliente
@@ -254,12 +252,12 @@ Sistema integral de gestión de turnos y uniformes bajo Logística.
 - `scripts/cron-agenda.cjs` — auto-generación mensual de slots con `node-cron` (día 5 de cada mes, 09:00 Montevideo)
 - `npm run agenda:slots -- --manual 2025-08` — genera slots de un mes específico
 
-### DB — `agenda_change_events` (columnas agregadas vía ALTER TABLE)
-Columnas nuevas añadidas con migración aditiva (PostgreSQL: `information_schema.columns`; SQLite: `PRAGMA table_info`) para no romper producción existente:
-`status TEXT DEFAULT 'pendiente'`, `employee_signature_url TEXT`, `responsible_signature_url TEXT`, `disclaimer_accepted INTEGER DEFAULT 0`, `delivery_notes TEXT`, `delivered_items TEXT`, `returned_items TEXT`, `remito_delivery_number TEXT`, `remito_return_number TEXT`, `completed_at TIMESTAMP`, `completed_by INTEGER`.
+### DB — `agenda_appointments` (columnas nuevas para devolución dentro de cita)
+ALTER TABLE aditivo (PG: `information_schema.columns`, SQLite: `PRAGMA table_info`):
+`has_return INTEGER DEFAULT 0`, `returned_order_items TEXT`, `remito_return_number TEXT`, `remito_return_pdf_url TEXT`, `parsed_remito_return_text TEXT`, `parsed_remito_return_data TEXT`.
 
 ### DB (14 tablas en `lib/db.ts`)
-`agenda_employees`, `agenda_time_slots`, `agenda_appointments`, `agenda_appointment_item_changes`, `agenda_config`, `agenda_failed_attempts`, `agenda_uniform_catalog`, `agenda_articles`, `agenda_requests`, `agenda_shipments`, `agenda_shipment_articles`, `agenda_change_events`, `agenda_import_jobs`, `agenda_audit_log`.
+`agenda_employees`, `agenda_time_slots`, `agenda_appointments`, `agenda_appointment_item_changes`, `agenda_config`, `agenda_failed_attempts`, `agenda_uniform_catalog`, `agenda_articles`, `agenda_requests`, `agenda_shipments`, `agenda_shipment_articles`, `agenda_change_events` (legacy — solo lectura, módulo removido), `agenda_import_jobs`, `agenda_audit_log`.
 
 ### Print CSS
 `app/globals.css` — clases `.no-print`, `.print-only`, `.print-comprobante` para impresión de comprobantes de entrega, solicitudes emergentes, envíos y **constancias de cambio de prenda**.
@@ -272,4 +270,4 @@ Se guardan en `public/uploads/agenda/{firmas|remitos}/` por defecto. Si `CLOUDIN
 
 ---
 
-*Última actualización de este archivo: rama `agenda-web` — cambios de prenda con devolución, historial entregas, toggle allow\_reorder, vista logística en citas, AgendaSignatureCanvas.*
+*Última actualización de este archivo: devolución opcional integrada en citas (reemplaza módulo Cambios legacy), badge "Con cambio" en entregas, importación de catálogo con preview multi-sección.*

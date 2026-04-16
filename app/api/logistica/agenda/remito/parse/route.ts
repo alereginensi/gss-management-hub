@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth-server';
 import { parseRemitoText, reconcileOrderVsRemito } from '@/lib/agenda-remito-parser';
 
-const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'supervisor'];
+const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
 // POST /api/logistica/agenda/remito/parse
 // Body: { raw_text, catalog?, order_items? }

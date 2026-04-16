@@ -678,7 +678,9 @@ class DbWrapper {
         status TEXT DEFAULT 'pendiente',
         legal_text_version TEXT DEFAULT 'v1',
         notes TEXT,
-        resulting_article_id INTEGER REFERENCES agenda_articles(id)
+        resulting_article_id INTEGER REFERENCES agenda_articles(id),
+        is_emergency INTEGER DEFAULT 0,
+        source TEXT DEFAULT 'logistica'
       );
 
       CREATE TABLE IF NOT EXISTS agenda_shipments (
@@ -1340,6 +1342,46 @@ class DbWrapper {
           console.error('❌ Error migrating agenda_change_events (Postgres):', e);
         }
 
+        // Migrate agenda_appointments: add return/devolución columns
+        try {
+          const apCols = await this.pgPool!.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'agenda_appointments'`);
+          const apColNames = apCols.rows.map((r: any) => r.column_name);
+          const newApCols: [string, string][] = [
+            ['has_return', 'INTEGER DEFAULT 0'],
+            ['returned_order_items', 'TEXT'],
+            ['remito_return_number', 'TEXT'],
+            ['remito_return_pdf_url', 'TEXT'],
+            ['parsed_remito_return_text', 'TEXT'],
+            ['parsed_remito_return_data', 'TEXT'],
+          ];
+          for (const [col, def] of newApCols) {
+            if (!apColNames.includes(col)) {
+              await this.pgPool!.query(`ALTER TABLE agenda_appointments ADD COLUMN ${col} ${def}`);
+              console.log(`🐘 Migrated agenda_appointments: added ${col}`);
+            }
+          }
+        } catch (e) {
+          console.error('❌ Error migrating agenda_appointments (Postgres):', e);
+        }
+
+        // Migrate agenda_requests: add is_emergency + source
+        try {
+          const reqCols = await this.pgPool!.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'agenda_requests'`);
+          const reqColNames = reqCols.rows.map((r: any) => r.column_name);
+          const newReqCols: [string, string][] = [
+            ['is_emergency', 'INTEGER DEFAULT 0'],
+            ['source', `TEXT DEFAULT 'logistica'`],
+          ];
+          for (const [col, def] of newReqCols) {
+            if (!reqColNames.includes(col)) {
+              await this.pgPool!.query(`ALTER TABLE agenda_requests ADD COLUMN ${col} ${def}`);
+              console.log(`🐘 Migrated agenda_requests: added ${col}`);
+            }
+          }
+        } catch (e) {
+          console.error('❌ Error migrating agenda_requests (Postgres):', e);
+        }
+
       } catch (err) {
         console.error('❌ Error initializing Postgres:', err);
       }
@@ -1567,6 +1609,43 @@ class DbWrapper {
         }
       } catch (e) {
         console.error('❌ Error migrating agenda_change_events (SQLite):', e);
+      }
+
+      // Migrate agenda_appointments: add return/devolución columns (SQLite)
+      try {
+        const apInfo = this.sqliteDb.prepare("PRAGMA table_info(agenda_appointments)").all() as any[];
+        const apCols = apInfo.map((c: any) => c.name);
+        const newApCols: [string, string][] = [
+          ['has_return', 'INTEGER DEFAULT 0'],
+          ['returned_order_items', 'TEXT'],
+          ['remito_return_number', 'TEXT'],
+          ['remito_return_pdf_url', 'TEXT'],
+          ['parsed_remito_return_text', 'TEXT'],
+          ['parsed_remito_return_data', 'TEXT'],
+        ];
+        for (const [col, def] of newApCols) {
+          if (!apCols.includes(col)) {
+            this.sqliteDb.exec(`ALTER TABLE agenda_appointments ADD COLUMN ${col} ${def}`);
+          }
+        }
+      } catch (e) {
+        console.error('❌ Error migrating agenda_appointments (SQLite):', e);
+      }
+
+      try {
+        const reqInfo = this.sqliteDb.prepare("PRAGMA table_info(agenda_requests)").all() as any[];
+        const reqCols = reqInfo.map((c: any) => c.name);
+        const newReqCols: [string, string][] = [
+          ['is_emergency', 'INTEGER DEFAULT 0'],
+          ['source', `TEXT DEFAULT 'logistica'`],
+        ];
+        for (const [col, def] of newReqCols) {
+          if (!reqCols.includes(col)) {
+            this.sqliteDb.exec(`ALTER TABLE agenda_requests ADD COLUMN ${col} ${def}`);
+          }
+        }
+      } catch (e) {
+        console.error('❌ Error migrating agenda_requests (SQLite):', e);
       }
 
       // Fix notifications table: ensure id column is INTEGER PRIMARY KEY (auto-increment)

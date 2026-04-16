@@ -1,14 +1,6 @@
 // Tipos TypeScript para el módulo Agenda Web de Uniformes
 
-export type WorkplaceCategory =
-  | 'oficina'
-  | 'salud'
-  | 'vigilancia'
-  | 'limpieza'
-  | 'logistica'
-  | 'mantenimiento'
-  | 'obra'
-  | 'otro';
+export type WorkplaceCategory = string;
 
 export type EmpresaKey = 'REIMA' | 'ORBIS' | 'SCOUT' | 'ERGON' | string;
 
@@ -211,6 +203,8 @@ export interface AgendaArticle {
 
 // ─── Solicitudes emergentes ──────────────────────────────────────────────────
 
+export type RequestSource = 'logistica' | 'limpieza' | 'seguridad' | 'rrhh';
+
 export interface AgendaRequest {
   id: number;
   employee_id: number;
@@ -226,6 +220,8 @@ export interface AgendaRequest {
   legal_text_version: string;
   notes?: string;
   resulting_article_id?: number;
+  is_emergency?: number;
+  source?: RequestSource;
   employee?: AgendaEmployee;
 }
 
@@ -247,37 +243,6 @@ export interface AgendaShipment {
   created_at: string;
   employee?: AgendaEmployee;
   articles?: AgendaArticle[];
-}
-
-// ─── Cambios de uniforme ─────────────────────────────────────────────────────
-
-export type ChangeEventStatus = 'pendiente' | 'completado' | 'cancelado';
-
-export interface AgendaChangeEvent {
-  id: number;
-  employee_id: number;
-  new_article_id?: number;
-  returned_article_id?: number;
-  delivery_receipt_url?: string;
-  return_receipt_url?: string;
-  status: ChangeEventStatus;
-  employee_signature_url?: string;
-  responsible_signature_url?: string;
-  disclaimer_accepted: number;
-  delivery_notes?: string;
-  delivered_items?: string;         // JSON array de OrderItem
-  returned_items?: string;          // JSON array de OrderItem
-  remito_delivery_number?: string;
-  remito_return_number?: string;
-  changed_at: string;
-  completed_at?: string;
-  completed_by?: number;
-  processed_by?: number;
-  notes?: string;
-  // Joined
-  employee?: AgendaEmployee;
-  new_article?: AgendaArticle;
-  returned_article?: AgendaArticle;
 }
 
 // ─── Jobs de importación ─────────────────────────────────────────────────────
@@ -323,6 +288,7 @@ export type AuditAction =
   | 'hold'
   | 'release'
   | 'complete_delivery'
+  | 'revert_delivery'
   | 'upload_remito'
   | 'upload_signature'
   | 'config_change';
@@ -334,7 +300,6 @@ export type AuditEntityType =
   | 'article'
   | 'request'
   | 'shipment'
-  | 'change_event'
   | 'catalog'
   | 'config'
   | 'import';

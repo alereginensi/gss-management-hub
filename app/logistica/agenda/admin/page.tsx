@@ -5,15 +5,15 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, Users, Calendar, Shirt, ClipboardList, Truck,
-  AlertTriangle, CheckCircle, Clock, TrendingUp, Settings, Upload, History, ShieldAlert, PackageCheck, RefreshCw
+  AlertTriangle, Clock, TrendingUp, Settings, Upload, History, ShieldAlert, PackageCheck
 } from 'lucide-react';
-import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
+import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 
 interface Stats {
   hoy: { fecha: string; citas_total: number; citas_pendientes: number; citas_completadas: number; cupos_disponibles: number; intentos_fallidos: number; total_historico: number };
   empleados: { total: number; habilitados: number };
-  alertas: { articulos_vencidos: number; solicitudes_pendientes: number };
+  alertas: { articulos_vencidos: number; solicitudes_pendientes: number; solicitudes_emergentes: number };
 }
 
 const QUICK_LINKS = [
@@ -25,7 +25,6 @@ const QUICK_LINKS = [
   { label: 'Catálogo', href: '/logistica/agenda/admin/catalogo', icon: Shirt, desc: 'Prendas por empresa/sector' },
   { label: 'Solicitudes', href: '/logistica/agenda/admin/solicitudes', icon: ClipboardList, desc: 'Casos especiales / emergentes' },
   { label: 'Artículos', href: '/logistica/agenda/admin/articulos', icon: Shirt, desc: 'Entregas y renovaciones' },
-  { label: 'Cambios', href: '/logistica/agenda/admin/cambios', icon: RefreshCw, desc: 'Intercambio de prendas (Doble Remito)' },
   { label: 'Interior', href: '/logistica/agenda/admin/envios-interior', icon: Truck, desc: 'Envíos al interior del país' },
   { label: 'Importar', href: '/logistica/agenda/admin/importaciones', icon: Upload, desc: 'Carga masiva de empleados' },
   { label: 'Migración', href: '/logistica/agenda/admin/migracion', icon: History, desc: 'Historial del sistema anterior' },
@@ -38,12 +37,23 @@ export default function AgendaAdminDashboard() {
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [backHref, setBackHref] = useState('/logistica');
+  const [backLabel, setBackLabel] = useState('Logística');
 
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) { router.push('/login'); return; }
-    if (currentUser && !hasModuleAccess(currentUser, 'logistica')) { router.push('/'); return; }
+    if (currentUser && !canAccessAgenda(currentUser)) { router.push('/'); return; }
   }, [loading, isAuthenticated, currentUser, router]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const origin = sessionStorage.getItem('agenda_origin');
+    if (origin === 'rrhh') {
+      setBackHref('/rrhh');
+      setBackLabel('RRHH');
+    }
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated || loading) return;
@@ -65,8 +75,8 @@ export default function AgendaAdminDashboard() {
         boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <Link href="/logistica" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '0.78rem' }}>
-            <ArrowLeft size={13} />{!isMobile && ' Logística'}
+          <Link href={backHref} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '0.78rem' }}>
+            <ArrowLeft size={13} />{!isMobile && ` ${backLabel}`}
           </Link>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="GSS" style={{ maxHeight: '28px', filter: 'brightness(0) invert(1)' }} />
@@ -94,12 +104,12 @@ export default function AgendaAdminDashboard() {
           {!statsLoading && stats && stats.hoy && stats.empleados && stats.alertas && (
             <div className="stats-grid">
               {[
-                { label: 'Citas hoy', value: stats.hoy.citas_total ?? 0, sub: `${stats.hoy.citas_pendientes ?? 0} pend.`, color: '#29416b', icon: Calendar },
-                { label: 'Historial', value: stats.hoy.total_historico ?? 0, sub: 'registros', color: '#065f46', icon: History },
-                { label: 'Empleados', value: stats.empleados.total ?? 0, sub: `${stats.empleados.habilitados ?? 0} hab.`, color: '#1e40af', icon: Users },
-                { label: 'Alertas', value: (stats.alertas.articulos_vencidos ?? 0) + (stats.alertas.solicitudes_pendientes ?? 0), sub: `${stats.alertas.solicitudes_pendientes ?? 0} sol.`, color: '#92400e', icon: AlertTriangle },
-              ].map(({ label, value, sub, color, icon: Icon }) => (
-                <div key={label} className="card" style={{ 
+                { label: 'Citas hoy', value: stats.hoy.citas_total ?? 0, sub: `${stats.hoy.citas_pendientes ?? 0} pend.`, color: '#29416b', icon: Calendar, href: '/logistica/agenda/admin/citas' },
+                { label: 'Historial', value: stats.hoy.total_historico ?? 0, sub: 'registros', color: '#065f46', icon: History, href: '/logistica/agenda/admin/entregas' },
+                { label: 'Empleados', value: stats.empleados.total ?? 0, sub: `${stats.empleados.habilitados ?? 0} hab.`, color: '#1e40af', icon: Users, href: '/logistica/agenda/admin/empleados' },
+                { label: 'Solicitudes', value: stats.alertas.solicitudes_emergentes ?? 0, sub: 'emergentes pendientes', color: '#92400e', icon: ClipboardList, href: '/logistica/agenda/admin/solicitudes?emergency=1' },
+              ].map(({ label, value, sub, color, icon: Icon, href }) => (
+                <Link key={label} href={href} style={{ textDecoration: 'none', color: 'inherit' }}><div className="card" style={{
                   padding: isMobile ? '0.85rem 0.5rem' : '1.25rem 1rem', 
                   display: 'flex', 
                   flexDirection: isMobile ? 'column' : 'row',
@@ -126,18 +136,18 @@ export default function AgendaAdminDashboard() {
                     <p style={{ margin: '0.2rem 0 0', fontSize: isMobile ? '0.68rem' : '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{label}</p>
                     <p style={{ margin: '0.1rem 0 0', fontSize: '0.65rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</p>
                   </div>
-                </div>
+                </div></Link>
               ))}
             </div>
           )}
 
           {/* Alertas destacadas */}
-          {stats && (stats.alertas.articulos_vencidos > 0 || stats.alertas.solicitudes_pendientes > 0) && (
+          {stats && (stats.alertas.articulos_vencidos > 0 || (stats.alertas.solicitudes_emergentes ?? 0) > 0) && (
             <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '0.85rem 1rem', marginBottom: '1.25rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
               <AlertTriangle size={16} color="#92400e" style={{ marginTop: '2px', flexShrink: 0 }} />
               <div style={{ fontSize: '0.8rem', color: '#92400e' }}>
                 {stats.alertas.articulos_vencidos > 0 && <p style={{ margin: '0 0 0.2rem' }}>⚠ <strong>{stats.alertas.articulos_vencidos}</strong> artículo{stats.alertas.articulos_vencidos !== 1 ? 's' : ''} vencido{stats.alertas.articulos_vencidos !== 1 ? 's' : ''} — habilitar renovación</p>}
-                {stats.alertas.solicitudes_pendientes > 0 && <p style={{ margin: 0 }}>⚠ <strong>{stats.alertas.solicitudes_pendientes}</strong> solicitud{stats.alertas.solicitudes_pendientes !== 1 ? 'es' : ''} emergente{stats.alertas.solicitudes_pendientes !== 1 ? 's' : ''} pendiente{stats.alertas.solicitudes_pendientes !== 1 ? 's' : ''} de aprobación</p>}
+                {(stats.alertas.solicitudes_emergentes ?? 0) > 0 && <p style={{ margin: 0 }}>⚠ <strong>{stats.alertas.solicitudes_emergentes}</strong> solicitud{stats.alertas.solicitudes_emergentes !== 1 ? 'es' : ''} emergente{stats.alertas.solicitudes_emergentes !== 1 ? 's' : ''} pendiente{stats.alertas.solicitudes_emergentes !== 1 ? 's' : ''} de aprobación</p>}
               </div>
             </div>
           )}
