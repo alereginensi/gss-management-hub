@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth-server';
-import { parseImportBuffer, importCatalogItems } from '@/lib/agenda-import';
+import { parseCatalogPreviewFromBuffer, importCatalogFromItems } from '@/lib/agenda-import';
 import db from '@/lib/db';
 
-const AUTH_ROLES = ['admin', 'logistica', 'jefe'];
+const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh'];
 
 export async function POST(request: NextRequest) {
   const session = await getSession(request);
@@ -19,13 +19,14 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { rows } = parseImportBuffer(buffer);
-
-    if (rows.length === 0) {
-      return NextResponse.json({ error: 'No se encontraron datos en el archivo' }, { status: 400 });
+    const preview = parseCatalogPreviewFromBuffer(buffer);
+    if (preview.total === 0) {
+      return NextResponse.json({ error: 'No se encontraron artículos en el archivo' }, { status: 400 });
     }
 
-    const result = await importCatalogItems(rows, session.user.id);
+    const result = await importCatalogFromItems(preview.items, session.user.id, { replaceEmpresas: true });
+    result.errors = [...preview.invalid, ...result.errors];
+    result.failed = result.errors.length;
 
     // Registrar en agenda_import_jobs
     const isPg = (db as any).type === 'pg';

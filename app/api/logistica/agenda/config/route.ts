@@ -5,7 +5,7 @@ import { logAudit } from '@/lib/agenda-helpers';
 
 export async function GET(request: NextRequest) {
   const session = await getSession(request);
-  if (!session || !['admin', 'logistica', 'jefe', 'supervisor'].includes(session.user.role)) {
+  if (!session || !['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'].includes(session.user.role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const config = await db.get('SELECT * FROM agenda_config WHERE id = 1');

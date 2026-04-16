@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Users } from 'lucide-react';
+import { ArrowLeft, Users, Shirt } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 
@@ -64,9 +64,23 @@ export default function RrhhPage() {
                         GSS Management Hub · Gestión de personal y RRHH
                     </p>
 
-                    <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e2e2', borderRadius: 0, overflow: 'hidden' }}>
+                    <div className="landing-modules-grid">
+                        <Link
+                            href="/logistica/agenda/admin"
+                            className="landing-card-btn"
+                            onClick={() => { try { sessionStorage.setItem('agenda_origin', 'rrhh'); } catch {} }}
+                        >
+                            <div className="landing-card-icon"><Shirt size={26} color="white" /></div>
+                            <div className="landing-card-content">
+                                <p className="landing-card-label">Agenda Web</p>
+                                <p className="landing-card-desc">Gestión de uniformes, turnos y entregas</p>
+                            </div>
+                        </Link>
+                    </div>
+
+                    <div style={{ marginTop: '1.5rem', backgroundColor: '#ffffff', border: '1px solid #e2e2e2', borderRadius: 0, overflow: 'hidden' }}>
                         <div style={{ padding: '0.5rem 1.25rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e2e2', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#64748b' }}>
-                            Módulo en desarrollo
+                            Más módulos en desarrollo
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: isMobile ? '1.5rem 1rem' : '2rem 1.5rem' }}>
                             <div style={{ width: '48px', height: '48px', backgroundColor: '#e2e8f0', borderRadius: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -75,7 +89,7 @@ export default function RrhhPage() {
                             <div>
                                 <p style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a', margin: '0 0 0.25rem' }}>Próximamente disponible</p>
                                 <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
-                                    Este módulo está en desarrollo. Aquí estará disponible la gestión de personal y recursos humanos.
+                                    Otras funciones de recursos humanos se agregarán acá.
                                 </p>
                             </div>
                         </div>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
 
-const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'supervisor'];
+const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
 export async function GET(request: NextRequest) {
   const session = await getSession(request);

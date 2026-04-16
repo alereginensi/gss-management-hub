@@ -4,16 +4,15 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Search, Edit2, Upload, X, Users, Trash2, PackagePlus } from 'lucide-react';
-import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
+import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
-import type { AgendaEmployee, WorkplaceCategory } from '@/lib/agenda-types';
+import type { AgendaEmployee } from '@/lib/agenda-types';
 
-const WORKPLACE_CATEGORIES: WorkplaceCategory[] = ['oficina', 'salud', 'vigilancia', 'limpieza', 'logistica', 'mantenimiento', 'obra', 'otro'];
 const EMPRESAS = ['REIMA', 'ORBIS', 'SCOUT', 'ERGON'];
 
 const EMPTY_FORM = {
   documento: '', nombre: '', empresa: '', sector: '', puesto: '',
-  workplace_category: '' as WorkplaceCategory | '',
+  workplace_category: '',
   fecha_ingreso: '', talle_superior: '', talle_inferior: '', calzado: '',
   enabled: 1, allow_reorder: 0, estado: 'activo' as string, observaciones: '',
 };
@@ -38,12 +37,29 @@ export default function AgendaEmpleadosPage() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AgendaEmployee | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [categoriasSugeridas, setCategoriasSugeridas] = useState<string[]>([]);
 
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) { router.push('/login'); return; }
-    if (currentUser && !hasModuleAccess(currentUser, 'logistica')) { router.push('/'); return; }
+    if (currentUser && !canAccessAgenda(currentUser)) { router.push('/'); return; }
   }, [loading, isAuthenticated, currentUser, router]);
+
+  useEffect(() => {
+    if (!isAuthenticated || loading) return;
+    fetch('/api/logistica/agenda/catalog')
+      .then(r => r.json())
+      .then((data: any[]) => {
+        if (!Array.isArray(data)) return;
+        const s = new Set<string>();
+        for (const c of data) {
+          const v = (c.workplace_category || c.puesto || c.sector || '').toString().trim();
+          if (v) s.add(v);
+        }
+        setCategoriasSugeridas(Array.from(s).sort());
+      })
+      .catch(() => {});
+  }, [isAuthenticated, loading]);
 
   const fetchEmployees = useCallback(async (isLoadMore = false) => {
     setFetching(true);
@@ -88,7 +104,7 @@ export default function AgendaEmpleadosPage() {
     setForm({
       documento: emp.documento, nombre: emp.nombre, empresa: emp.empresa || '',
       sector: emp.sector || '', puesto: emp.puesto || '',
-      workplace_category: (emp.workplace_category as WorkplaceCategory | '') || '',
+      workplace_category: emp.workplace_category || '',
       fecha_ingreso: emp.fecha_ingreso || '', talle_superior: emp.talle_superior || '',
       talle_inferior: emp.talle_inferior || '', calzado: emp.calzado || '',
       enabled: emp.enabled, allow_reorder: emp.allow_reorder,
@@ -506,11 +522,17 @@ export default function AgendaEmpleadosPage() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>Categoría de lugar</label>
-                <select value={form.workplace_category} onChange={e => setForm(f => ({ ...f, workplace_category: e.target.value as WorkplaceCategory | '' }))} style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.45rem 0.7rem', fontSize: '0.82rem' }}>
-                  <option value="">Sin categoría</option>
-                  {WORKPLACE_CATEGORIES.map(c => <option key={c} value={c} style={{ textTransform: 'capitalize' }}>{c}</option>)}
-                </select>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>Categoría</label>
+                <input
+                  list="empleados-categorias-suggest"
+                  value={form.workplace_category}
+                  onChange={e => setForm(f => ({ ...f, workplace_category: e.target.value }))}
+                  placeholder="Ej: Servicios Hospitalarios"
+                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.45rem 0.7rem', fontSize: '0.82rem', boxSizing: 'border-box' }}
+                />
+                <datalist id="empleados-categorias-suggest">
+                  {categoriasSugeridas.map(c => <option key={c} value={c} />)}
+                </datalist>
               </div>
 
               <div>

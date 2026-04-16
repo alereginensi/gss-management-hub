@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth-server';
 import { logAudit } from '@/lib/agenda-helpers';
 import { saveAgendaFile } from '@/lib/agenda-storage';
 
-const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'supervisor'];
+const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
 // POST /api/logistica/agenda/appointments/[id]/sign
 // FormData: file (image/png|jpeg), type ('employee'|'responsible')

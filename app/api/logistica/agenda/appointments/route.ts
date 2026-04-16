@@ -3,7 +3,7 @@ import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
 import { parseOrderItems } from '@/lib/agenda-helpers';
 
-const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'supervisor'];
+const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
 export async function GET(request: NextRequest) {
   const session = await getSession(request);
@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
       ...r,
       order_items: parseOrderItems(r.order_items),
       delivered_order_items: parseOrderItems(r.delivered_order_items),
+      returned_order_items: parseOrderItems(r.returned_order_items),
     }));
 
     return NextResponse.json({ appointments, total: total?.count || 0, page, limit });

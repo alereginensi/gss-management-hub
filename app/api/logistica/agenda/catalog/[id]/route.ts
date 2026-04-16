@@ -3,7 +3,7 @@ import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
 import { logAudit } from '@/lib/agenda-helpers';
 
-const AUTH_ROLES = ['admin', 'logistica', 'jefe'];
+const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh'];
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession(request);

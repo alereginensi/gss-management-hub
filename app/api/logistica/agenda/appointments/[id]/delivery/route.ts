@@ -3,7 +3,7 @@ import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
 import { parseOrderItems, logAudit, calculateExpirationDate } from '@/lib/agenda-helpers';
 
-const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'supervisor'];
+const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession(request);
@@ -18,10 +18,28 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   try {
     const body = await request.json();
-    const { delivered_order_items, delivery_notes, remito_number, create_articles } = body;
+    const {
+      delivered_order_items,
+      delivery_notes,
+      remito_number,
+      create_articles,
+      has_return,
+      returned_order_items,
+      remito_return_number,
+    } = body;
 
     if (!delivered_order_items || !Array.isArray(delivered_order_items)) {
       return NextResponse.json({ error: 'delivered_order_items requerido (array)' }, { status: 400 });
+    }
+
+    const hasReturnFlag = has_return ? 1 : 0;
+    if (hasReturnFlag) {
+      if (!Array.isArray(returned_order_items) || returned_order_items.length === 0) {
+        return NextResponse.json({ error: 'returned_order_items requerido cuando has_return=1' }, { status: 400 });
+      }
+      if (!remito_return_number || !String(remito_return_number).trim()) {
+        return NextResponse.json({ error: 'remito_return_number requerido cuando has_return=1' }, { status: 400 });
+      }
     }
 
     const isPg = (db as any).type === 'pg';
@@ -42,6 +60,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         delivered_order_items = ?,
         delivery_notes = COALESCE(?, delivery_notes),
         remito_number = COALESCE(?, remito_number),
+        has_return = ?,
+        returned_order_items = ?,
+        remito_return_number = COALESCE(?, remito_return_number),
         status = 'completada',
         delivered_at = ${nowSql},
         delivered_by = ?,
@@ -51,6 +72,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         JSON.stringify(delivered_order_items),
         delivery_notes ?? null,
         remito_number ?? null,
+        hasReturnFlag,
+        hasReturnFlag ? JSON.stringify(returned_order_items) : null,
+        hasReturnFlag ? String(remito_return_number).trim() : null,
         session.user.id,
         id,
       ]
@@ -90,6 +114,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       ...updated,
       order_items: parseOrderItems(updated.order_items),
       delivered_order_items: parseOrderItems(updated.delivered_order_items),
+      returned_order_items: parseOrderItems(updated.returned_order_items),
     });
   } catch (err) {
     console.error('Error actualizando entrega:', err);

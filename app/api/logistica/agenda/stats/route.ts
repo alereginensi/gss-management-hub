@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
       intentosFallidos,
       articulosVencidos,
       solicitudesPendientes,
+      solicitudesEmergentes,
       totalHistorico,
     ] = await Promise.all([
       db.get(`SELECT COUNT(*) as count FROM agenda_appointments a JOIN agenda_time_slots s ON s.id = a.time_slot_id WHERE s.fecha = ?`, [today]),
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
       db.get(`SELECT COUNT(*) as count FROM agenda_failed_attempts WHERE date(created_at) = ?`, [today]),
       db.get(`SELECT COUNT(*) as count FROM agenda_articles WHERE current_status = 'activo' AND expiration_date IS NOT NULL AND expiration_date < ?`, [today]),
       db.get(`SELECT COUNT(*) as count FROM agenda_requests WHERE status = 'pendiente'`, []),
+      db.get(`SELECT COUNT(*) as count FROM agenda_requests WHERE status = 'pendiente' AND is_emergency = 1`, []),
       db.get(`SELECT COUNT(*) as count FROM agenda_appointments`, []),
     ]);
 
@@ -50,6 +52,7 @@ export async function GET(request: NextRequest) {
       alertas: {
         articulos_vencidos: articulosVencidos?.count || 0,
         solicitudes_pendientes: solicitudesPendientes?.count || 0,
+        solicitudes_emergentes: solicitudesEmergentes?.count || 0,
       },
     });
   } catch (err) {

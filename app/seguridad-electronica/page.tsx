@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Video, Wrench, History } from 'lucide-react';
+import { ArrowLeft, Video, Wrench, History, Shirt } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 
@@ -12,6 +12,7 @@ const MENU_ITEMS = [
     { label: 'Historial Mantenimiento', description: 'Registros históricos de mantenimiento', href: '/seguridad-electronica/historial?tipo=mantenimiento', icon: History },
     { label: 'Monitoreo', description: 'Gestión de eventos de monitoreo', href: '/seguridad-electronica/monitoreo', icon: Video },
     { label: 'Mantenimiento', description: 'Agenda y gestión de mantenimientos', href: '/seguridad-electronica/mantenimiento', icon: Wrench },
+    { label: 'Solicitudes de Uniformes', description: 'Crear solicitudes emergentes al área de logística', href: '/seguridad-electronica/solicitudes-uniforme', icon: Shirt },
 ];
 
 export default function SeguridadElectronicaPage() {

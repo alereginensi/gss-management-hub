@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth-server';
 import { logAudit } from '@/lib/agenda-helpers';
 import { saveAgendaFile } from '@/lib/agenda-storage';
 
-const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'supervisor'];
+const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession(request);

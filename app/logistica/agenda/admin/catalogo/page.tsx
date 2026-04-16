@@ -1,17 +1,17 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Shirt, Edit2, Trash2, X, Upload } from 'lucide-react';
-import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
+import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 import type { AgendaUniformCatalogItem } from '@/lib/agenda-types';
 
 const EMPRESAS = ['', 'REIMA', 'ORBIS', 'SCOUT', 'ERGON'];
 
 const EMPTY_FORM = {
-  empresa: '', sector: '', puesto: '', workplace_category: '',
+  empresa: '', workplace_category: '',
   article_type: '', article_name_normalized: '',
   quantity: 1, useful_life_months: 12,
   initial_enabled: 1, renewable: 1, reusable_allowed: 0, special_authorization_required: 0,
@@ -31,12 +31,14 @@ export default function AgendaCatalogoPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<any | null>(null);
+  const [importPreview, setImportPreview] = useState<any | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) { router.push('/login'); return; }
-    if (currentUser && !hasModuleAccess(currentUser, 'logistica')) { router.push('/'); return; }
+    if (currentUser && !canAccessAgenda(currentUser)) { router.push('/'); return; }
   }, [loading, isAuthenticated, currentUser, router]);
 
   const fetchCatalog = useCallback(async () => {
@@ -67,8 +69,8 @@ export default function AgendaCatalogoPage() {
   const openEdit = (item: AgendaUniformCatalogItem) => {
     setEditItem(item);
     setForm({
-      empresa: item.empresa || '', sector: item.sector || '', puesto: item.puesto || '',
-      workplace_category: item.workplace_category || '',
+      empresa: item.empresa || '',
+      workplace_category: item.workplace_category || item.puesto || item.sector || '',
       article_type: item.article_type, article_name_normalized: item.article_name_normalized || '',
       quantity: item.quantity, useful_life_months: item.useful_life_months,
       initial_enabled: item.initial_enabled, renewable: item.renewable,
@@ -77,6 +79,15 @@ export default function AgendaCatalogoPage() {
     setFormError(null);
     setShowModal(true);
   };
+
+  const categoriasSugeridas = useMemo(() => {
+    const s = new Set<string>();
+    for (const it of items) {
+      const v = (it.workplace_category || it.puesto || it.sector || '').trim();
+      if (v) s.add(v);
+    }
+    return Array.from(s).sort();
+  }, [items]);
 
   const handleSave = async () => {
     if (!form.article_type.trim()) { setFormError('Tipo de artículo requerido'); return; }
@@ -172,7 +183,7 @@ export default function AgendaCatalogoPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        {['Artículo', 'Sector/Puesto', 'Cantidad', 'Vida útil', 'Reutilizable', 'Autorización', 'Acciones'].map(h => (
+                        {['Artículo', 'Categoría', 'Cantidad', 'Vida útil', 'Reutilizable', 'Autorización', 'Acciones'].map(h => (
                           <th key={h} style={{ padding: '0.6rem 0.9rem', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.74rem', whiteSpace: 'nowrap' }}>{h}</th>
                         ))}
                       </tr>
@@ -184,7 +195,7 @@ export default function AgendaCatalogoPage() {
                             {item.article_type}
                             {item.article_name_normalized && <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>{item.article_name_normalized}</span>}
                           </td>
-                          <td style={{ padding: '0.6rem 0.9rem', color: '#64748b' }}>{[item.sector, item.puesto, item.workplace_category].filter(Boolean).join(' / ') || '—'}</td>
+                          <td style={{ padding: '0.6rem 0.9rem', color: '#64748b' }}>{item.workplace_category || item.puesto || item.sector || '—'}</td>
                           <td style={{ padding: '0.6rem 0.9rem', textAlign: 'center', fontWeight: 700, color: '#29416b' }}>{item.quantity}</td>
                           <td style={{ padding: '0.6rem 0.9rem', color: '#64748b' }}>{item.useful_life_months} meses</td>
                           <td style={{ padding: '0.6rem 0.9rem', textAlign: 'center' }}>
@@ -236,8 +247,17 @@ export default function AgendaCatalogoPage() {
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>Sector</label>
-                <input value={form.sector} onChange={e => setForm(f => ({ ...f, sector: e.target.value }))} placeholder="Dejar vacío = aplica a todos" style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.45rem 0.7rem', fontSize: '0.82rem', boxSizing: 'border-box' }} />
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>Categoría</label>
+                <input
+                  list="categorias-suggest"
+                  value={form.workplace_category}
+                  onChange={e => setForm(f => ({ ...f, workplace_category: e.target.value }))}
+                  placeholder="Dejar vacío = aplica a todos"
+                  style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.45rem 0.7rem', fontSize: '0.82rem', boxSizing: 'border-box' }}
+                />
+                <datalist id="categorias-suggest">
+                  {categoriasSugeridas.map((c: string) => <option key={c} value={c} />)}
+                </datalist>
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>Cantidad máx.</label>
@@ -274,14 +294,14 @@ export default function AgendaCatalogoPage() {
       {/* Modal Importar */}
       {showImportModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
-          <div className="card" style={{ width: '450px', maxWidth: '95vw', padding: '1.5rem' }}>
+          <div className="card" style={{ width: '650px', maxWidth: '95vw', maxHeight: '90vh', padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>Importar Catálogo (Excel)</h3>
-              <button onClick={() => { setShowImportModal(false); setImportResult(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={18} /></button>
+              <button onClick={() => { setShowImportModal(false); setImportResult(null); setImportPreview(null); setImportFile(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}><X size={18} /></button>
             </div>
 
             <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1rem' }}>
-              Subí un archivo Excel con las columnas <strong>Artículo</strong>, <strong>Empresa</strong> y <strong>Vida útil (meses)</strong>.
+              Subí un archivo Excel con columnas <strong>article_type</strong>, <strong>empresa</strong>, <strong>categoria</strong>, <strong>cantidad</strong>, <strong>vida_util</strong>. Antes de insertar, verás una vista previa agrupada por empresa.
             </p>
 
             {importResult ? (
@@ -302,19 +322,84 @@ export default function AgendaCatalogoPage() {
                     ))}
                   </div>
                 )}
-                <button onClick={() => { setShowImportModal(false); setImportResult(null); fetchCatalog(); }} className="btn btn-primary" style={{ width: '100%', marginTop: '1rem', fontSize: '0.82rem' }}>Cerrar y actualizar</button>
+                <button onClick={() => { setShowImportModal(false); setImportResult(null); setImportPreview(null); setImportFile(null); fetchCatalog(); }} className="btn btn-primary" style={{ width: '100%', marginTop: '1rem', fontSize: '0.82rem' }}>Cerrar y actualizar</button>
+              </div>
+            ) : importPreview ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.7rem 0.9rem', fontSize: '0.8rem', color: '#1e3a8a' }}>
+                  <strong>Vista previa</strong> — {importPreview.total} artículo(s) en {Object.keys(importPreview.byEmpresa).length} empresa(s).
+                  {importPreview.invalid?.length > 0 && <div style={{ color: '#92400e', marginTop: '0.3rem' }}>⚠ {importPreview.invalid.length} fila(s) inválidas se omitirán.</div>}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                  {Object.entries(importPreview.byEmpresa).map(([empresa, arr]: [string, any]) => (
+                    <div key={empresa} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                      <div style={{ background: '#f1f5f9', padding: '0.5rem 0.7rem', fontWeight: 700, fontSize: '0.82rem', color: '#1d3461', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>{empresa}</span>
+                        <span style={{ color: '#64748b', fontWeight: 500 }}>{arr.length} artículo(s)</span>
+                      </div>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                        <thead>
+                          <tr style={{ background: '#fafafa', color: '#64748b' }}>
+                            <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Artículo</th>
+                            <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Categoría</th>
+                            <th style={{ textAlign: 'center', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Cant.</th>
+                            <th style={{ textAlign: 'center', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Vida útil</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {arr.map((it: any, i: number) => (
+                            <tr key={i} style={{ borderTop: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '0.35rem 0.5rem', color: '#111827' }}>{it.article_type}</td>
+                              <td style={{ padding: '0.35rem 0.5rem', color: '#475569' }}>{it.workplace_category || it.puesto || it.sector || '—'}</td>
+                              <td style={{ padding: '0.35rem 0.5rem', textAlign: 'center', color: '#475569' }}>{it.quantity}</td>
+                              <td style={{ padding: '0.35rem 0.5rem', textAlign: 'center', color: '#475569' }}>{it.useful_life_months} m</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => { setImportPreview(null); setImportFile(null); }}
+                    className="btn btn-secondary"
+                    style={{ flex: 1, fontSize: '0.82rem' }}
+                    disabled={importing}
+                  >Cancelar</button>
+                  <button
+                    onClick={async () => {
+                      if (!importFile) return;
+                      setImporting(true);
+                      try {
+                        const fd = new FormData();
+                        fd.append('file', importFile);
+                        const res = await fetch('/api/logistica/agenda/catalog/import', { method: 'POST', body: fd });
+                        const data = await res.json();
+                        if (!res.ok) { alert(data.error || 'Error importando'); return; }
+                        setImportResult(data);
+                        setImportPreview(null);
+                      } finally {
+                        setImporting(false);
+                      }
+                    }}
+                    className="btn btn-primary"
+                    style={{ flex: 2, fontSize: '0.82rem' }}
+                    disabled={importing}
+                  >{importing ? 'Importando...' : `Confirmar (${importPreview.total})`}</button>
+                </div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <a href="/api/logistica/agenda/catalog/template" className="btn btn-secondary" style={{ fontSize: '0.8rem', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
                   Descargar Plantilla Excel
                 </a>
-                
-                <input 
-                  type="file" 
-                  ref={importFileRef} 
-                  accept=".xlsx, .xls, .csv" 
-                  style={{ display: 'none' }} 
+
+                <input
+                  type="file"
+                  ref={importFileRef}
+                  accept=".xlsx, .xls, .csv"
+                  style={{ display: 'none' }}
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
@@ -322,10 +407,11 @@ export default function AgendaCatalogoPage() {
                     try {
                       const fd = new FormData();
                       fd.append('file', file);
-                      const res = await fetch('/api/logistica/agenda/catalog/import', { method: 'POST', body: fd });
+                      const res = await fetch('/api/logistica/agenda/catalog/import/preview', { method: 'POST', body: fd });
                       const data = await res.json();
-                      if (!res.ok) { alert(data.error || 'Error importando'); return; }
-                      setImportResult(data);
+                      if (!res.ok) { alert(data.error || 'Error generando vista previa'); return; }
+                      setImportPreview(data);
+                      setImportFile(file);
                     } finally {
                       setImporting(false);
                       if (importFileRef.current) importFileRef.current.value = '';
@@ -333,13 +419,13 @@ export default function AgendaCatalogoPage() {
                   }}
                 />
 
-                <button 
-                  onClick={() => importFileRef.current?.click()} 
-                  disabled={importing} 
-                  className="btn btn-primary" 
+                <button
+                  onClick={() => importFileRef.current?.click()}
+                  disabled={importing}
+                  className="btn btn-primary"
                   style={{ fontSize: '0.85rem', padding: '0.75rem' }}
                 >
-                  {importing ? 'Procesando...' : 'Seleccionar archivo y subir'}
+                  {importing ? 'Procesando...' : 'Seleccionar archivo'}
                 </button>
               </div>
             )}

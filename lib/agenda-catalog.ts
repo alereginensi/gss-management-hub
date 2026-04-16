@@ -33,8 +33,8 @@ export const DEFAULT_COMPANY_UNIFORMS: Record<string, Omit<AgendaUniformCatalogI
 
 export async function getCatalogForEmployee(
   empresa?: string,
-  sector?: string,
-  puesto?: string,
+  _sector?: string,
+  _puesto?: string,
   workplace_category?: string
 ): Promise<AgendaUniformCatalogItem[]> {
   const conditions: string[] = [];
@@ -44,16 +44,12 @@ export async function getCatalogForEmployee(
     conditions.push('(empresa = ? OR empresa IS NULL)');
     params.push(empresa);
   }
-  if (sector) {
-    conditions.push('(sector = ? OR sector IS NULL)');
-    params.push(sector);
-  }
-  if (puesto) {
-    conditions.push('(puesto = ? OR puesto IS NULL)');
-    params.push(puesto);
-  }
-  if (workplace_category) {
-    conditions.push('(workplace_category = ? OR workplace_category IS NULL)');
+  // Filtrado por categoría: si el empleado tiene categoría, ve prendas de esa
+  // categoría + prendas sin categoría (aplicables a todos). Si no tiene, ve
+  // todo el catálogo de su empresa (compatibilidad gradual con empleados
+  // todavía sin categoría asignada).
+  if (workplace_category && workplace_category.trim() !== '') {
+    conditions.push(`(workplace_category = ? OR workplace_category IS NULL OR workplace_category = '')`);
     params.push(workplace_category);
   }
 

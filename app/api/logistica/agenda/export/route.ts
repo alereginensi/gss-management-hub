@@ -4,7 +4,7 @@ import { getSession } from '@/lib/auth-server';
 import { parseOrderItems } from '@/lib/agenda-helpers';
 import ExcelJS from 'exceljs';
 
-const AUTH_ROLES = ['admin', 'logistica', 'jefe'];
+const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh'];
 
 // Convención uruguaya: "Apellido1 Apellido2 Nombre1 Nombre2".
 // Si hay ≥4 tokens, últimos 2 = nombre; si menos, último = nombre.

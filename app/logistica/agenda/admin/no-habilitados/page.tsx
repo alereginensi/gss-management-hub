@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Search, ShieldAlert, Calendar } from 'lucide-react';
-import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
+import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 
 interface FailedAttempt {
@@ -29,7 +29,7 @@ export default function AgendaNoHabilitadosPage() {
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) { router.push('/login'); return; }
-    if (currentUser && !hasModuleAccess(currentUser, 'logistica')) { router.push('/'); return; }
+    if (currentUser && !canAccessAgenda(currentUser)) { router.push('/'); return; }
   }, [loading, isAuthenticated, currentUser, router]);
 
   const fetchAttempts = useCallback(async (isLoadMore = false) => {

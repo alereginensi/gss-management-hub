@@ -3,7 +3,7 @@ import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
 import { parseOrderItems, logAudit } from '@/lib/agenda-helpers';
 
-const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'supervisor'];
+const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession(request);
@@ -32,6 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ...row,
       order_items: parseOrderItems(row.order_items),
       delivered_order_items: parseOrderItems(row.delivered_order_items),
+      returned_order_items: parseOrderItems(row.returned_order_items),
     });
   } catch (err) {
     console.error('Error obteniendo cita:', err);
@@ -73,6 +74,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       ...updated,
       order_items: parseOrderItems(updated.order_items),
       delivered_order_items: parseOrderItems(updated.delivered_order_items),
+      returned_order_items: parseOrderItems(updated.returned_order_items),
     });
   } catch (err) {
     console.error('Error actualizando cita:', err);
