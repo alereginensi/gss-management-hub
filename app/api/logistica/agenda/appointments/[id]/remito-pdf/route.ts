@@ -24,25 +24,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (!originalUrl) return NextResponse.json({ error: 'Remito no disponible' }, { status: 404 });
 
   // Si es una URL de Cloudinary raw (delivery de PDF bloqueado por default en
-  // algunas cuentas), regeneramos una URL firmada con el SDK para bypassear
-  // la restricción. Requiere CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET.
+  // algunas cuentas + assets con access_mode='authenticated'), regeneramos una
+  // URL firmada con el SDK. Requiere CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET.
+  // Nota: para resource_type=raw, el public_id INCLUYE la extensión .pdf.
   let fetchUrl = originalUrl as string;
-  const rawMatch = /res\.cloudinary\.com\/([^/]+)\/raw\/upload\/(?:v\d+\/)?(.+?)\.(pdf)$/i.exec(fetchUrl);
+  const rawMatch = /res\.cloudinary\.com\/([^/]+)\/raw\/(?:upload|authenticated)\/(?:v\d+\/)?(.+)$/i.exec(fetchUrl);
   if (rawMatch) {
     try {
       const { v2: cloudinary } = await import('cloudinary');
       const cloudName = rawMatch[1];
-      const publicId = rawMatch[2];
+      const publicIdWithExt = rawMatch[2];
       cloudinary.config({
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME || cloudName,
         api_key: process.env.CLOUDINARY_API_KEY,
         api_secret: process.env.CLOUDINARY_API_SECRET,
         secure: true,
       });
-      fetchUrl = cloudinary.url(publicId, {
+      fetchUrl = cloudinary.url(publicIdWithExt, {
         resource_type: 'raw',
         type: 'upload',
-        format: 'pdf',
         sign_url: true,
         secure: true,
       });
