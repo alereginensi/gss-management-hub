@@ -126,9 +126,63 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       fileUrl,
       items: reconciledItems,
       remitoNumber: finalRemitoNumber,
+      parsedText: extractedText,
     });
   } catch (err) {
     console.error('Error subiendo remito:', err);
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 });
+  }
+}
+
+// DELETE /api/logistica/agenda/appointments/[id]/remito?kind=delivery|return
+// Elimina el remito (URL, número, texto parseado y items parseados) pero
+// mantiene el resto del registro de la cita intacto.
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession(request);
+  if (!session || !AUTH_ROLES.includes(session.user.role)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { id: idStr } = await params;
+  const id = parseInt(idStr, 10);
+  const appt = await db.get('SELECT id FROM agenda_appointments WHERE id = ?', [id]);
+  if (!appt) return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 });
+
+  const kind = (request.nextUrl.searchParams.get('kind') || 'delivery').toLowerCase();
+  const isReturn = kind === 'return';
+
+  try {
+    const isPg = (db as any).type === 'pg';
+    const nowSql = isPg ? 'NOW()' : "datetime('now')";
+    if (isReturn) {
+      await db.run(
+        `UPDATE agenda_appointments SET
+          remito_return_pdf_url = NULL,
+          remito_return_number = NULL,
+          parsed_remito_return_text = NULL,
+          parsed_remito_return_data = NULL,
+          returned_order_items = NULL,
+          has_return = 0,
+          updated_at = ${nowSql}
+         WHERE id = ?`,
+        [id]
+      );
+    } else {
+      await db.run(
+        `UPDATE agenda_appointments SET
+          remito_pdf_url = NULL,
+          remito_number = NULL,
+          parsed_remito_text = NULL,
+          parsed_remito_data = NULL,
+          updated_at = ${nowSql}
+         WHERE id = ?`,
+        [id]
+      );
+    }
+    await logAudit('delete', 'appointment', id, session.user.id, { kind: isReturn ? 'return_remito' : 'delivery_remito' });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('Error eliminando remito:', err);
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
   }
 }

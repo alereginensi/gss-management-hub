@@ -303,6 +303,12 @@ const REMITO_NUMBER_PATTERNS = [
   /[Rr]emito\s+([0-9]+[-–][0-9]+[-–][0-9]+)/,
   /\bR\s*[-–]\s*([0-9]{3,})\b/,
   /\bNro\.?\s+([0-9]+)/i,
+  // Formato común UY: "0001-00000123".
+  /\b(\d{3,5}[-–]\d{5,})\b/,
+  // "Remito N° 3062" / "REMITO 3062" (palabra clave + dígitos sin separador).
+  /[Rr]emito\s+(?:N[°ºo]\.?\s*)?(\d{3,})/,
+  // Fallback laxo: 4+ dígitos cerca de "remito" o "nota de entrega".
+  /(?:[Nn]ota\s+de\s+[Ee]ntrega|[Rr]emito)[^\d]{0,30}(\d{4,})/,
 ];
 
 export function detectRemitoNumber(text: string): string {

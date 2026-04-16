@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Printer, Save, Upload, FileText, CheckCircle, X, Truck, PackagePlus, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Printer, Save, Upload, FileText, CheckCircle, X, Truck, PackagePlus, RotateCcw, Trash2 } from 'lucide-react';
 import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 import AgendaSignatureCanvas, { AgendaSignatureCanvasRef } from '@/app/components/AgendaSignatureCanvas';
@@ -213,7 +213,11 @@ export default function CitaDetallePage() {
       } else {
         showMessage('Remito subido, pero no se pudieron detectar artículos. Cargalos a mano.', true);
       }
-      if (data.remitoNumber && !remitoNumber) setRemitoNumber(data.remitoNumber);
+      if (data.remitoNumber) setRemitoNumber(data.remitoNumber);
+      if (data.parsedText && !deliveryNotes.trim()) {
+        const firstLines = String(data.parsedText).split('\n').map((l: string) => l.trim()).filter(Boolean).slice(0, 3).join(' · ');
+        if (firstLines) setDeliveryNotes(firstLines);
+      }
       fetchAppt();
     } finally {
       setUploadingRemito(false);
@@ -486,10 +490,22 @@ export default function CitaDetallePage() {
                 <div className="card" style={{ padding: '1.25rem' }}>
                   <h3 style={{ margin: '0 0 1rem', fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>Remito PDF</h3>
                   {appt.remito_pdf_url && (
-                    <div style={{ marginBottom: '0.75rem', fontSize: '0.82rem' }}>
+                    <div style={{ marginBottom: '0.75rem', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <a href={`/api/logistica/agenda/appointments/${appt.id}/remito-pdf`} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                         <FileText size={14} /> Ver remito actual
                       </a>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm('¿Eliminar el remito de entrega? El PDF se quita de esta cita, número y texto parseado se vacían.')) return;
+                          const res = await fetch(`/api/logistica/agenda/appointments/${appt.id}/remito?kind=delivery`, { method: 'DELETE' });
+                          if (res.ok) { showMessage('Remito eliminado'); fetchAppt(); }
+                          else { const d = await res.json().catch(() => ({})); showMessage(d.error || 'Error al eliminar', true); }
+                        }}
+                        style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.72rem', color: '#b91c1c', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                      >
+                        <Trash2 size={12} /> Eliminar remito
+                      </button>
                     </div>
                   )}
                   <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
@@ -579,10 +595,22 @@ export default function CitaDetallePage() {
                           style={{ width: '100%', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.45rem 0.7rem', fontSize: '0.82rem', boxSizing: 'border-box' }} />
                       </div>
                       {appt.remito_return_pdf_url && (
-                        <div style={{ marginBottom: '0.75rem', fontSize: '0.82rem' }}>
+                        <div style={{ marginBottom: '0.75rem', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                           <a href={`/api/logistica/agenda/appointments/${appt.id}/remito-pdf?kind=return`} target="_blank" rel="noopener noreferrer" style={{ color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                             <FileText size={14} /> Ver remito devolución
                           </a>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!confirm('¿Eliminar el remito de devolución?')) return;
+                              const res = await fetch(`/api/logistica/agenda/appointments/${appt.id}/remito?kind=return`, { method: 'DELETE' });
+                              if (res.ok) { showMessage('Remito de devolución eliminado'); fetchAppt(); }
+                              else { const d = await res.json().catch(() => ({})); showMessage(d.error || 'Error al eliminar', true); }
+                            }}
+                            style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.72rem', color: '#b91c1c', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                          >
+                            <Trash2 size={12} /> Eliminar
+                          </button>
                         </div>
                       )}
                       <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#991b1b' }}>

@@ -23,10 +23,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const originalUrl = kind === 'return' ? row.remito_return_pdf_url : row.remito_pdf_url;
   if (!originalUrl) return NextResponse.json({ error: 'Remito no disponible' }, { status: 404 });
 
+  // URL relativa local (ej /uploads/agenda/remitos/...) apunta al filesystem
+  // efímero de Railway que ya no existe: el archivo se perdió al redeploy.
+  if (!/^https?:\/\//i.test(originalUrl)) {
+    return NextResponse.json(
+      { error: 'El remito se guardó en filesystem local y se perdió en un redeploy. Volvé a subirlo.' },
+      { status: 410 }
+    );
+  }
+
   // Si es una URL de Cloudinary raw (delivery de PDF bloqueado por default en
   // algunas cuentas + assets con access_mode='authenticated'), regeneramos una
   // URL firmada con el SDK. Requiere CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET.
-  // Nota: para resource_type=raw, el public_id INCLUYE la extensión .pdf.
+  // Nota: para resource_type=raw, el public_id INCLUYE la extensión si la tuvo.
   let fetchUrl = originalUrl as string;
   const rawMatch = /res\.cloudinary\.com\/([^/]+)\/raw\/(?:upload|authenticated)\/(?:v\d+\/)?(.+)$/i.exec(fetchUrl);
   if (rawMatch) {
