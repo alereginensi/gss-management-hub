@@ -6,16 +6,23 @@ import fs from 'fs/promises';
 // Si CLOUDINARY_URL está definido → Cloudinary
 // Si AGENDA_S3_BUCKET está definido → S3 (placeholder)
 
+function isCloudinaryConfigured(): boolean {
+  return !!(
+    process.env.CLOUDINARY_URL ||
+    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+    (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)
+  );
+}
+
 export async function saveAgendaFile(
   buffer: Buffer,
   filename: string,
   folder: string
 ): Promise<string> {
   // ── Cloudinary ──────────────────────────────────────────────────────────────
-  if (process.env.CLOUDINARY_URL || process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
+  if (isCloudinaryConfigured()) {
     try {
       const { uploadToCloudinary } = await import('@/lib/cloudinary');
-      const publicId = `agenda/${folder}/${filename.replace(/\.[^/.]+$/, '')}`;
       const url = await uploadToCloudinary(buffer, `agenda/${folder}`, filename.replace(/\.[^/.]+$/, ''));
       return url;
     } catch (err) {
