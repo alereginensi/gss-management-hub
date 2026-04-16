@@ -32,36 +32,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     );
   }
 
-  // Si es una URL de Cloudinary raw (delivery de PDF bloqueado por default en
-  // algunas cuentas + assets con access_mode='authenticated'), regeneramos una
-  // URL firmada con el SDK. Requiere CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET.
-  // Nota: para resource_type=raw, el public_id INCLUYE la extensión si la tuvo.
-  let fetchUrl = originalUrl as string;
-  const rawMatch = /res\.cloudinary\.com\/([^/]+)\/raw\/(?:upload|authenticated)\/(?:v\d+\/)?(.+)$/i.exec(fetchUrl);
-  if (rawMatch) {
-    try {
-      const { v2: cloudinary } = await import('cloudinary');
-      const cloudName = rawMatch[1];
-      const publicIdWithExt = rawMatch[2];
-      cloudinary.config({
-        cloud_name: process.env.CLOUDINARY_CLOUD_NAME || cloudName,
-        api_key: process.env.CLOUDINARY_API_KEY,
-        api_secret: process.env.CLOUDINARY_API_SECRET,
-        secure: true,
-      });
-      fetchUrl = cloudinary.url(publicIdWithExt, {
-        resource_type: 'raw',
-        type: 'upload',
-        sign_url: true,
-        secure: true,
-      });
-    } catch (err) {
-      console.error('No se pudo firmar la URL de Cloudinary:', err);
-    }
-  }
-
+  // Con la restricción "PDF and ZIP" destildada en Cloudinary, el URL público
+  // del PDF se sirve sin firma. El proxy mantiene la capa de auth del backend.
   try {
-    const upstream = await fetch(fetchUrl, { cache: 'no-store' });
+    const upstream = await fetch(originalUrl, { cache: 'no-store' });
     if (!upstream.ok) {
       return NextResponse.json(
         { error: `No se pudo obtener el PDF (upstream ${upstream.status})` },

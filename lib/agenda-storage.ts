@@ -26,11 +26,19 @@ export async function saveAgendaFile(
       const url = await uploadToCloudinary(buffer, `agenda/${folder}`, filename.replace(/\.[^/.]+$/, ''));
       return url;
     } catch (err) {
-      console.error('Cloudinary upload failed, falling back to filesystem:', err);
+      console.error('Cloudinary upload failed:', err);
+      // En producción no caemos al filesystem — el FS de Railway es efímero y
+      // los archivos se pierden en cada redeploy. Fallar aquí es preferible a
+      // escribir algo que luego no se puede leer.
+      if (process.env.NODE_ENV === 'production') {
+        throw err instanceof Error ? err : new Error('Cloudinary upload failed');
+      }
     }
+  } else if (process.env.NODE_ENV === 'production') {
+    throw new Error('Cloudinary no está configurado en producción. Setear CLOUDINARY_URL o CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET.');
   }
 
-  // ── Filesystem local ────────────────────────────────────────────────────────
+  // ── Filesystem local (solo dev) ─────────────────────────────────────────────
   const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'agenda', folder);
   await fs.mkdir(uploadDir, { recursive: true });
   const filePath = path.join(uploadDir, filename);

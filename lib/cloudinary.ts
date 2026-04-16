@@ -1,10 +1,20 @@
 import { v2 as cloudinary } from 'cloudinary';
 
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// Solo pisamos la config explícita si las 3 variables separadas están
+// presentes. Si la cuenta usa CLOUDINARY_URL (formato `cloudinary://key:secret@cloud`),
+// el SDK auto-detecta y configurar con undefines la anularía.
+if (
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+) {
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+        secure: true,
+    });
+}
 
 export async function uploadToCloudinary(buffer: Buffer, folder: string, filename: string, resourceType: 'auto' | 'image' | 'raw' = 'auto'): Promise<string> {
     return new Promise((resolve, reject) => {
