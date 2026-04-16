@@ -3,11 +3,12 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Search, Upload, Printer, X, Check, XCircle, Trash2, Edit2, Eye } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Upload, Printer, X, Check, XCircle, Trash2, Edit2, Eye, CheckCircle2 } from 'lucide-react';
 import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
-import { LEGAL_TEXT_V1 } from '@/lib/agenda-types';
+import { LEGAL_TEXT_V1, LEGAL_TEXT_EMERGENCY } from '@/lib/agenda-types';
 import type { RequestStatus } from '@/lib/agenda-types';
+import AgendaSignatureCanvas, { type AgendaSignatureCanvasRef } from '@/app/components/AgendaSignatureCanvas';
 
 const STATUS_LABELS: Record<RequestStatus, string> = {
   pendiente: 'Pendiente', aprobada: 'Aprobada', rechazada: 'Rechazada', entregada: 'Entregada',
@@ -42,6 +43,16 @@ export default function SolicitudesPage() {
   const [newForm, setNewForm] = useState({ employee_id: '', article_type: '', size: '', reason: '', notes: '' });
   const [newError, setNewError] = useState<string | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
+
+  // Modal autorización (firma doble)
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authTarget, setAuthTarget] = useState<any | null>(null);
+  const [approverSig, setApproverSig] = useState<string | null>(null);
+  const [receiverSig, setReceiverSig] = useState<string | null>(null);
+  const [authing, setAuthing] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const approverRef = useRef<AgendaSignatureCanvasRef | null>(null);
+  const receiverRef = useRef<AgendaSignatureCanvasRef | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -150,6 +161,47 @@ export default function SolicitudesPage() {
       setSelected((s: any) => ({ ...s, approval_signature_url: d.fileUrl, status: 'aprobada' }));
       fetchRequests();
     } finally { setSaving(false); }
+  };
+
+  const openAuthorize = (req: any) => {
+    setAuthTarget(req);
+    setApproverSig(null);
+    setReceiverSig(null);
+    setAuthError(null);
+    setShowAuthModal(true);
+  };
+
+  const closeAuthorize = () => {
+    setShowAuthModal(false);
+    setAuthTarget(null);
+    setApproverSig(null);
+    setReceiverSig(null);
+    setAuthError(null);
+  };
+
+  const handleAuthorize = async () => {
+    if (!authTarget) return;
+    if (!approverSig) { setAuthError('La firma del autorizante es obligatoria'); return; }
+    setAuthing(true);
+    setAuthError(null);
+    try {
+      const fd = new FormData();
+      fd.append('approver_signature', approverSig);
+      if (receiverSig) fd.append('receiver_signature', receiverSig);
+      const res = await fetch(`/api/logistica/agenda/requests/${authTarget.id}/sign`, { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) { setAuthError(data.error || 'Error al autorizar'); return; }
+      closeAuthorize();
+      fetchRequests();
+      if (selected?.id === authTarget.id) {
+        setSelected((s: any) => ({
+          ...s,
+          approval_signature_url: data.approverUrl,
+          receiver_signature_url: data.receiverUrl,
+          status: 'aprobada',
+        }));
+      }
+    } finally { setAuthing(false); }
   };
 
   if (loading || !currentUser) return null;
@@ -279,7 +331,7 @@ export default function SolicitudesPage() {
                             </button>
                             
                             {r.status === 'pendiente' && (
-                              <button onClick={() => handleUpdateStatus(r.id, 'aprobada')} title="Aprobar"
+                              <button onClick={() => openAuthorize(r)} title="Autorizar"
                                 style={{ background: 'none', border: '1px solid #bbf7d0', borderRadius: '4px', padding: '0.25rem', cursor: 'pointer', color: '#065f46' }}>
                                 <Check size={14} />
                               </button>
@@ -377,26 +429,33 @@ export default function SolicitudesPage() {
               {selected.notes && <div style={{ gridColumn: '1/-1' }}><span style={{ color: '#64748b' }}>Notas:</span> {selected.notes}</div>}
             </div>
 
-            {/* Firma */}
-            <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '1rem', marginBottom: '1rem' }}>
-              <div style={{ fontWeight: 600, fontSize: '0.82rem', color: '#374151', marginBottom: '0.5rem' }}>Firma del autorizante</div>
-              {selected.approval_signature_url
-                ? <img src={selected.approval_signature_url} alt="Firma" style={{ maxWidth: '100%', maxHeight: '100px', objectFit: 'contain' }} />
-                : <div style={{ color: '#cbd5e1', fontSize: '0.75rem', marginBottom: '0.5rem' }}>Sin firma</div>}
-              {signError && <div style={{ color: '#7f1d1d', fontSize: '0.78rem', marginBottom: '0.5rem' }}>{signError}</div>}
-              <input type="file" ref={signRef} style={{ display: 'none' }} accept="image/*"
-                onChange={e => { if (e.target.files?.[0]) handleUploadSign(e.target.files[0]); }} />
-              <button onClick={() => signRef.current?.click()} disabled={saving} className="btn btn-secondary" style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                <Upload size={12} /> {saving ? 'Subiendo...' : selected.approval_signature_url ? 'Reemplazar firma' : 'Subir firma'}
-              </button>
+            {/* Firmas */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.75rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#374151', marginBottom: '0.4rem' }}>Firma autorizante</div>
+                {selected.approval_signature_url
+                  ? <img src={selected.approval_signature_url} alt="Firma autorizante" style={{ maxWidth: '100%', maxHeight: '100px', objectFit: 'contain' }} />
+                  : <div style={{ color: '#cbd5e1', fontSize: '0.72rem' }}>Sin firma</div>}
+              </div>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.75rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#374151', marginBottom: '0.4rem' }}>Firma funcionario</div>
+                {selected.receiver_signature_url
+                  ? <img src={selected.receiver_signature_url} alt="Firma funcionario" style={{ maxWidth: '100%', maxHeight: '100px', objectFit: 'contain' }} />
+                  : <div style={{ color: '#cbd5e1', fontSize: '0.72rem' }}>Sin firma (opcional)</div>}
+              </div>
             </div>
+            {signError && <div style={{ color: '#7f1d1d', fontSize: '0.78rem', marginBottom: '0.5rem' }}>{signError}</div>}
+            <input type="file" ref={signRef} style={{ display: 'none' }} accept="image/*"
+              onChange={e => { if (e.target.files?.[0]) handleUploadSign(e.target.files[0]); }} />
 
             {/* Cambio de estado */}
             <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               {selected.status === 'pendiente' && (
                 <>
                   <button onClick={() => handleUpdateStatus(selected.id, 'rechazada')} className="btn btn-secondary" style={{ fontSize: '0.78rem', color: '#7f1d1d' }}>Rechazar</button>
-                  <button onClick={() => handleUpdateStatus(selected.id, 'aprobada')} className="btn btn-primary" style={{ fontSize: '0.78rem' }}>Aprobar</button>
+                  <button onClick={() => openAuthorize(selected)} className="btn btn-primary" style={{ fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <CheckCircle2 size={14} /> Autorizar
+                  </button>
                 </>
               )}
               {selected.status === 'aprobada' && (
@@ -449,6 +508,61 @@ export default function SolicitudesPage() {
               <button onClick={() => setShowNewModal(false)} className="btn btn-secondary" style={{ fontSize: '0.82rem' }}>Cancelar</button>
               <button onClick={handleCreateRequest} disabled={saving} className="btn btn-primary" style={{ fontSize: '0.82rem' }}>
                 {saving ? 'Guardando...' : editId ? 'Guardar cambios' : 'Crear solicitud'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Autorización con Descargo Legal + firma doble */}
+      {showAuthModal && authTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '1rem' }}>
+          <div className="card" style={{ width: '640px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#065f46', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <CheckCircle2 size={18} /> Autorizar solicitud
+                </h3>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                  <strong>{authTarget.employee_nombre}</strong> · CI {authTarget.employee_documento} · {authTarget.article_type}{authTarget.size ? ` (${authTarget.size})` : ''}
+                </p>
+              </div>
+              <button onClick={closeAuthorize} disabled={authing} style={{ background: 'none', border: 'none', cursor: authing ? 'wait' : 'pointer', color: '#94a3b8' }}><X size={18} /></button>
+            </div>
+
+            <div style={{ background: '#fef9c3', border: '1px solid #fde68a', borderRadius: '6px', padding: '0.85rem 1rem', fontSize: '0.78rem', color: '#78350f', marginBottom: '1rem', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+              <strong>Descargo Legal</strong>{'\n'}{LEGAL_TEXT_EMERGENCY}
+            </div>
+
+            {authError && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.55rem 0.8rem', marginBottom: '0.8rem', fontSize: '0.8rem', color: '#7f1d1d' }}>{authError}</div>
+            )}
+
+            <div style={{ marginBottom: '1rem' }}>
+              <AgendaSignatureCanvas
+                ref={approverRef}
+                onChange={setApproverSig}
+                label="Firma del autorizante (supervisor) *"
+              />
+            </div>
+
+            <div style={{ marginBottom: '1.25rem' }}>
+              <AgendaSignatureCanvas
+                ref={receiverRef}
+                onChange={setReceiverSig}
+                label="Firma del funcionario que recibe (opcional)"
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button onClick={closeAuthorize} disabled={authing} className="btn btn-secondary" style={{ fontSize: '0.82rem' }}>Cancelar</button>
+              <button
+                onClick={handleAuthorize}
+                disabled={authing || !approverSig}
+                className="btn btn-primary"
+                style={{ fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+              >
+                <CheckCircle2 size={14} /> {authing ? 'Autorizando...' : 'Confirmar autorización'}
               </button>
             </div>
           </div>

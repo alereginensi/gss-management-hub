@@ -216,6 +216,7 @@ export interface AgendaRequest {
   approved_by?: number;
   approved_at?: string;
   approval_signature_url?: string;
+  receiver_signature_url?: string;
   status: RequestStatus;
   legal_text_version: string;
   notes?: string;
@@ -226,6 +227,14 @@ export interface AgendaRequest {
 }
 
 export const LEGAL_TEXT_V1 = `Responsabilidad del supervisor en la gestión de prendas por casos especiales: El supervisor o personal de staff que autorice la entrega de una prenda fuera del proceso estándar asume plena responsabilidad sobre el destino, uso y devolución de la misma. Toda solicitud de este tipo debe quedar debidamente registrada en el sistema con el motivo declarado y la identidad del autorizante. En caso de que la prenda no sea devuelta en tiempo y forma, o que no se acredite el destino declarado, el supervisor responsable podrá ser pasible de sanciones disciplinarias y/o económicas conforme a la normativa interna vigente. La firma o validación digital de la solicitud tiene carácter de declaración formal y compromiso de seguimiento por parte del autorizante.`;
+
+export const LEGAL_TEXT_EMERGENCY = `En el día de la fecha se hace entrega al/la Sr./Sra. firmante, del uniforme y/o equipamiento correspondiente para el cumplimiento de sus funciones, el cual se detalla a continuación.
+
+Se deja expresa constancia de que, una vez realizada la entrega, el funcionario asume la responsabilidad sobre el uso adecuado, cuidado y conservación de los elementos proporcionados, comprometiéndose a devolverlos en condiciones proporcionales al tiempo de uso al momento de su desvinculación, traslado o cuando la empresa así lo requiera.
+
+En caso de que las prendas entregadas sean devueltas en condiciones reutilizables, el funcionario acepta que el costo del lavado será descontado de su salario. Asimismo, si las prendas no son devueltas o presentan un deterioro que exceda el desgaste razonable por el tiempo de uso, la empresa se reserva el derecho de descontar de su liquidación final el valor de reposición correspondiente.
+
+El funcionario firma la presente en conformidad con lo aquí expuesto, dejando constancia de la recepción del uniforme y/o equipamiento en las condiciones detalladas.`;
 
 // ─── Envíos al interior ──────────────────────────────────────────────────────
 

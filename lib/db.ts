@@ -675,6 +675,7 @@ class DbWrapper {
         approved_by INTEGER,
         approved_at TEXT,
         approval_signature_url TEXT,
+        receiver_signature_url TEXT,
         status TEXT DEFAULT 'pendiente',
         legal_text_version TEXT DEFAULT 'v1',
         notes TEXT,
@@ -1364,13 +1365,14 @@ class DbWrapper {
           console.error('❌ Error migrating agenda_appointments (Postgres):', e);
         }
 
-        // Migrate agenda_requests: add is_emergency + source
+        // Migrate agenda_requests: add is_emergency + source + receiver_signature_url
         try {
           const reqCols = await this.pgPool!.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'agenda_requests'`);
           const reqColNames = reqCols.rows.map((r: any) => r.column_name);
           const newReqCols: [string, string][] = [
             ['is_emergency', 'INTEGER DEFAULT 0'],
             ['source', `TEXT DEFAULT 'logistica'`],
+            ['receiver_signature_url', 'TEXT'],
           ];
           for (const [col, def] of newReqCols) {
             if (!reqColNames.includes(col)) {
@@ -1638,6 +1640,7 @@ class DbWrapper {
         const newReqCols: [string, string][] = [
           ['is_emergency', 'INTEGER DEFAULT 0'],
           ['source', `TEXT DEFAULT 'logistica'`],
+          ['receiver_signature_url', 'TEXT'],
         ];
         for (const [col, def] of newReqCols) {
           if (!reqCols.includes(col)) {
