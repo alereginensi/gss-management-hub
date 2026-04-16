@@ -12,13 +12,31 @@ export default function AdminDashboard() {
   const { tickets, searchQuery, getAverageResolutionTime, currentUser, isSidebarOpen, deleteTicket, isMobile } = useTicketContext();
   const router = useRouter();
 
-  useEffect(() => {
-    if (currentUser && currentUser.role === 'funcionario') {
-      router.push('/tasks');
-    }
-  }, [currentUser, router]);
+  const moduleRoutes: Record<string, string> = {
+    logistica: '/logistica',
+    tecnico: '/seguridad-electronica',
+    cotizacion: '/cotizacion/panel',
+    limpieza: '/operaciones-limpieza',
+    rrhh: '/rrhh',
+  };
+  const noPanelAccess = !!currentUser
+    && currentUser.role !== 'admin'
+    && Number(currentUser.panel_access) === 0;
 
-  if (currentUser && currentUser.role === 'funcionario') {
+  useEffect(() => {
+    if (!currentUser) return;
+    if (currentUser.role === 'funcionario') {
+      router.replace('/tasks');
+    } else if (noPanelAccess) {
+      const roleRoute = moduleRoutes[currentUser.role as string];
+      const mods = currentUser.modules?.split(',').map(m => m.trim()).filter(Boolean) ?? [];
+      const moduleRoute = mods.map(m => moduleRoutes[m]).find(Boolean);
+      router.replace(roleRoute || moduleRoute || '/login');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, noPanelAccess, router]);
+
+  if (!currentUser || currentUser.role === 'funcionario' || noPanelAccess) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Redirigiendo...</div>;
   }
 
