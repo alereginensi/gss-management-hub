@@ -16,13 +16,13 @@ export async function GET(request: NextRequest) {
 
         let users;
         if (roleFilter && rubroFilter) {
-            users = await db.prepare('SELECT id, name, email, department, role, rubro, approved, modules, panel_access FROM users WHERE role = ? AND rubro = ? ORDER BY name ASC').all(roleFilter, rubroFilter);
+            users = await db.prepare('SELECT id, name, email, department, role, rubro, approved, modules, panel_access, cliente_asignado, sector_asignado, cedula FROM users WHERE role = ? AND rubro = ? ORDER BY name ASC').all(roleFilter, rubroFilter);
         } else if (roleFilter) {
-            users = await db.prepare('SELECT id, name, email, department, role, rubro, approved, modules, panel_access FROM users WHERE role = ? ORDER BY name ASC').all(roleFilter);
+            users = await db.prepare('SELECT id, name, email, department, role, rubro, approved, modules, panel_access, cliente_asignado, sector_asignado, cedula FROM users WHERE role = ? ORDER BY name ASC').all(roleFilter);
         } else if (rubroFilter) {
-            users = await db.prepare('SELECT id, name, email, department, role, rubro, approved, modules, panel_access FROM users WHERE rubro = ? ORDER BY name ASC').all(rubroFilter);
+            users = await db.prepare('SELECT id, name, email, department, role, rubro, approved, modules, panel_access, cliente_asignado, sector_asignado, cedula FROM users WHERE rubro = ? ORDER BY name ASC').all(rubroFilter);
         } else {
-            users = await db.prepare('SELECT id, name, email, department, role, rubro, approved, modules, panel_access FROM users ORDER BY name ASC').all();
+            users = await db.prepare('SELECT id, name, email, department, role, rubro, approved, modules, panel_access, cliente_asignado, sector_asignado, cedula FROM users ORDER BY name ASC').all();
         }
         return NextResponse.json(users);
     } catch (error) {
@@ -81,6 +81,20 @@ export async function POST(request: NextRequest) {
             const hashedPassword = await hashPassword(password);
             await db.prepare('INSERT INTO users (name, email, password, department, role, rubro, approved) VALUES (?, ?, ?, ?, ?, ?, ?)')
                 .run(name, email, hashedPassword, department, 'supervisor', rubro, 1);
+            return NextResponse.json({ success: true });
+        }
+
+        if (action === 'create_encargado_limpieza') {
+            const { cliente_asignado, sector_asignado, cedula } = body;
+            if (!cliente_asignado) {
+                return NextResponse.json({ error: 'Cliente asignado es obligatorio' }, { status: 400 });
+            }
+            if (!cedula) {
+                return NextResponse.json({ error: 'Cédula es obligatoria para encargado de limpieza' }, { status: 400 });
+            }
+            const hashedPassword = await hashPassword(password);
+            await db.prepare('INSERT INTO users (name, email, password, department, role, approved, panel_access, cliente_asignado, sector_asignado, cedula) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+                .run(name, email, hashedPassword, department || 'Limpieza', 'encargado_limpieza', 1, 0, cliente_asignado, sector_asignado || null, cedula);
             return NextResponse.json({ success: true });
         }
 

@@ -158,6 +158,9 @@ class DbWrapper {
         rubro TEXT,
         approved INTEGER DEFAULT 0,
         panel_access INTEGER DEFAULT 1,
+        cliente_asignado TEXT,
+        sector_asignado TEXT,
+        cedula TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -473,8 +476,52 @@ class DbWrapper {
         entrada2 TEXT,
         salida2 TEXT,
         firma TEXT,
+        planificado INTEGER DEFAULT 0,
+        asistio INTEGER,
+        import_batch_id INTEGER,
+        observaciones TEXT,
+        categoria TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS limpieza_planilla_imports (
+        id SERIAL PRIMARY KEY,
+        fecha TEXT NOT NULL,
+        seccion TEXT NOT NULL,
+        cliente TEXT,
+        sector TEXT,
+        filename TEXT,
+        uploaded_by INTEGER,
+        rows_created INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS limpieza_clientes (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        active INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS limpieza_sectores (
+        id SERIAL PRIMARY KEY,
+        cliente_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        active INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(cliente_id, name)
+      );
+
+      CREATE TABLE IF NOT EXISTS limpieza_puestos (
+        id SERIAL PRIMARY KEY,
+        sector_id INTEGER NOT NULL,
+        turno TEXT NOT NULL,
+        nombre TEXT NOT NULL,
+        cantidad INTEGER NOT NULL DEFAULT 1,
+        orden INTEGER DEFAULT 0,
+        active INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS billing_categories (
@@ -781,8 +828,88 @@ class DbWrapper {
           console.log('🏗️ Adding missing "puesto" column to limpieza_asistencia');
           this.sqliteDb.prepare("ALTER TABLE limpieza_asistencia ADD COLUMN puesto TEXT").run();
         }
+        const planillaCols: Array<[string, string]> = [
+          ['planificado', 'INTEGER DEFAULT 0'],
+          ['asistio', 'INTEGER'],
+          ['import_batch_id', 'INTEGER'],
+          ['observaciones', 'TEXT'],
+          ['categoria', 'TEXT'],
+        ];
+        for (const [col, type] of planillaCols) {
+          if (!info.some((c: any) => c.name === col)) {
+            console.log(`🏗️ Adding missing "${col}" column to limpieza_asistencia`);
+            this.sqliteDb.prepare(`ALTER TABLE limpieza_asistencia ADD COLUMN ${col} ${type}`).run();
+          }
+        }
       } catch (err) {
         console.error('❌ Error migrate SQLite asistencia:', err);
+      }
+      // Migración users: cliente_asignado / sector_asignado
+      try {
+        const info = this.sqliteDb.prepare("PRAGMA table_info(users)").all();
+        const userCols: Array<[string, string]> = [
+          ['cliente_asignado', 'TEXT'],
+          ['sector_asignado', 'TEXT'],
+          ['cedula', 'TEXT'],
+        ];
+        for (const [col, type] of userCols) {
+          if (!info.some((c: any) => c.name === col)) {
+            console.log(`🏗️ Adding missing "${col}" column to users`);
+            this.sqliteDb.prepare(`ALTER TABLE users ADD COLUMN ${col} ${type}`).run();
+          }
+        }
+      } catch (err) {
+        console.error('❌ Error migrate SQLite users:', err);
+      }
+      // Tabla limpieza_planilla_imports (SQLite)
+      try {
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS limpieza_planilla_imports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fecha TEXT NOT NULL,
+            seccion TEXT NOT NULL,
+            cliente TEXT,
+            sector TEXT,
+            filename TEXT,
+            uploaded_by INTEGER,
+            rows_created INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+      } catch (err) {
+        console.error('❌ Error creando limpieza_planilla_imports (SQLite):', err);
+      }
+      // Tablas de config de planillas (SQLite)
+      try {
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS limpieza_clientes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+          CREATE TABLE IF NOT EXISTS limpieza_sectores (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(cliente_id, name)
+          );
+          CREATE TABLE IF NOT EXISTS limpieza_puestos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sector_id INTEGER NOT NULL,
+            turno TEXT NOT NULL,
+            nombre TEXT NOT NULL,
+            cantidad INTEGER NOT NULL DEFAULT 1,
+            orden INTEGER DEFAULT 0,
+            active INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+        this.seedPlanillaConfigSqlite();
+      } catch (err) {
+        console.error('❌ Error creando tablas de config planilla (SQLite):', err);
       }
       // Seed default permanent tasks for Schmidt (SQLite)
       try {
@@ -804,6 +931,9 @@ class DbWrapper {
       try {
         await this.pgPool!.query(schema);
         console.log('✅ PostgreSQL tables verified/created');
+
+        // Seed planilla config si las tablas están vacías (no toca tablas históricas)
+        await this.seedPlanillaConfigPg();
 
         // Ensure default admin exists
         const adminPass = '$2b$10$A8RCT0E4YCsaaPttIs6l8.ALRz57EBSWPGhrE7OSn.csFLL6a2lx.';
@@ -850,6 +980,31 @@ class DbWrapper {
           if (existingAsisCols.length > 0 && !existingAsisCols.includes('puesto')) {
             console.log('🐘 Migrating limpieza_asistencia: adding puesto column');
             await this.pgPool!.query('ALTER TABLE limpieza_asistencia ADD COLUMN puesto TEXT');
+          }
+          const planillaColsPG: Array<[string, string]> = [
+            ['planificado', 'INTEGER DEFAULT 0'],
+            ['asistio', 'INTEGER'],
+            ['import_batch_id', 'INTEGER'],
+            ['observaciones', 'TEXT'],
+            ['categoria', 'TEXT'],
+          ];
+          for (const [col, type] of planillaColsPG) {
+            if (existingAsisCols.length > 0 && !existingAsisCols.includes(col)) {
+              console.log(`🐘 Migrating limpieza_asistencia: adding ${col} column`);
+              await this.pgPool!.query(`ALTER TABLE limpieza_asistencia ADD COLUMN ${col} ${type}`);
+            }
+          }
+
+          // Migrate users: cliente_asignado / sector_asignado
+          const userColsPG = await this.pgPool!.query(`
+            SELECT column_name FROM information_schema.columns WHERE table_name = 'users'
+          `);
+          const existingUserCols = userColsPG.rows.map((r: any) => r.column_name);
+          for (const col of ['cliente_asignado', 'sector_asignado', 'cedula']) {
+            if (existingUserCols.length > 0 && !existingUserCols.includes(col)) {
+              console.log(`🐘 Migrating users: adding ${col} column`);
+              await this.pgPool!.query(`ALTER TABLE users ADD COLUMN ${col} TEXT`);
+            }
           }
 
           // Migrate limpieza_usuarios: remove email if exists, make cedula unique
@@ -1921,6 +2076,65 @@ class DbWrapper {
         this.sqliteDb.exec('ROLLBACK');
         throw e;
       }
+    }
+  }
+
+  // Seed idempotente del config de planillas (SQLite). Solo corre si la tabla está vacía.
+  private seedPlanillaConfigSqlite() {
+    try {
+      const { PLANILLA_SEED } = require('./limpieza-planilla-seed') as typeof import('./limpieza-planilla-seed');
+      const count = this.sqliteDb.prepare('SELECT COUNT(*) as n FROM limpieza_clientes').get();
+      if (count && count.n > 0) return;
+      for (const cliente of PLANILLA_SEED) {
+        const cres = this.sqliteDb.prepare('INSERT INTO limpieza_clientes (name) VALUES (?)').run(cliente.name);
+        const clienteId = cres.lastInsertRowid;
+        for (const sector of cliente.sectores) {
+          const sres = this.sqliteDb.prepare('INSERT INTO limpieza_sectores (cliente_id, name) VALUES (?, ?)').run(clienteId, sector.name);
+          const sectorId = sres.lastInsertRowid;
+          for (const tur of sector.turnos) {
+            let orden = 0;
+            for (const p of tur.puestos) {
+              this.sqliteDb.prepare('INSERT INTO limpieza_puestos (sector_id, turno, nombre, cantidad, orden) VALUES (?, ?, ?, ?, ?)').run(sectorId, tur.turno, p.nombre, p.cantidad, orden++);
+            }
+            if (tur.puestos.length === 0) {
+              // Preservar turno vacío como marker para el editor
+              this.sqliteDb.prepare('INSERT INTO limpieza_puestos (sector_id, turno, nombre, cantidad, orden, active) VALUES (?, ?, ?, ?, ?, 0)').run(sectorId, tur.turno, '__placeholder__', 0, 0);
+            }
+          }
+        }
+      }
+      console.log('✅ Seed planilla config (SQLite) completado');
+    } catch (err) {
+      console.error('❌ Error seed planilla config (SQLite):', err);
+    }
+  }
+
+  // Seed idempotente del config de planillas (Postgres).
+  private async seedPlanillaConfigPg() {
+    try {
+      const { PLANILLA_SEED } = require('./limpieza-planilla-seed') as typeof import('./limpieza-planilla-seed');
+      const { rows } = await this.pgPool!.query('SELECT COUNT(*) as n FROM limpieza_clientes');
+      if (rows[0] && Number(rows[0].n) > 0) return;
+      for (const cliente of PLANILLA_SEED) {
+        const cres = await this.pgPool!.query('INSERT INTO limpieza_clientes (name) VALUES ($1) RETURNING id', [cliente.name]);
+        const clienteId = cres.rows[0].id;
+        for (const sector of cliente.sectores) {
+          const sres = await this.pgPool!.query('INSERT INTO limpieza_sectores (cliente_id, name) VALUES ($1, $2) RETURNING id', [clienteId, sector.name]);
+          const sectorId = sres.rows[0].id;
+          for (const tur of sector.turnos) {
+            let orden = 0;
+            for (const p of tur.puestos) {
+              await this.pgPool!.query('INSERT INTO limpieza_puestos (sector_id, turno, nombre, cantidad, orden) VALUES ($1, $2, $3, $4, $5)', [sectorId, tur.turno, p.nombre, p.cantidad, orden++]);
+            }
+            if (tur.puestos.length === 0) {
+              await this.pgPool!.query('INSERT INTO limpieza_puestos (sector_id, turno, nombre, cantidad, orden, active) VALUES ($1, $2, $3, $4, $5, 0)', [sectorId, tur.turno, '__placeholder__', 0, 0]);
+            }
+          }
+        }
+      }
+      console.log('✅ Seed planilla config (Postgres) completado');
+    } catch (err) {
+      console.error('❌ Error seed planilla config (Postgres):', err);
     }
   }
 

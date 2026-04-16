@@ -7,6 +7,7 @@ import {
     ArrowLeft, FileText, Plus, Save, X,
     Trash2, PenTool, CheckCircle2,
     ChevronDown, ChevronUp, Printer, LogOut,
+    Upload, Download, Check, XCircle, Lock,
 } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 import SignaturePad from '@/app/components/SignaturePad';
@@ -33,6 +34,11 @@ interface AsistenciaRow {
     firma: string | null;
     isSaved?: boolean;
     isManual?: boolean;
+    planificado?: number;
+    asistio?: number | null;
+    observaciones?: string;
+    categoria?: string;
+    import_batch_id?: number;
 }
 
 interface SeccionesAsistencia {
@@ -42,21 +48,20 @@ interface SeccionesAsistencia {
 const TURNOS = ['6 A 14', '14 A 22', '22 A 06'];
 const SECCIONES = ['6 A 14', '12 A 20', '14 A 22', '15 A 23', '22 A 06', 'HEMOTERAPIA', 'ADICIONALES'];
 
-const SECTORES_POR_CLIENTE: Record<string, string[]> = {
-    'CASMU': ['Asilo', 'Pisos Vip', 'Torre 1', 'Torre 2', 'Roperia', 'Policlinico', 'Seguridad'],
-};
-
-function getSectoresForCliente(cliente: string): string[] {
-    const key = Object.keys(SECTORES_POR_CLIENTE).find(
-        k => k.toLowerCase() === cliente.toLowerCase()
-    );
-    return key ? SECTORES_POR_CLIENTE[key] : [];
-}
-
 interface PuestoConfig { nombre: string; cantidad: number; }
 interface TurnoConfig { puestos: PuestoConfig[]; }
 
-const PLANILLA_CONFIG: Record<string, Record<string, TurnoConfig>> = {
+// PLANILLA_CONFIG se carga ahora en runtime desde /api/limpieza/planilla-config/full.
+// Este mapa se hidrata desde la API al montar el componente.
+let PLANILLA_CONFIG: Record<string, Record<string, TurnoConfig>> = {};
+let SECTORES_POR_CLIENTE: Record<string, string[]> = {};
+function getSectoresForCliente(cliente: string): string[] {
+    if (!cliente) return [];
+    const key = Object.keys(SECTORES_POR_CLIENTE).find(k => k.toLowerCase() === cliente.toLowerCase());
+    return key ? SECTORES_POR_CLIENTE[key] : [];
+}
+// Mapa descartado (el editor de planillas ahora es fuente de verdad).
+const _OLD_PLANILLA_CONFIG_HARDCODED: Record<string, Record<string, TurnoConfig>> = {
     'Asilo': {
         '6 A 14': {
             puestos: [
@@ -317,6 +322,16 @@ export default function InformesOperativosPage() {
     const [expanded, setExpanded] = useState<string[]>(SECCIONES);
     const [fromHistory, setFromHistory] = useState(false);
     const [readOnly, setReadOnly] = useState(false);
+    const [showUpload, setShowUpload] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [uploadFile, setUploadFile] = useState<File | null>(null);
+    const [uploadCategoria, setUploadCategoria] = useState<'LIMPIADOR' | 'AUXILIAR' | 'VIDRIERO' | 'ENCARGADO' | ''>('');
+    const [exporting, setExporting] = useState<'' | 'excel' | 'versus'>('');
+
+    const isAdmin = currentUser?.role === 'admin';
+    const isEncargado = currentUser?.role === 'encargado_limpieza';
+    const lockedCliente = isEncargado ? (currentUser?.cliente_asignado || '') : '';
+    const lockedSector = isEncargado ? (currentUser?.sector_asignado || '') : '';
 
     const sheetRef = useRef<HTMLDivElement>(null);
 
@@ -338,14 +353,33 @@ export default function InformesOperativosPage() {
 
     const fetchClientes = useCallback(async () => {
         try {
-            const res = await fetch('/api/config/locations', { headers: getAuthHeaders() });
+            const res = await fetch('/api/limpieza/planilla-config/full', { headers: getAuthHeaders() });
             if (res.ok) {
                 const data = await res.json();
-                const names = data.map((l: any) => l.name);
+                const names = (data.clientes || []).map((l: any) => l.name);
                 setClientes(names.sort());
             }
         } catch (e) {
-            console.error('Error fetching official clients:', e);
+            console.error('Error fetching planilla-config clientes:', e);
+        }
+    }, [getAuthHeaders]);
+
+    // Hidrata el mapa PLANILLA_CONFIG y SECTORES_POR_CLIENTE desde la API cuando cambia el cliente
+    const fetchPlanillaConfig = useCallback(async (cliente: string) => {
+        if (!cliente) return;
+        try {
+            const res = await fetch(`/api/limpieza/planilla-config/full?cliente=${encodeURIComponent(cliente)}`, { headers: getAuthHeaders() });
+            if (!res.ok) return;
+            const data = await res.json();
+            SECTORES_POR_CLIENTE[cliente] = (data.sectores || []).map((s: any) => s.name);
+            for (const s of (data.sectores || [])) {
+                PLANILLA_CONFIG[s.name] = {};
+                for (const t of (s.turnos || [])) {
+                    PLANILLA_CONFIG[s.name][t.turno] = { puestos: t.puestos };
+                }
+            }
+        } catch (e) {
+            console.error('Error hidratando planilla config:', e);
         }
     }, [getAuthHeaders]);
 
@@ -374,8 +408,20 @@ export default function InformesOperativosPage() {
 
                 // Build structured rows for the turno section if a planilla config exists
                 const config = getPlanillaConfig(sector, turno);
-                if (config && turno && config.puestos.length > 0) {
-                    const dbRowsForTurno = data.filter((r: any) => r.seccion === turno);
+                const dbRowsForTurno = data.filter((r: any) => r.seccion === turno);
+                const hasPlanificados = dbRowsForTurno.some((r: any) => r.planificado === 1);
+
+                if (hasPlanificados) {
+                    // Flujo Excel: mostrar los planificados tal cual + no-planificados (agregados por encargado)
+                    const rows: AsistenciaRow[] = dbRowsForTurno.map((r: any) => ({
+                        ...r,
+                        isSaved: true,
+                        isManual: !r.funcionario_id && !!r.nombre && !r.planificado,
+                    }));
+                    newAsistencia[turno] = rows;
+                    const adicionales = data.filter((r: any) => r.seccion === 'ADICIONALES').map((r: any) => ({ ...r, isSaved: true, isManual: !r.funcionario_id && !!r.nombre }));
+                    newAsistencia['ADICIONALES'] = adicionales.length > 0 ? adicionales : [{ puesto: '', funcionario_id: null, nombre: '', cedula: '', cliente: client, entrada1: '', salida1: '', entrada2: '', salida2: '', firma: null, isSaved: false }];
+                } else if (config && turno && config.puestos.length > 0) {
                     const structuredRows: AsistenciaRow[] = [];
                     for (const puestoConf of config.puestos) {
                         const dbForPuesto = dbRowsForTurno.filter((r: any) => r.puesto === puestoConf.nombre);
@@ -405,6 +451,16 @@ export default function InformesOperativosPage() {
                     });
                 }
 
+                // Auto-rellenar fila del puesto ENCARGADO/A con el usuario actual si es encargado_limpieza
+                const u: any = currentUser;
+                if (u?.role === 'encargado_limpieza' && u?.name && turno && newAsistencia[turno]) {
+                    const rows = newAsistencia[turno];
+                    const idx = rows.findIndex(r => /ENCARG/i.test(r.puesto || '') && !r.nombre && !r.funcionario_id && !r.isSaved);
+                    if (idx !== -1) {
+                        rows[idx] = { ...rows[idx], nombre: u.name, cedula: u.cedula || '', isManual: true };
+                    }
+                }
+
                 setAsistencia(newAsistencia);
             }
         } catch (e) {
@@ -412,7 +468,7 @@ export default function InformesOperativosPage() {
         } finally {
             setFetching(false);
         }
-    }, [getAuthHeaders]);
+    }, [getAuthHeaders, currentUser]);
 
     useEffect(() => {
         if (isAuthenticated && currentUser) {
@@ -420,6 +476,95 @@ export default function InformesOperativosPage() {
             fetchFuncionarios();
         }
     }, [isAuthenticated, currentUser, fetchClientes, fetchFuncionarios]);
+
+    // Cargar config de planilla al cambiar cliente
+    useEffect(() => {
+        if (clienteSeleccionado) fetchPlanillaConfig(clienteSeleccionado);
+    }, [clienteSeleccionado, fetchPlanillaConfig]);
+
+    // Auto-fill y lock de filtros cuando es encargado_limpieza
+    useEffect(() => {
+        if (isEncargado && lockedCliente && !clienteSeleccionado) {
+            setClienteSeleccionado(lockedCliente);
+        }
+    }, [isEncargado, lockedCliente, clienteSeleccionado]);
+    useEffect(() => {
+        if (isEncargado && lockedSector && !sectorSeleccionado && clienteSeleccionado) {
+            setSectorSeleccionado(lockedSector);
+        }
+    }, [isEncargado, lockedSector, sectorSeleccionado, clienteSeleccionado]);
+
+    const handleUploadPlanilla = async () => {
+        if (!uploadFile || !fecha || !turnoSeleccionado || !clienteSeleccionado) {
+            alert('Faltan campos: fecha, turno, cliente y archivo xlsx.');
+            return;
+        }
+        setUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append('file', uploadFile);
+            fd.append('fecha', fecha);
+            fd.append('seccion', turnoSeleccionado);
+            fd.append('cliente', clienteSeleccionado);
+            if (sectorSeleccionado) fd.append('sector', sectorSeleccionado);
+            if (uploadCategoria) fd.append('categoria', uploadCategoria);
+            const res = await fetch('/api/limpieza/planilla/import', { method: 'POST', body: fd, headers: getAuthHeaders() });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || 'Error al importar');
+            } else {
+                alert(`Importación OK: ${data.created} funcionarios cargados${data.skipped?.length ? ` — ${data.skipped.length} duplicados omitidos` : ''}.`);
+                setShowUpload(false); setUploadFile(null); setUploadCategoria('');
+                if (clienteSeleccionado && sectorSeleccionado && turnoSeleccionado) {
+                    fetchAsistencia(fecha, clienteSeleccionado, sectorSeleccionado, turnoSeleccionado);
+                }
+            }
+        } catch (err: any) {
+            alert('Error al subir planilla: ' + (err?.message || err));
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleExport = async (type: 'excel' | 'versus') => {
+        if (!fecha || !clienteSeleccionado) {
+            alert('Seleccioná al menos fecha y cliente.');
+            return;
+        }
+        setExporting(type);
+        try {
+            const params = new URLSearchParams({ fecha, cliente: clienteSeleccionado });
+            if (sectorSeleccionado) params.set('sector', sectorSeleccionado);
+            if (turnoSeleccionado) params.set('seccion', turnoSeleccionado);
+            const res = await fetch(`/api/limpieza/planilla/export/${type}?${params}`, { headers: getAuthHeaders() });
+            if (!res.ok) { alert('Error al exportar'); return; }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${type === 'versus' ? 'versus' : 'planilla'}_${clienteSeleccionado}_${fecha}.xlsx`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } finally {
+            setExporting('');
+        }
+    };
+
+    const handleAsistioToggle = async (section: string, index: number, value: 1 | 0) => {
+        const row = asistencia[section][index];
+        if (value === 1 && !row.entrada1) {
+            alert('Completá la hora de entrada antes de confirmar la asistencia.');
+            return;
+        }
+        if (value === 1 && !row.firma) {
+            // Abrir pad de firma antes de confirmar
+            setShowSignature({ section, index });
+            updateRow(section, index, { asistio: value });
+            return;
+        }
+        updateRow(section, index, { asistio: value });
+        await saveRowWithData(section, index, { ...row, asistio: value });
+    };
 
     useEffect(() => {
         if (isAuthenticated && currentUser && hasModuleAccess(currentUser, 'limpieza') && clienteSeleccionado && sectorSeleccionado && turnoSeleccionado) {
@@ -552,6 +697,13 @@ export default function InformesOperativosPage() {
             if (res.ok) {
                 const data = await res.json();
                 updateRow(section, index, { id: data.id, isSaved: true });
+            } else {
+                let msg = 'Error al guardar la fila';
+                try { const err = await res.json(); if (err?.error) msg = err.error; } catch {}
+                alert(msg);
+                if (row.asistio === 1) {
+                    updateRow(section, index, { asistio: null });
+                }
             }
         } catch (e) {
             console.error('Error saving row:', e);
@@ -629,11 +781,12 @@ export default function InformesOperativosPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem', alignItems: 'end' }}>
                         {/* Cliente */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase', marginLeft: '0.2rem' }}>Cliente</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase', marginLeft: '0.2rem' }}>Cliente {isEncargado && <Lock size={10} style={{ verticalAlign: 'middle' }} />}</span>
                             <select
                                 value={clienteSeleccionado}
                                 onChange={e => { setClienteSeleccionado(e.target.value); setSectorSeleccionado(''); setTurnoSeleccionado(''); }}
-                                style={{ padding: '0.55rem 0.75rem', borderRadius: '8px', border: '2px solid #1d3461', fontSize: '0.875rem', backgroundColor: 'white', color: '#111827', cursor: 'pointer', fontWeight: 600, width: '100%' }}
+                                disabled={isEncargado && !!lockedCliente}
+                                style={{ padding: '0.55rem 0.75rem', borderRadius: '8px', border: '2px solid #1d3461', fontSize: '0.875rem', backgroundColor: (isEncargado && lockedCliente) ? '#f1f5f9' : 'white', color: '#111827', cursor: (isEncargado && lockedCliente) ? 'not-allowed' : 'pointer', fontWeight: 600, width: '100%' }}
                             >
                                 <option value="">-- Seleccionar --</option>
                                 {clientes.map(c => <option key={c} value={c}>{c}</option>)}
@@ -642,12 +795,12 @@ export default function InformesOperativosPage() {
 
                         {/* Sector */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase', marginLeft: '0.2rem' }}>Sector</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase', marginLeft: '0.2rem' }}>Sector {isEncargado && lockedSector && <Lock size={10} style={{ verticalAlign: 'middle' }} />}</span>
                             <select
                                 value={sectorSeleccionado}
                                 onChange={e => { setSectorSeleccionado(e.target.value); setTurnoSeleccionado(''); }}
-                                disabled={!clienteSeleccionado}
-                                style={{ padding: '0.55rem 0.75rem', borderRadius: '8px', border: '2px solid #1d3461', fontSize: '0.875rem', backgroundColor: clienteSeleccionado ? 'white' : '#f1f5f9', color: '#111827', cursor: clienteSeleccionado ? 'pointer' : 'not-allowed', fontWeight: 600, width: '100%' }}
+                                disabled={!clienteSeleccionado || (isEncargado && !!lockedSector)}
+                                style={{ padding: '0.55rem 0.75rem', borderRadius: '8px', border: '2px solid #1d3461', fontSize: '0.875rem', backgroundColor: clienteSeleccionado && !(isEncargado && lockedSector) ? 'white' : '#f1f5f9', color: '#111827', cursor: (!clienteSeleccionado || (isEncargado && lockedSector)) ? 'not-allowed' : 'pointer', fontWeight: 600, width: '100%' }}
                             >
                                 <option value="">-- Seleccionar --</option>
                                 {getSectoresForCliente(clienteSeleccionado).map(s => <option key={s} value={s}>{s}</option>)}
@@ -707,10 +860,34 @@ export default function InformesOperativosPage() {
                         <button
                             onClick={handlePrint}
                             disabled={!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: (!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado) ? '#94a3b8' : '#111827', cursor: (!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado) ? 'not-allowed' : 'pointer', minHeight: '38px', width: '100%', boxSizing: 'border-box' }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: (!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado) ? '#94a3b8' : '#111827', cursor: (!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado) ? 'not-allowed' : 'pointer', minHeight: '38px', height: '38px', width: '100%', boxSizing: 'border-box', whiteSpace: 'nowrap' }}
                         >
-                            <Printer size={16} /> <span>Imprimir PDF</span>
+                            <Printer size={16} /> <span>PDF</span>
                         </button>
+                        <button
+                            onClick={() => handleExport('excel')}
+                            disabled={!clienteSeleccionado || exporting === 'excel'}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#2e9b3a', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: clienteSeleccionado ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || exporting === 'excel') ? 0.6 : 1, minHeight: '38px', height: '38px', width: '100%', boxSizing: 'border-box', whiteSpace: 'nowrap' }}
+                        >
+                            <Download size={16} /> <span>{exporting === 'excel' ? 'Exportando...' : 'Excel'}</span>
+                        </button>
+                        <button
+                            onClick={() => handleExport('versus')}
+                            disabled={!clienteSeleccionado || exporting === 'versus'}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#1d3461', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: clienteSeleccionado ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || exporting === 'versus') ? 0.6 : 1, minHeight: '38px', height: '38px', width: '100%', boxSizing: 'border-box', whiteSpace: 'nowrap' }}
+                        >
+                            <Download size={16} /> <span>{exporting === 'versus' ? 'Exportando...' : 'Versus'}</span>
+                        </button>
+                        {isAdmin && (
+                            <button
+                                onClick={() => setShowUpload(true)}
+                                disabled={!clienteSeleccionado || !turnoSeleccionado}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#d32e2e', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: (clienteSeleccionado && turnoSeleccionado) ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || !turnoSeleccionado) ? 0.6 : 1, minHeight: '38px', height: '38px', width: '100%', boxSizing: 'border-box', whiteSpace: 'nowrap' }}
+                                title="Subir planilla del turno desde Excel (solo admin)"
+                            >
+                                <Upload size={16} /> <span>Subir planilla</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -805,6 +982,7 @@ export default function InformesOperativosPage() {
                                                         {(showPuestoCol || isAdicionales) && <th style={{ width: '110px', padding: '0.5rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Puesto</th>}
                                                         <th style={{ width: '110px', padding: '0.5rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Cédula</th>
                                                         <th style={{ width: '200px', padding: '0.5rem', textAlign: 'left', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Nombre y Apellido</th>
+                                                        <th style={{ width: '95px', padding: '0.5rem', textAlign: 'center', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Asistió</th>
                                                         <th style={{ width: '65px', padding: '0.5rem', textAlign: 'center', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Ent.</th>
                                                         <th style={{ width: '65px', padding: '0.5rem', textAlign: 'center', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Sal.</th>
                                                         <th style={{ width: '65px', padding: '0.5rem', textAlign: 'center', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Ent.</th>
@@ -857,7 +1035,12 @@ export default function InformesOperativosPage() {
                                                             </td>
                                                             {/* Nombre */}
                                                             <td style={{ padding: '0.4rem' }}>
-                                                                {row.isManual ? (
+                                                                {row.planificado ? (
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                                                                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1d3461' }}>{row.nombre}</span>
+                                                                        <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#1e40af', background: '#dbeafe', padding: '0.05rem 0.3rem', borderRadius: '3px', width: 'fit-content', letterSpacing: '0.04em' }}>PLANIFICADO</span>
+                                                                    </div>
+                                                                ) : row.isManual ? (
                                                                     <>
                                                                         <input className="no-print" value={row.nombre} placeholder="Nombre y apellido" onChange={e => updateRow(seccion, idx, { nombre: e.target.value })} onBlur={e => { const val = e.target.value; if (val) saveRowWithData(seccion, idx, { ...row, nombre: val }); }} style={{ width: '100%', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', fontSize: '0.8rem', fontWeight: 600, outline: 'none', color: '#1d3461' }} />
                                                                         <span className="print-only" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{row.nombre || '..........................................'}</span>
@@ -873,6 +1056,32 @@ export default function InformesOperativosPage() {
                                                                         <span className="print-only" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{row.nombre || '..........................................'}</span>
                                                                     </>
                                                                 )}
+                                                            </td>
+                                                            {/* Asistió toggle */}
+                                                            <td style={{ padding: '0.4rem', textAlign: 'center' }}>
+                                                                {(row.planificado || row.funcionario_id || (row.isManual && row.nombre)) && !readOnly ? (
+                                                                    <div className="no-print" style={{ display: 'inline-flex', gap: '0.3rem' }}>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleAsistioToggle(seccion, idx, 1)}
+                                                                            style={{ padding: '0.2rem 0.4rem', background: row.asistio === 1 ? '#16a34a' : '#f1f5f9', color: row.asistio === 1 ? '#fff' : '#475569', border: 'none', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.15rem' }}
+                                                                            title="Marcar asistió — requerirá firma"
+                                                                        >
+                                                                            <Check size={11}/> Sí
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleAsistioToggle(seccion, idx, 0)}
+                                                                            style={{ padding: '0.2rem 0.4rem', background: row.asistio === 0 ? '#dc2626' : '#f1f5f9', color: row.asistio === 0 ? '#fff' : '#475569', border: 'none', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.15rem' }}
+                                                                            title="Marcar ausente"
+                                                                        >
+                                                                            <XCircle size={11}/> No
+                                                                        </button>
+                                                                    </div>
+                                                                ) : null}
+                                                                <span className="print-only" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
+                                                                    {row.asistio === 1 ? 'SÍ' : row.asistio === 0 ? 'NO' : '—'}
+                                                                </span>
                                                             </td>
                                                             {(['entrada1', 'salida1', 'entrada2', 'salida2'] as const).map(field => (
                                                                 <td key={field} style={{ padding: '0.4rem', textAlign: 'center' }}>
@@ -925,7 +1134,7 @@ export default function InformesOperativosPage() {
                                                                             >
                                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                                                             </button>
-                                                                        {!row.isSaved && (row.funcionario_id || (row.isManual && row.nombre)) && (
+                                                                        {!row.isSaved && !!(row.funcionario_id || (row.isManual && row.nombre)) && (
                                                                             <button onClick={() => saveRow(seccion, idx)} disabled={saving === `${seccion}-${idx}`} style={{ background: 'none', border: 'none', color: '#1d3461', cursor: 'pointer' }} title="Guardar fila">
                                                                                 <Save size={16} />
                                                                             </button>
@@ -935,10 +1144,13 @@ export default function InformesOperativosPage() {
                                                                                 <CheckCircle2 size={16} />
                                                                             </button>
                                                                         )}
-                                                                        {(isAdicionales || row.funcionario_id || row.isManual) && (
-                                                                            <button onClick={() => removeRow(seccion, idx)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title={isAdicionales ? 'Eliminar fila' : 'Limpiar registro'}>
+                                                                        {!!(isAdicionales || row.funcionario_id || row.isManual) && (!row.planificado || isAdmin) && (
+                                                                            <button onClick={() => removeRow(seccion, idx)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title={row.planificado ? 'Eliminar fila planificada (solo admin)' : isAdicionales ? 'Eliminar fila' : 'Limpiar registro'}>
                                                                                 <Trash2 size={16} />
                                                                             </button>
+                                                                        )}
+                                                                        {!!row.planificado && !isAdmin && (
+                                                                            <Lock size={13} color="#94a3b8" />
                                                                         )}
                                                                     </div>}
                                                                 </div>
@@ -967,7 +1179,7 @@ export default function InformesOperativosPage() {
             </main>
 
             {showSignature && clienteSeleccionado && sectorSeleccionado && turnoSeleccionado && (
-                <SignaturePad 
+                <SignaturePad
                     title={`Firma de ${asistencia[showSignature.section][showSignature.index].nombre}`}
                     onCancel={() => setShowSignature(null)}
                     onSave={async (sig) => {
@@ -975,13 +1187,49 @@ export default function InformesOperativosPage() {
                         // Update state
                         updateRow(section, index, { firma: sig });
                         setShowSignature(null);
-                        
+
                         // Auto-save the row including the new signature
-                        // We use a small delay or closure because updateRow is async state
                         const currentRow = { ...asistencia[section][index], firma: sig };
                         await saveRowWithData(section, index, currentRow);
                     }}
                 />
+            )}
+
+            {showUpload && (
+                <div className="no-print" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div style={{ background: '#fff', borderRadius: '12px', maxWidth: '520px', width: '100%', padding: '1.5rem', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#1d3461', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Upload size={18}/> Subir planilla del turno</h2>
+                            <button onClick={() => setShowUpload(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={20}/></button>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.6rem 0.8rem', fontSize: '0.78rem', color: '#1d3461' }}>
+                                <strong>Fecha:</strong> {fecha} &nbsp; <strong>Cliente:</strong> {clienteSeleccionado || '—'} &nbsp; <strong>Sector:</strong> {sectorSeleccionado || '—'} &nbsp; <strong>Turno:</strong> {turnoSeleccionado || '—'}
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>Archivo xlsx</label>
+                                <input type="file" accept=".xlsx,.xls" onChange={e => setUploadFile(e.target.files?.[0] || null)} style={{ width: '100%' }} />
+                                <p style={{ fontSize: '0.72rem', color: '#64748b', margin: '0.35rem 0 0' }}>El archivo debe tener columnas Nombre y Documento (o Cédula/CI). Opcionalmente Sector, Puesto, Categoría.</p>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>Categoría por defecto (opcional)</label>
+                                <select value={uploadCategoria} onChange={e => setUploadCategoria(e.target.value as any)} style={{ width: '100%', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.82rem' }}>
+                                    <option value="">-- Usar columna Categoría del Excel si existe --</option>
+                                    <option value="LIMPIADOR">LIMPIADOR</option>
+                                    <option value="AUXILIAR">AUXILIAR</option>
+                                    <option value="VIDRIERO">VIDRIERO</option>
+                                    <option value="ENCARGADO">ENCARGADO</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
+                            <button onClick={() => setShowUpload(false)} style={{ padding: '0.55rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', background: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>Cancelar</button>
+                            <button onClick={handleUploadPlanilla} disabled={uploading || !uploadFile} style={{ padding: '0.55rem 1rem', border: 'none', borderRadius: '8px', background: '#16a34a', color: '#fff', cursor: uploading || !uploadFile ? 'not-allowed' : 'pointer', fontSize: '0.85rem', fontWeight: 700, opacity: uploading || !uploadFile ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                <Upload size={14}/>{uploading ? 'Subiendo...' : 'Subir'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Fixed logout removed from here, now in header */}

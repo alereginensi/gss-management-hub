@@ -20,6 +20,8 @@ export default function Landing() {
       router.replace('/login');
     } else if (currentUser?.role === 'funcionario') {
       router.replace('/tasks');
+    } else if (currentUser?.role === 'encargado_limpieza') {
+      router.replace('/operaciones-limpieza/informes');
     }
   }, [loading, isAuthenticated, currentUser, router]);
 
