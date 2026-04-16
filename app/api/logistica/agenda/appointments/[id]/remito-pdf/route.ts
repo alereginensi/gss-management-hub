@@ -38,15 +38,44 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const upstream = await fetch(originalUrl, { cache: 'no-store' });
     if (!upstream.ok) {
       return NextResponse.json(
-        { error: `No se pudo obtener el PDF (upstream ${upstream.status})` },
+        { error: `No se pudo obtener el archivo (upstream ${upstream.status})` },
         { status: 502 }
       );
     }
     const buffer = Buffer.from(await upstream.arrayBuffer());
+
+    // Detectar content-type real por magic bytes.
+    let contentType = 'application/pdf';
+    let extension = 'pdf';
+    const head = buffer.slice(0, 8);
+    const isPdf = head.slice(0, 4).toString('ascii') === '%PDF';
+    const isZip = head[0] === 0x50 && head[1] === 0x4b; // PK (zip/xlsx/docx)
+    const isPng = head[0] === 0x89 && head.slice(1, 4).toString('ascii') === 'PNG';
+    const isJpg = head[0] === 0xff && head[1] === 0xd8;
+    if (isPdf) {
+      contentType = 'application/pdf';
+      extension = 'pdf';
+    } else if (isZip) {
+      contentType = 'application/octet-stream';
+      extension = 'bin';
+    } else if (isPng) {
+      contentType = 'image/png';
+      extension = 'png';
+    } else if (isJpg) {
+      contentType = 'image/jpeg';
+      extension = 'jpg';
+    } else {
+      // Usar el content-type que devolvió Cloudinary si no reconocimos magic bytes
+      contentType = upstream.headers.get('content-type') || 'application/octet-stream';
+    }
+
+    const disposition = isPdf ? 'inline' : 'attachment';
+    const suffix = kind === 'return' ? '-devolucion' : '';
+
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="remito-${id}${kind === 'return' ? '-devolucion' : ''}.pdf"`,
+        'Content-Type': contentType,
+        'Content-Disposition': `${disposition}; filename="remito-${id}${suffix}.${extension}"`,
         'Cache-Control': 'private, max-age=3600',
       },
     });

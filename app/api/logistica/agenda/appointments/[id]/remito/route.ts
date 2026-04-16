@@ -38,6 +38,25 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
+
+    // Validar que el archivo sea realmente lo que dice ser.
+    // Magic bytes: PDF = %PDF-, PNG = \x89PNG, JPG = \xFF\xD8, ZIP/DOCX/XLSX = PK.
+    const head = buffer.slice(0, 4);
+    const isPdfMagic = head.toString('ascii') === '%PDF';
+    const isPngMagic = head[0] === 0x89 && head.slice(1, 4).toString('ascii') === 'PNG';
+    const isJpgMagic = head[0] === 0xff && head[1] === 0xd8;
+    if (ext === 'pdf' && !isPdfMagic) {
+      return NextResponse.json(
+        { error: 'El archivo no es un PDF válido. Verificá que el archivo no sea un ZIP/XLSX/DOCX con extensión .pdf.' },
+        { status: 400 }
+      );
+    }
+    if (['png', 'jpg', 'jpeg'].includes(ext) && !isPngMagic && !isJpgMagic) {
+      return NextResponse.json(
+        { error: 'El archivo no es una imagen válida.' },
+        { status: 400 }
+      );
+    }
     const suffix = isReturn ? 'return' : 'delivery';
     const filename = `remito-${suffix}-appt${id}-${Date.now()}.${ext}`;
     const fileUrl = await saveAgendaFile(buffer, filename, 'remitos');
