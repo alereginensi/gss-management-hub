@@ -13,6 +13,22 @@ const nextConfig: NextConfig = {
     '/api/mitrabajo/trigger': ['./scripts/download-mitrabajo.cjs'],
   },
 
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [
+          {
+            type: 'host',
+            value: 'gss-management-hub-production.up.railway.app',
+          },
+        ],
+        destination: 'https://gssadmin.com/:path*',
+        permanent: true,
+      },
+    ];
+  },
+
   async headers() {
     const securityHeaders = [
       {
