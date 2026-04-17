@@ -8,8 +8,8 @@ import InactivityGuard from './components/InactivityGuard'
 // Iconos solo en <head> con rutas relativas: en Docker/Railway el build a veces no tiene URL pública,
 // y metadataBase incorrecta rompe el favicon (apunta a localhost).
 export const metadata: Metadata = {
-  title: 'GSS Management Hub',
-  description: 'Central Administrative Portal for GSS Facility Services',
+  title: 'GSS Centro de Gestión',
+  description: 'Centro de gestión operativa de GSS Facility Services',
 }
 
 export const viewport = {

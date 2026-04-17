@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     }
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'GSS Management Hub';
+    wb.creator = 'GSS Centro de Gestión';
     const ws = wb.addWorksheet(`VERSUS ${cliente}`.slice(0, 31), { views: [{ state: 'frozen', ySplit: 1 }] });
 
     const columns = [

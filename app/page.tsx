@@ -113,7 +113,7 @@ export default function Landing() {
             Módulos del Sistema
           </h1>
           <p style={{ fontSize: isMobile ? '0.8rem' : 'clamp(0.9rem, 1.1vw, 1.05rem)', color: '#64748b', margin: '0 0 1.5rem', maxWidth: isMobile ? undefined : '48rem' }}>
-            GSS Management Hub · Seleccione un módulo para continuar
+            GSS Centro de Gestión · Seleccione un módulo para continuar
           </p>
 
           <div className="landing-modules-grid">

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     );
 
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'GSS Management Hub';
+    wb.creator = 'GSS Centro de Gestión';
     const ws = wb.addWorksheet('Planilla', { views: [{ state: 'frozen', ySplit: 1 }] });
 
     type Col = { header: string; key: string; width: number };

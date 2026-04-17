@@ -61,7 +61,7 @@ export default function RrhhPage() {
                         Recursos Humanos
                     </h1>
                     <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1.25rem' }}>
-                        GSS Management Hub · Gestión de personal y RRHH
+                        GSS Centro de Gestión · Gestión de personal y RRHH
                     </p>
 
                     <div className="landing-modules-grid">

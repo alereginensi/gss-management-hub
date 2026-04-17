@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'GSS Management Hub';
+    wb.creator = 'GSS Centro de Gestión';
     wb.created = new Date();
 
     let filename = 'exportacion.xlsx';

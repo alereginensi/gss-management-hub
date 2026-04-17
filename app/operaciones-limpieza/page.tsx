@@ -71,7 +71,7 @@ export default function OperacionesLimpiezaPage() {
                         Operaciones Limpieza/Seguridad
                     </h1>
                     <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1.25rem' }}>
-                        GSS Management Hub · Tareas, informes y control operativo
+                        GSS Centro de Gestión · Tareas, informes y control operativo
                     </p>
 
                     <div className="landing-modules-grid">

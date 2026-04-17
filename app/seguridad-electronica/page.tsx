@@ -74,7 +74,7 @@ export default function SeguridadElectronicaPage() {
                         Seguridad Electrónica
                     </h1>
                     <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1.25rem' }}>
-                        GSS Management Hub · Operaciones de seguridad electrónica
+                        GSS Centro de Gestión · Operaciones de seguridad electrónica
                     </p>
 
                     <div className="landing-modules-grid">

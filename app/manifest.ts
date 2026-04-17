@@ -2,9 +2,9 @@ import { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
     return {
-        name: 'GSS Management Hub',
-        short_name: 'GSS Hub',
-        description: 'Portal de Gestión para GSS Facility Services',
+        name: 'GSS Centro de Gestión',
+        short_name: 'GSS Gestión',
+        description: 'Centro de gestión operativa de GSS Facility Services',
         start_url: '/',
         display: 'standalone',
         background_color: '#0f172a',

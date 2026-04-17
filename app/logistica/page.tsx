@@ -68,7 +68,7 @@ export default function LogisticaPage() {
                         Logística
                     </h1>
                     <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 1.25rem' }}>
-                        GSS Management Hub · Logística y operaciones
+                        GSS Centro de Gestión · Logística y operaciones
                     </p>
 
                     <div className="landing-modules-grid">
