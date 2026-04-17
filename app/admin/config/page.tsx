@@ -109,7 +109,8 @@ export default function ConfigPage() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'locations' | 'roles' | 'integrations' | 'backup'>('locations');
     const [backupLoading, setBackupLoading] = useState(false);
-    const [logbookStats, setLogbookStats] = useState<{ total: number; first: { date: string; time: string } | null; last: { date: string; time: string } | null; last_changed_at: string | null } | null>(null);
+    type LogbookSnapshot = { total: number; first_date: string; first_time: string; last_date: string; last_time: string; recorded_at: string | null };
+    const [logbookStats, setLogbookStats] = useState<{ total: number; first: { date: string; time: string } | null; last: { date: string; time: string } | null; last_changed_at: string | null; history: LogbookSnapshot[] } | null>(null);
     const [statsLoading, setStatsLoading] = useState(false);
     const [locations, setLocations] = useState<any[]>([]);
     const [roles, setRoles] = useState<any[]>([]);
@@ -456,31 +457,53 @@ export default function ConfigPage() {
                                         Verificá que no se hayan eliminado registros históricos de la bitácora.
                                     </p>
                                 )}
-                                {statsLoading && (
-                                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Consultando…</p>
-                                )}
+                                {statsLoading && <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Consultando…</p>}
                                 {logbookStats && !statsLoading && (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
-                                        <div style={{ padding: '1rem', backgroundColor: 'rgba(41,65,107,0.06)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
-                                            <div style={{ fontSize: '2rem', fontWeight: 800, color: '#29416b', lineHeight: 1.1 }}>{logbookStats.total.toLocaleString('es-UY')}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: 600 }}>REPORTES TOTALES</div>
+                                    <>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+                                            <div style={{ padding: '1rem', backgroundColor: 'rgba(41,65,107,0.06)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '2rem', fontWeight: 800, color: '#29416b', lineHeight: 1.1 }}>{logbookStats.total.toLocaleString('es-UY')}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: 600 }}>REPORTES TOTALES</div>
+                                            </div>
+                                            <div style={{ padding: '1rem', backgroundColor: 'rgba(41,65,107,0.06)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#29416b', lineHeight: 1.3 }}>{logbookStats.first?.date ?? '—'}</div>
+                                                <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{logbookStats.first?.time ?? ''}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: 600 }}>PRIMER REPORTE</div>
+                                            </div>
+                                            <div style={{ padding: '1rem', backgroundColor: 'rgba(41,65,107,0.06)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                                                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#29416b', lineHeight: 1.3 }}>{logbookStats.last?.date ?? '—'}</div>
+                                                <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{logbookStats.last?.time ?? ''}</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: 600 }}>ÚLTIMO REPORTE</div>
+                                            </div>
                                         </div>
-                                        <div style={{ padding: '1rem', backgroundColor: 'rgba(41,65,107,0.06)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
-                                            <div style={{ fontSize: '1rem', fontWeight: 700, color: '#29416b', lineHeight: 1.3 }}>{logbookStats.first?.date ?? '—'}</div>
-                                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{logbookStats.first?.time ?? ''}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: 600 }}>PRIMER REPORTE</div>
-                                        </div>
-                                        <div style={{ padding: '1rem', backgroundColor: 'rgba(41,65,107,0.06)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
-                                            <div style={{ fontSize: '1rem', fontWeight: 700, color: '#29416b', lineHeight: 1.3 }}>{logbookStats.last?.date ?? '—'}</div>
-                                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{logbookStats.last?.time ?? ''}</div>
-                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: 600 }}>ÚLTIMO REPORTE</div>
-                                        </div>
-                                    </div>
-                                )}
-                                {logbookStats?.last_changed_at && !statsLoading && (
-                                    <p style={{ margin: '0.75rem 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
-                                        Stats detectados por primera vez con estos valores el <strong>{new Date(logbookStats.last_changed_at).toLocaleString('es-UY', { timeZone: 'America/Montevideo' })}</strong>
-                                    </p>
+                                        {logbookStats.history.length > 0 && (
+                                            <div style={{ overflowX: 'auto' }}>
+                                                <p style={{ margin: '0 0 0.5rem', fontSize: '0.78rem', fontWeight: 700, color: '#29416b' }}>Historial de cambios detectados</p>
+                                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+                                                    <thead>
+                                                        <tr style={{ backgroundColor: 'rgba(41,65,107,0.06)', textAlign: 'left' }}>
+                                                            <th style={{ padding: '0.4rem 0.75rem', fontWeight: 700, color: '#29416b', whiteSpace: 'nowrap' }}>Detectado</th>
+                                                            <th style={{ padding: '0.4rem 0.75rem', fontWeight: 700, color: '#29416b', textAlign: 'right' }}>Reportes</th>
+                                                            <th style={{ padding: '0.4rem 0.75rem', fontWeight: 700, color: '#29416b', whiteSpace: 'nowrap' }}>Primer reporte</th>
+                                                            <th style={{ padding: '0.4rem 0.75rem', fontWeight: 700, color: '#29416b', whiteSpace: 'nowrap' }}>Último reporte</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {logbookStats.history.map((snap, i) => (
+                                                            <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: i === 0 ? 'rgba(41,65,107,0.03)' : 'transparent' }}>
+                                                                <td style={{ padding: '0.4rem 0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                                                                    {snap.recorded_at ? new Date(snap.recorded_at).toLocaleString('es-UY', { timeZone: 'America/Montevideo' }) : '—'}
+                                                                </td>
+                                                                <td style={{ padding: '0.4rem 0.75rem', fontWeight: 700, color: '#1d3461', textAlign: 'right' }}>{snap.total.toLocaleString('es-UY')}</td>
+                                                                <td style={{ padding: '0.4rem 0.75rem', color: '#475569', whiteSpace: 'nowrap' }}>{snap.first_date ?? '—'} {snap.first_time ?? ''}</td>
+                                                                <td style={{ padding: '0.4rem 0.75rem', color: '#475569', whiteSpace: 'nowrap' }}>{snap.last_date ?? '—'} {snap.last_time ?? ''}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                                 {!logbookStats && !statsLoading && (
                                     <button

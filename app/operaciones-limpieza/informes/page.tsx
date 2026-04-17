@@ -320,7 +320,7 @@ export default function InformesOperativosPage() {
     const [asistencia, setAsistencia] = useState<SeccionesAsistencia>(() => Object.fromEntries(SECCIONES.map(s => [s, []])));
     const [fetching, setFetching] = useState(false);
     const [saving, setSaving] = useState<string | null>(null); // section-index key
-    const [showSignature, setShowSignature] = useState<{ section: string, index: number } | null>(null);
+    const [showSignature, setShowSignature] = useState<{ section: string, index: number, pendingAsistio?: 1 | 0 } | null>(null);
     const [expanded, setExpanded] = useState<string[]>(SECCIONES);
     const [fromHistory, setFromHistory] = useState(false);
     const [readOnly, setReadOnly] = useState(false);
@@ -560,9 +560,8 @@ export default function InformesOperativosPage() {
             return;
         }
         if (value === 1 && !row.firma) {
-            // Abrir pad de firma antes de confirmar
-            setShowSignature({ section, index });
-            updateRow(section, index, { asistio: value });
+            // Abrir pad — NO actualizar asistio hasta que se confirme la firma
+            setShowSignature({ section, index, pendingAsistio: 1 });
             return;
         }
         updateRow(section, index, { asistio: value });
@@ -768,16 +767,16 @@ export default function InformesOperativosPage() {
                 </div>
             </header>
 
-            <main style={{ flex: 1, padding: '1.5rem', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+            <main style={{ flex: 1, padding: '1.5rem', maxWidth: '1200px', margin: '0 auto', width: '100%' }} className="informes-main">
                 {/* Actions Row - no-print */}
-                <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ backgroundColor: '#1d3461', color: 'white', padding: '0.6rem', borderRadius: '10px' }}>
-                            <FileText size={22} />
+                <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ backgroundColor: '#1d3461', color: 'white', padding: '0.5rem', borderRadius: '8px', flexShrink: 0 }}>
+                            <FileText size={20} />
                         </div>
                         <div>
-                            <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111827', margin: 0 }}>Reporte Operativo</h1>
-                            <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: 0 }}>Planilla de asistencia y novedades</p>
+                            <h1 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#111827', margin: 0 }}>Reporte Operativo</h1>
+                            <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0 }}>Planilla de asistencia y novedades</p>
                         </div>
                     </div>
 
@@ -860,35 +859,39 @@ export default function InformesOperativosPage() {
                                 </button>
                             </>
                         )}
+                    </div>
+
+                    {/* Botones de acción — grid 2x2 en mobile, fila en desktop */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '0.5rem' }}>
                         <button
                             onClick={handlePrint}
                             disabled={!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: (!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado) ? '#94a3b8' : '#111827', cursor: (!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado) ? 'not-allowed' : 'pointer', minHeight: '38px', height: '38px', width: '100%', boxSizing: 'border-box', whiteSpace: 'nowrap' }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.5rem 0.75rem', backgroundColor: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 650, color: (!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado) ? '#94a3b8' : '#111827', cursor: (!clienteSeleccionado || !sectorSeleccionado || !turnoSeleccionado) ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
                         >
-                            <Printer size={16} /> <span>PDF</span>
+                            <Printer size={15} /> PDF
                         </button>
                         <button
                             onClick={() => handleExport('excel')}
                             disabled={!clienteSeleccionado || exporting === 'excel'}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#2e9b3a', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: clienteSeleccionado ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || exporting === 'excel') ? 0.6 : 1, minHeight: '38px', height: '38px', width: '100%', boxSizing: 'border-box', whiteSpace: 'nowrap' }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.5rem 0.75rem', backgroundColor: '#2e9b3a', border: 'none', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 650, color: '#fff', cursor: clienteSeleccionado ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || exporting === 'excel') ? 0.6 : 1, whiteSpace: 'nowrap' }}
                         >
-                            <Download size={16} /> <span>{exporting === 'excel' ? 'Exportando...' : 'Excel'}</span>
+                            <Download size={15} /> {exporting === 'excel' ? 'Exportando...' : 'Excel'}
                         </button>
                         <button
                             onClick={() => handleExport('versus')}
                             disabled={!clienteSeleccionado || exporting === 'versus'}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#1d3461', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: clienteSeleccionado ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || exporting === 'versus') ? 0.6 : 1, minHeight: '38px', height: '38px', width: '100%', boxSizing: 'border-box', whiteSpace: 'nowrap' }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.5rem 0.75rem', backgroundColor: '#1d3461', border: 'none', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 650, color: '#fff', cursor: clienteSeleccionado ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || exporting === 'versus') ? 0.6 : 1, whiteSpace: 'nowrap' }}
                         >
-                            <Download size={16} /> <span>{exporting === 'versus' ? 'Exportando...' : 'Versus'}</span>
+                            <Download size={15} /> {exporting === 'versus' ? 'Exportando...' : 'Versus'}
                         </button>
                         {isAdmin && (
                             <button
                                 onClick={() => setShowUpload(true)}
                                 disabled={!clienteSeleccionado || !turnoSeleccionado}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem 1rem', backgroundColor: '#d32e2e', border: 'none', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 650, color: '#fff', cursor: (clienteSeleccionado && turnoSeleccionado) ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || !turnoSeleccionado) ? 0.6 : 1, minHeight: '38px', height: '38px', width: '100%', boxSizing: 'border-box', whiteSpace: 'nowrap' }}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.5rem 0.75rem', backgroundColor: '#d32e2e', border: 'none', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 650, color: '#fff', cursor: (clienteSeleccionado && turnoSeleccionado) ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || !turnoSeleccionado) ? 0.6 : 1, whiteSpace: 'nowrap' }}
                                 title="Subir planilla del turno desde Excel (solo admin)"
                             >
-                                <Upload size={16} /> <span>Subir planilla</span>
+                                <Upload size={15} /> Subir planilla
                             </button>
                         )}
                     </div>
@@ -977,8 +980,136 @@ export default function InformesOperativosPage() {
                                         <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 900, color: '#1d3461' }}>{seccion}</h3>
                                     </div>
 
-                                    {(expanded.includes(seccion) || !isAdicionales) && (
-                                        <div className="scroll-container">
+                                    {(expanded.includes(seccion) || !isAdicionales) && (<>
+
+                                        {/* ── MOBILE CARDS ── */}
+                                        <div className="mobile-view">
+                                            {asistencia[seccion].map((row, idx) => {
+                                                const hasWorker = !!(row.funcionario_id || (row.isManual && row.nombre) || row.planificado);
+                                                return (
+                                                <div key={idx} style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.9rem', marginBottom: '0.75rem', backgroundColor: row.asistio === 1 ? '#f0fdf4' : row.asistio === 0 ? '#fef2f2' : '#fff' }}>
+                                                    {/* Puesto + Asistió */}
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem', gap: '0.5rem' }}>
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            {(showPuestoCol || isAdicionales) && (
+                                                                isAdicionales ? (
+                                                                    adicionalPuestoOpciones.length > 0 ? (
+                                                                        <select value={row.puesto || ''} onChange={e => { updateRow(seccion, idx, { puesto: e.target.value }); if (hasWorker) saveRowWithData(seccion, idx, { ...asistencia[seccion][idx], puesto: e.target.value }); }} style={{ fontSize: '0.78rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase', border: 'none', background: 'transparent', outline: 'none', maxWidth: '100%' }}>
+                                                                            <option value="">— Puesto —</option>
+                                                                            {adicionalPuestoOpciones.map(p => <option key={p} value={p}>{p}</option>)}
+                                                                        </select>
+                                                                    ) : (
+                                                                        <input value={row.puesto || ''} placeholder="Puesto..." onChange={e => updateRow(seccion, idx, { puesto: e.target.value })} onBlur={e => { if (hasWorker) saveRowWithData(seccion, idx, { ...row, puesto: e.target.value }); }} style={{ fontSize: '0.78rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase', border: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', outline: 'none', width: '100%' }} />
+                                                                    )
+                                                                ) : (
+                                                                    <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#1d3461', textTransform: 'uppercase' }}>{row.puesto}</span>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                        {/* Asistió toggle */}
+                                                        {hasWorker && !readOnly && (
+                                                            <div style={{ display: 'flex', gap: '0.3rem', flexShrink: 0 }}>
+                                                                <button type="button" onClick={() => handleAsistioToggle(seccion, idx, 1)} style={{ padding: '0.3rem 0.6rem', background: row.asistio === 1 ? '#16a34a' : '#f1f5f9', color: row.asistio === 1 ? '#fff' : '#475569', border: 'none', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                                                    <Check size={13}/> Sí
+                                                                </button>
+                                                                <button type="button" onClick={() => handleAsistioToggle(seccion, idx, 0)} style={{ padding: '0.3rem 0.6rem', background: row.asistio === 0 ? '#dc2626' : '#f1f5f9', color: row.asistio === 0 ? '#fff' : '#475569', border: 'none', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                                                    <XCircle size={13}/> No
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                        {hasWorker && readOnly && (
+                                                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: row.asistio === 1 ? '#16a34a' : row.asistio === 0 ? '#dc2626' : '#94a3b8' }}>
+                                                                {row.asistio === 1 ? '✓ Asistió' : row.asistio === 0 ? '✗ Ausente' : '—'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Funcionario */}
+                                                    <div style={{ marginBottom: '0.6rem' }}>
+                                                        {row.planificado ? (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1d3461' }}>{row.nombre}</span>
+                                                                <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#1e40af', background: '#dbeafe', padding: '0.1rem 0.4rem', borderRadius: '3px' }}>PLAN.</span>
+                                                                {row.cedula && <span style={{ fontSize: '0.78rem', color: '#64748b' }}>CI {row.cedula}</span>}
+                                                            </div>
+                                                        ) : row.isManual ? (
+                                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                                <input value={row.nombre} placeholder="Nombre y apellido" onChange={e => updateRow(seccion, idx, { nombre: e.target.value })} onBlur={e => { if (e.target.value) saveRowWithData(seccion, idx, { ...row, nombre: e.target.value }); }} style={{ flex: 1, borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', fontSize: '0.88rem', fontWeight: 600, outline: 'none', color: '#1d3461' }} />
+                                                                <input value={row.cedula} placeholder="CI" onChange={e => updateRow(seccion, idx, { cedula: e.target.value })} onBlur={e => { if (row.nombre) saveRowWithData(seccion, idx, { ...row, cedula: e.target.value }); }} style={{ width: '90px', borderTop: 'none', borderLeft: 'none', borderRight: 'none', borderBottom: '1px solid #cbd5e1', background: 'transparent', fontSize: '0.85rem', outline: 'none' }} />
+                                                            </div>
+                                                        ) : readOnly ? (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1d3461' }}>{row.nombre || '—'}</span>
+                                                                {row.cedula && <span style={{ fontSize: '0.78rem', color: '#64748b' }}>CI {row.cedula}</span>}
+                                                            </div>
+                                                        ) : (
+                                                            <FuncionarioSearchSelect funcionarios={funcionarios} value={row.funcionario_id} onChange={(id) => handleWorkerSelect(seccion, idx, id)} cliente={clienteSeleccionado} />
+                                                        )}
+                                                    </div>
+
+                                                    {/* Horarios: 4 campos en fila */}
+                                                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.6rem' }}>
+                                                        {(['entrada1','salida1','entrada2','salida2'] as const).map((field, fi) => (
+                                                            <div key={field} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem' }}>
+                                                                <span style={{ fontSize: '0.58rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>{['Ent.','Sal.','Ent.2','Sal.2'][fi]}</span>
+                                                                {!readOnly ? (
+                                                                    <select value={row[field] || ''} onChange={e => { updateRow(seccion, idx, { [field]: e.target.value }); saveRowWithData(seccion, idx, { ...asistencia[seccion][idx], [field]: e.target.value }); }} style={{ fontSize: '0.82rem', fontWeight: 700, border: '1px solid #e2e8f0', borderRadius: '4px', padding: '0.2rem 0.25rem', background: '#f8fafc', outline: 'none', width: '72px', appearance: 'none', WebkitAppearance: 'none', textAlign: 'center' }}>
+                                                                        {timeOptions.map(t => <option key={t} value={t}>{t || '--:--'}</option>)}
+                                                                    </select>
+                                                                ) : (
+                                                                    <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>{row[field] || '--:--'}</span>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    {/* Actions */}
+                                                    {!readOnly && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid #f1f5f9', paddingTop: '0.6rem' }}>
+                                                            {/* Firma */}
+                                                            {row.firma ? (
+                                                                <img src={row.firma} alt="Firma" onClick={() => { if (!row.isSaved) setShowSignature({ section: seccion, index: idx }); }} style={{ maxHeight: '28px', cursor: row.isSaved ? 'default' : 'pointer' }} />
+                                                            ) : (
+                                                                <button onClick={() => setShowSignature({ section: seccion, index: idx })} disabled={!hasWorker} style={{ padding: '0.3rem 0.7rem', border: '1px solid #d1d5db', backgroundColor: '#fff', borderRadius: '6px', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', opacity: hasWorker ? 1 : 0.4 }}>
+                                                                    <PenTool size={13} /> Firmar
+                                                                </button>
+                                                            )}
+                                                            {/* Manual toggle */}
+                                                            <button onClick={() => updateRow(seccion, idx, { isManual: !row.isManual, funcionario_id: null, nombre: '', cedula: '', firma: null, isSaved: false })} title={row.isManual ? 'Usar lista' : 'Ingresar manual'} style={{ background: row.isManual ? '#dbeafe' : '#f1f5f9', border: `1px solid ${row.isManual ? '#93c5fd' : '#cbd5e1'}`, borderRadius: '6px', cursor: 'pointer', color: row.isManual ? '#1d3461' : '#475569', padding: '0.3rem 0.5rem', display: 'flex', alignItems: 'center' }}>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                                            </button>
+                                                            {/* Guardar */}
+                                                            {!row.isSaved && hasWorker && (
+                                                                <button onClick={() => saveRow(seccion, idx)} disabled={saving === `${seccion}-${idx}`} style={{ background: 'none', border: 'none', color: '#1d3461', cursor: 'pointer', padding: '0.3rem' }} title="Guardar">
+                                                                    <Save size={16} />
+                                                                </button>
+                                                            )}
+                                                            {row.isSaved && (
+                                                                <button onClick={() => saveRow(seccion, idx)} style={{ background: 'none', border: 'none', color: '#22c55e', padding: '0.3rem' }} title="Actualizar">
+                                                                    <CheckCircle2 size={16} />
+                                                                </button>
+                                                            )}
+                                                            {/* Borrar */}
+                                                            {!!(isAdicionales || row.funcionario_id || row.isManual) && (!row.planificado || isAdmin) && (
+                                                                <button onClick={() => removeRow(seccion, idx)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.3rem' }} title="Eliminar">
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            )}
+                                                            {!!row.planificado && !isAdmin && <Lock size={13} color="#94a3b8" style={{ marginLeft: 'auto' }} />}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                );
+                                            })}
+                                            {isAdicionales && !readOnly && (
+                                                <button onClick={() => addRow(seccion)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'transparent', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#64748b', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', padding: '0.6rem 1rem', width: '100%', justifyContent: 'center' }}>
+                                                    <Plus size={15} /> Agregar funcionario
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* ── DESKTOP TABLE ── */}
+                                        <div className="desktop-view scroll-container">
                                             <table style={{ width: '100%', minWidth: (showPuestoCol || isAdicionales) ? '880px' : '800px', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
                                                 <thead>
                                                     <tr style={{ backgroundColor: '#fff', borderBottom: '2px solid #000' }}>
@@ -1176,7 +1307,7 @@ export default function InformesOperativosPage() {
                                                 </button>
                                             )}
                                         </div>
-                                    )}
+                                    </>)}
                                 </div>
                                 );
                             })}
@@ -1190,13 +1321,11 @@ export default function InformesOperativosPage() {
                     title={`Firma de ${asistencia[showSignature.section][showSignature.index].nombre}`}
                     onCancel={() => setShowSignature(null)}
                     onSave={async (sig) => {
-                        const { section, index } = showSignature;
-                        // Update state
-                        updateRow(section, index, { firma: sig });
+                        const { section, index, pendingAsistio } = showSignature;
+                        const extra = pendingAsistio !== undefined ? { asistio: pendingAsistio } : {};
+                        updateRow(section, index, { firma: sig, ...extra });
                         setShowSignature(null);
-
-                        // Auto-save the row including the new signature
-                        const currentRow = { ...asistencia[section][index], firma: sig };
+                        const currentRow = { ...asistencia[section][index], firma: sig, ...extra };
                         await saveRowWithData(section, index, currentRow);
                     }}
                 />
@@ -1301,6 +1430,9 @@ export default function InformesOperativosPage() {
                     }
                     #printable-sheet {
                         padding: 1.25rem 1rem !important;
+                    }
+                    .informes-main {
+                        padding: 0.75rem !important;
                     }
                 }
             `}</style>

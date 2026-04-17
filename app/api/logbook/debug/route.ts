@@ -5,8 +5,7 @@ import { NextRequest } from 'next/server';
 
 function toISOSafe(ts: string | undefined | null): string | null {
     if (!ts) return null;
-    // SQLite CURRENT_TIMESTAMP returns 'YYYY-MM-DD HH:MM:SS' without timezone — treat as UTC
-    if (ts.includes('T')) return ts; // already ISO
+    if (ts.includes('T')) return ts;
     return ts.replace(' ', 'T') + 'Z';
 }
 
@@ -44,15 +43,18 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const lastChanged = statsChanged
-            ? nowISO
-            : toISOSafe(lastSnap?.recorded_at);
+        const history = await db.prepare(
+            'SELECT total, first_date, first_time, last_date, last_time, recorded_at FROM logbook_stats_snapshots ORDER BY recorded_at DESC LIMIT 10'
+        ).all() as { total: number; first_date: string; first_time: string; last_date: string; last_time: string; recorded_at: string }[];
+
+        const lastChanged = statsChanged ? nowISO : toISOSafe(lastSnap?.recorded_at);
 
         return NextResponse.json({
             total: currentTotal,
             first: currentFirst,
             last: currentLast,
             last_changed_at: lastChanged ?? null,
+            history: history.map(r => ({ ...r, recorded_at: toISOSafe(r.recorded_at) })),
         });
     } catch (error: any) {
         return NextResponse.json({ error: error?.message }, { status: 500 });
