@@ -10,3 +10,4 @@ README.md
 backups
 scripts
 !scripts/download-mitrabajo.cjs
+!scripts/cron-mitrabajo.cjs
