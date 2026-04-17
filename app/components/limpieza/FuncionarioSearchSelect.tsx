@@ -62,7 +62,7 @@ export function FuncionarioSearchSelect({ funcionarios, value, onChange, cliente
 
     useEffect(() => {
         setMounted(true);
-        const mq = window.matchMedia('(max-width: 768px)');
+        const mq = window.matchMedia('(max-width: 768px), (max-height: 600px) and (pointer: coarse)');
         setIsMobile(mq.matches);
         const onChg = (e: MediaQueryListEvent) => setIsMobile(e.matches);
         mq.addEventListener('change', onChg);
