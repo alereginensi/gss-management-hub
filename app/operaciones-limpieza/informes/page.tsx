@@ -1089,13 +1089,12 @@ export default function InformesOperativosPage() {
                                                                     <CheckCircle2 size={16} />
                                                                 </button>
                                                             )}
-                                                            {/* Borrar */}
-                                                            {!!(isAdicionales || row.funcionario_id || row.isManual) && (!row.planificado || isAdmin) && (
+                                                            {/* Borrar solo en ADICIONALES */}
+                                                            {isAdicionales && (
                                                                 <button onClick={() => removeRow(seccion, idx)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.3rem' }} title="Eliminar">
                                                                     <Trash2 size={16} />
                                                                 </button>
                                                             )}
-                                                            {!!row.planificado && !isAdmin && <Lock size={13} color="#94a3b8" style={{ marginLeft: 'auto' }} />}
                                                         </div>
                                                     )}
                                                 </div>
@@ -1282,13 +1281,10 @@ export default function InformesOperativosPage() {
                                                                                 <CheckCircle2 size={16} />
                                                                             </button>
                                                                         )}
-                                                                        {!!(isAdicionales || row.funcionario_id || row.isManual) && (!row.planificado || isAdmin) && (
-                                                                            <button onClick={() => removeRow(seccion, idx)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title={row.planificado ? 'Eliminar fila planificada (solo admin)' : isAdicionales ? 'Eliminar fila' : 'Limpiar registro'}>
+                                                                        {isAdicionales && (
+                                                                            <button onClick={() => removeRow(seccion, idx)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }} title="Eliminar fila">
                                                                                 <Trash2 size={16} />
                                                                             </button>
-                                                                        )}
-                                                                        {!!row.planificado && !isAdmin && (
-                                                                            <Lock size={13} color="#94a3b8" />
                                                                         )}
                                                                     </div>}
                                                                 </div>
@@ -1414,6 +1410,12 @@ export default function InformesOperativosPage() {
                         overflow: visible !important;
                         page-break-inside: avoid;
                         break-inside: avoid;
+                    }
+                    .mobile-view {
+                        display: none !important;
+                    }
+                    .desktop-view {
+                        display: block !important;
                     }
                     img {
                         page-break-inside: avoid;
