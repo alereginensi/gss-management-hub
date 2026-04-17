@@ -36,9 +36,11 @@ export function FuncionarioSearchSelect({ funcionarios, value, onChange, cliente
     const [highlight, setHighlight] = useState(0);
     const [popupPos, setPopupPos] = useState<PopupPos | null>(null);
     const [mounted, setMounted] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
     const wrapRef = useRef<HTMLDivElement>(null);
     const listRef = useRef<HTMLUListElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const modalInputRef = useRef<HTMLInputElement>(null);
 
     const selected = useMemo(() => funcionarios.find(f => f.id === value) || null, [funcionarios, value]);
 
@@ -60,7 +62,19 @@ export function FuncionarioSearchSelect({ funcionarios, value, onChange, cliente
 
     useEffect(() => {
         setMounted(true);
+        const mq = window.matchMedia('(max-width: 768px)');
+        setIsMobile(mq.matches);
+        const onChg = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+        mq.addEventListener('change', onChg);
+        return () => mq.removeEventListener('change', onChg);
     }, []);
+
+    useEffect(() => {
+        if (isMobile && open) {
+            const id = window.setTimeout(() => modalInputRef.current?.focus(), 60);
+            return () => window.clearTimeout(id);
+        }
+    }, [isMobile, open]);
 
     const updatePopupPosition = useCallback(() => {
         const el = wrapRef.current;
@@ -108,6 +122,7 @@ export function FuncionarioSearchSelect({ funcionarios, value, onChange, cliente
     }, [open, updatePopupPosition]);
 
     useEffect(() => {
+        if (isMobile) return;
         const onDoc = (e: MouseEvent) => {
             const t = e.target as Node;
             if (wrapRef.current?.contains(t)) return;
@@ -117,7 +132,7 @@ export function FuncionarioSearchSelect({ funcionarios, value, onChange, cliente
         };
         document.addEventListener('mousedown', onDoc);
         return () => document.removeEventListener('mousedown', onDoc);
-    }, []);
+    }, [isMobile]);
 
     useEffect(() => {
         setHighlight(0);
@@ -177,25 +192,27 @@ export function FuncionarioSearchSelect({ funcionarios, value, onChange, cliente
                     pick(f);
                 }}
                 style={{
-                    padding: '0.55rem 0.75rem',
-                    fontSize: '0.82rem',
+                    padding: '0.7rem 0.9rem',
+                    fontSize: '0.9rem',
                     cursor: 'pointer',
                     backgroundColor: i === highlight ? '#eff6ff' : 'transparent',
                     borderBottom: '1px solid #f1f5f9',
                     display: 'flex',
                     flexDirection: 'column',
                     lineHeight: 1.3,
+                    minWidth: 0,
                 }}
             >
-                <span style={{ fontWeight: 600, color: '#1d3461' }}>{f.nombre}</span>
-                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>CI {f.cedula}</span>
+                <span style={{ fontWeight: 600, color: '#1d3461', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.nombre}</span>
+                <span style={{ fontSize: '0.78rem', color: '#64748b' }}>CI {f.cedula}</span>
             </li>
         ))
     );
 
-    const dropdown =
+    const desktopDropdown =
         open &&
         mounted &&
+        !isMobile &&
         popupPos &&
         createPortal(
             <ul
@@ -220,6 +237,86 @@ export function FuncionarioSearchSelect({ funcionarios, value, onChange, cliente
             >
                 {listContent}
             </ul>,
+            document.body
+        );
+
+    const mobileModal =
+        open &&
+        mounted &&
+        isMobile &&
+        createPortal(
+            <div
+                role="dialog"
+                aria-modal="true"
+                style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 10060,
+                    backgroundColor: '#fff',
+                    display: 'flex',
+                    flexDirection: 'column',
+                }}
+            >
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.75rem 1rem',
+                    borderBottom: '1px solid #e2e8f0',
+                    backgroundColor: '#f8fafc',
+                }}>
+                    <Search size={18} color="#64748b" style={{ flexShrink: 0 }} aria-hidden />
+                    <input
+                        ref={modalInputRef}
+                        type="text"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder={placeholder}
+                        autoComplete="off"
+                        style={{
+                            flex: 1,
+                            border: 'none',
+                            outline: 'none',
+                            background: 'transparent',
+                            fontSize: '1rem',
+                            color: '#1d3461',
+                            minWidth: 0,
+                            padding: '0.3rem 0',
+                        }}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => { setOpen(false); setQuery(''); }}
+                        style={{
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '0.4rem',
+                            color: '#64748b',
+                            display: 'flex',
+                            alignItems: 'center',
+                        }}
+                        aria-label="Cerrar"
+                    >
+                        <X size={22} />
+                    </button>
+                </div>
+                <ul
+                    ref={listRef}
+                    role="listbox"
+                    style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        padding: 0,
+                        margin: 0,
+                        listStyle: 'none',
+                        backgroundColor: '#fff',
+                        WebkitOverflowScrolling: 'touch',
+                    }}
+                >
+                    {listContent}
+                </ul>
+            </div>,
             document.body
         );
 
@@ -249,9 +346,13 @@ export function FuncionarioSearchSelect({ funcionarios, value, onChange, cliente
                         setOpen(true);
                         setQuery('');
                     }}
+                    onClick={() => {
+                        if (isMobile) setOpen(true);
+                    }}
                     onKeyDown={onKeyDown}
                     placeholder={selected ? '' : placeholder}
                     disabled={disabled}
+                    readOnly={isMobile}
                     autoComplete="off"
                     aria-autocomplete="list"
                     aria-expanded={open}
@@ -260,7 +361,7 @@ export function FuncionarioSearchSelect({ funcionarios, value, onChange, cliente
                         border: 'none',
                         outline: 'none',
                         background: 'transparent',
-                        fontSize: '0.8rem',
+                        fontSize: isMobile ? '16px' : '0.8rem',
                         fontWeight: 600,
                         color: '#1d3461',
                         minWidth: 0,
@@ -279,7 +380,8 @@ export function FuncionarioSearchSelect({ funcionarios, value, onChange, cliente
                     </button>
                 )}
             </div>
-            {dropdown}
+            {desktopDropdown}
+            {mobileModal}
         </div>
     );
 }
