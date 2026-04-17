@@ -3,8 +3,9 @@ import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
 import { NextRequest } from 'next/server';
 
-function toISOSafe(ts: string | undefined | null): string | null {
+function toISOSafe(ts: string | Date | undefined | null): string | null {
     if (!ts) return null;
+    if (ts instanceof Date) return ts.toISOString();
     if (ts.includes('T')) return ts;
     return ts.replace(' ', 'T') + 'Z';
 }
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
         const first = await db.prepare('SELECT date, time FROM logbook ORDER BY date ASC, time ASC LIMIT 1').get() as { date: string; time: string } | undefined;
         const last = await db.prepare('SELECT date, time FROM logbook ORDER BY date DESC, time DESC LIMIT 1').get() as { date: string; time: string } | undefined;
 
-        const currentTotal = total?.count ?? 0;
+        const currentTotal = Number(total?.count ?? 0);
         const currentFirst = first ?? null;
         const currentLast = last ?? null;
 
@@ -38,13 +39,19 @@ export async function GET(request: NextRequest) {
 
         const statsChanged =
             !lastSnap ||
-            lastSnap.total !== currentTotal ||
+            Number(lastSnap.total) !== currentTotal ||
             lastSnap.first_date !== (currentFirst?.date ?? null) ||
             lastSnap.last_date !== (currentLast?.date ?? null);
 
+        const SNAPSHOT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutos
+        const lastSnapAge = lastSnap?.recorded_at
+            ? Date.now() - new Date(lastSnap.recorded_at).getTime()
+            : Infinity;
+        const shouldRecord = statsChanged || lastSnapAge >= SNAPSHOT_INTERVAL_MS;
+
         const nowISO = new Date().toISOString();
 
-        if (statsChanged) {
+        if (shouldRecord) {
             await db.run(
                 'INSERT INTO logbook_stats_snapshots (total, first_date, first_time, last_date, last_time, recorded_at) VALUES (?, ?, ?, ?, ?, ?)',
                 [currentTotal, currentFirst?.date ?? null, currentFirst?.time ?? null, currentLast?.date ?? null, currentLast?.time ?? null, nowISO]
@@ -55,7 +62,7 @@ export async function GET(request: NextRequest) {
             'SELECT total, first_date, first_time, last_date, last_time, recorded_at FROM logbook_stats_snapshots ORDER BY recorded_at DESC LIMIT 10'
         ).all() as { total: number; first_date: string; first_time: string; last_date: string; last_time: string; recorded_at: string }[];
 
-        const lastChanged = statsChanged ? nowISO : toISOSafe(lastSnap?.recorded_at);
+        const lastChanged = shouldRecord ? nowISO : toISOSafe(lastSnap?.recorded_at);
 
         return NextResponse.json({
             total: currentTotal,

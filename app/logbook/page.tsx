@@ -282,6 +282,7 @@ export default function LogbookPage() {
     const [logbookStats, setLogbookStats] = useState<{ total: number; first: { date: string; time: string } | null; last: { date: string; time: string } | null; last_changed_at: string | null; history: LogbookSnapshot[] } | null>(null);
     const [statsLoading, setStatsLoading] = useState(false);
     const [statsError, setStatsError] = useState<string | null>(null);
+    const [statsHistoryOpen, setStatsHistoryOpen] = useState(false);
     const fetchLogbookStats = async () => {
         setStatsLoading(true);
         setStatsError(null);
@@ -1041,47 +1042,49 @@ export default function LogbookPage() {
 
                 {/* Admin: stats integridad bitácora */}
                 {isAdmin && (
-                    <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                            <ShieldCheck size={16} color="#29416b" style={{ flexShrink: 0 }} />
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#29416b', flexShrink: 0 }}>Integridad Bitácora</span>
-                            {statsLoading && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Consultando…</span>}
-                            {statsError && !statsLoading && <span style={{ fontSize: '0.78rem', color: '#ef4444' }}>{statsError}</span>}
+                    <div className="card" style={{ padding: '0.75rem 1rem', marginBottom: '1rem', minWidth: 0, maxWidth: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', minWidth: 0 }}>
+                            <ShieldCheck size={15} color="#29416b" style={{ flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#29416b', flexShrink: 0 }}>Integridad Bitácora</span>
+                            {statsLoading && <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Consultando…</span>}
+                            {statsError && !statsLoading && <span style={{ fontSize: '0.75rem', color: '#ef4444' }}>{statsError}</span>}
                             {logbookStats && !statsLoading && (
-                                <>
-                                    <span style={{ fontSize: '0.85rem', color: '#1d3461' }}><strong>{logbookStats.total.toLocaleString('es-UY')}</strong> reportes</span>
-                                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Primero: <strong>{logbookStats.first?.date ?? '—'} {logbookStats.first?.time ?? ''}</strong></span>
-                                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Último: <strong>{logbookStats.last?.date ?? '—'} {logbookStats.last?.time ?? ''}</strong></span>
-                                </>
+                                <span style={{ fontSize: '0.8rem', color: '#1d3461', minWidth: 0 }}>
+                                    <strong>{logbookStats.total.toLocaleString('es-UY')}</strong> reportes
+                                    <span style={{ color: '#94a3b8', margin: '0 0.4rem' }}>·</span>
+                                    <span style={{ color: '#64748b' }}>Primero: <strong>{logbookStats.first?.date ?? '—'}</strong></span>
+                                    <span style={{ color: '#94a3b8', margin: '0 0.4rem' }}>·</span>
+                                    <span style={{ color: '#64748b' }}>Último: <strong>{logbookStats.last?.date ?? '—'}</strong></span>
+                                </span>
                             )}
-                            <button onClick={fetchLogbookStats} disabled={statsLoading} title="Actualizar" style={{ marginLeft: 'auto', background: 'transparent', border: 'none', cursor: statsLoading ? 'not-allowed' : 'pointer', color: '#29416b', display: 'flex', alignItems: 'center', opacity: statsLoading ? 0.5 : 1, padding: '0.2rem' }}>
-                                <RefreshCw size={14} />
-                            </button>
+                            <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
+                                {logbookStats && !statsLoading && logbookStats.history.length > 0 && (
+                                    <button onClick={() => setStatsHistoryOpen(v => !v)} title="Ver historial" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#29416b', display: 'flex', alignItems: 'center', padding: '0.2rem', fontSize: '0.72rem', gap: '0.2rem', opacity: 0.7 }}>
+                                        <ChevronDown size={13} style={{ transform: statsHistoryOpen ? 'rotate(180deg)' : undefined, transition: 'transform 0.2s' }} />
+                                    </button>
+                                )}
+                                <button onClick={fetchLogbookStats} disabled={statsLoading} title="Actualizar" style={{ background: 'transparent', border: 'none', cursor: statsLoading ? 'not-allowed' : 'pointer', color: '#29416b', display: 'flex', alignItems: 'center', opacity: statsLoading ? 0.5 : 1, padding: '0.2rem' }}>
+                                    <RefreshCw size={13} />
+                                </button>
+                            </div>
                         </div>
-                        {logbookStats && !statsLoading && logbookStats.history.length > 0 && (
-                            <div style={{ marginTop: '0.75rem', overflowX: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
-                                    <thead>
-                                        <tr style={{ backgroundColor: 'rgba(41,65,107,0.06)', textAlign: 'left' }}>
-                                            <th style={{ padding: '0.4rem 0.75rem', fontWeight: 700, color: '#29416b', whiteSpace: 'nowrap' }}>Detectado</th>
-                                            <th style={{ padding: '0.4rem 0.75rem', fontWeight: 700, color: '#29416b', textAlign: 'right' }}>Reportes</th>
-                                            <th style={{ padding: '0.4rem 0.75rem', fontWeight: 700, color: '#29416b', whiteSpace: 'nowrap' }}>Primer reporte</th>
-                                            <th style={{ padding: '0.4rem 0.75rem', fontWeight: 700, color: '#29416b', whiteSpace: 'nowrap' }}>Último reporte</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {logbookStats.history.map((snap, i) => (
-                                            <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: i === 0 ? 'rgba(41,65,107,0.03)' : 'transparent' }}>
-                                                <td style={{ padding: '0.4rem 0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}>
-                                                    {snap.recorded_at ? new Date(snap.recorded_at).toLocaleString('es-UY', { timeZone: 'America/Montevideo' }) : '—'}
-                                                </td>
-                                                <td style={{ padding: '0.4rem 0.75rem', fontWeight: 700, color: '#1d3461', textAlign: 'right' }}>{snap.total.toLocaleString('es-UY')}</td>
-                                                <td style={{ padding: '0.4rem 0.75rem', color: '#475569', whiteSpace: 'nowrap' }}>{snap.first_date ?? '—'} {snap.first_time ?? ''}</td>
-                                                <td style={{ padding: '0.4rem 0.75rem', color: '#475569', whiteSpace: 'nowrap' }}>{snap.last_date ?? '—'} {snap.last_time ?? ''}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                        {statsHistoryOpen && logbookStats && logbookStats.history.length > 0 && (
+                            <div style={{ marginTop: '0.6rem', borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0 0.75rem', fontSize: '0.7rem', color: '#64748b', padding: '0.2rem 0 0.4rem', fontWeight: 700 }}>
+                                    <span>Detectado</span><span>Reportes · Primer → Último</span>
+                                </div>
+                                {logbookStats.history.map((snap, i) => (
+                                    <div key={i} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0 0.75rem', padding: '0.35rem 0', borderTop: '1px solid #f8fafc', fontSize: '0.72rem', backgroundColor: i === 0 ? 'rgba(41,65,107,0.02)' : 'transparent', alignItems: 'baseline' }}>
+                                        <span style={{ color: '#64748b', whiteSpace: 'nowrap' }}>
+                                            {snap.recorded_at ? new Date(snap.recorded_at).toLocaleString('es-UY', { timeZone: 'America/Montevideo' }) : '—'}
+                                        </span>
+                                        <span style={{ color: '#475569', minWidth: 0 }}>
+                                            <strong style={{ color: '#1d3461' }}>{Number(snap.total).toLocaleString('es-UY')}</strong>
+                                            <span style={{ color: '#94a3b8', margin: '0 0.3rem' }}>·</span>
+                                            {snap.first_date ?? '—'} → {snap.last_date ?? '—'}
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
                         )}
                     </div>
