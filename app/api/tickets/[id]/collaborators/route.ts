@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
 import { NextRequest } from 'next/server';
+import { sendEmail } from '@/lib/mail';
 
 // GET /api/tickets/[id]/collaborators - Get all collaborators for a ticket
 export async function GET(
@@ -83,18 +84,33 @@ export async function POST(
             VALUES (?, ?, ?, ?, 'info', ?)
         `).run(user.id, ticketId, ticket.subject, notifMessage, ticket.status_color || null);
 
-        // Send email notification (non-blocking)
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${request.headers.get('x-forwarded-proto') || 'http'}://${request.headers.get('host')}`;
-        fetch(`${baseUrl}/api/notify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': request.headers.get('Authorization') || '' },
-            body: JSON.stringify({
-                to: user.email,
-                subject: `Fuiste agregado como colaborador: ${ticket.subject}`,
-                body: `<p>Hola ${user.name},</p><p>Has sido agregado como colaborador al ticket <strong>${ticket.subject}</strong>.</p><p>Puedes ver el ticket en: <a href="${baseUrl}/tickets/${ticketId}">${baseUrl}/tickets/${ticketId}</a></p>`,
-                ticketData: { id: ticketId }
-            })
-        }).catch((err) => console.error('Collaborator email notification failed:', err));
+        // Send email notification (direct, no self-referencing HTTP call)
+        if (user.email) {
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${request.headers.get('x-forwarded-proto') || 'http'}://${request.headers.get('host')}`;
+            const emailSubject = `Fuiste agregado como colaborador: ${ticket.subject}`;
+            const emailBody = `<p>Hola ${user.name},</p><p>Has sido agregado como colaborador al ticket <strong>${ticket.subject}</strong>.</p><p>Puedes ver el ticket en: <a href="${baseUrl}/tickets/${ticketId}">${baseUrl}/tickets/${ticketId}</a></p>`;
+
+            // Try Power Automate first
+            const settingsRow = await db.prepare('SELECT value FROM settings WHERE key = ?').get('power_automate_url') as any;
+            const powerAutomateUrl = (settingsRow?.value || process.env.POWER_AUTOMATE_URL || '').trim();
+            let emailSent = false;
+
+            if (powerAutomateUrl && powerAutomateUrl.startsWith('http')) {
+                fetch(powerAutomateUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to: user.email, all_recipients: user.email, subject: emailSubject, body: emailBody, description: emailBody })
+                }).catch((err) => console.error('Collaborator Power Automate notification failed:', err));
+                emailSent = true;
+            }
+
+            if (!emailSent) {
+                sendEmail({ to: user.email, subject: emailSubject, body: emailBody })
+                    .catch((err) => console.error('Collaborator SMTP notification failed:', err));
+            }
+        } else {
+            console.warn(`Collaborator user ${user.id} (${user.name}) has no email — skipping email notification`);
+        }
 
         return NextResponse.json({
             success: true,

@@ -58,7 +58,7 @@ export default function TicketList() {
 
         if (role === 'admin') {
             // Admins can see everything in 'all' view, or only their own in 'personal'
-            if (adminView === 'personal' && !isRequester) {
+            if (adminView === 'personal' && !isRequester && !isCollaborator) {
                 return false;
             }
             if (departmentFilter !== 'Todos' && ticket.department !== departmentFilter) {
