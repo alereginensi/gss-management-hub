@@ -782,6 +782,16 @@ class DbWrapper {
         processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS logbook_stats_snapshots (
+        id SERIAL PRIMARY KEY,
+        total INTEGER NOT NULL,
+        first_date TEXT,
+        first_time TEXT,
+        last_date TEXT,
+        last_time TEXT,
+        recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS agenda_audit_log (
         id SERIAL PRIMARY KEY,
         module TEXT DEFAULT 'agenda',

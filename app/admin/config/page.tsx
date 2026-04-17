@@ -109,7 +109,7 @@ export default function ConfigPage() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'locations' | 'roles' | 'integrations' | 'backup'>('locations');
     const [backupLoading, setBackupLoading] = useState(false);
-    const [logbookStats, setLogbookStats] = useState<{ total: number; first: { date: string; time: string; created_at: string } | null; last: { date: string; time: string; created_at: string } | null } | null>(null);
+    const [logbookStats, setLogbookStats] = useState<{ total: number; first: { date: string; time: string } | null; last: { date: string; time: string } | null; last_changed_at: string | null } | null>(null);
     const [statsLoading, setStatsLoading] = useState(false);
     const [locations, setLocations] = useState<any[]>([]);
     const [roles, setRoles] = useState<any[]>([]);
@@ -476,6 +476,11 @@ export default function ConfigPage() {
                                             <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: 600 }}>ÚLTIMO REPORTE</div>
                                         </div>
                                     </div>
+                                )}
+                                {logbookStats?.last_changed_at && !statsLoading && (
+                                    <p style={{ margin: '0.75rem 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                                        Stats detectados por primera vez con estos valores el <strong>{new Date(logbookStats.last_changed_at).toLocaleString('es-UY', { timeZone: 'America/Montevideo' })}</strong>
+                                    </p>
                                 )}
                                 {!logbookStats && !statsLoading && (
                                     <button

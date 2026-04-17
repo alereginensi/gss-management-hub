@@ -278,7 +278,7 @@ function ImageUploader({ images, onChange }: { images: string[]; onChange: (imgs
 export default function LogbookPage() {
     const { isSidebarOpen, currentUser } = useTicketContext();
     const isAdmin = currentUser?.role === 'admin';
-    const [logbookStats, setLogbookStats] = useState<{ total: number; first: { date: string; time: string } | null; last: { date: string; time: string } | null } | null>(null);
+    const [logbookStats, setLogbookStats] = useState<{ total: number; first: { date: string; time: string } | null; last: { date: string; time: string } | null; last_changed_at: string | null } | null>(null);
     const [statsLoading, setStatsLoading] = useState(false);
     const fetchLogbookStats = async () => {
         setStatsLoading(true);
@@ -1042,6 +1042,11 @@ export default function LogbookPage() {
                                 <span style={{ fontSize: '0.85rem', color: '#1d3461' }}><strong>{logbookStats.total.toLocaleString('es-UY')}</strong> reportes</span>
                                 <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Primero: <strong>{logbookStats.first?.date ?? '—'} {logbookStats.first?.time ?? ''}</strong></span>
                                 <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Último: <strong>{logbookStats.last?.date ?? '—'} {logbookStats.last?.time ?? ''}</strong></span>
+                                {logbookStats.last_changed_at && (
+                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', borderLeft: '1px solid #e2e8f0', paddingLeft: '0.75rem' }}>
+                                        Stats detectados: <strong>{new Date(logbookStats.last_changed_at).toLocaleString('es-UY', { timeZone: 'America/Montevideo' })}</strong>
+                                    </span>
+                                )}
                             </>
                         )}
                         <button
