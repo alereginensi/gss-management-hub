@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
 
     try {
         const total = await db.prepare('SELECT COUNT(*) as count FROM logbook').get() as { count: number };
-        const first = await db.prepare('SELECT date, time, created_at FROM logbook ORDER BY created_at ASC LIMIT 1').get() as { date: string; time: string; created_at: string } | undefined;
-        const last = await db.prepare('SELECT date, time, created_at FROM logbook ORDER BY created_at DESC LIMIT 1').get() as { date: string; time: string; created_at: string } | undefined;
+        const first = await db.prepare('SELECT date, time FROM logbook ORDER BY date ASC, time ASC LIMIT 1').get() as { date: string; time: string } | undefined;
+        const last = await db.prepare('SELECT date, time FROM logbook ORDER BY date DESC, time DESC LIMIT 1').get() as { date: string; time: string } | undefined;
 
         return NextResponse.json({
             total: total?.count ?? 0,
