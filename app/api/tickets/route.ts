@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
 import { NextRequest } from 'next/server';
+import { sendNotification } from '@/lib/notify';
 
 export async function GET(request: NextRequest) {
     const session = await getSession(request);
@@ -285,15 +286,34 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Insert collaborators if provided
+        // Insert collaborators if provided and notify each one
         if (Array.isArray(ticket.collaboratorIds) && ticket.collaboratorIds.length > 0) {
             const currentUserId = session.user.id;
+            const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${request.headers.get('x-forwarded-proto') || 'http'}://${request.headers.get('host')}`;
             for (const collabId of ticket.collaboratorIds) {
-                // Check if already in (shouldn't happen with new ticket but safe)
                 await db.run(
                     'INSERT INTO ticket_collaborators (ticket_id, user_id, added_by) VALUES (?, ?, ?)',
                     [newId, collabId, currentUserId]
                 );
+                // In-app notification
+                const collabUser = await db.get('SELECT id, name, email FROM users WHERE id = ?', [collabId]) as { id: number; name: string; email: string } | null;
+                if (collabUser) {
+                    const notifMessage = `Has sido agregado como colaborador al ticket: ${ticket.subject}`;
+                    await db.run(
+                        `INSERT INTO notifications (user_id, ticket_id, ticket_subject, message, type, status_color) VALUES (?, ?, ?, ?, 'info', ?)`,
+                        [collabUser.id, newId, ticket.subject, notifMessage, ticket.status_color || null]
+                    );
+                    if (collabUser.email) {
+                        const emailSubject = `Fuiste agregado como colaborador: ${ticket.subject}`;
+                        const emailBody = `<p>Hola ${collabUser.name},</p><p>Has sido agregado como colaborador al ticket <strong>${ticket.subject}</strong>.</p><p>Puedes ver el ticket en: <a href="${baseUrl}/tickets/${newId}">${baseUrl}/tickets/${newId}</a></p>`;
+                        sendNotification({
+                            to: collabUser.email,
+                            subject: emailSubject,
+                            body: emailBody,
+                            ticketData: { id: newId, requesterEmail: collabUser.email },
+                        }).catch(err => console.error('Collaborator creation notification failed:', err));
+                    }
+                }
             }
         }
 
