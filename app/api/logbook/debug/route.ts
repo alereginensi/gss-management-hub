@@ -25,16 +25,6 @@ export async function GET(request: NextRequest) {
         const currentFirst = first ?? null;
         const currentLast = last ?? null;
 
-        await db.exec(`CREATE TABLE IF NOT EXISTS logbook_stats_snapshots (
-            id SERIAL PRIMARY KEY,
-            total INTEGER NOT NULL,
-            first_date TEXT,
-            first_time TEXT,
-            last_date TEXT,
-            last_time TEXT,
-            recorded_at TEXT NOT NULL
-        )`);
-
         const lastSnap = await db.prepare(
             'SELECT * FROM logbook_stats_snapshots ORDER BY recorded_at DESC LIMIT 1'
         ).get() as { total: number; first_date: string; last_date: string; recorded_at: string } | undefined;
