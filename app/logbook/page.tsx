@@ -281,13 +281,23 @@ export default function LogbookPage() {
     type LogbookSnapshot = { total: number; first_date: string; first_time: string; last_date: string; last_time: string; recorded_at: string | null };
     const [logbookStats, setLogbookStats] = useState<{ total: number; first: { date: string; time: string } | null; last: { date: string; time: string } | null; last_changed_at: string | null; history: LogbookSnapshot[] } | null>(null);
     const [statsLoading, setStatsLoading] = useState(false);
+    const [statsError, setStatsError] = useState<string | null>(null);
     const fetchLogbookStats = async () => {
         setStatsLoading(true);
+        setStatsError(null);
         try {
             const res = await fetch('/api/logbook/debug');
-            if (res.ok) setLogbookStats(await res.json());
-        } catch { /* silent */ }
-        finally { setStatsLoading(false); }
+            if (res.ok) {
+                setLogbookStats(await res.json());
+            } else {
+                const data = await res.json().catch(() => ({}));
+                setStatsError(data.error || `Error ${res.status}`);
+            }
+        } catch (e: any) {
+            setStatsError(e?.message || 'Error de red');
+        } finally {
+            setStatsLoading(false);
+        }
     };
     const [entries, setEntries] = useState<LogEntry[]>([]);
     const [columns, setColumns] = useState<Column[]>([]);
@@ -1036,6 +1046,7 @@ export default function LogbookPage() {
                             <ShieldCheck size={16} color="#29416b" style={{ flexShrink: 0 }} />
                             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#29416b', flexShrink: 0 }}>Integridad Bitácora</span>
                             {statsLoading && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Consultando…</span>}
+                            {statsError && !statsLoading && <span style={{ fontSize: '0.78rem', color: '#ef4444' }}>{statsError}</span>}
                             {logbookStats && !statsLoading && (
                                 <>
                                     <span style={{ fontSize: '0.85rem', color: '#1d3461' }}><strong>{logbookStats.total.toLocaleString('es-UY')}</strong> reportes</span>

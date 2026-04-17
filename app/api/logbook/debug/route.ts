@@ -16,6 +16,14 @@ export async function GET(request: NextRequest) {
     }
 
     try {
+        // Ensure the snapshots table exists regardless of migration state
+        const isPg = (db as any).type === 'pg';
+        await db.exec(
+            isPg
+                ? `CREATE TABLE IF NOT EXISTS logbook_stats_snapshots (id SERIAL PRIMARY KEY, total INTEGER NOT NULL, first_date TEXT, first_time TEXT, last_date TEXT, last_time TEXT, recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`
+                : `CREATE TABLE IF NOT EXISTS logbook_stats_snapshots (id INTEGER PRIMARY KEY AUTOINCREMENT, total INTEGER NOT NULL, first_date TEXT, first_time TEXT, last_date TEXT, last_time TEXT, recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`
+        );
+
         const total = await db.prepare('SELECT COUNT(*) as count FROM logbook').get() as { count: number };
         const first = await db.prepare('SELECT date, time FROM logbook ORDER BY date ASC, time ASC LIMIT 1').get() as { date: string; time: string } | undefined;
         const last = await db.prepare('SELECT date, time FROM logbook ORDER BY date DESC, time DESC LIMIT 1').get() as { date: string; time: string } | undefined;

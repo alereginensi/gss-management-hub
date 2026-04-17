@@ -305,7 +305,24 @@ export async function POST(request: NextRequest) {
                     );
                     if (collabUser.email) {
                         const emailSubject = `Fuiste agregado como colaborador: ${ticket.subject}`;
-                        const emailBody = `<p>Hola ${collabUser.name},</p><p>Has sido agregado como colaborador al ticket <strong>${ticket.subject}</strong>.</p><p>Puedes ver el ticket en: <a href="${baseUrl}/tickets/${newId}">${baseUrl}/tickets/${newId}</a></p>`;
+                        const ticketUrl = `${baseUrl}/tickets/${newId}`;
+                        const emailBody = `
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <h2 style="color: #2563eb; margin-bottom: 10px;">🤝 Fuiste agregado como colaborador</h2>
+  <p>Has sido agregado como colaborador a la siguiente solicitud:</p>
+  <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px; border-left: 4px solid #2563eb;">
+    <ul style="list-style: none; padding: 0; margin: 0;">
+      <li><strong>📌 Asunto:</strong> ${ticket.subject}</li>
+      <li><strong>👤 Colaborador:</strong> ${collabUser.name}</li>
+    </ul>
+  </div>
+  <p style="margin-top: 20px;">
+    Puedes ver el ticket en: <a href="${ticketUrl}" style="color: #2563eb;">${ticketUrl}</a>
+  </p>
+  <p style="margin-top: 10px; font-style: italic; color: #6b7280; font-size: 0.9em;">
+    Por favor, ingrese al portal administrativo para gestionar esta solicitud.
+  </p>
+</div>`.trim();
                         sendNotification({
                             to: collabUser.email,
                             subject: emailSubject,
