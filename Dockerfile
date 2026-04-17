@@ -77,9 +77,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/better-sqlite3 ./nod
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/playwright ./node_modules/playwright
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/playwright-core ./node_modules/playwright-core
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/xlsx ./node_modules/xlsx
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/node-cron ./node_modules/node-cron
 
 RUN mkdir -p ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/download-mitrabajo.cjs ./scripts/download-mitrabajo.cjs
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/cron-mitrabajo.cjs ./scripts/cron-mitrabajo.cjs
 
 # Binarios de Playwright (no vienen en standalone)
 COPY --from=builder --chown=nextjs:nodejs /app/.playwright-browsers ./.playwright-browsers

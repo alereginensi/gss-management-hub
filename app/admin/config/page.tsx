@@ -5,7 +5,7 @@ import { useTicketContext, DEPARTMENTS } from '../../context/TicketContext';
 import { useRouter } from 'next/navigation';
 import Header from '../../components/Header';
 import Sidebar from '../../components/Sidebar';
-import { MapPin, Briefcase, Plus, Trash2, Edit, Save, X, Zap, Mail, Database, Download } from 'lucide-react';
+import { MapPin, Briefcase, Plus, Trash2, Edit, Save, X, Zap, Mail, Database, Download, ShieldCheck, RefreshCw } from 'lucide-react';
 
 const LocationItem = ({ location, onDelete, onRefresh }: { location: any, onDelete: (id: number) => void, onRefresh: () => void }) => {
     const [isAddingSector, setIsAddingSector] = useState(false);
@@ -109,6 +109,8 @@ export default function ConfigPage() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'locations' | 'roles' | 'integrations' | 'backup'>('locations');
     const [backupLoading, setBackupLoading] = useState(false);
+    const [logbookStats, setLogbookStats] = useState<{ total: number; first: { date: string; time: string; created_at: string } | null; last: { date: string; time: string; created_at: string } | null } | null>(null);
+    const [statsLoading, setStatsLoading] = useState(false);
     const [locations, setLocations] = useState<any[]>([]);
     const [roles, setRoles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -233,6 +235,15 @@ export default function ConfigPage() {
 
     const removeTaskFromRole = (idx: number) => {
         setRoleTasks(roleTasks.filter((_, i) => i !== idx));
+    };
+
+    const fetchLogbookStats = async () => {
+        setStatsLoading(true);
+        try {
+            const res = await fetch('/api/logbook/debug');
+            if (res.ok) setLogbookStats(await res.json());
+        } catch { /* silent */ }
+        finally { setStatsLoading(false); }
     };
 
     const handleDownloadBackup = async () => {
@@ -426,6 +437,55 @@ export default function ConfigPage() {
 
                         {/* BACKUP TAB */}
                         {activeTab === 'backup' && (
+                            <>
+                            <div className="card" style={{ padding: '2rem', maxWidth: '560px', marginBottom: '1.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                                    <ShieldCheck size={22} color="#29416b" />
+                                    <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700 }}>Integridad de Bitácora</h2>
+                                    <button
+                                        onClick={fetchLogbookStats}
+                                        disabled={statsLoading}
+                                        title="Actualizar estadísticas"
+                                        style={{ marginLeft: 'auto', background: 'transparent', border: 'none', cursor: statsLoading ? 'not-allowed' : 'pointer', color: '#29416b', display: 'flex', alignItems: 'center', opacity: statsLoading ? 0.5 : 1 }}
+                                    >
+                                        <RefreshCw size={16} style={{ animation: statsLoading ? 'spin 1s linear infinite' : 'none' }} />
+                                    </button>
+                                </div>
+                                {!logbookStats && !statsLoading && (
+                                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                                        Verificá que no se hayan eliminado registros históricos de la bitácora.
+                                    </p>
+                                )}
+                                {statsLoading && (
+                                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Consultando…</p>
+                                )}
+                                {logbookStats && !statsLoading && (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
+                                        <div style={{ padding: '1rem', backgroundColor: 'rgba(41,65,107,0.06)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '2rem', fontWeight: 800, color: '#29416b', lineHeight: 1.1 }}>{logbookStats.total.toLocaleString('es-UY')}</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: 600 }}>REPORTES TOTALES</div>
+                                        </div>
+                                        <div style={{ padding: '1rem', backgroundColor: 'rgba(41,65,107,0.06)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '1rem', fontWeight: 700, color: '#29416b', lineHeight: 1.3 }}>{logbookStats.first?.date ?? '—'}</div>
+                                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{logbookStats.first?.time ?? ''}</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: 600 }}>PRIMER REPORTE</div>
+                                        </div>
+                                        <div style={{ padding: '1rem', backgroundColor: 'rgba(41,65,107,0.06)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                                            <div style={{ fontSize: '1rem', fontWeight: 700, color: '#29416b', lineHeight: 1.3 }}>{logbookStats.last?.date ?? '—'}</div>
+                                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{logbookStats.last?.time ?? ''}</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: 600 }}>ÚLTIMO REPORTE</div>
+                                        </div>
+                                    </div>
+                                )}
+                                {!logbookStats && !statsLoading && (
+                                    <button
+                                        onClick={fetchLogbookStats}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem', backgroundColor: '#29416b', color: 'white', border: 'none', borderRadius: 'var(--radius)', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}
+                                    >
+                                        <ShieldCheck size={16} /> Ver estadísticas
+                                    </button>
+                                )}
+                            </div>
                             <div className="card" style={{ padding: '2rem', maxWidth: '560px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
                                     <Database size={22} color="#29416b" />
@@ -457,6 +517,7 @@ echo Backup guardado en %BACKUP_DIR%`}</pre>
                                     <p style={{ margin: '0.75rem 0 0', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Reemplazá <strong>TU-APP.railway.app</strong> con tu URL y <strong>TU_SESSION_TOKEN</strong> con el valor de tu cookie de sesión (inspeccioná el navegador → DevTools → Application → Cookies).</p>
                                 </div>
                             </div>
+                            </>
                         )}
                     </>
                 )}
