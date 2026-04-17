@@ -1264,6 +1264,23 @@ class DbWrapper {
           console.error('❌ Error migrating logbook table in Postgres:', migErr);
         }
 
+        // Ensure logbook_stats_snapshots exists for Postgres (safety net beyond bulk schema)
+        try {
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS logbook_stats_snapshots (
+              id SERIAL PRIMARY KEY,
+              total INTEGER NOT NULL,
+              first_date TEXT,
+              first_time TEXT,
+              last_date TEXT,
+              last_time TEXT,
+              recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+        } catch (e) {
+          console.error('❌ Error creating logbook_stats_snapshots in Postgres:', e);
+        }
+
         // Ensure ticket_views exists for Postgres
         try {
           await this.pgPool!.query(`
@@ -1634,6 +1651,19 @@ class DbWrapper {
         if (!existingCols.includes('images')) {
           this.sqliteDb.exec('ALTER TABLE logbook ADD COLUMN images TEXT');
         }
+
+        // Ensure logbook_stats_snapshots exists for SQLite
+        this.sqliteDb.exec(`
+          CREATE TABLE IF NOT EXISTS logbook_stats_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            total INTEGER NOT NULL,
+            first_date TEXT,
+            first_time TEXT,
+            last_date TEXT,
+            last_time TEXT,
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
 
         // Ensure ticket_views exists for SQLite
         this.sqliteDb.exec(`

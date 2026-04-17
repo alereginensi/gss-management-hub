@@ -1443,15 +1443,17 @@ export default function LogbookPage() {
                             <p style={{ marginTop: '1rem' }}>{searchQuery.trim() ? `Sin resultados para "${searchQuery}"` : 'No hay registros. Usa el botón + para agregar uno.'}</p>
                         </div>
                     ) : (
-                        sortedEntries.map((entry) => (
+                        sortedEntries.map((entry) => {
+                            const svcColor = SERVICE_TYPE_COLORS[entry.supervised_by];
+                            return (
                             <div key={entry.id} className="logbook-card" style={{
-                                borderLeft: `4px solid ${SERVICE_TYPE_COLORS[entry.supervised_by]?.border || 'var(--border-color)'}`,
+                                borderLeft: `4px solid ${svcColor?.border || 'var(--border-color)'}`,
                                 padding: '1rem',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '0.75rem',
-                                backgroundColor: 'var(--surface-color)',
-                                border: '1px solid var(--border-color)',
+                                backgroundColor: svcColor?.bg || 'var(--surface-color)',
+                                border: `1px solid ${svcColor?.border || 'var(--border-color)'}`,
                                 borderRadius: '12px',
                                 marginBottom: '1rem'
                             }}>
@@ -1464,17 +1466,29 @@ export default function LogbookPage() {
                                             {entry.location}
                                         </div>
                                     </div>
-                                    <span style={{
-                                        fontSize: '0.7rem',
-                                        padding: '0.25rem 0.6rem',
-                                        borderRadius: '20px',
-                                        backgroundColor: entry.uniform === 'Completo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                        color: entry.uniform === 'Completo' ? '#22c55e' : '#ef4444',
-                                        fontWeight: 600,
-                                        border: '1px solid currentColor'
-                                    }}>
-                                        {entry.uniform}
-                                    </span>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem', flexShrink: 0, marginLeft: '0.5rem' }}>
+                                        {svcColor ? (
+                                            <span style={{ fontSize: '0.68rem', padding: '0.2rem 0.55rem', borderRadius: '20px', backgroundColor: svcColor.light, color: svcColor.text, fontWeight: 700, border: `1px solid ${svcColor.border}`, whiteSpace: 'nowrap' }}>
+                                                {entry.supervised_by}
+                                            </span>
+                                        ) : (
+                                            <span style={{ fontSize: '0.68rem', padding: '0.2rem 0.55rem', borderRadius: '20px', backgroundColor: 'var(--border-color)', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                                {entry.supervised_by}
+                                            </span>
+                                        )}
+                                        <span style={{
+                                            fontSize: '0.68rem',
+                                            padding: '0.2rem 0.55rem',
+                                            borderRadius: '20px',
+                                            backgroundColor: entry.uniform === 'Completo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                            color: entry.uniform === 'Completo' ? '#22c55e' : '#ef4444',
+                                            fontWeight: 600,
+                                            border: '1px solid currentColor',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                            {entry.uniform}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
@@ -1515,8 +1529,8 @@ export default function LogbookPage() {
                                     </button>
                                 </div>
                             </div>
-                        ))
-                    )}
+                        ); }))
+                    }
                 </div>
 
                 {/* FAB for Mobile */}
