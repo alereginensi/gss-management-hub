@@ -21,7 +21,9 @@ import {
     ChevronDown,
     Camera,
     ImageIcon,
-    Clock
+    Clock,
+    ShieldCheck,
+    RefreshCw
 } from 'lucide-react';
 import { useTicketContext } from '../context/TicketContext';
 
@@ -275,6 +277,17 @@ function ImageUploader({ images, onChange }: { images: string[]; onChange: (imgs
 
 export default function LogbookPage() {
     const { isSidebarOpen, currentUser } = useTicketContext();
+    const isAdmin = currentUser?.role === 'admin';
+    const [logbookStats, setLogbookStats] = useState<{ total: number; first: { date: string; time: string } | null; last: { date: string; time: string } | null } | null>(null);
+    const [statsLoading, setStatsLoading] = useState(false);
+    const fetchLogbookStats = async () => {
+        setStatsLoading(true);
+        try {
+            const res = await fetch('/api/logbook/debug');
+            if (res.ok) setLogbookStats(await res.json());
+        } catch { /* silent */ }
+        finally { setStatsLoading(false); }
+    };
     const [entries, setEntries] = useState<LogEntry[]>([]);
     const [columns, setColumns] = useState<Column[]>([]);
     const [loading, setLoading] = useState(true);
@@ -412,6 +425,9 @@ export default function LogbookPage() {
         if (currentUser?.role === 'supervisor' && currentUser.name) {
             setInlineData(prev => ({ ...prev, supervisor: currentUser.name }));
             setNewReportHeader(prev => ({ ...prev, supervisor: currentUser.name }));
+        }
+        if (currentUser?.role === 'admin') {
+            fetchLogbookStats();
         }
     }, [currentUser]);
 
@@ -1011,6 +1027,33 @@ export default function LogbookPage() {
                         </button>
                     </div>
                 </div>
+
+                {/* Admin: stats integridad bitácora */}
+                {isAdmin && (
+                    <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                        <ShieldCheck size={18} color="#29416b" style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#29416b', flexShrink: 0 }}>Integridad</span>
+                        {!logbookStats && !statsLoading && (
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>—</span>
+                        )}
+                        {statsLoading && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Consultando…</span>}
+                        {logbookStats && !statsLoading && (
+                            <>
+                                <span style={{ fontSize: '0.85rem', color: '#1d3461' }}><strong>{logbookStats.total.toLocaleString('es-UY')}</strong> reportes</span>
+                                <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Primero: <strong>{logbookStats.first?.date ?? '—'} {logbookStats.first?.time ?? ''}</strong></span>
+                                <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Último: <strong>{logbookStats.last?.date ?? '—'} {logbookStats.last?.time ?? ''}</strong></span>
+                            </>
+                        )}
+                        <button
+                            onClick={fetchLogbookStats}
+                            disabled={statsLoading}
+                            title="Actualizar"
+                            style={{ marginLeft: 'auto', background: 'transparent', border: 'none', cursor: statsLoading ? 'not-allowed' : 'pointer', color: '#29416b', display: 'flex', alignItems: 'center', opacity: statsLoading ? 0.5 : 1, padding: '0.2rem' }}
+                        >
+                            <RefreshCw size={14} />
+                        </button>
+                    </div>
+                )}
 
                 {/* Desktop Table View */}
                 <div className="card desktop-view" style={{ padding: 0, overflowX: 'auto' }}>
