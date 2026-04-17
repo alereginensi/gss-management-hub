@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 import SignaturePad from '@/app/components/SignaturePad';
+import { FuncionarioSearchSelect } from '@/app/components/limpieza/FuncionarioSearchSelect';
 
 interface Funcionario {
     id: number;
@@ -315,6 +316,7 @@ export default function InformesOperativosPage() {
     const [turnoSeleccionado, setTurnoSeleccionado] = useState<string>('');
     const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
     const [clientes, setClientes] = useState<string[]>([]);
+    const [, setConfigVersion] = useState(0);
     const [asistencia, setAsistencia] = useState<SeccionesAsistencia>(() => Object.fromEntries(SECCIONES.map(s => [s, []])));
     const [fetching, setFetching] = useState(false);
     const [saving, setSaving] = useState<string | null>(null); // section-index key
@@ -378,6 +380,7 @@ export default function InformesOperativosPage() {
                     PLANILLA_CONFIG[s.name][t.turno] = { puestos: t.puestos };
                 }
             }
+            setConfigVersion(v => v + 1);
         } catch (e) {
             console.error('Error hidratando planilla config:', e);
         }
@@ -1049,10 +1052,14 @@ export default function InformesOperativosPage() {
                                                                     <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1d3461' }}>{row.nombre || '..........................................'}</span>
                                                                 ) : (
                                                                     <>
-                                                                        <select className="no-print" value={row.funcionario_id || ''} onChange={e => handleWorkerSelect(seccion, idx, e.target.value)} style={{ width: '100%', border: 'none', background: 'transparent', fontSize: '0.8rem', fontWeight: 600, outline: 'none', color: '#1d3461', cursor: 'pointer' }}>
-                                                                            <option value="">Seleccione...</option>
-                                                                            {funcionarios.filter(f => clienteSeleccionado === 'Todos' || f.cliente === clienteSeleccionado).map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-                                                                        </select>
+                                                                        <div className="no-print" style={{ width: '100%' }}>
+                                                                            <FuncionarioSearchSelect
+                                                                                funcionarios={funcionarios}
+                                                                                value={row.funcionario_id}
+                                                                                onChange={(id) => handleWorkerSelect(seccion, idx, id)}
+                                                                                cliente={clienteSeleccionado}
+                                                                            />
+                                                                        </div>
                                                                         <span className="print-only" style={{ fontSize: '0.8rem', fontWeight: 700 }}>{row.nombre || '..........................................'}</span>
                                                                     </>
                                                                 )}
