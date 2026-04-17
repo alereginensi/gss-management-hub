@@ -1,96 +1,148 @@
-# GSS Management Hub — v2.1
+# GSS Centro de Gestión
 
+**GSS Centro de Gestión** es el portal web interno de **GSS Facility Services**. Centraliza en un solo lugar todo lo que necesita el equipo para operar: tickets de soporte, bitácora de novedades, control de asistencia, logística de uniformes, operaciones de limpieza y seguridad, recursos humanos, cotización comercial y mucho más.
 
-
-**GSS Management Hub** es una plataforma centralizada diseñada para la gestión operativa de **GSS Facility Services**. Permite el seguimiento de incidentes, control de bitácoras, registro de tareas y comunicación en tiempo real entre administradores, supervisores y personal operativo.
-
----
-
-## 🚀 Funciones Principales
-
-### 1. Sistema de Tickets (Mesa de Ayuda)
-Gestión completa del ciclo de vida de los incidentes y solicitudes.
-- **Creación y Seguimiento**: Registro de tickets con adjuntos multimedia y niveles de prioridad.
-- **Colaboración**: Posibilidad de asignar múltiples colaboradores y transferir tickets entre supervisores.
-- **Alertas en Tiempo Real**: Notificaciones push integradas para actualizaciones críticas.
-
-### 2. Bitácora de Novedades (Logbook)
-Módulo robusto para el reporte diario de novedades en los servicios.
-- **Carga Rápida e Histórico**: Interfaz optimizada para registros individuales o por lotes.
-- **Sectores Dinámicos**: Soporte para múltiples sectores por cliente con sistema de fallback ("Sector Único").
-- **Exportación Automática**: Generación de reportes detallados en formato Excel con codificación de colores.
-
-### 3. Registro de Tareas y Asistencia
-Seguimiento preciso del desempeño del personal en campo.
-- **Registro por Cliente/Sector**: Los trabajadores registran sus tareas específicas durante la jornada.
-- **Cálculo Automático**: El sistema calcula la duración de la jornada basándose en el primer y último registro, eliminando la necesidad de ingresos/salidas rígidos.
-
-### 4. Panel de Control (Admin Dashboard)
-Vistas estratégicas para la toma de decisiones.
-- **KPIs Dinámicos**: Desglose de prioridades, tickets pendientes y estadísticas de rendimiento.
-- **Gestión de Usuarios**: Control de acceso granular y aprobación de nuevos registros.
+Funciona desde cualquier navegador, en celular o computadora, sin necesidad de instalar nada.
 
 ---
 
-## 📱 Optimización Mobile-First
-La plataforma ha sido optimizada para un uso fluido en dispositivos móviles y tablets:
-- **Bottom-Sheets**: Los formularios y detalles en móviles utilizan un patrón de "hoja inferior" para mejor ergonomía táctil.
-- **Vistas en Tarjetas**: Las tablas complejas se transforman automáticamente en tarjetas legibles en pantallas pequeñas.
-- **Layout Adaptativo**: Corrección de márgenes y paddings para aprovechar al máximo el espacio en tablets (iPad/Android).
+## Módulos del sistema
+
+### Tickets (Mesa de Ayuda)
+Canal para reportar y gestionar incidencias y solicitudes. Cada ticket tiene seguimiento completo: comentarios internos, archivos adjuntos, colaboradores, historial de cambios y notificaciones automáticas por correo y celular.
+
+### Bitácora
+Registro diario de novedades operativas. Los supervisores documentan inspecciones, incidentes y el estado del personal en cada cliente. Exportable a Excel con colores por sector.
+
+### Mi Trabajo / Registro de Tareas
+Los trabajadores registran sus tareas del día indicando cliente y sector. El sistema calcula la asistencia automáticamente a partir del primer y último registro, sin necesidad de fichar.
+
+### Panel de Administración
+Tablero con métricas generales: tickets pendientes, resueltos, tiempo promedio de resolución y distribución por prioridad. Vista exclusiva para administradores y jefes.
+
+### Operaciones Limpieza
+Gestión del personal de limpieza y seguridad: informes de presencia con firma digital, asignación de tareas, historial, gestión de personal y solicitudes de uniformes. Incluye un editor de planillas configurable por el administrador.
+
+### Logística
+Administración integral de uniformes: agenda web de entregas por empleado, seguimiento de envíos al interior del país, órdenes de compra con lectura automática de PDF, y calendario de eventos logísticos.
+
+### Registro de Limpieza
+Pantalla pública (sin contraseña) donde el personal de limpieza confirma sus tareas del día con foto como evidencia, usando solo su número de cédula.
+
+### Turno — Agenda Web de Uniformes (pública)
+Pantalla pública donde cualquier empleado puede consultar si tiene un turno de entrega de uniforme asignado, ingresando su número de cédula.
+
+### Seguridad Electrónica
+Módulo para técnicos: registro de eventos de monitoreo y gestión de mantenimientos preventivos y correctivos en instalaciones de los clientes.
+
+### Cotización
+Gestión comercial y liquidación de horas: categorías de empleados, tarifas por hora, períodos de facturación y exportación de reportes Excel para clientes.
+
+### Recursos Humanos (RRHH)
+Acceso al sistema de gestión de uniformes desde el área de RRHH. Permite consultar y registrar entregas al personal.
+
+### Mi Trabajo (Mitrabajo)
+Descarga automática diaria del reporte de asistencia desde el portal externo mitrabajo.uy. Los archivos quedan disponibles para descarga directa desde el sistema.
+
+### Administración de Usuarios
+Gestión completa de cuentas: aprobar registros nuevos, crear usuarios manualmente, asignar roles y módulos, bloquear accesos y administrar el personal de campo (funcionarios).
+
+### Configuración del Sistema
+Gestión de clientes (ubicaciones) y sus sectores, configuración de notificaciones por departamento e integración con servicios externos.
 
 ---
 
-## 🛠️ Tecnologías
+## Tecnologías
 
-- **Frontend**: Next.js (App Router), React, Lucide React (Icons).
-- **Backend**: API Routes (Next.js), Node.js.
-- **Base de Datos**: SQLite (Desarrollo/Local) / PostgreSQL (Producción).
-- **Notificaciones**: Web-Push (Service Workers VAPID).
-- **Estilos**: Global CSS con variables de marca personalizadas.
+| Área | Tecnología |
+|------|------------|
+| Frontend | Next.js (App Router), React |
+| Backend | API Routes (Next.js), Node.js |
+| Base de datos | SQLite (desarrollo local) / PostgreSQL (producción) |
+| Autenticación | JWT (sesión por token) |
+| Notificaciones | Web Push (VAPID), correo SMTP, Power Automate |
+| Almacenamiento de archivos | Sistema de archivos local / Cloudinary |
+| Automatización | Playwright (descarga mitrabajo), node-cron |
+| Exportaciones | ExcelJS / SheetJS |
 
 ---
 
-## ⚙️ Instalación y Desarrollo
+## Roles de usuario
+
+| Rol | Acceso principal |
+|-----|-----------------|
+| Administrador | Todo el sistema |
+| Jefe | Su departamento completo |
+| Supervisor | Tickets, Bitácora, operaciones |
+| Funcionario | Registro de tareas propias |
+| Técnico | Seguridad electrónica |
+| Logística | Módulo de logística completo |
+| Contador | Cotización y liquidación |
+| RRHH | Agenda web de uniformes |
+| Encargado de limpieza | Operaciones limpieza (cliente asignado) |
+| Limpieza | Registro de limpieza (pantalla pública) |
+
+---
+
+## Instalación y desarrollo
 
 ### Requisitos
 - Node.js 18+
-- Docker & Docker Compose (Opcional)
 
 ### Pasos
-1. **Instalar dependencias**:
+
+1. Instalar dependencias:
    ```bash
    npm install
    ```
-2. **Configurar variables de entorno**:
-   Copia `.env.example` a `.env.local` y configura tus claves (VAPID, DB_URL, etc.).
-3. **Ejecutar en desarrollo**:
+
+2. Configurar variables de entorno — copiar `.env.local.example` a `.env.local` y completar los valores (base de datos, VAPID, correo, etc.).
+
+3. Ejecutar en desarrollo:
    ```bash
    npm run dev
    ```
-4. **Build para producción**:
+
+4. Build para producción:
    ```bash
    npm run build
+   npm start
    ```
 
 ---
 
-## 🐳 Despliegue con Docker
+## Despliegue
+
+El sistema está preparado para desplegarse en **Railway** con PostgreSQL como base de datos de producción. Ver [DEPLOYMENT_QUICKSTART.md](./DEPLOYMENT_QUICKSTART.md) para los pasos detallados.
+
 ```bash
+# Docker (opcional)
 docker compose up -d --build
 ```
 
 ---
 
-## 📄 Documentación Detallada
+## Documentación por módulo
 
-Para facilitar la adopción del sistema, hemos dividido la documentación en módulos específicos:
+Todas las guías están escritas para usuarios sin conocimientos técnicos.
 
-- [📑 **Guía de Bitácora**](./GUIA_BITACORA.md): Registro de novedades e inspecciones en campo.
-- [🎫 **Guia de Tickets**](./GUIA_TICKETS.md): Gestión de incidentes, adjuntos y colaboración.
-- [⏰ **Asistencia y Tareas**](./GUIA_ASISTENCIA.md): Registro de actividad y cálculo de jornada.
-- [👥 **Usuarios y Roles**](./GUIA_USUARIOS.md): Tipos de acceso, registro y aprobaciones.
-- [🛡️ **Administradores**](./GUIA_ADMINISTRADORES.md): Supervisión global, reportes y gestión de personal.
-- [📊 **Dashboard y Config**](./GUIA_CONFIGURACION.md): Interpretación de KPIs y ajustes del portal.
-- [💾 **Respaldos**](./BACKUPS.md): Procedimientos de backup de base de datos.
-- [🚀 **Despliegue**](./DEPLOYMENT_QUICKSTART.md): Guía rápida para Railway.
-
+| Guía | Módulo |
+|------|--------|
+| [Usuarios y Roles](./GUIA_USUARIOS.md) | Registro, login, tipos de usuario |
+| [Administradores](./GUIA_ADMINISTRADORES.md) | Gestión de usuarios y sistema |
+| [Tickets](./GUIA_TICKETS.md) | Mesa de ayuda, estados, colaboradores |
+| [Mi Trabajo / Asistencia](./GUIA_ASISTENCIA.md) | Registro de tareas y asistencia |
+| [Bitácora](./GUIA_BITACORA.md) | Novedades, exportación, estadísticas |
+| [Configuración Personal](./GUIA_CONFIGURACION.md) | Tema, notificaciones push |
+| [Panel de Administración](./GUIA_ADMINISTRACION_DASHBOARD.md) | Métricas y gestión de tickets |
+| [Operaciones Limpieza](./GUIA_OPERACIONES_LIMPIEZA.md) | Informes, tareas, personal, uniformes |
+| [Logística](./GUIA_LOGISTICA.md) | Agenda web, envíos, órdenes de compra |
+| [Seguridad Electrónica](./GUIA_SEGURIDAD_ELECTRONICA.md) | Monitoreo y mantenimiento |
+| [Cotización](./GUIA_COTIZACION.md) | Tarifas, liquidación, reportes |
+| [RRHH](./GUIA_RRHH.md) | Agenda web de uniformes |
+| [Gestión de Usuarios (Admin)](./GUIA_ADMIN_USUARIOS.md) | Alta, edición, permisos, funcionarios |
+| [Configuración del Sistema (Admin)](./GUIA_ADMIN_CONFIG.md) | Ubicaciones, sectores, herramientas |
+| [Registro de Limpieza](./GUIA_REGISTRO_LIMPIEZA.md) | Pantalla pública con cédula |
+| [Turno / Agenda Uniformes](./GUIA_TURNO.md) | Consulta pública de turno |
+| [Respaldos](./BACKUPS.md) | Procedimientos de backup |
+| [Despliegue](./DEPLOYMENT_QUICKSTART.md) | Guía rápida Railway |

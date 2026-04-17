@@ -158,6 +158,17 @@ MITRABAJO_DOWNLOAD_DIR= # opcional, default: downloads/mitrabajo
 
 ---
 
+## Bitácora — Estadísticas e integridad (`/api/logbook/debug`)
+
+Endpoint `GET /api/logbook/debug` (solo admin): devuelve métricas de la tabla `logbook` y registra snapshots periódicos para auditar cambios en el volumen de datos.
+
+- **Tabla `logbook_stats_snapshots`**: creada automáticamente por `lib/db.ts` (migraciones SQLite y PG) y también por el propio route como auto-healing (`CREATE TABLE IF NOT EXISTS` al inicio del handler).
+- **Deduplicación**: solo registra snapshot si cambió `total`, `first_date` o `last_date`, **o** si pasaron ≥ 15 minutos desde el último snapshot (`SNAPSHOT_INTERVAL_MS = 15 * 60 * 1000`).
+- **Quirks PG**: `COUNT(*)` devuelve string en PG → se envuelve en `Number()`. Columnas `TIMESTAMP` devuelven `Date` objects → `toISOSafe()` tiene guard `instanceof Date`.
+- `toISOSafe(ts)` normaliza `string | Date | null` a ISO string o null, manejando los tres casos.
+
+---
+
 ## Scripts npm útiles
 
 ```bash
@@ -173,7 +184,30 @@ npm run migrate:limpieza-personal  # migración segura limpieza → Postgres
 
 - [README](./README.md) — instalación y visión general.
 - [DEPLOYMENT_QUICKSTART](./DEPLOYMENT_QUICKSTART.md) — Railway.
-- [GUIA_BITACORA](./GUIA_BITACORA.md), [GUIA_TICKETS](./GUIA_TICKETS.md), [GUIA_ASISTENCIA](./GUIA_ASISTENCIA.md), [GUIA_USUARIOS](./GUIA_USUARIOS.md), [GUIA_ADMINISTRADORES](./GUIA_ADMINISTRADORES.md), [GUIA_CONFIGURACION](./GUIA_CONFIGURACION.md), [BACKUPS](./BACKUPS.md).
+- [BACKUPS](./BACKUPS.md) — procedimientos de backup de base de datos.
+
+### Guías de usuario (GUIA_*.md)
+
+Todas las guías están escritas para usuarios sin conocimientos técnicos.
+
+| Archivo | Módulo |
+|---------|--------|
+| [GUIA_USUARIOS](./GUIA_USUARIOS.md) | Roles, registro, login |
+| [GUIA_ADMINISTRADORES](./GUIA_ADMINISTRADORES.md) | Gestión global de usuarios y sistema |
+| [GUIA_TICKETS](./GUIA_TICKETS.md) | Mesa de ayuda, estados, colaboradores |
+| [GUIA_ASISTENCIA](./GUIA_ASISTENCIA.md) | Registro de tareas y asistencia automática |
+| [GUIA_BITACORA](./GUIA_BITACORA.md) | Novedades, exportación, estadísticas |
+| [GUIA_CONFIGURACION](./GUIA_CONFIGURACION.md) | Ajustes personales, tema, notificaciones push |
+| [GUIA_ADMINISTRACION_DASHBOARD](./GUIA_ADMINISTRACION_DASHBOARD.md) | Panel de métricas y gestión de tickets |
+| [GUIA_OPERACIONES_LIMPIEZA](./GUIA_OPERACIONES_LIMPIEZA.md) | Informes, tareas, personal, uniformes |
+| [GUIA_LOGISTICA](./GUIA_LOGISTICA.md) | Agenda web, envíos, órdenes de compra, calendario |
+| [GUIA_SEGURIDAD_ELECTRONICA](./GUIA_SEGURIDAD_ELECTRONICA.md) | Monitoreo y mantenimiento de equipos |
+| [GUIA_COTIZACION](./GUIA_COTIZACION.md) | Tarifas, liquidación, reportes Excel |
+| [GUIA_RRHH](./GUIA_RRHH.md) | Agenda web de uniformes desde RRHH |
+| [GUIA_ADMIN_USUARIOS](./GUIA_ADMIN_USUARIOS.md) | Alta, edición, permisos, funcionarios |
+| [GUIA_ADMIN_CONFIG](./GUIA_ADMIN_CONFIG.md) | Ubicaciones, sectores, herramientas de sistema |
+| [GUIA_REGISTRO_LIMPIEZA](./GUIA_REGISTRO_LIMPIEZA.md) | Pantalla pública de registro por cédula |
+| [GUIA_TURNO](./GUIA_TURNO.md) | Consulta pública de turno de uniformes |
 
 ---
 
@@ -270,7 +304,81 @@ Se guardan en `public/uploads/agenda/{firmas|remitos}/` por defecto. Si `CLOUDIN
 
 ---
 
-*Última actualización de este archivo: devolución opcional integrada en citas (reemplaza módulo Cambios legacy), badge "Con cambio" en entregas, importación de catálogo con preview multi-sección.*
+## Acceso RRHH a Agenda Web + Solicitudes Emergentes multi-módulo
+
+### Roles y acceso centralizado
+
+- **`lib/agenda-roles.ts`**: constantes `AGENDA_ADMIN_ROLES` (admin, logistica, jefe, rrhh), `AGENDA_SUPERVISOR_ROLES` (+supervisor), `AGENDA_EMERGENCY_ROLES` (+limpieza, tecnico). Helper `sourceForRole()`.
+- **`canAccessAgenda(user)`** en `TicketContext`: devuelve `true` si admin/logistica/jefe/rrhh (o modules logistica/rrhh). Usado en las 13 páginas admin de agenda.
+- `'rrhh'` propagado a ~31 API routes. Dashboard back-link dinámico por `sessionStorage.agenda_origin` (rrhh → /rrhh, logistica → /logistica).
+- Hub RRHH (`app/rrhh/page.tsx`): tarjeta "Agenda Web" → `/logistica/agenda/admin`.
+
+### Solicitudes emergentes desde Limpieza y Seguridad Electrónica
+
+- **DB**: `agenda_requests` + columnas `is_emergency INTEGER DEFAULT 0`, `source TEXT DEFAULT 'logistica'`, `receiver_signature_url TEXT` (ALTER TABLE aditivo PG+SQLite).
+- **API POST** `/api/logistica/agenda/requests`: si caller ∈ {limpieza, tecnico}, fuerza `is_emergency=1` y `source` por rol. Acepta multi-item `body.items: [{article_type, size?}]` (y legacy single-item).
+- **Endpoint búsqueda** `GET /api/logistica/agenda/employees/search?q=` (auth = AGENDA_EMERGENCY_ROLES, limit 20).
+- **Componente** `app/components/agenda/SolicitudEmergenteForm.tsx`: buscador empleado + autocomplete desde catálogo + multi-item + motivo.
+- **Páginas**: `/operaciones-limpieza/solicitudes-uniforme` y `/seguridad-electronica/solicitudes-uniforme` con listado filtrado por `source` + modal "Nueva solicitud".
+- **API GET requests**: filtro `source` y `emergency` query params; supervisores limpieza/tecnico solo ven su propio source.
+
+### Autorización con firma doble y descargo legal
+
+- Modal "Autorizar" en admin/solicitudes: texto "Responsabilidad del supervisor" (`LEGAL_TEXT_V1`) sobre canvas firma supervisor (obligatorio) + texto "Declaración del funcionario" (`LEGAL_TEXT_EMERGENCY`) sobre canvas firma funcionario (opcional).
+- **Endpoint** `POST /api/logistica/agenda/requests/[id]/sign`: acepta `approver_signature` y/o `receiver_signature` (File o dataUrl). Firmas van a Cloudinary via `saveAgendaFile`. Flexible: permite reemplazar una sola firma sin perder la otra.
+- Detalle solicitud: muestra ambas firmas lado a lado con botón "Reemplazar firma" (`SignatureReplaceButton`).
+
+### Dashboard admin — card "Solicitudes"
+
+- Card "Alertas" → **"Solicitudes"**: value = emergentes pendientes (`is_emergency=1 AND status='pendiente'`). Clickeable → `/admin/solicitudes?emergency=1`.
+- Banner amarillo: artículos vencidos + solicitudes emergentes separados.
+- API stats: nueva query `solicitudes_emergentes`.
+
+### Catálogo — columna "Categoría"
+
+- Columna "Sector/Puesto" renombrada a **"Categoría"**: texto libre con `<datalist>` de sugerencias. Campo canónico: `workplace_category` en `agenda_uniform_catalog` y `agenda_employees`.
+- **Filtro pedido público**: `getCatalogForEmployee()` filtra por `empresa` + `workplace_category` (si el empleado tiene categoría asignada; sino ve todo el catálogo de su empresa — compatibilidad gradual).
+- **Parser import**: escribe a `workplace_category` (no `puesto`). Dedup por `(empresa, workplace_category, article_type)`. Import reemplaza empresas presentes en el Excel (`replaceEmpresas: true`).
+- **Template descargable** actualizado con columna `categoria`.
+- **Script** `scripts/migrate-catalog-puesto-to-category.cjs`: migró `puesto` → `workplace_category` en Railway.
+- **Script** `scripts/reset-agenda-catalog.cjs`: reemplazo total del catálogo desde Excel.
+
+### Entregas — vista grid + reversión + edición de firmas
+
+- **Vista grid de cards** responsive (`repeat(auto-fill, minmax(320px, 1fr))`) reemplaza tabla desktop + vista mobile.
+- **Botón "Entrega errónea"** con modal (motivo requerido). Endpoint `POST .../revert-delivery`: cancela cita, da de baja artículos (`current_status='devuelto'`), habilita empleado (`enabled=1, allow_reorder=1`).
+- **Componente** `app/components/SignatureReplaceButton.tsx`: reutilizable en citas, solicitudes y envíos. Convierte dataURL → Blob, POST al endpoint correspondiente.
+- **Endpoint DELETE remito** (`DELETE /api/.../remito?kind=delivery|return`): nulifica URL, número, texto y items parseados.
+- **Proxy PDF** (`GET /api/.../remito-pdf?kind=delivery|return`): detecta URLs locales (410), Cloudinary raw (fetch directo), magic bytes (sirve Content-Type real).
+- **Remitos migrados**: 20 PDFs extraídos de DB vieja (`delivery_note_data` bytea) → subidos a Cloudinary → URLs actualizadas. Script `scripts/migrate-old-remitos.cjs`.
+
+### Storage Cloudinary
+
+- `lib/agenda-storage.ts`: `isCloudinaryConfigured()` reconoce `CLOUDINARY_URL` O `CLOUDINARY_CLOUD_NAME`+`API_KEY`+`API_SECRET`.
+- `lib/cloudinary.ts`: solo llama `cloudinary.config()` si las 3 vars separadas existen (no pisa autoconfig de `CLOUDINARY_URL` con undefined).
+- En producción, si Cloudinary no está configurado, `saveAgendaFile` **lanza error** (no cae al filesystem efímero).
+
+### panel_access
+
+- `/api/auth/me` y `/api/admin/users`: SELECT incluye `panel_access`.
+- Landing (`/`): si `panel_access=0` y no admin, muestra spinner "Redirigiendo…" y navega al módulo asignado. `encargado_limpieza` redirige a `/operaciones-limpieza/informes`.
+- `/administracion`: misma guardia de `panel_access`.
+
+### Seguridad Electrónica — sub-páginas
+
+- `historial`, `monitoreo`, `mantenimiento`: usan `hasModuleAccess(currentUser, 'tecnico')` (respeta `user.modules`) + espera `authLoading === false` antes de chequear auth (fix redirect mobile por timing de restoreSession vs SW cache).
+
+### Service Worker
+
+- `public/sw.js` v8: NO intercepta requests cross-origin (Cloudinary CDN, etc.). Solo cachea same-origin.
+
+### Detección de remito
+
+- `lib/agenda-remito-pdf-parser.ts`: 3 patrones nuevos para número de remito (UY `0001-00000123`, `REMITO 3062`, fallback laxo).
+- Endpoint upload remito devuelve `parsedText`; UI auto-llena "Notas de entrega" con primeras 3 líneas si está vacío.
+- Validación magic bytes al subir: rechaza archivos no-PDF con extensión `.pdf`.
+
+*Última actualización de este archivo: RRHH acceso, solicitudes emergentes, categorías, reversión de entrega, proxy PDF, edición de firmas, panel_access, fix mobile seguridad.*
 
 ---
 
