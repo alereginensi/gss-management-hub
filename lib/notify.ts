@@ -101,7 +101,7 @@ export async function sendNotification({ to, subject, body, ticketData }: Notify
             if (subsList.length > 0 && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
                 const webpush = (await import('web-push')).default;
                 webpush.setVapidDetails(
-                    process.env.VAPID_SUBJECT || 'mailto:admin@gss.com',
+                    process.env.VAPID_SUBJECT || 'mailto:admin@example.com',
                     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
                     process.env.VAPID_PRIVATE_KEY
                 );

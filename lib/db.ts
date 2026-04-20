@@ -945,13 +945,21 @@ class DbWrapper {
         // Seed planilla config si las tablas están vacías (no toca tablas históricas)
         await this.seedPlanillaConfigPg();
 
-        // Ensure default admin exists
-        const adminPass = '$2b$10$A8RCT0E4YCsaaPttIs6l8.ALRz57EBSWPGhrE7OSn.csFLL6a2lx.';
-        const checkAdmin = await this.pgPool!.query('SELECT * FROM users WHERE email = $1', ['admin@gss.com']);
+        // Ensure default admin exists — credentials from env vars, never hardcoded
+        const checkAdmin = await this.pgPool!.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
         if (checkAdmin.rows.length === 0) {
+          const bcrypt = require('bcryptjs');
+          const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+          const adminName = process.env.ADMIN_NAME || 'Admin';
+          let adminHash = process.env.ADMIN_PASS_HASH;
+          if (!adminHash) {
+            const initialPass = process.env.ADMIN_INITIAL_PASSWORD || Math.random().toString(36).slice(-12) + 'A1!';
+            adminHash = bcrypt.hashSync(initialPass, 10);
+            console.log(`⚠️  ADMIN_PASS_HASH not set. Initial admin password logged once: ${initialPass}`);
+          }
           await this.pgPool!.query(
             'INSERT INTO users (name, email, password, department, role, approved) VALUES ($1, $2, $3, $4, $5, $6)',
-            ['Admin System', 'admin@gss.com', adminPass, 'Administración', 'admin', 1]
+            [adminName, adminEmail, adminHash, 'Administración', 'admin', 1]
           );
           console.log('✅ Default admin created in Postgres');
         }

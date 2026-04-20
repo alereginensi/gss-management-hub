@@ -17,12 +17,10 @@ export async function POST(request: Request) {
             });
         }
 
-        // Whitelist GSS domains to skip API check
-        if (email.endsWith('@gss.com.uy') || email.endsWith('@gss.com')) {
-            return NextResponse.json({
-                valid: true,
-                message: 'Domain whitelisted'
-            });
+        // Whitelist internal domains to skip API check (configure via ALLOWED_EMAIL_DOMAINS env var)
+        const allowedDomains = (process.env.ALLOWED_EMAIL_DOMAINS || '').split(',').map(d => d.trim()).filter(Boolean);
+        if (allowedDomains.some(d => email.endsWith('@' + d))) {
+            return NextResponse.json({ valid: true, message: 'Domain whitelisted' });
         }
 
         const apiKey = process.env.ABSTRACT_API_KEY;

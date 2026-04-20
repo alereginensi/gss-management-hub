@@ -4,6 +4,19 @@ Documento orientado a desarrolladores y asistentes de IA: visión general del c�
 
 ---
 
+## Mantenimiento de este documento
+
+- **Actualizar `context.md`** cada vez que se agregue un módulo nuevo, se cambie la arquitectura, se modifiquen convenciones de código, o se introduzcan dependencias relevantes.
+- **Antes de hacer el repositorio público** (o en cada push a main si es público), revisar:
+  - No haya credenciales, hashes de contraseñas ni tokens hardcodeados en el código.
+  - Los JWT secrets y contraseñas admin usen variables de entorno (`JWT_SECRET`, `ADMIN_PASS_HASH`, `ADMIN_EMAIL`).
+  - No existan endpoints de debug o diagnóstico abiertos sin autenticación.
+  - Los emails corporativos reales no estén hardcodeados — usar env vars o `example.com`.
+  - Los `.env*` estén en `.gitignore` y nunca commiteados.
+  - Corridas con `npx tsc --noEmit` sin errores antes de pushear.
+
+---
+
 ## Qué es
 
 Portal web interno para **GSS Facility Services**: tickets, bitácora, operaciones de limpieza, logística, cotización, seguridad electrónica, administración y notificaciones. Stack principal: **Next.js 16 (App Router)**, **React 19**, API Routes, **SQLite** en local y **PostgreSQL** en producción (p. ej. Railway).

@@ -199,7 +199,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     // Ref to track auth state without stale closures in callbacks/timeouts
     const isAuthenticatedRef = React.useRef(false);
     const [systemSettings, setSystemSettings] = useState<Record<string, string>>({
-        notification_emails: 'admin@gss-facility.com'
+        notification_emails: ''
     });
     const [pendingUsers, setPendingUsers] = useState<User[]>([]);
     const [folders, setFolders] = useState<Folder[]>([]);

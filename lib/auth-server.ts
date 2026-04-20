@@ -8,7 +8,7 @@ function getSecret(): string {
         if (process.env.NODE_ENV === 'production') {
             throw new Error('❌ JWT_SECRET is not set. Configure it in Railway environment variables.');
         }
-        return 'dev-fallback-secret-at-least-32-chars!!';
+        return 'dev-only-fallback-not-for-production-use';
     }
     return secret;
 }

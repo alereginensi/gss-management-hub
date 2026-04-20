@@ -32,7 +32,7 @@ const PANEL_GENERAL_PREFIXES = [
 
 function getJwtSecret(): string {
     const secret = process.env.JWT_SECRET;
-    if (!secret) return 'dev-fallback-secret-at-least-32-chars!!';
+    if (!secret) return 'dev-only-fallback-not-for-production-use';
     return secret;
 }
 
