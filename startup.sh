@@ -43,13 +43,5 @@ else
   echo "ℹ️  Database will be created on first request"
 fi
 
-# Cron diario mitrabajo 08:00 America/Montevideo
-if [ -f "/app/scripts/cron-mitrabajo.cjs" ]; then
-  echo "=== Starting mitrabajo cron (background) ==="
-  node /app/scripts/cron-mitrabajo.cjs &
-else
-  echo "⚠️  cron-mitrabajo.cjs no encontrado — descarga automática deshabilitada"
-fi
-
 echo "=== Starting Next.js server ==="
 exec node server.js
