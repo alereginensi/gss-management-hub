@@ -9,13 +9,13 @@
 </p>
 
 <p align="center">
-  <a href="#-inicio-rápido">Inicio rápido</a> ·
-  <a href="#-módulos-del-sistema">Módulos</a> ·
-  <a href="#-tecnologías">Tecnologías</a> ·
-  <a href="#-roles-de-usuario">Roles</a> ·
-  <a href="#-guías-de-uso">Guías de uso</a> ·
-  <a href="#-documentación-técnica">Documentación técnica</a> ·
-  <a href="#-despliegue">Despliegue</a>
+  <a href="#inicio-rápido">Inicio rápido</a> ·
+  <a href="#módulos-del-sistema">Módulos</a> ·
+  <a href="#tecnologías">Tecnologías</a> ·
+  <a href="#roles-de-usuario">Roles</a> ·
+  <a href="#guías-de-uso">Guías de uso</a> ·
+  <a href="#documentación-técnica">Documentación técnica</a> ·
+  <a href="#despliegue">Despliegue</a>
 </p>
 
 ---
