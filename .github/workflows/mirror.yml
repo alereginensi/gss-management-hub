@@ -15,6 +15,9 @@ jobs:
           fetch-depth: 0
 
       - name: Push mirror
+        env:
+          PAT: ${{ secrets.MIRROR_PAT }}
         run: |
-          git remote add mirror https://x-access-token:${{ secrets.MIRROR_PAT }}@github.com/alereginensi/gss-management-hub.git
+          git config --global --unset-all credential.helper || true
+          git remote add mirror https://alereginensi:${PAT}@github.com/alereginensi/gss-management-hub.git
           git push mirror main --force
