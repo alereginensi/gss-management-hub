@@ -20,10 +20,10 @@ Acá se registran los eventos de seguridad detectados en los clientes: alarmas, 
 
 1. Hacé clic en **"Nuevo evento"** o **"+ Agregar"**.
 2. Completá:
-   - **Cliente**: La empresa o instalación donde ocurrió el evento.
-   - **Tipo de evento**: Alarma, falla de cámara, acceso no autorizado, etc.
-   - **Descripción**: Explicá qué pasó, qué se detectó y qué acción se tomó.
-   - **Fecha y hora**: El sistema la pone automáticamente, pero podés modificarla si el evento fue antes.
+ - **Cliente**: La empresa o instalación donde ocurrió el evento.
+ - **Tipo de evento**: Alarma, falla de cámara, acceso no autorizado, etc.
+ - **Descripción**: Explicá qué pasó, qué se detectó y qué acción se tomó.
+ - **Fecha y hora**: El sistema la pone automáticamente, pero podés modificarla si el evento fue antes.
 3. Guardá el registro.
 
 ### Ver eventos activos
@@ -49,12 +49,12 @@ Acá se planifican y registran los mantenimientos preventivos y correctivos de l
 
 1. Hacé clic en **"Nuevo mantenimiento"** o **"+ Agendar"**.
 2. Completá:
-   - **Cliente**: La instalación donde se hará el mantenimiento.
-   - **Tipo de mantenimiento**: Preventivo, correctivo, revisión, etc.
-   - **Equipo**: El sistema o dispositivo a mantener (cámara, panel de alarma, sensor, etc.).
-   - **Fecha programada**: Cuándo está planificado.
-   - **Técnico responsable**: Quién lo va a hacer.
-   - **Notas**: Cualquier detalle adicional.
+ - **Cliente**: La instalación donde se hará el mantenimiento.
+ - **Tipo de mantenimiento**: Preventivo, correctivo, revisión, etc.
+ - **Equipo**: El sistema o dispositivo a mantener (cámara, panel de alarma, sensor, etc.).
+ - **Fecha programada**: Cuándo está planificado.
+ - **Técnico responsable**: Quién lo va a hacer.
+ - **Notas**: Cualquier detalle adicional.
 3. Guardá.
 
 ### Cómo marcar un mantenimiento como completado

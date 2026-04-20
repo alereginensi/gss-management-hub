@@ -43,11 +43,11 @@ Esta sección lleva el control de los paquetes o envíos que se mandan a sucursa
 
 1. Hacé clic en **"Nuevo envío"** o **"+ Agregar"**.
 2. Completá:
-   - Destinatario (nombre del empleado o sucursal)
-   - Contenido del paquete
-   - Destino (ciudad o dirección)
-   - Fecha de envío
-   - Número de seguimiento (si lo tiene)
+ - Destinatario (nombre del empleado o sucursal)
+ - Contenido del paquete
+ - Destino (ciudad o dirección)
+ - Fecha de envío
+ - Número de seguimiento (si lo tiene)
 3. Guardá.
 
 ### Actualizar el estado de un envío
@@ -69,9 +69,9 @@ Esta sección gestiona las órdenes de compra de materiales y otros insumos.
 
 1. Hacé clic en **"Nueva orden"** o **"+ Crear"**.
 2. Completá el formulario:
-   - Proveedor
-   - Ítems a comprar (descripción, cantidad, precio estimado)
-   - Fecha de la orden
+ - Proveedor
+ - Ítems a comprar (descripción, cantidad, precio estimado)
+ - Fecha de la orden
 3. Si tenés un PDF con la orden escaneada, podés adjuntarlo — el sistema lee automáticamente el contenido del PDF y puede pre-completar los datos.
 4. Revisá que todo esté correcto y guardá.
 

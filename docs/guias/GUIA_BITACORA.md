@@ -33,12 +33,12 @@ Este método es el más rápido para agregar un registro durante la jornada:
 1. Entrá al módulo **"Bitácora"** desde el menú lateral.
 2. En la parte superior de la tabla vas a ver una **fila resaltada en azul** — esa es la fila de entrada rápida.
 3. Completá los campos directamente en esa fila:
-   - Seleccioná el **Cliente**.
-   - Seleccioná el **Sector**.
-   - Elegí el **Funcionario**.
-   - Indicá si el **Uniforme** estaba correcto.
-   - Marcá si hubo **Incidencia** (sí/no).
-   - Escribí el **Reporte** (el detalle de lo que viste).
+ - Seleccioná el **Cliente**.
+ - Seleccioná el **Sector**.
+ - Elegí el **Funcionario**.
+ - Indicá si el **Uniforme** estaba correcto.
+ - Marcá si hubo **Incidencia** (sí/no).
+ - Escribí el **Reporte** (el detalle de lo que viste).
 4. Hacé clic en el botón azul oscuro de **"Agregar"** al final de la fila.
 
 El registro queda guardado de inmediato con la fecha y hora actuales.
@@ -51,8 +51,8 @@ Cuando necesitás documentar varios funcionarios o sectores de un mismo cliente 
 
 1. Hacé clic en el botón **"+ Nuevo Reporte"** en la barra superior.
 2. Completá los datos generales:
-   - Fecha del reporte
-   - Cliente
+ - Fecha del reporte
+ - Cliente
 3. Agregá las entradas una por una: para cada funcionario o sector, hacé clic en **"Agregar ítem"** y completá los campos.
 4. Cuando terminaste de agregar todos los ítems, hacé clic en **"Guardar Reporte"**.
 

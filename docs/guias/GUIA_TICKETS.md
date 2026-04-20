@@ -14,11 +14,11 @@ Un ticket es un registro de una solicitud o problema. Tiene un número único, u
 
 1. En el menú lateral, hacé clic en **"Nuevo Ticket"**.
 2. Completá los campos del formulario:
-   - **Asunto**: Un título breve que describa el problema o solicitud (ej: "Falta de limpieza en baños piso 3").
-   - **Descripción**: Explicá con más detalle qué pasó, cuándo y dónde.
-   - **Prioridad**: Elegí entre Alta, Media o Baja según la urgencia.
-   - **Departamento**: El área responsable de resolver el ticket.
-   - **Trabajador afectado** (opcional): Si el problema involucra a una persona específica.
+ - **Asunto**: Un título breve que describa el problema o solicitud (ej: "Falta de limpieza en baños piso 3").
+ - **Descripción**: Explicá con más detalle qué pasó, cuándo y dónde.
+ - **Prioridad**: Elegí entre Alta, Media o Baja según la urgencia.
+ - **Departamento**: El área responsable de resolver el ticket.
+ - **Trabajador afectado** (opcional): Si el problema involucra a una persona específica.
 3. Si querés, adjuntá una foto o documento haciendo clic en **"Agregar archivo"**.
 4. Hacé clic en **"Crear Ticket"** o **"Guardar"**.
 

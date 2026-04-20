@@ -34,11 +34,11 @@ Si todavía no tenés cuenta, seguí estos pasos:
 1. Abrí el sistema en tu navegador (la dirección te la da tu supervisor o el área de IT).
 2. En la pantalla de inicio, hacé clic en **"Registrarse"** o **"Crear cuenta"**.
 3. Completá el formulario con:
-   - Tu nombre completo
-   - Tu correo electrónico de trabajo
-   - Una contraseña (elegí una que recuerdes)
-   - Tu tipo de usuario (el que corresponde a tu función)
-   - Tu departamento o área
+ - Tu nombre completo
+ - Tu correo electrónico de trabajo
+ - Una contraseña (elegí una que recuerdes)
+ - Tu tipo de usuario (el que corresponde a tu función)
+ - Tu departamento o área
 4. Hacé clic en **"Registrar"**.
 
 ### ¿Qué pasa después del registro?

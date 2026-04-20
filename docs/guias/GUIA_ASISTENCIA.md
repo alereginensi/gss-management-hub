@@ -18,9 +18,9 @@ Cada vez que completás una tarea en el campo, en el edificio o en el cliente, l
 1. En el menú lateral, hacé clic en **"Mi Trabajo"** o **"Tareas"**.
 2. Hacé clic en el botón **"Nueva tarea"** o **"+ Agregar"**.
 3. Completá los campos:
-   - **Cliente**: Seleccioná la empresa o edificio donde estás trabajando.
-   - **Sector**: Elegí el área específica dentro del cliente (piso, oficina, baños, etc.).
-   - **Descripción**: Escribí brevemente qué hiciste (ej: "Limpieza de baños", "Revisión de accesos", "Desinfección de cocina").
+ - **Cliente**: Seleccioná la empresa o edificio donde estás trabajando.
+ - **Sector**: Elegí el área específica dentro del cliente (piso, oficina, baños, etc.).
+ - **Descripción**: Escribí brevemente qué hiciste (ej: "Limpieza de baños", "Revisión de accesos", "Desinfección de cocina").
 4. Hacé clic en **"Guardar"** o **"Registrar"**.
 
 La tarea queda guardada con la hora y fecha exacta del momento en que la registraste.

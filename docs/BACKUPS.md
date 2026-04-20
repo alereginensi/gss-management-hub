@@ -2,13 +2,13 @@
 
 Este sistema crea copias de seguridad diarias de la base de datos y permite restaurar cualquier versión anterior.
 
-## 📋 Archivos del Sistema
+## Archivos del Sistema
 
 - **`backup_db.sh`**: Crea backups diarios
 - **`restore_db.sh`**: Restaura desde un backup anterior
 - **`cleanup_old_backups.sh`**: Limpia backups antiguos
 
-## 🚀 Uso
+## Uso
 
 ### Crear un Backup Manual
 
@@ -55,7 +55,7 @@ Esto mantiene:
 - Últimos 30 backups diarios
 - 1 backup por mes para backups más antiguos
 
-## ⚙️ Configuración Automática (Producción)
+## Configuración Automática (Producción)
 
 ### En Linux/VPS
 
@@ -87,7 +87,7 @@ Para ejecutar en Windows, usá Git Bash o WSL:
 bash scripts/backup_db.sh
 ```
 
-## 📊 Logs
+## Logs
 
 Todos los backups y restauraciones se registran en:
 ```
@@ -99,13 +99,13 @@ Podés ver el historial con:
 cat backups/backup.log
 ```
 
-## 🔒 Seguridad
+## Seguridad
 
 - Los backups **NO se suben a GitHub** (están en `.gitignore`)
 - Cada restauración crea un backup de seguridad automático
 - Los logs registran todas las operaciones
 
-## 💾 Espacio en Disco
+## Espacio en Disco
 
 Cada backup ocupa aproximadamente el mismo tamaño que `tickets.db` (típicamente 1-5 MB).
 
@@ -114,7 +114,7 @@ Con la política de retención:
 - 12 meses × ~2 MB = ~24 MB
 - **Total estimado: ~100 MB**
 
-## ❓ Preguntas Frecuentes
+## Preguntas Frecuentes
 
 **¿Puedo restaurar un backup de hace 2 meses?**
 Sí, siempre que no hayas ejecutado el script de limpieza o que ese mes tenga un backup mensual guardado.

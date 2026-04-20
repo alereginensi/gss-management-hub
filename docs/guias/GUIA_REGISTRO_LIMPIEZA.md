@@ -48,8 +48,8 @@ Una vez identificado, vas a ver la lista de tareas que te asignaron para el día
 1. Buscá la tarea en la lista.
 2. Hacé clic en el botón **"Completar"** o la casilla de verificación junto a la tarea.
 3. Si querés agregar una foto, hacé clic en **"Subir foto"** o el ícono de cámara:
-   - Desde el celular: podés tomar una foto en el momento o elegir una de la galería.
-   - Desde la computadora: elegí un archivo de imagen.
+ - Desde el celular: podés tomar una foto en el momento o elegir una de la galería.
+ - Desde la computadora: elegí un archivo de imagen.
 4. Si querés dejar un comentario u observación, escribilo en el campo de texto.
 5. Confirmá o guardá.
 

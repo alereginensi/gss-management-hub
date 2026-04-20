@@ -37,9 +37,9 @@ Al entrar a esta sección, vas a ver la lista de categorías de empleados con su
 
 1. Hacé clic en **"Nueva categoría"** o **"+ Agregar tarifa"**.
 2. Completá:
-   - Nombre de la categoría (ej: "Supervisor Turno Noche", "Limpieza Categoría A").
-   - Tarifa por hora.
-   - Fecha desde la que aplica.
+ - Nombre de la categoría (ej: "Supervisor Turno Noche", "Limpieza Categoría A").
+ - Tarifa por hora.
+ - Fecha desde la que aplica.
 3. Guardá.
 
 ### Modificar una tarifa existente
@@ -61,8 +61,8 @@ Acá se crean los períodos de facturación y se cargan las horas trabajadas por
 
 1. Hacé clic en **"Nuevo período"** o **"+ Crear liquidación"**.
 2. Indicá:
-   - Período: mes y año al que corresponde.
-   - Cliente: a quién se le factura.
+ - Período: mes y año al que corresponde.
+ - Cliente: a quién se le factura.
 3. Guardá para que el período quede creado.
 
 ### Cargar horas por empleado
@@ -70,9 +70,9 @@ Acá se crean los períodos de facturación y se cargan las horas trabajadas por
 1. Abrí el período de liquidación que creaste.
 2. Para cada empleado del período, hacé clic en **"Agregar horas"** o **"+ Entrada"**.
 3. Completá:
-   - Nombre del empleado.
-   - Categoría (que determina la tarifa aplicada).
-   - Cantidad de horas trabajadas en el período.
+ - Nombre del empleado.
+ - Categoría (que determina la tarifa aplicada).
+ - Cantidad de horas trabajadas en el período.
 4. Guardá cada entrada.
 
 El sistema calcula automáticamente el monto según la tarifa de la categoría y las horas ingresadas.
@@ -88,8 +88,8 @@ Desde acá podés exportar la información de liquidación en formato Excel.
 1. Seleccioná el período que querés exportar.
 2. Hacé clic en **"Exportar Excel"** o **"Descargar reporte"**.
 3. El archivo se descarga con dos hojas:
-   - **Resumen**: Un resumen general del período con totales.
-   - **Detalle**: El desglose completo empleado por empleado.
+ - **Resumen**: Un resumen general del período con totales.
+ - **Detalle**: El desglose completo empleado por empleado.
 
 ---
 

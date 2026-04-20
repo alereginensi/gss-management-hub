@@ -22,22 +22,22 @@ Guía de referencia rápida para entender qué hace cada archivo y carpeta del p
 
 ```
 gss-management-hub/
-├── app/                   # Todo el código Next.js (páginas + APIs)
-├── lib/                   # Lógica compartida (no es Next.js, es TypeScript puro)
-├── scripts/               # Utilidades de mantenimiento, migraciones, crons
-├── docs/                  # Documentación
-├── public/                # Archivos estáticos (imágenes, SW, manifest)
-├── middleware.ts           # Auth guard global (verifica JWT en cada request)
-├── next.config.ts          # Configuración de Next.js
-├── railway.toml            # Configuración de deploy en Railway
-├── nixpacks.toml           # Configuración de build en Railway (nixpacks)
-├── docker-compose.yml      # Compose para producción con Docker
-├── docker-compose.dev.yml  # Compose para desarrollo local
-├── Dockerfile              # Imagen Docker del servidor
-├── startup.sh              # Script de arranque del contenedor (migraciones, servidor)
-├── package.json            # Dependencias y scripts npm
-├── tsconfig.json           # Configuración de TypeScript
-└── eslint.config.mjs       # Reglas de linting
+├── app/ # Todo el código Next.js (páginas + APIs)
+├── lib/ # Lógica compartida (no es Next.js, es TypeScript puro)
+├── scripts/ # Utilidades de mantenimiento, migraciones, crons
+├── docs/ # Documentación
+├── public/ # Archivos estáticos (imágenes, SW, manifest)
+├── middleware.ts # Auth guard global (verifica JWT en cada request)
+├── next.config.ts # Configuración de Next.js
+├── railway.toml # Configuración de deploy en Railway
+├── nixpacks.toml # Configuración de build en Railway (nixpacks)
+├── docker-compose.yml # Compose para producción con Docker
+├── docker-compose.dev.yml # Compose para desarrollo local
+├── Dockerfile # Imagen Docker del servidor
+├── startup.sh # Script de arranque del contenedor (migraciones, servidor)
+├── package.json # Dependencias y scripts npm
+├── tsconfig.json # Configuración de TypeScript
+└── eslint.config.mjs # Reglas de linting
 ```
 
 ---
@@ -326,13 +326,13 @@ Scripts que se corren manualmente o como procesos separados. **No se ejecutan co
 
 ```
 Navegador
-  → middleware.ts          (verifica JWT)
-  → app/[modulo]/page.tsx  (renderiza UI)
-      → fetch("/api/...")
-  → app/api/.../route.ts   (lógica de negocio)
-      → lib/db.ts           (consulta DB)
-      → lib/notify.ts       (opcional: envía notificación)
-      → lib/cloudinary.ts   (opcional: sube archivo)
+ → middleware.ts (verifica JWT)
+ → app/[modulo]/page.tsx (renderiza UI)
+ → fetch("/api/...")
+ → app/api/.../route.ts (lógica de negocio)
+ → lib/db.ts (consulta DB)
+ → lib/notify.ts (opcional: envía notificación)
+ → lib/cloudinary.ts (opcional: sube archivo)
 ```
 
 ---

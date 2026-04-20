@@ -1,6 +1,6 @@
 # Quick Start - Deployment para Piloto
 
-## 🚀 Pasos Rápidos (15 minutos)
+## Pasos Rápidos (15 minutos)
 
 ### 1. Preparar Aplicación (5 min)
 
@@ -50,9 +50,9 @@ tunnel: gss-hub
 credentials-file: C:\Users\TU_USUARIO\.cloudflared\TUNNEL_ID.json
 
 ingress:
-  - hostname: gss.tu-dominio.com
-    service: http://localhost:3000
-  - service: http_status:404
+ - hostname: gss.tu-dominio.com
+ service: http://localhost:3000
+ - service: http_status:404
 ```
 
 ### 5. Iniciar (1 min)
@@ -65,13 +65,13 @@ npm start
 cloudflared tunnel run gss-hub
 ```
 
-## ✅ Verificar
+## Verificar
 
 - Abrir: `https://gss.tu-dominio.com`
 - Instalar PWA
 - Login y crear ticket
 
-## 🎉 Listo!
+## Listo!
 
 Tu aplicación está desplegada con HTTPS y lista para el piloto.
 

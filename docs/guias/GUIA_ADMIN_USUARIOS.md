@@ -29,11 +29,11 @@ Si necesitás crear una cuenta sin que la persona pase por el proceso de registr
 
 1. Hacé clic en el botón **"Nuevo usuario"** o **"+ Crear"**.
 2. Completá todos los datos:
-   - Nombre completo
-   - Correo electrónico
-   - Contraseña inicial (la persona puede cambiarla después)
-   - Tipo de usuario (Supervisor, Funcionario, Técnico, etc.)
-   - Departamento
+ - Nombre completo
+ - Correo electrónico
+ - Contraseña inicial (la persona puede cambiarla después)
+ - Tipo de usuario (Supervisor, Funcionario, Técnico, etc.)
+ - Departamento
 3. Hacé clic en **"Guardar"**.
 
 La cuenta queda activa de inmediato.
@@ -47,10 +47,10 @@ Para modificar el nombre, contraseña, tipo de usuario, departamento o permisos 
 1. Buscá al usuario en la lista de usuarios activos.
 2. Hacé clic en el ícono de editar (lápiz) junto a su nombre.
 3. Modificá los campos que necesitás:
-   - **Nombre / Correo**: Datos de identificación.
-   - **Contraseña**: Si la persona olvidó su contraseña, podés cambiarla acá.
-   - **Tipo de usuario**: Cambiá el rol si cambió la función de la persona.
-   - **Departamento**: Actualizá si se movió de área.
+ - **Nombre / Correo**: Datos de identificación.
+ - **Contraseña**: Si la persona olvidó su contraseña, podés cambiarla acá.
+ - **Tipo de usuario**: Cambiá el rol si cambió la función de la persona.
+ - **Departamento**: Actualizá si se movió de área.
 4. Guardá los cambios.
 
 ---
