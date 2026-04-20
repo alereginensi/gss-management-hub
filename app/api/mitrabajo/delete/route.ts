@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth-server';
-import fs from 'fs';
+import db from '@/lib/db';
 import path from 'path';
-
-const DOWNLOAD_DIR = process.env.MITRABAJO_DOWNLOAD_DIR
-    ? path.resolve(process.env.MITRABAJO_DOWNLOAD_DIR)
-    : path.join(process.cwd(), 'downloads', 'mitrabajo');
 
 function hasMitrabajoAccess(user: { role: string; modules?: string }) {
     return user.role === 'admin' || user.role === 'mitrabajo' || user.modules?.split(',').includes('mitrabajo');
@@ -27,11 +23,14 @@ export async function DELETE(request: NextRequest) {
         return NextResponse.json({ error: 'Archivo no permitido' }, { status: 403 });
     }
 
-    const filePath = path.join(DOWNLOAD_DIR, safeName);
-    if (!fs.existsSync(filePath)) {
-        return NextResponse.json({ error: 'Archivo no encontrado' }, { status: 404 });
+    try {
+        const row = await db.get('SELECT id FROM mitrabajo_files WHERE filename = ?', [safeName]);
+        if (!row) {
+            return NextResponse.json({ error: 'Archivo no encontrado' }, { status: 404 });
+        }
+        await db.run('DELETE FROM mitrabajo_files WHERE filename = ?', [safeName]);
+        return NextResponse.json({ ok: true });
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
-
-    fs.unlinkSync(filePath);
-    return NextResponse.json({ ok: true });
 }

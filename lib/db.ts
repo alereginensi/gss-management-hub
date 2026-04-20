@@ -1581,6 +1581,20 @@ class DbWrapper {
           await this.pgPool!.query(`UPDATE users SET name = convert_from(convert_to(name, 'LATIN1'), 'UTF8') WHERE name LIKE '%Ã%'`);
         } catch (e) {}
 
+        // mitrabajo_files: persist downloaded Excel reports in DB (survives container restarts)
+        try {
+          await this.pgPool!.query(`
+            CREATE TABLE IF NOT EXISTS mitrabajo_files (
+              id SERIAL PRIMARY KEY,
+              filename TEXT NOT NULL,
+              file_date TEXT NOT NULL UNIQUE,
+              data BYTEA NOT NULL,
+              size INTEGER NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
+        } catch (e) {}
+
       } catch (err) {
         console.error('❌ Error initializing Postgres:', err);
       }
@@ -2079,6 +2093,18 @@ class DbWrapper {
         `);
         try { this.sqliteDb.exec(`ALTER TABLE logistica_calendario ADD COLUMN firma_url TEXT`); } catch (e) {}
       } catch (e) {}
+
+      // mitrabajo_files: persist Excel reports in SQLite for dev
+      this.sqliteDb.exec(`
+        CREATE TABLE IF NOT EXISTS mitrabajo_files (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          filename TEXT NOT NULL,
+          file_date TEXT NOT NULL UNIQUE,
+          data BLOB NOT NULL,
+          size INTEGER NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
 
       // Seed funcionarios_list for SQLite
       const funcCountSqlite = this.sqliteDb.prepare('SELECT COUNT(*) as count FROM funcionarios_list').get();
