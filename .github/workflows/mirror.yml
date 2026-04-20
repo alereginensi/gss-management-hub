@@ -14,10 +14,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.MIRROR_SSH_KEY }}
+
       - name: Push mirror
-        env:
-          PAT: ${{ secrets.MIRROR_PAT }}
         run: |
-          git config --global --unset-all credential.helper || true
-          git remote add mirror https://alereginensi:${PAT}@github.com/alereginensi/gss-management-hub.git
+          git remote add mirror git@github.com:alereginensi/gss-management-hub.git
           git push mirror main --force
