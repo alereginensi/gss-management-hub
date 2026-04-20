@@ -2,11 +2,70 @@
   <img src="public/logo.png" alt="GSS Facility Services" width="180" />
 </p>
 
-# GSS Centro de Gestión
+<h1 align="center">GSS Centro de Gestión</h1>
 
-**GSS Centro de Gestión** es el portal web interno de **GSS Facility Services**. Centraliza en un solo lugar todo lo que necesita el equipo para operar: tickets de soporte, bitácora de novedades, control de asistencia, logística de uniformes, operaciones de limpieza y seguridad, recursos humanos, cotización comercial y mucho más.
+<p align="center">
+  Portal web interno de <strong>GSS Facility Services</strong> — gestión operativa centralizada para equipos de limpieza, seguridad, logística y administración.
+</p>
+
+<p align="center">
+  <a href="#-inicio-rápido">Inicio rápido</a> ·
+  <a href="#-módulos-del-sistema">Módulos</a> ·
+  <a href="#-tecnologías">Tecnologías</a> ·
+  <a href="#-roles-de-usuario">Roles</a> ·
+  <a href="#-guías-de-uso">Guías de uso</a> ·
+  <a href="#-documentación-técnica">Documentación técnica</a> ·
+  <a href="#-despliegue">Despliegue</a>
+</p>
+
+---
+
+## Qué es este proyecto
+
+**GSS Centro de Gestión** centraliza en un solo lugar todo lo que necesita el equipo para operar: tickets de soporte, bitácora de novedades, control de asistencia, logística de uniformes, operaciones de limpieza y seguridad, recursos humanos, cotización comercial y mucho más.
 
 Funciona desde cualquier navegador, en celular o computadora, sin necesidad de instalar nada.
+
+---
+
+## Inicio rápido
+
+> Requisitos: **Node.js 18+**
+
+```bash
+# 1. Clonar e instalar
+git clone <repo-url>
+cd gss-management-hub
+npm install
+
+# 2. Variables de entorno
+cp env.local.example .env.local
+# Editar .env.local con los valores requeridos (ver el archivo para referencia)
+
+# 3. Cargar datos de prueba (usuarios, tickets, bitácora, asistencia)
+npm run seed
+
+# 4. Levantar el servidor de desarrollo
+npm run dev
+```
+
+Abre [http://localhost:3000](http://localhost:3000) y usa cualquiera de estas credenciales:
+
+| Email | Rol | Accede a |
+|-------|-----|----------|
+| `admin@example.com` | Administrador | Todo el sistema |
+| `jefe@example.com` | Jefe | Dashboard, tickets, reportes |
+| `supervisor@example.com` | Supervisor | Tickets, bitácora, operaciones |
+| `funcionario1@example.com` | Funcionario | Registro de tareas propias |
+| `tecnico@example.com` | Técnico | Seguridad electrónica |
+| `logistica@example.com` | Logística | Módulo de logística completo |
+| `contador@example.com` | Contador | Cotización y liquidación |
+| `rrhh@example.com` | RRHH | Agenda web de uniformes |
+| `encargado@example.com` | Encargado limpieza | Operaciones del cliente asignado |
+
+**Contraseña para todos:** `Dev1234!`
+
+> Para limpiar y regenerar los datos: `CLEAN=1 npm run seed`
 
 ---
 
@@ -60,7 +119,7 @@ Gestión de clientes (ubicaciones) y sus sectores, configuración de notificacio
 
 | Área | Tecnología |
 |------|------------|
-| Frontend | Next.js (App Router), React |
+| Frontend | Next.js 16 (App Router), React |
 | Backend | API Routes (Next.js), Node.js |
 | Base de datos | SQLite (desarrollo local) / PostgreSQL (producción) |
 | Autenticación | JWT (sesión por token) |
@@ -68,6 +127,7 @@ Gestión de clientes (ubicaciones) y sus sectores, configuración de notificacio
 | Almacenamiento de archivos | Sistema de archivos local / Cloudinary |
 | Automatización | Playwright (descarga mitrabajo), node-cron |
 | Exportaciones | ExcelJS / SheetJS |
+| Deploy | Railway (PaaS) + Docker |
 
 ---
 
@@ -88,47 +148,9 @@ Gestión de clientes (ubicaciones) y sus sectores, configuración de notificacio
 
 ---
 
-## Instalación y desarrollo
+## Guías de uso
 
-### Requisitos
-- Node.js 18+
-
-### Pasos
-
-1. Instalar dependencias:
-   ```bash
-   npm install
-   ```
-
-2. Configurar variables de entorno — copiar `.env.local.example` a `.env.local` y completar los valores (base de datos, VAPID, correo, etc.).
-
-3. Ejecutar en desarrollo:
-   ```bash
-   npm run dev
-   ```
-
-4. Build para producción:
-   ```bash
-   npm run build
-   npm start
-   ```
-
----
-
-## Despliegue
-
-El sistema está preparado para desplegarse en **Railway** con PostgreSQL como base de datos de producción. Ver [DEPLOYMENT_QUICKSTART.md](./docs/DEPLOYMENT_QUICKSTART.md) para los pasos detallados.
-
-```bash
-# Docker (opcional)
-docker compose up -d --build
-```
-
----
-
-## Documentación por módulo
-
-Todas las guías están escritas para usuarios sin conocimientos técnicos.
+Documentación escrita para usuarios sin conocimientos técnicos.
 
 | Guía | Módulo |
 |------|--------|
@@ -148,5 +170,28 @@ Todas las guías están escritas para usuarios sin conocimientos técnicos.
 | [Configuración del Sistema (Admin)](./docs/guias/GUIA_ADMIN_CONFIG.md) | Ubicaciones, sectores, herramientas |
 | [Registro de Limpieza](./docs/guias/GUIA_REGISTRO_LIMPIEZA.md) | Pantalla pública con cédula |
 | [Turno / Agenda Uniformes](./docs/guias/GUIA_TURNO.md) | Consulta pública de turno |
+
+---
+
+## Documentación técnica
+
+| Documento | Contenido |
+|-----------|-----------|
+| [Distribución de código](./docs/ESTRUCTURA.md) | Qué hace cada archivo y carpeta del proyecto |
+| [Despliegue en Railway](./docs/DEPLOYMENT_QUICKSTART.md) | Guía rápida de deploy |
 | [Respaldos](./docs/BACKUPS.md) | Procedimientos de backup |
-| [Despliegue](./docs/DEPLOYMENT_QUICKSTART.md) | Guía rápida Railway |
+
+---
+
+## Despliegue
+
+El sistema está preparado para desplegarse en **Railway** con PostgreSQL como base de datos de producción. Ver [DEPLOYMENT_QUICKSTART.md](./docs/DEPLOYMENT_QUICKSTART.md) para los pasos detallados.
+
+```bash
+# Build para producción
+npm run build
+npm start
+
+# Docker (opcional)
+docker compose up -d --build
+```
