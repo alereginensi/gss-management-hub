@@ -15,6 +15,7 @@
 
 const cron = require('node-cron');
 const { execFile } = require('child_process');
+const http = require('http');
 const path = require('path');
 
 const SCRIPT_PATH = path.join(__dirname, 'download-mitrabajo.cjs');
@@ -37,6 +38,20 @@ function runDownload() {
     }
   });
 }
+
+// Servidor HTTP mínimo para Railway health check (comparte railway.toml con el servicio web)
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+  if (req.url === '/api/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', service: 'mitrabajo-cron', ts: new Date().toISOString() }));
+  } else {
+    res.writeHead(404);
+    res.end();
+  }
+}).listen(PORT, () => {
+  console.log(`[cron-mitrabajo] Health check server escuchando en puerto ${PORT}`);
+});
 
 console.log(`[cron-mitrabajo] Servicio iniciado. Descarga diaria a las 08:00 AM (America/Montevideo).`);
 console.log(`[cron-mitrabajo] Schedule: "${CRON_SCHEDULE}" timezone America/Montevideo`);
