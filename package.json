@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "build": "node scripts/generate-clients.js && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "migrate:limpieza-personal": "node scripts/migrate_limpieza_personal_only.cjs",

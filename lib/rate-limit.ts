@@ -48,7 +48,12 @@ export function rateLimit(ip: string, endpoint: string, config: RateLimitConfig)
 
 export function getClientIp(request: Request): string {
     const forwarded = request.headers.get('x-forwarded-for');
-    if (forwarded) return forwarded.split(',')[0].trim();
+    if (forwarded) {
+        // Railway appends the real client IP as the LAST entry in the chain.
+        // Taking the first would give Railway's own edge IP, defeating rate limiting.
+        const ips = forwarded.split(',').map(s => s.trim()).filter(Boolean);
+        return ips[ips.length - 1];
+    }
     const realIp = request.headers.get('x-real-ip');
     if (realIp) return realIp.trim();
     return '127.0.0.1';

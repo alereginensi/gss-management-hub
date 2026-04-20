@@ -4,6 +4,7 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  compress: true,
 
   // Don't bundle native modules — let Node.js require() them at runtime
   serverExternalPackages: ['pg', 'pg-native', 'better-sqlite3', 'playwright', 'xlsx'],
@@ -50,7 +51,7 @@ const nextConfig: NextConfig = {
       // HSTS: solo en producción (Railway ya usa HTTPS). En dev con HTTP, un HSTS cacheado rompería el acceso.
       ...(isProd ? [{
         key: 'Strict-Transport-Security',
-        value: 'max-age=31536000; includeSubDomains',
+        value: 'max-age=63072000; includeSubDomains; preload',
       }] : []),
       {
         key: 'Content-Security-Policy',

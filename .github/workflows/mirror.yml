@@ -1,0 +1,19 @@
+name: Mirror to personal portfolio
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push mirror
+        run: |
+          git remote add mirror https://x-access-token:${{ secrets.MIRROR_PAT }}@github.com/alereginensi/gss-management-hub.git
+          git push mirror main --force

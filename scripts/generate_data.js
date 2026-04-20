@@ -18,7 +18,7 @@ const RUBROS = ['Limpieza', 'Mantenimiento', 'Seguridad', 'Logística'];
 const ensureUser = (name, email, rubro) => {
     let user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
     if (!user) {
-        const pass = bcrypt.hashSync('123456', 10);
+        const pass = bcrypt.hashSync(process.env.TEST_PASS || Math.random().toString(36).slice(-10) + 'A1!', 10);
         const info = db.prepare('INSERT INTO users (name, email, password, department, role, rubro, approved) VALUES (?, ?, ?, ?, ?, ?, 1)')
             .run(name, email, pass, rubro, 'funcionario', rubro);
         console.log(`Created user: ${name} (${rubro})`);
@@ -32,14 +32,14 @@ const ensureUser = (name, email, rubro) => {
 };
 
 const users = [
-    { id: ensureUser('Prueba Logística', 'alejandro.reginensi@gss.com.uy', 'Logística'), rubro: 'Logística' },
-    { id: ensureUser('Prueba Limpieza', 'limpieza@gmail.com', 'Limpieza'), rubro: 'Limpieza' },
+    { id: ensureUser('Prueba Logística', 'logistica@example.com', 'Logística'), rubro: 'Logística' },
+    { id: ensureUser('Prueba Limpieza', 'limpieza@example.com', 'Limpieza'), rubro: 'Limpieza' },
     { id: ensureUser('Prueba Mantenimiento', 'mantenimiento@test.com', 'Mantenimiento'), rubro: 'Mantenimiento' },
     { id: ensureUser('Prueba Seguridad', 'seguridad@test.com', 'Seguridad'), rubro: 'Seguridad' }
 ];
 
 // Ensure Supervisor 'prueba supervisor' (ID 14) supervises ALL these users
-const supervisor = db.prepare('SELECT id FROM users WHERE email = ?').get('reginensia@gmail.com');
+const supervisor = db.prepare('SELECT id FROM users WHERE email = ?').get('supervisor@example.com');
 if (supervisor) {
     users.forEach(u => {
         try {

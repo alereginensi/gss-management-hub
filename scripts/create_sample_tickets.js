@@ -11,7 +11,7 @@ const sampleTickets = [
         priority: 'Alta',
         status: 'Nuevo',
         requester: 'Juan Pérez',
-        requesterEmail: 'juan@gss.com',
+        requesterEmail: 'juan@example.com',
         date: '2026-02-10',
         statusColor: '#3b82f6'
     },
@@ -23,7 +23,7 @@ const sampleTickets = [
         priority: 'Media',
         status: 'En Progreso',
         requester: 'Ana Gómez',
-        requesterEmail: 'ana@gss.com',
+        requesterEmail: 'ana@example.com',
         date: '2026-02-09',
         statusColor: '#eab308'
     },
@@ -35,7 +35,7 @@ const sampleTickets = [
         priority: 'Baja',
         status: 'Resuelto',
         requester: 'Carlos Ruiz',
-        requesterEmail: 'carlos@gss.com',
+        requesterEmail: 'carlos@example.com',
         date: '2026-02-07',
         statusColor: '#22c55e'
     }

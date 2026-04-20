@@ -5,9 +5,9 @@ console.log('🗑️  Test Data Cleanup Script (Fixed)\n');
 
 // Test users to delete
 const testUserEmails = [
-    'reginensia@gmail.com',
-    'limpieza@gmail.com',
-    'test_invlogin_1771257756469@gss.com',
+    'test_user@example.com',
+    'limpieza@example.com',
+    'test_invlogin@example.com',
     'mantenimiento@test.com',
     'seguridad@test.com'
 ];
