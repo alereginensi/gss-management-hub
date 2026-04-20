@@ -6,6 +6,11 @@ export interface RemitoPdfItem {
   color?: string;
 }
 
+interface DescWithQty {
+  desc: string;
+  qty: number;
+}
+
 function normKey(s: string): string {
   return s
     .toLowerCase()
@@ -124,54 +129,40 @@ function articleStringFromAfterCant(afterCant: string): string | null {
   return `${desc} - ${sizeToken}`;
 }
 
-function extractDescriptionsFromTightNoSpace(text: string): string[] {
+function extractDescriptionsFromTightNoSpace(text: string): DescWithQty[] {
   const full = text.replace(/\s+/g, ' ').trim();
-  const out: string[] = [];
-  const seen = new Set<string>();
-  const add = (s: string) => {
-    const t = s.trim();
-    if (t.length < 4) return;
-    const k = normKey(t);
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push(t);
-  };
+  const out: DescWithQty[] = [];
   const parts = full.split(/(?=\d{4}\d[A-Za-zR])/g);
   for (const part of parts) {
     const seg = part.trim();
     const m = seg.match(/^(\d{4})(\d)(.+)$/);
     if (!m) continue;
     const article = articleStringFromAfterCant(m[3].trim());
-    if (article) add(article);
+    if (!article) continue;
+    const qty = parseInt(m[2], 10) || 1;
+    out.push({ desc: article, qty });
   }
   return out;
 }
 
-function extractDescriptionsFromGluedNumericRows(text: string): string[] {
+function extractDescriptionsFromGluedNumericRows(text: string): DescWithQty[] {
   const full = text.replace(/\s+/g, ' ').trim();
-  const out: string[] = [];
-  const seen = new Set<string>();
-  const add = (s: string) => {
-    const t = s.trim();
-    if (t.length < 4) return;
-    const k = normKey(t);
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push(t);
-  };
+  const out: DescWithQty[] = [];
   const segments = full.split(/(?=\b\d{3,5}\s+\d+\s+)/);
   for (const part of segments) {
     const m = part.trim().match(/^(\d{3,5})\s+(\d+)\s+(.+)$/);
     if (!m) continue;
     const article = articleStringFromAfterCant(m[3]);
-    if (article) add(article);
+    if (!article) continue;
+    const qty = parseInt(m[2], 10) || 1;
+    out.push({ desc: article, qty });
   }
   return out;
 }
 
-function extractLooseArticlePhrases(text: string): string[] {
+function extractLooseArticlePhrases(text: string): DescWithQty[] {
   const full = text.replace(/\s+/g, ' ').trim();
-  const out: string[] = [];
+  const out: DescWithQty[] = [];
   const seen = new Set<string>();
   const add = (s: string) => {
     const t = s.trim();
@@ -179,7 +170,7 @@ function extractLooseArticlePhrases(text: string): string[] {
     const k = normKey(t);
     if (seen.has(k)) return;
     seen.add(k);
-    out.push(t);
+    out.push({ desc: t, qty: 1 });
   };
   const rLine = /\bR\s*-\s*[^\-]{2,100}?\s*-\s*(S|M|L|XL|XXL|3[6-9]|4[0-6])\b/gi;
   let rm: RegExpExecArray | null;
@@ -196,23 +187,24 @@ function extractLooseArticlePhrases(text: string): string[] {
   return out;
 }
 
-function mergeDedupe(strings: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const s of strings) {
-    const t = s.trim();
+function mergeDedupe(items: DescWithQty[]): DescWithQty[] {
+  const map = new Map<string, DescWithQty>();
+  for (const item of items) {
+    const t = item.desc.trim();
     if (t.length < 4) continue;
     const k = normKey(t);
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push(t);
+    if (map.has(k)) {
+      map.get(k)!.qty += item.qty;
+    } else {
+      map.set(k, { desc: t, qty: item.qty });
+    }
   }
-  return out;
+  return [...map.values()];
 }
 
-function extractStandaloneRMinusLines(text: string, existing: string[]): string[] {
-  const seen = new Set(existing.map(normKey));
-  const extra: string[] = [];
+function extractStandaloneRMinusLines(text: string, existing: DescWithQty[]): DescWithQty[] {
+  const seen = new Set(existing.map(d => normKey(d.desc)));
+  const extra: DescWithQty[] = [];
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
     if (!/^r\s*-/i.test(line)) continue;
@@ -221,27 +213,25 @@ function extractStandaloneRMinusLines(text: string, existing: string[]): string[
     const k = normKey(line);
     if (seen.has(k)) continue;
     seen.add(k);
-    extra.push(line);
+    extra.push({ desc: line, qty: 1 });
   }
   return extra;
 }
 
-export function extractRemitoArticleDescriptions(text: string): string[] {
+export function extractRemitoArticleDescriptions(text: string): DescWithQty[] {
   const tight = extractDescriptionsFromTightNoSpace(text);
   if (tight.length > 0) return mergeDedupe([...tight, ...extractStandaloneRMinusLines(text, tight)]);
 
   const glued = extractDescriptionsFromGluedNumericRows(text);
   if (glued.length > 0) return mergeDedupe([...glued, ...extractStandaloneRMinusLines(text, glued)]);
 
-  const out: string[] = [];
-  const seen = new Set<string>();
-  const add = (s: string) => {
-    const t = s.trim();
+  const map = new Map<string, DescWithQty>();
+  const add = (desc: string, qty = 1) => {
+    const t = desc.trim();
     if (t.length < 4) return;
     const k = normKey(t);
-    if (seen.has(k)) return;
-    seen.add(k);
-    out.push(t);
+    if (map.has(k)) map.get(k)!.qty += qty;
+    else map.set(k, { desc: t, qty });
   };
   const skipLine = (line: string) => {
     const t = line.trim();
@@ -255,43 +245,58 @@ export function extractRemitoArticleDescriptions(text: string): string[] {
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
     if (!line || skipLine(line)) continue;
-    const row = line.match(/^\d+\s+\d+\s+(.+)$/);
+    const row = line.match(/^\d+\s+(\d+)\s+(.+)$/);
     if (row) {
-      const art = articleStringFromAfterCant(row[1]) ?? row[1].trim();
-      add(art);
+      const qty = parseInt(row[1], 10) || 1;
+      const art = articleStringFromAfterCant(row[2]) ?? row[2].trim();
+      add(art, qty);
       continue;
     }
     if (/^r\s*-/i.test(line)) {
       const p = line.split(/\s*-\s*/).filter(Boolean);
-      if (p.length >= 3) add(line);
+      if (p.length >= 3) add(line, 1);
     }
   }
 
-  if (out.length === 0) {
+  if (map.size === 0) {
     const full = text.replace(/\s+/g, ' ');
     const re = /\b(\d{3,5})\s+(\d+)\s+([A-Za-zÁÉÍÓÚáéíóúÑñ0-9][^.\n]{0,120}?\s*-\s*(?:S|M|L|XL|XXL|3[6-9]|4[0-6]))\b/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(full)) !== null) {
+      const qty = parseInt(m[2], 10) || 1;
       const inner = articleStringFromAfterCant(m[3]) ?? m[3].trim();
-      add(inner);
+      add(inner, qty);
     }
   }
 
-  if (out.length === 0) for (const s of extractLooseArticlePhrases(text)) add(s);
+  if (map.size === 0) for (const item of extractLooseArticlePhrases(text)) add(item.desc, item.qty);
 
-  return out;
+  return [...map.values()];
 }
 
-export function reconcileOrderItemsFromRemitoPdf(text: string, uniforms: UniformItem[]): RemitoPdfItem[] | null {
+export interface RemitoPdfItemWithQty extends RemitoPdfItem {
+  qty: number;
+}
+
+export function reconcileOrderItemsFromRemitoPdf(text: string, uniforms: UniformItem[]): RemitoPdfItemWithQty[] | null {
   const descriptions = extractRemitoArticleDescriptions(text);
   if (descriptions.length === 0) return null;
-  const items: RemitoPdfItem[] = [];
-  for (const desc of descriptions) {
+
+  // Aggregate by article_type + size (in case two different desc lines map to the same article+size)
+  const agg = new Map<string, RemitoPdfItemWithQty>();
+  for (const { desc, qty } of descriptions) {
     const row = mapOneRemitoArticleLine(desc, uniforms);
-    if (row) items.push(row);
+    if (!row) continue;
+    const key = `${row.item}|||${row.size}`;
+    if (agg.has(key)) {
+      agg.get(key)!.qty += qty;
+    } else {
+      agg.set(key, { ...row, qty });
+    }
   }
-  if (items.length === 0) return null;
-  return items;
+
+  if (agg.size === 0) return null;
+  return [...agg.values()];
 }
 
 // Patrones comunes para detectar número de remito dentro del texto del PDF

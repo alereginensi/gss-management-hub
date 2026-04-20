@@ -3,7 +3,7 @@ import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
 import { logAudit } from '@/lib/agenda-helpers';
 import { saveAgendaFile } from '@/lib/agenda-storage';
-import { reconcileOrderItemsFromRemitoPdf, detectRemitoNumber } from '@/lib/agenda-remito-pdf-parser';
+import { reconcileOrderItemsFromRemitoPdf, detectRemitoNumber, type RemitoPdfItemWithQty } from '@/lib/agenda-remito-pdf-parser';
 import { getUniformsForEmpresa } from '@/lib/agenda-uniforms';
 
 const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Extraer texto del PDF, reconciliar contra catálogo de la empresa del empleado
     let extractedText = '';
     let detectedRemitoNumber = '';
-    let reconciledItems: { article_type: string; size?: string; color?: string; qty: number }[] = [];
+    let parsedRows: RemitoPdfItemWithQty[] = [];
     if (ext === 'pdf' || file.type === 'application/pdf') {
       try {
         // @ts-expect-error — evita el index.js del paquete (lee un PDF de test en build)
@@ -74,13 +74,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         if (extractedText) {
           detectedRemitoNumber = detectRemitoNumber(extractedText);
           const uniforms = getUniformsForEmpresa(appt.employee_empresa);
-          const rows = reconcileOrderItemsFromRemitoPdf(extractedText, uniforms) || [];
-          reconciledItems = rows.map(r => ({
-            article_type: r.item,
-            size: r.size,
-            color: r.color,
-            qty: 1,
-          }));
+          parsedRows = reconcileOrderItemsFromRemitoPdf(extractedText, uniforms) || [];
         }
       } catch (e) {
         console.warn('No se pudo extraer texto del PDF de remito:', (e as Error).message);
@@ -88,12 +82,70 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
     const finalRemitoNumber = (remitoNumber || detectedRemitoNumber || '').trim();
 
+    // Reconciliar los items del remito contra el pedido original:
+    // - items del pedido que aparecen en el remito → actualizar talle y cantidad
+    // - items del pedido que NO están en el remito → eliminar de la entrega
+    // - items del remito que no estaban en el pedido → agregar como nuevos
+    type DeliveredItem = { article_type: string; size?: string; qty: number; color?: string; [key: string]: unknown };
+
+    function normArticle(s: string): string {
+      return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    }
+
+    function buildDeliveredItems(
+      orderItemsRaw: string | null,
+      remito: RemitoPdfItemWithQty[]
+    ): DeliveredItem[] | null {
+      if (remito.length === 0) return null;
+
+      // Índice de items del remito por article_type normalizado
+      const byType = new Map<string, RemitoPdfItemWithQty>();
+      for (const r of remito) byType.set(normArticle(r.item), r);
+
+      let orderItems: DeliveredItem[] = [];
+      try {
+        orderItems = JSON.parse(orderItemsRaw || '[]') as DeliveredItem[];
+      } catch { orderItems = []; }
+
+      const result: DeliveredItem[] = [];
+      const usedKeys = new Set<string>();
+
+      for (const oi of orderItems) {
+        const key = normArticle(oi.article_type);
+        const match = byType.get(key);
+        if (match) {
+          // Item presente en el remito: actualizar talle, cantidad y color; conservar resto del pedido
+          result.push({
+            ...oi,
+            size: match.size || oi.size,
+            qty: match.qty,
+            color: match.color ?? oi.color,
+          });
+          usedKeys.add(key);
+        }
+        // Si NO está en el remito → no lo incluimos (se elimina de la entrega)
+      }
+
+      // Items del remito que no estaban en el pedido original → agregar
+      for (const [key, r] of byType) {
+        if (!usedKeys.has(key)) {
+          result.push({ article_type: r.item, size: r.size, qty: r.qty, color: r.color });
+        }
+      }
+
+      return result.length > 0 ? result : null;
+    }
+
     const isPg = (db as any).type === 'pg';
     const nowSql = isPg ? 'NOW()' : "datetime('now')";
 
-    const parsedPayload = reconciledItems.length > 0 ? JSON.stringify(reconciledItems) : null;
+    const parsedPayload = parsedRows.length > 0 ? JSON.stringify(
+      parsedRows.map(r => ({ article_type: r.item, size: r.size, color: r.color, qty: r.qty }))
+    ) : null;
 
     if (isReturn) {
+      const reconciledReturn = buildDeliveredItems(appt.returned_order_items, parsedRows);
+      const returnPayload = reconciledReturn ? JSON.stringify(reconciledReturn) : null;
       await db.run(
         `UPDATE agenda_appointments SET
           remito_return_pdf_url = ?,
@@ -104,16 +156,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           has_return = 1,
           updated_at = ${nowSql}
          WHERE id = ?`,
-        [
-          fileUrl,
-          finalRemitoNumber || null,
-          extractedText || null,
-          parsedPayload,
-          parsedPayload,
-          id,
-        ]
+        [fileUrl, finalRemitoNumber || null, extractedText || null, parsedPayload, returnPayload, id]
       );
     } else {
+      const reconciledDelivery = buildDeliveredItems(appt.order_items, parsedRows);
+      const deliveryPayload = reconciledDelivery ? JSON.stringify(reconciledDelivery) : null;
       await db.run(
         `UPDATE agenda_appointments SET
           remito_pdf_url = ?,
@@ -123,27 +170,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           delivered_order_items = COALESCE(?, delivered_order_items),
           updated_at = ${nowSql}
          WHERE id = ?`,
-        [
-          fileUrl,
-          finalRemitoNumber || null,
-          extractedText || null,
-          parsedPayload,
-          parsedPayload,
-          id,
-        ]
+        [fileUrl, finalRemitoNumber || null, extractedText || null, parsedPayload, deliveryPayload, id]
       );
     }
+
+    const returnedItems = parsedRows.map(r => ({ article_type: r.item, size: r.size, color: r.color, qty: r.qty }));
 
     await logAudit('upload_remito', 'appointment', id, session.user.id, {
       fileUrl,
       remitoNumber: finalRemitoNumber,
-      items_count: reconciledItems.length,
+      items_count: returnedItems.length,
       kind,
     });
 
     return NextResponse.json({
       fileUrl,
-      items: reconciledItems,
+      items: returnedItems,
       remitoNumber: finalRemitoNumber,
       parsedText: extractedText,
     });
