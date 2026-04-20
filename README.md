@@ -1,3 +1,5 @@
+<a name="top"></a>
+
 <p align="center">
   <img src="public/logo.png" alt="GSS Facility Services" width="180" />
 </p>
@@ -25,6 +27,8 @@
 **GSS Centro de Gestión** centraliza en un solo lugar todo lo que necesita el equipo para operar: tickets de soporte, bitácora de novedades, control de asistencia, logística de uniformes, operaciones de limpieza y seguridad, recursos humanos, cotización comercial y mucho más.
 
 Funciona desde cualquier navegador, en celular o computadora, sin necesidad de instalar nada.
+
+<p align="right"><a href="#top">↑ Inicio</a></p>
 
 ---
 
@@ -66,6 +70,8 @@ Abre [http://localhost:3000](http://localhost:3000) y usa cualquiera de estas cr
 **Contraseña para todos:** `Dev1234!`
 
 > Para limpiar y regenerar los datos: `CLEAN=1 npm run seed`
+
+<p align="right"><a href="#top">↑ Inicio</a></p>
 
 ---
 
@@ -113,6 +119,8 @@ Gestión completa de cuentas: aprobar registros nuevos, crear usuarios manualmen
 ### Configuración del Sistema
 Gestión de clientes (ubicaciones) y sus sectores, configuración de notificaciones por departamento e integración con servicios externos.
 
+<p align="right"><a href="#top">↑ Inicio</a></p>
+
 ---
 
 ## Tecnologías
@@ -128,6 +136,8 @@ Gestión de clientes (ubicaciones) y sus sectores, configuración de notificacio
 | Automatización | Playwright (descarga mitrabajo), node-cron |
 | Exportaciones | ExcelJS / SheetJS |
 | Deploy | Railway (PaaS) + Docker |
+
+<p align="right"><a href="#top">↑ Inicio</a></p>
 
 ---
 
@@ -145,6 +155,8 @@ Gestión de clientes (ubicaciones) y sus sectores, configuración de notificacio
 | RRHH | Agenda web de uniformes |
 | Encargado de limpieza | Operaciones limpieza (cliente asignado) |
 | Limpieza | Registro de limpieza (pantalla pública) |
+
+<p align="right"><a href="#top">↑ Inicio</a></p>
 
 ---
 
@@ -171,6 +183,8 @@ Documentación escrita para usuarios sin conocimientos técnicos.
 | [Registro de Limpieza](./docs/guias/GUIA_REGISTRO_LIMPIEZA.md) | Pantalla pública con cédula |
 | [Turno / Agenda Uniformes](./docs/guias/GUIA_TURNO.md) | Consulta pública de turno |
 
+<p align="right"><a href="#top">↑ Inicio</a></p>
+
 ---
 
 ## Documentación técnica
@@ -180,6 +194,8 @@ Documentación escrita para usuarios sin conocimientos técnicos.
 | [Distribución de código](./docs/ESTRUCTURA.md) | Qué hace cada archivo y carpeta del proyecto |
 | [Despliegue en Railway](./docs/DEPLOYMENT_QUICKSTART.md) | Guía rápida de deploy |
 | [Respaldos](./docs/BACKUPS.md) | Procedimientos de backup |
+
+<p align="right"><a href="#top">↑ Inicio</a></p>
 
 ---
 
@@ -195,3 +211,5 @@ npm start
 # Docker (opcional)
 docker compose up -d --build
 ```
+
+<p align="right"><a href="#top">↑ Inicio</a></p>
