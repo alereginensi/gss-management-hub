@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="public/logo.png" alt="GSS Facility Services" width="180" />
+</p>
+
 # GSS Centro de Gestión
 
 **GSS Centro de Gestión** es el portal web interno de **GSS Facility Services**. Centraliza en un solo lugar todo lo que necesita el equipo para operar: tickets de soporte, bitácora de novedades, control de asistencia, logística de uniformes, operaciones de limpieza y seguridad, recursos humanos, cotización comercial y mucho más.

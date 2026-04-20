@@ -7,12 +7,14 @@ Documento orientado a desarrolladores y asistentes de IA: visión general del c�
 ## Mantenimiento de este documento
 
 - **Actualizar `context.md`** cada vez que se agregue un módulo nuevo, se cambie la arquitectura, se modifiquen convenciones de código, o se introduzcan dependencias relevantes.
-- **Antes de hacer el repositorio público** (o en cada push a main si es público), revisar:
+- **El repositorio es público.** Cada push a `main` en GSS-IT se mirror automáticamente a `alereginensi/gss-management-hub` vía GitHub Actions (`.github/workflows/mirror.yml`). Cualquier dato sensible commiteado queda expuesto de inmediato.
+- **Antes de cada push a main, revisar siempre:**
   - No haya credenciales, hashes de contraseñas ni tokens hardcodeados en el código.
   - Los JWT secrets y contraseñas admin usen variables de entorno (`JWT_SECRET`, `ADMIN_PASS_HASH`, `ADMIN_EMAIL`).
-  - No existan endpoints de debug o diagnóstico abiertos sin autenticación.
+  - No existan endpoints de debug o diagnóstico abiertos sin autenticación (todos los `/api/admin/debug*` deben retornar 404).
   - Los emails corporativos reales no estén hardcodeados — usar env vars o `example.com`.
   - Los `.env*` estén en `.gitignore` y nunca commiteados.
+  - `app/config/clients.ts` está en `.gitignore` — se genera en build desde `CLIENTS_DATA` env var. No commitear datos reales de clientes.
   - Corridas con `npx tsc --noEmit` sin errores antes de pushear.
 
 ---
@@ -87,11 +89,25 @@ Rutas de UI bajo `app/logistica/`:
 
 ---
 
-## Variables de entorno (referencia)
+## Infraestructura y deploy
+
+### Arquitectura en Railway
+
+- **Servicio principal** (`gss-management-hub`): Next.js 16 standalone, Dockerfile multi-stage (`node:20-bookworm-slim`), puerto 3000. Health check en `/api/health` (verifica DB). Restart automático `ON_FAILURE` (max 5 reintentos) vía `railway.toml`.
+- **Worker service** (`mitrabajo-worker`): proceso separado que corre `node scripts/cron-mitrabajo.cjs`. Aislado del servicio principal para evitar OOM cuando Playwright/Chromium consume ~500MB. Expone un mini HTTP server en `PORT` para satisfacer el health check de Railway.
+- **PostgreSQL**: Railway managed, single instance. Pool: `max: 10`, `idleTimeout: 30s`, `connectionTimeout: 5s`.
+- **Archivos Mitrabajo**: guardados en tabla `mitrabajo_files` (BYTEA en PG), máx 5 más recientes. La descarga la hace `scripts/download-mitrabajo.cjs` (no `lib/mitrabajo-download.js`) — ambos archivos deben tener `saveToDb` sincronizados.
+- **Cloudinary**: almacenamiento de firmas y remitos PDF. Si no está configurado en producción, `saveAgendaFile` lanza error (no cae al filesystem efímero).
+- **Mirror GitHub Actions**: `.github/workflows/mirror.yml` — push a `main` → copia automática a `alereginensi/gss-management-hub` (público) vía SSH deploy key (`MIRROR_SSH_KEY` secret).
+
+### Variables de entorno (referencia)
 
 - **`DATABASE_URL`** / **`POSTGRES_URL`** / **`DATABASE_PUBLIC_URL`**: conexión PostgreSQL (según qué lea cada script).
+- **`CLIENTS_DATA`**: JSON con `CLIENT_SECTOR_MAP` completo — se genera `app/config/clients.ts` en build. Sin esta var usa datos de ejemplo.
+- **`ADMIN_EMAIL`** / **`ADMIN_PASS_HASH`**: credenciales del admin inicial (bcrypt hash). Sin `ADMIN_PASS_HASH` se genera una contraseña aleatoria logueada una sola vez.
+- **`ALLOWED_EMAIL_DOMAINS`**: dominios permitidos sin validación externa (ej: `gss.com.uy,gssadmin.com`).
 - Desarrollo local: **`env.local.example`** y `.env.local` (no commitear secretos).
-- Otros: VAPID para push, Cloudinary, correo, etc., según despliegue.
+- Otros: VAPID para push, Cloudinary, SMTP, Mitrabajo credentials, según despliegue.
 
 ### Mitrabajo (Playwright en Railway)
 
