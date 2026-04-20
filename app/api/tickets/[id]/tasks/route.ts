@@ -46,6 +46,12 @@ export async function PATCH(
         [now, taskId]
     );
 
+    // Log activity
+    await db.run(
+        'INSERT INTO ticket_activities (ticket_id, user_name, user_email, message, type) VALUES (?, ?, ?, ?, ?)',
+        [ticketId, session.user.name, session.user.email, `${session.user.name} completó su tarea`, 'status']
+    );
+
     // Check if all tasks are now complete
     const allTasks = await db.query(
         'SELECT completed FROM team_ticket_tasks WHERE ticket_id = ?',

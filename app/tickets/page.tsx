@@ -50,15 +50,17 @@ export default function TicketList() {
         const isSupervisor = ticket.supervisor && currentUser?.name && 
                            ticket.supervisor.toLowerCase().trim() === currentUser.name.toLowerCase().trim();
         // Support both new multi-collaborator IDs and legacy single affectedWorker name
-        const isCollaborator = (Array.isArray(ticket.collaboratorIds) && ticket.collaboratorIds.includes(currentUser?.id || 0)) || 
-                             (ticket.affectedWorker && currentUser?.name && 
+        const isCollaborator = (Array.isArray(ticket.collaboratorIds) && ticket.collaboratorIds.includes(currentUser?.id || 0)) ||
+                             (ticket.affectedWorker && currentUser?.name &&
                               ticket.affectedWorker.toLowerCase().trim() === currentUser.name.toLowerCase().trim());
-        
+        const isTeamMember = Array.isArray((ticket as any).teamMemberIds) &&
+                             (ticket as any).teamMemberIds.map(Number).includes(Number(currentUser?.id || 0));
+
         const isInvolved = isRequester || isSupervisor || isCollaborator || isTeamTicket;
 
         if (role === 'admin') {
             // Admins can see everything in 'all' view, or only their own in 'personal'
-            if (adminView === 'personal' && !isRequester && !isCollaborator) {
+            if (adminView === 'personal' && !isRequester && !isCollaborator && !isTeamMember) {
                 return false;
             }
             if (departmentFilter !== 'Todos' && ticket.department !== departmentFilter) {

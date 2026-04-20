@@ -1574,6 +1574,13 @@ class DbWrapper {
           console.error('❌ Error migrating agenda_requests (Postgres):', e);
         }
 
+        // Fix double-encoded UTF-8 names stored as Latin-1 (caused by atob() in verifyJWT)
+        // "Andreína" was stored as "AndreÃna" — convert_to LATIN1 then decode as UTF8 reverses this
+        try {
+          await this.pgPool!.query(`UPDATE ticket_activities SET user_name = convert_from(convert_to(user_name, 'LATIN1'), 'UTF8') WHERE user_name LIKE '%Ã%'`);
+          await this.pgPool!.query(`UPDATE users SET name = convert_from(convert_to(name, 'LATIN1'), 'UTF8') WHERE name LIKE '%Ã%'`);
+        } catch (e) {}
+
       } catch (err) {
         console.error('❌ Error initializing Postgres:', err);
       }
