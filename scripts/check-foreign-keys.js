@@ -16,7 +16,7 @@ console.log('Current ticket_collaborators schema:');
 const schema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='ticket_collaborators'").get();
 console.log(schema?.sql || 'Table not found');
 
-console.log('\n✅ Foreign keys are now enabled.');
+console.log('\nForeign keys are now enabled.');
 console.log('Note: To make this permanent, the application should enable foreign keys on every connection.');
 console.log('This is already done in lib/db.ts');
 

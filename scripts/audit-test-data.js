@@ -1,77 +1,77 @@
 const Database = require('better-sqlite3');
 const db = new Database('./tickets.db');
 
-console.log('🔍 Test Data Audit\n');
+console.log('Test Data Audit\n');
 
 // Check users
-console.log('👥 USERS:');
+console.log('USERS:');
 const users = db.prepare('SELECT id, email, name, role, approved FROM users ORDER BY id').all();
 users.forEach(u => {
-    const testIndicators = [];
-    if (u.email.includes('test')) testIndicators.push('test email');
-    if (u.email.includes('gmail.com') && u.role !== 'user') testIndicators.push('gmail for staff');
-    if (u.name && u.name.includes('test')) testIndicators.push('test name');
+ const testIndicators = [];
+ if (u.email.includes('test')) testIndicators.push('test email');
+ if (u.email.includes('gmail.com') && u.role !== 'user') testIndicators.push('gmail for staff');
+ if (u.name && u.name.includes('test')) testIndicators.push('test name');
 
-    const isTest = testIndicators.length > 0;
-    const icon = isTest ? '🧪' : '✅';
-    const note = isTest ? ` [${testIndicators.join(', ')}]` : '';
+ const isTest = testIndicators.length > 0;
+ const icon = isTest ? '' : '';
+ const note = isTest ? ` [${testIndicators.join(', ')}]` : '';
 
-    console.log(`${icon} ID ${u.id}: ${u.email.padEnd(35)} | ${u.role.padEnd(12)} | ${u.name}${note}`);
+ console.log(`${icon} ID ${u.id}: ${u.email.padEnd(35)} | ${u.role.padEnd(12)} | ${u.name}${note}`);
 });
 
 // Check tickets
-console.log('\n🎫 TICKETS:');
+console.log('\nTICKETS:');
 const tickets = db.prepare('SELECT id, subject, requester, status FROM tickets ORDER BY id').all();
 if (tickets.length === 0) {
-    console.log('   No tickets found');
+ console.log(' No tickets found');
 } else {
-    tickets.forEach(t => {
-        const testIndicators = [];
-        if (t.subject && t.subject.toLowerCase().includes('test')) testIndicators.push('test subject');
-        if (t.subject && t.subject.toLowerCase().includes('prueba')) testIndicators.push('prueba subject');
-        if (t.subject && t.subject.toLowerCase().includes('ejemplo')) testIndicators.push('ejemplo subject');
-        if (parseInt(t.id) >= 1020 && parseInt(t.id) <= 1025) testIndicators.push('sample ID range');
+ tickets.forEach(t => {
+ const testIndicators = [];
+ if (t.subject && t.subject.toLowerCase().includes('test')) testIndicators.push('test subject');
+ if (t.subject && t.subject.toLowerCase().includes('prueba')) testIndicators.push('prueba subject');
+ if (t.subject && t.subject.toLowerCase().includes('ejemplo')) testIndicators.push('ejemplo subject');
+ if (parseInt(t.id) >= 1020 && parseInt(t.id) <= 1025) testIndicators.push('sample ID range');
 
-        const isTest = testIndicators.length > 0;
-        const icon = isTest ? '🧪' : '✅';
-        const note = isTest ? ` [${testIndicators.join(', ')}]` : '';
-        const subjectDisplay = t.subject ? t.subject.substring(0, 40).padEnd(40) : 'No subject'.padEnd(40);
+ const isTest = testIndicators.length > 0;
+ const icon = isTest ? '' : '';
+ const note = isTest ? ` [${testIndicators.join(', ')}]` : '';
+ const subjectDisplay = t.subject ? t.subject.substring(0, 40).padEnd(40) : 'No subject'.padEnd(40);
 
-        console.log(`${icon} ID ${t.id}: ${subjectDisplay} | ${t.status}${note}`);
-    });
+ console.log(`${icon} ID ${t.id}: ${subjectDisplay} | ${t.status}${note}`);
+ });
 }
 
 // Check logbook
-console.log('\n📔 LOGBOOK ENTRIES:');
+console.log('\nLOGBOOK ENTRIES:');
 const logbookCount = db.prepare('SELECT COUNT(*) as count FROM logbook').get();
-console.log(`   Total entries: ${logbookCount.count}`);
+console.log(` Total entries: ${logbookCount.count}`);
 
 // Check tasks
-console.log('\n✓ TASKS:');
+console.log('\nTASKS:');
 const tasksCount = db.prepare('SELECT COUNT(*) as count FROM tasks').get();
-console.log(`   Total tasks: ${tasksCount.count}`);
+console.log(` Total tasks: ${tasksCount.count}`);
 
 // Check collaborators
-console.log('\n👥 COLLABORATORS:');
+console.log('\nCOLLABORATORS:');
 const collabCount = db.prepare('SELECT COUNT(*) as count FROM ticket_collaborators').get();
-console.log(`   Total collaborations: ${collabCount.count}`);
+console.log(` Total collaborations: ${collabCount.count}`);
 
 // Summary
-console.log('\n📊 SUMMARY:');
-console.log(`   Users: ${users.length}`);
-console.log(`   Tickets: ${tickets.length}`);
-console.log(`   Logbook entries: ${logbookCount.count}`);
-console.log(`   Tasks: ${tasksCount.count}`);
-console.log(`   Collaborations: ${collabCount.count}`);
+console.log('\nSUMMARY:');
+console.log(` Users: ${users.length}`);
+console.log(` Tickets: ${tickets.length}`);
+console.log(` Logbook entries: ${logbookCount.count}`);
+console.log(` Tasks: ${tasksCount.count}`);
+console.log(` Collaborations: ${collabCount.count}`);
 
 const testUsers = users.filter(u =>
-    u.email.includes('test') ||
-    (u.email.includes('gmail.com') && u.role !== 'user')
+ u.email.includes('test') ||
+ (u.email.includes('gmail.com') && u.role !== 'user')
 );
 
-console.log(`\n🧪 Test Data Found:`);
-console.log(`   Test users: ${testUsers.length}`);
+console.log(`\nTest Data Found:`);
+console.log(` Test users: ${testUsers.length}`);
 
 db.close();
 
-console.log('\n💡 Review the items marked with 🧪 to determine what should be deleted.');
+console.log('\nReview the items marked with to determine what should be deleted.');
