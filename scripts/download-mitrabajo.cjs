@@ -21,6 +21,70 @@ const path = require('path');
 const fs = require('fs');
 const XLSX = require('xlsx');
 
+async function saveToDb(fecha, xlsxPath) {
+  const data = fs.readFileSync(xlsxPath);
+  const filename = `mitrabajo_${fecha}.xlsx`;
+
+  if (process.env.DATABASE_URL) {
+    const { Pool } = require('pg');
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+    });
+    try {
+      await pool.query(
+        `CREATE TABLE IF NOT EXISTS mitrabajo_files (
+          id SERIAL PRIMARY KEY,
+          filename TEXT NOT NULL,
+          file_date TEXT NOT NULL UNIQUE,
+          data BYTEA NOT NULL,
+          size INTEGER NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`
+      );
+      await pool.query(
+        `INSERT INTO mitrabajo_files (filename, file_date, data, size)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (file_date) DO UPDATE
+         SET data = EXCLUDED.data, size = EXCLUDED.size, filename = EXCLUDED.filename`,
+        [filename, fecha, data, data.length]
+      );
+      await pool.query(
+        `DELETE FROM mitrabajo_files WHERE id NOT IN (
+           SELECT id FROM mitrabajo_files ORDER BY file_date DESC LIMIT 5
+         )`
+      );
+      console.log(`[mitrabajo] Guardado en DB (PG): ${filename} (${data.length} bytes)`);
+    } finally {
+      await pool.end();
+    }
+  } else {
+    const dbPath = path.join(__dirname, '..', 'tickets.db');
+    if (fs.existsSync(dbPath)) {
+      const Database = require('better-sqlite3');
+      const sqlite = new Database(dbPath);
+      sqlite.exec(`CREATE TABLE IF NOT EXISTS mitrabajo_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        filename TEXT NOT NULL,
+        file_date TEXT NOT NULL UNIQUE,
+        data BLOB NOT NULL,
+        size INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`);
+      sqlite.prepare(
+        `INSERT OR REPLACE INTO mitrabajo_files (filename, file_date, data, size) VALUES (?, ?, ?, ?)`
+      ).run(filename, fecha, data, data.length);
+      sqlite.prepare(
+        `DELETE FROM mitrabajo_files WHERE id NOT IN (
+           SELECT id FROM mitrabajo_files ORDER BY file_date DESC LIMIT 5
+         )`
+      ).run();
+      sqlite.close();
+      console.log(`[mitrabajo] Guardado en DB (SQLite): ${filename}`);
+    }
+  }
+}
+
 // Cargar .env.local manualmente (no tenemos dotenv garantizado)
 function loadEnv() {
   const envPath = path.join(__dirname, '..', '.env.local');
@@ -223,6 +287,7 @@ async function downloadMitrabajo(targetDate) {
         convertirXlsAXlsx(tempPath, destPath, fecha);
         fs.unlinkSync(tempPath);
         console.log(`[mitrabajo] Archivo convertido y guardado en: ${destPath}`);
+        await saveToDb(fecha, destPath);
         downloadTriggered = true;
         break;
       } else {
@@ -241,6 +306,7 @@ async function downloadMitrabajo(targetDate) {
         convertirXlsAXlsx(tempPath, destPath, fecha);
         fs.unlinkSync(tempPath);
         console.log(`[mitrabajo] Archivo convertido y guardado en: ${destPath}`);
+        await saveToDb(fecha, destPath);
         downloadTriggered = true;
         break;
       }
