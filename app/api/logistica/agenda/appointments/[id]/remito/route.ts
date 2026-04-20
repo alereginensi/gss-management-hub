@@ -4,7 +4,6 @@ import { getSession } from '@/lib/auth-server';
 import { logAudit } from '@/lib/agenda-helpers';
 import { saveAgendaFile } from '@/lib/agenda-storage';
 import { reconcileOrderItemsFromRemitoPdf, detectRemitoNumber, type RemitoPdfItemWithQty } from '@/lib/agenda-remito-pdf-parser';
-import { getUniformsForEmpresa } from '@/lib/agenda-uniforms';
 
 const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
@@ -73,8 +72,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         extractedText = (data.text || '').trim();
         if (extractedText) {
           detectedRemitoNumber = detectRemitoNumber(extractedText);
-          const uniforms = getUniformsForEmpresa(appt.employee_empresa);
-          parsedRows = reconcileOrderItemsFromRemitoPdf(extractedText, uniforms) || [];
+          parsedRows = reconcileOrderItemsFromRemitoPdf(extractedText) || [];
         }
       } catch (e) {
         console.warn('No se pudo extraer texto del PDF de remito:', (e as Error).message);

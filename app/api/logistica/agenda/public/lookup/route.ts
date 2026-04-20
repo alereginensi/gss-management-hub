@@ -1,6 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getCatalogForEmployee } from '@/lib/agenda-catalog';
+import { getUniformsForEmpresa, type UniformItem } from '@/lib/agenda-uniforms';
+
+const CLOTHING_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
+const SHOE_SIZES = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
+
+function normKey(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function inferSizes(articleType: string): string[] {
+  const norm = articleType.toLowerCase();
+  if (/zapato|calzado|bota|croc|bot[ií]n/.test(norm)) return SHOE_SIZES;
+  if (/casco|corbata|pa[ñn]uelo|gorra/.test(norm)) return ['Única'];
+  return CLOTHING_SIZES;
+}
+
+function matchUniform(articleType: string, uniforms: UniformItem[]): UniformItem | null {
+  const norm = normKey(articleType);
+  let best: UniformItem | null = null, bestScore = 0;
+  for (const u of uniforms) {
+    const uNorm = normKey(u.name);
+    const kws = uNorm.split(/\s+/).filter(w => w.length >= 2);
+    if (!kws.length) continue;
+    const hits = kws.filter(kw => norm.includes(kw)).length;
+    const score = hits / kws.length;
+    if (score > bestScore) { bestScore = score; best = u; }
+  }
+  return bestScore >= 0.5 ? best : null;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,6 +95,16 @@ export async function POST(request: NextRequest) {
       [employee.id]
     );
 
+    const uniforms = getUniformsForEmpresa(employee.empresa || '');
+    const catalogWithSizes = catalog.map(item => {
+      const match = matchUniform(item.article_type, uniforms);
+      return {
+        ...item,
+        sizes: match?.sizes ?? inferSizes(item.article_type),
+        colors: match?.colors ?? undefined,
+      };
+    });
+
     return NextResponse.json({
       employee: {
         id: employee.id,
@@ -79,7 +118,7 @@ export async function POST(request: NextRequest) {
         calzado: employee.calzado,
         allow_reorder: employee.allow_reorder,
       },
-      catalog,
+      catalog: catalogWithSizes,
       previous_appointments: prevAppointments,
     });
   } catch (err) {

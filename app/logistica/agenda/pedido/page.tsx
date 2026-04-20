@@ -2,81 +2,82 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag, ArrowLeft, ArrowRight, Plus, Minus, Shirt, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ShirtIcon } from 'lucide-react';
 import type { AgendaEmployee, AgendaUniformCatalogItem, OrderItem } from '@/lib/agenda-types';
 
 export default function AgendaPedidoPage() {
   const router = useRouter();
   const [employee, setEmployee] = useState<AgendaEmployee | null>(null);
   const [catalog, setCatalog] = useState<AgendaUniformCatalogItem[]>([]);
-  const [order, setOrder] = useState<Record<number, OrderItem>>({});
-  const [sizes, setSizes] = useState<Record<number, string>>({});
-  const [error, setError] = useState<string | null>(null);
+  const [selections, setSelections] = useState<Record<number, { size: string; color: string }>>({});
+  const [skipped, setSkipped] = useState<Set<number>>(new Set());
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const emp = sessionStorage.getItem('agenda_employee');
     const cat = sessionStorage.getItem('agenda_catalog');
-    if (!emp || !cat) {
-      router.replace('/logistica/agenda');
-      return;
-    }
+    if (!emp || !cat) { router.replace('/logistica/agenda'); return; }
+    const parsedCatalog = JSON.parse(cat) as AgendaUniformCatalogItem[];
     setEmployee(JSON.parse(emp));
-    setCatalog(JSON.parse(cat));
+    setCatalog(parsedCatalog);
+    setSelections(Object.fromEntries(parsedCatalog.map(item => [item.id, { size: '', color: '' }])));
   }, [router]);
 
-  const updateQty = (item: AgendaUniformCatalogItem, delta: number) => {
-    setOrder(prev => {
-      const current = prev[item.id]?.qty || 0;
-      const newQty = Math.max(0, Math.min(item.quantity, current + delta));
-      if (newQty === 0) {
-        const next = { ...prev };
-        delete next[item.id];
-        return next;
-      }
-      return {
-        ...prev,
-        [item.id]: { article_type: item.article_type, size: sizes[item.id], qty: newQty },
-      };
+  const toggleSkip = (id: number) => {
+    setError('');
+    setSkipped(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
   };
 
-  const updateSize = (item: AgendaUniformCatalogItem, size: string) => {
-    setSizes(prev => ({ ...prev, [item.id]: size }));
-    setOrder(prev => {
-      if (!prev[item.id]) return prev;
-      return { ...prev, [item.id]: { ...prev[item.id], size } };
-    });
+  const setSize = (id: number, size: string) => {
+    setError('');
+    setSelections(prev => ({ ...prev, [id]: { ...prev[id], size } }));
+  };
+
+  const setColor = (id: number, color: string) => {
+    setError('');
+    setSelections(prev => ({ ...prev, [id]: { ...prev[id], color } }));
   };
 
   const handleContinue = () => {
-    const items = Object.values(order);
-    if (items.length === 0) {
-      setError('Seleccioná al menos un artículo para continuar');
+    setError('');
+    const needed = catalog.filter(item => !skipped.has(item.id));
+
+    if (needed.length === 0) {
+      setError('Debe seleccionar al menos una prenda o indicar que la necesita.');
       return;
     }
-    // Completar con talle del empleado si no se seleccionó
-    const normalized: OrderItem[] = items.map(item => {
-      const catalogItem = catalog.find(c => c.article_type === item.article_type);
-      let size = item.size;
-      if (!size && employee) {
-        if (catalogItem?.article_type.toLowerCase().includes('pantalon') || catalogItem?.article_type.toLowerCase().includes('pantalón')) {
-          size = employee.talle_inferior || undefined;
-        } else if (catalogItem?.article_type.toLowerCase().includes('zapato') || catalogItem?.article_type.toLowerCase().includes('calzado') || catalogItem?.article_type.toLowerCase().includes('bota')) {
-          size = employee.calzado || undefined;
-        } else {
-          size = employee.talle_superior || undefined;
-        }
-      }
-      return { ...item, size };
-    });
 
-    sessionStorage.setItem('agenda_order', JSON.stringify(normalized));
+    const missingSizes = needed.filter(item => !selections[item.id]?.size);
+    if (missingSizes.length > 0) {
+      setError(`Seleccioná la talla para: ${missingSizes.map(i => i.article_type).join(', ')}`);
+      return;
+    }
+
+    const missingColors = needed.filter(
+      item => item.colors && item.colors.length > 0 && !selections[item.id]?.color
+    );
+    if (missingColors.length > 0) {
+      setError(`Seleccioná el color para: ${missingColors.map(i => i.article_type).join(', ')}`);
+      return;
+    }
+
+    const items: OrderItem[] = needed.map(item => ({
+      article_type: item.article_type,
+      size: selections[item.id].size,
+      qty: 1,
+      ...(selections[item.id].color ? { color: selections[item.id].color } : {}),
+    }));
+
+    sessionStorage.setItem('agenda_order', JSON.stringify(items));
     router.push('/logistica/agenda/turno');
   };
 
   if (!employee) return null;
-
-  const totalItems = Object.values(order).reduce((sum, i) => sum + i.qty, 0);
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f0f4f8' }}>
@@ -98,148 +99,192 @@ export default function AgendaPedidoPage() {
             {employee.nombre} · {employee.empresa || 'GSS'}
           </p>
         </div>
-        <div style={{
-          background: totalItems > 0 ? '#e04951' : 'rgba(255,255,255,0.2)',
-          borderRadius: '999px', padding: '0.3rem 0.8rem',
-          color: 'white', fontSize: '0.78rem', fontWeight: 700,
-          display: 'flex', alignItems: 'center', gap: '0.3rem',
-        }}>
-          <ShoppingBag size={13} /> {totalItems} ítem{totalItems !== 1 ? 's' : ''}
-        </div>
       </header>
 
       {/* Pasos */}
       <div style={{ backgroundColor: 'white', padding: '0.75rem 1.25rem', borderBottom: '1px solid #e2e8f0' }}>
         <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.72rem', color: '#94a3b8' }}>
-          <span style={{ color: '#94a3b8' }}>✓ Identidad</span>
-          <span>›</span>
-          <span style={{ color: '#29416b', fontWeight: 700 }}>② Prendas</span>
-          <span>›</span>
-          <span>③ Turno</span>
-          <span>›</span>
+          <span>✓ Identidad</span><span>›</span>
+          <span style={{ color: '#29416b', fontWeight: 700 }}>② Prendas</span><span>›</span>
+          <span>③ Turno</span><span>›</span>
           <span>④ Confirmación</span>
         </div>
       </div>
 
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '1.25rem' }}>
-        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.3rem' }}>
-          Catálogo de prendas — {employee.empresa || 'GSS'}
-        </h2>
-        <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1.25rem' }}>
-          Seleccioná las prendas que necesitás retirar. La cantidad máxima por artículo está definida por tu empresa.
-        </p>
+      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '1.5rem 1.25rem' }}>
+        {/* Ícono + título */}
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <div style={{
+            width: '56px', height: '56px', background: 'rgba(41,65,107,0.08)',
+            borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 0.75rem',
+          }}>
+            <ShirtIcon size={26} color="#29416b" />
+          </div>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#1e293b', margin: '0 0 0.25rem' }}>
+            Seleccione sus tallas
+          </h2>
+          <p style={{ fontSize: '0.82rem', color: '#64748b', margin: 0 }}>
+            {employee.nombre} —{' '}
+            <span style={{ fontWeight: 600, color: '#29416b' }}>
+              {employee.empresa || 'GSS'}{employee.sector ? ` - ${employee.sector}` : ''}
+            </span>
+          </p>
+        </div>
 
+        {/* Cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {catalog.map(item => {
+            const isSkipped = skipped.has(item.id);
+            const sel = selections[item.id] || { size: '', color: '' };
+            const hasColors = item.colors && item.colors.length > 0;
+
+            return (
+              <div
+                key={item.id}
+                style={{
+                  border: `1px solid ${isSkipped ? '#bbf7d0' : '#e2e8f0'}`,
+                  borderRadius: '12px',
+                  padding: '1rem 1.1rem',
+                  background: isSkipped ? '#f0fdf4' : 'white',
+                  transition: 'all 200ms',
+                }}
+              >
+                <p style={{ margin: '0 0 0.85rem', fontWeight: 600, fontSize: '0.95rem', color: '#1e293b' }}>
+                  {item.article_type}
+                </p>
+
+                {isSkipped ? (
+                  <button
+                    onClick={() => toggleSkip(item.id)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      gap: '0.4rem', padding: '0.6rem', borderRadius: '8px',
+                      background: '#dcfce7', border: '1px solid #86efac',
+                      color: '#16a34a', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
+                    }}
+                  >
+                    <Check size={15} />
+                    Ya lo tengo — toca para desmarcar
+                  </button>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
+                      {/* Talla */}
+                      {item.sizes && item.sizes.length > 0 && (
+                        <div style={{ flex: '1 1 auto' }}>
+                          <p style={{ margin: '0 0 0.45rem', fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                            Talla
+                          </p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                            {item.sizes.map(size => {
+                              const active = sel.size === size;
+                              return (
+                                <button
+                                  key={size}
+                                  onClick={() => setSize(item.id, size)}
+                                  style={{
+                                    padding: '0.28rem 0.6rem', borderRadius: '6px', fontSize: '0.82rem',
+                                    fontWeight: active ? 700 : 400, cursor: 'pointer', minWidth: '38px',
+                                    textAlign: 'center', transition: 'all 120ms',
+                                    background: active ? '#22c55e' : 'white',
+                                    color: active ? 'white' : '#374151',
+                                    border: active ? '2px solid #22c55e' : '1px solid #d1d5db',
+                                  }}
+                                >
+                                  {size}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Color */}
+                      {hasColors && (
+                        <div style={{ flex: '1 1 auto' }}>
+                          <p style={{ margin: '0 0 0.45rem', fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                            Color
+                          </p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                            {item.colors!.map(color => {
+                              const active = sel.color === color;
+                              return (
+                                <button
+                                  key={color}
+                                  onClick={() => setColor(item.id, color)}
+                                  style={{
+                                    padding: '0.28rem 0.7rem', borderRadius: '6px', fontSize: '0.82rem',
+                                    fontWeight: active ? 700 : 400, cursor: 'pointer',
+                                    transition: 'all 120ms',
+                                    background: active ? '#22c55e' : 'white',
+                                    color: active ? 'white' : '#374151',
+                                    border: active ? '2px solid #22c55e' : '1px solid #d1d5db',
+                                  }}
+                                >
+                                  {color}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => toggleSkip(item.id)}
+                      style={{
+                        width: '100%', padding: '0.55rem', borderRadius: '8px',
+                        border: '1px solid #fca5a5', background: 'white',
+                        color: '#f87171', fontSize: '0.85rem', cursor: 'pointer',
+                        transition: 'all 150ms',
+                      }}
+                    >
+                      Ya lo tengo
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Error */}
         {error && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
-            <AlertCircle size={16} color="#e04951" />
-            <p style={{ margin: 0, fontSize: '0.82rem', color: '#7f1d1d' }}>{error}</p>
+          <div style={{
+            marginTop: '1rem', background: '#fef2f2', border: '1px solid #fecaca',
+            borderRadius: '8px', padding: '0.75rem 1rem',
+            fontSize: '0.83rem', color: '#dc2626',
+          }}>
+            {error}
           </div>
         )}
 
-        {catalog.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-            <Shirt size={36} color="#cbd5e1" style={{ marginBottom: '0.5rem' }} />
-            <p style={{ fontSize: '0.85rem' }}>No hay catálogo configurado para tu empresa.<br />Consultá con logística.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {catalog.map(item => {
-              const qty = order[item.id]?.qty || 0;
-              return (
-                <div key={item.id} style={{
-                  background: 'white', borderRadius: '10px',
-                  border: qty > 0 ? '2px solid #29416b' : '1px solid #e2e8f0',
-                  padding: '1rem',
-                  transition: 'border-color 200ms',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ margin: 0, fontWeight: 600, color: '#1e293b', fontSize: '0.9rem' }}>{item.article_type}</p>
-                      <p style={{ margin: '0.2rem 0 0', fontSize: '0.72rem', color: '#94a3b8' }}>
-                        Máx. {item.quantity} unid. · Vida útil: {item.useful_life_months} meses
-                        {item.reusable_allowed ? ' · Puede ser reutilizable' : ''}
-                      </p>
-                    </div>
-                    {/* Contador */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <button
-                        onClick={() => { updateQty(item, -1); setError(null); }}
-                        disabled={qty === 0}
-                        style={{
-                          width: '32px', height: '32px', borderRadius: '50%',
-                          border: '2px solid #e2e8f0', background: qty === 0 ? '#f8fafc' : 'white',
-                          cursor: qty === 0 ? 'not-allowed' : 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: qty === 0 ? '#cbd5e1' : '#29416b',
-                        }}
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', minWidth: '24px', textAlign: 'center' }}>
-                        {qty}
-                      </span>
-                      <button
-                        onClick={() => { updateQty(item, 1); setError(null); }}
-                        disabled={qty >= item.quantity}
-                        style={{
-                          width: '32px', height: '32px', borderRadius: '50%',
-                          border: '2px solid #e2e8f0', background: qty >= item.quantity ? '#f8fafc' : '#29416b',
-                          cursor: qty >= item.quantity ? 'not-allowed' : 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: qty >= item.quantity ? '#cbd5e1' : 'white',
-                        }}
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Talle si está seleccionado */}
-                  {qty > 0 && (
-                    <div style={{ marginTop: '0.75rem' }}>
-                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.3rem' }}>
-                        Talle
-                      </label>
-                      <input
-                        type="text"
-                        value={sizes[item.id] || ''}
-                        onChange={e => updateSize(item, e.target.value)}
-                        placeholder={
-                          item.article_type.toLowerCase().includes('pantalon') || item.article_type.toLowerCase().includes('pantalón')
-                            ? (employee.talle_inferior || 'Ej: 42')
-                            : item.article_type.toLowerCase().includes('zapato') || item.article_type.toLowerCase().includes('calzado') || item.article_type.toLowerCase().includes('bota')
-                            ? (employee.calzado || 'Ej: 42')
-                            : (employee.talle_superior || 'Ej: M / L / XL')
-                        }
-                        style={{
-                          width: '100%', border: '1px solid #d1d5db', borderRadius: '6px',
-                          padding: '0.4rem 0.7rem', fontSize: '0.85rem', boxSizing: 'border-box',
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Continuar */}
-        <button
-          onClick={handleContinue}
-          disabled={totalItems === 0}
-          style={{
-            marginTop: '1.5rem',
-            width: '100%',
-            backgroundColor: totalItems === 0 ? '#94a3b8' : '#29416b',
-            color: 'white', border: 'none', borderRadius: '8px',
-            padding: '0.85rem', fontSize: '0.9rem', fontWeight: 600,
-            cursor: totalItems === 0 ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-          }}
-        >
-          Seleccionar turno <ArrowRight size={16} />
-        </button>
+        {/* Acciones */}
+        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
+          <button
+            onClick={() => router.back()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.4rem',
+              padding: '0.75rem 1.25rem', borderRadius: '8px',
+              border: '1px solid #d1d5db', background: 'white',
+              color: '#374151', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            <ArrowLeft size={16} /> Atrás
+          </button>
+          <button
+            onClick={handleContinue}
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: '0.5rem', padding: '0.75rem', borderRadius: '8px',
+              background: '#29416b', color: 'white',
+              fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', border: 'none',
+            }}
+          >
+            Continuar <ArrowRight size={16} />
+          </button>
+        </div>
       </div>
     </div>
   );

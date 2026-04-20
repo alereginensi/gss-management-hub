@@ -37,14 +37,13 @@ export async function holdSlot(
   if (isPg) {
     const pgText = `
       UPDATE agenda_time_slots
-      SET held_until = NOW() + INTERVAL '${holdSeconds} seconds', hold_token = $1
-      WHERE id = $2
-        AND (held_until IS NULL OR held_until < NOW())
-        AND current_bookings < capacity
+      SET held_until = NOW() + INTERVAL '${holdSeconds} seconds', hold_token = ?
+      WHERE id = ?
+        AND (held_until IS NULL OR held_until::timestamptz < NOW())
+        AND current_bookings < CASE WHEN capacity > 0 THEN capacity ELSE 1 END
         AND estado = 'activo'
     `;
-    // Use db.run which handles pg internally
-    result = await db.run(pgText.replace(/\$1/g, '?').replace(/\$2/g, '?'), [holdToken, slotId]);
+    result = await db.run(pgText, [holdToken, slotId]);
   } else {
     const sqliteText = `
       UPDATE agenda_time_slots

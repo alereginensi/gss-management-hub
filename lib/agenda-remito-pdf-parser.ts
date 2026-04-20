@@ -218,7 +218,16 @@ function extractStandaloneRMinusLines(text: string, existing: DescWithQty[]): De
   return extra;
 }
 
-export function extractRemitoArticleDescriptions(text: string): DescWithQty[] {
+function normalizeRemitoText(text: string): string {
+  // "R • Article" → "R - Article"
+  let t = text.replace(/\bR\s*•\s*/g, 'R - ');
+  // "Article + S/M/L/XL/XXL/36-46" → "Article - S/M/L/XL/XXL/36-46"
+  t = t.replace(/\s*\+\s*(S|M|L|XL|XXL|3[6-9]|4[0-6])\b/gi, (_, sz) => ` - ${sz.toUpperCase()}`);
+  return t;
+}
+
+export function extractRemitoArticleDescriptions(rawText: string): DescWithQty[] {
+  const text = normalizeRemitoText(rawText);
   const tight = extractDescriptionsFromTightNoSpace(text);
   if (tight.length > 0) return mergeDedupe([...tight, ...extractStandaloneRMinusLines(text, tight)]);
 
@@ -255,6 +264,14 @@ export function extractRemitoArticleDescriptions(text: string): DescWithQty[] {
     if (/^r\s*-/i.test(line)) {
       const p = line.split(/\s*-\s*/).filter(Boolean);
       if (p.length >= 3) add(line, 1);
+    } else {
+      // Plain "Article - SIZE" line (no leading number, no R prefix)
+      const sz = splitBodyAndTrailingSize(line);
+      if (sz && VALID_SIZE_TOKEN.test(sz.size) && sz.body.length >= 4) {
+        if (!/^(fecha|razon|direccion|emitido|montevideo|uruguay|scout|gss)\b/i.test(sz.body)) {
+          add(`${sz.body} - ${sz.size}`, 1);
+        }
+      }
     }
   }
 
@@ -278,20 +295,21 @@ export interface RemitoPdfItemWithQty extends RemitoPdfItem {
   qty: number;
 }
 
-export function reconcileOrderItemsFromRemitoPdf(text: string, uniforms: UniformItem[]): RemitoPdfItemWithQty[] | null {
+export function reconcileOrderItemsFromRemitoPdf(text: string, _uniforms?: UniformItem[]): RemitoPdfItemWithQty[] | null {
   const descriptions = extractRemitoArticleDescriptions(text);
   if (descriptions.length === 0) return null;
 
-  // Aggregate by article_type + size (in case two different desc lines map to the same article+size)
   const agg = new Map<string, RemitoPdfItemWithQty>();
   for (const { desc, qty } of descriptions) {
-    const row = mapOneRemitoArticleLine(desc, uniforms);
-    if (!row) continue;
-    const key = `${row.item}|||${row.size}`;
+    // Strip leading "R - " prefix if present
+    const cleaned = desc.replace(/^r\s*-\s*/i, '').trim();
+    const split = splitBodyAndTrailingSize(cleaned);
+    if (!split || split.body.length < 2) continue;
+    const key = `${split.body}|||${split.size}`;
     if (agg.has(key)) {
       agg.get(key)!.qty += qty;
     } else {
-      agg.set(key, { ...row, qty });
+      agg.set(key, { item: split.body, size: split.size, qty });
     }
   }
 

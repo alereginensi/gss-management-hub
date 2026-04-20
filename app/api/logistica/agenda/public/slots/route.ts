@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     // Liberar holds expirados antes de listar
     if (isPg) {
-      await db.run(`UPDATE agenda_time_slots SET held_until = NULL, hold_token = NULL WHERE held_until < NOW()`, []);
+      await db.run(`UPDATE agenda_time_slots SET held_until = NULL, hold_token = NULL WHERE held_until::timestamptz < NOW()`, []);
     } else {
       await db.run(`UPDATE agenda_time_slots SET held_until = NULL, hold_token = NULL WHERE held_until < datetime('now')`, []);
     }
@@ -30,16 +30,17 @@ export async function GET(request: NextRequest) {
        FROM agenda_time_slots
        WHERE fecha >= ? AND fecha <= ?
          AND estado = 'activo'
-         AND current_bookings < capacity
+         AND current_bookings < CASE WHEN capacity > 0 THEN capacity ELSE 1 END
        ORDER BY fecha, start_time`,
       [dateFrom, dateTo]
     );
 
     // Calcular disponibilidad neta (descontando hold activo)
-    const available = slots.map((s: any) => ({
-      ...s,
-      available: s.capacity - s.current_bookings - (s.is_held ? 1 : 0),
-    })).filter((s: any) => s.available > 0);
+    // capacity=0 en slots migrados se trata como capacity=1
+    const available = slots.map((s: any) => {
+      const effectiveCapacity = s.capacity > 0 ? s.capacity : 1;
+      return { ...s, available: effectiveCapacity - s.current_bookings - (s.is_held ? 1 : 0) };
+    }).filter((s: any) => s.available > 0);
 
     return NextResponse.json(available);
   } catch (err) {

@@ -96,6 +96,7 @@ export interface OrderItem {
   article_type: string;
   size?: string;
   qty: number;
+  color?: string;
 }
 
 export interface AgendaAppointment {
@@ -176,6 +177,8 @@ export interface AgendaUniformCatalogItem {
   reusable_allowed: number;
   special_authorization_required: number;
   created_at: string;
+  sizes?: string[];
+  colors?: string[];
 }
 
 // ─── Artículos entregados ────────────────────────────────────────────────────
