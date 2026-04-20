@@ -11,3 +11,4 @@ backups
 scripts
 !scripts/download-mitrabajo.cjs
 !scripts/cron-mitrabajo.cjs
+!scripts/generate-clients.js
