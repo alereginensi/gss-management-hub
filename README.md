@@ -117,7 +117,7 @@ Gestión de clientes (ubicaciones) y sus sectores, configuración de notificacio
 
 ## Despliegue
 
-El sistema está preparado para desplegarse en **Railway** con PostgreSQL como base de datos de producción. Ver [DEPLOYMENT_QUICKSTART.md](./DEPLOYMENT_QUICKSTART.md) para los pasos detallados.
+El sistema está preparado para desplegarse en **Railway** con PostgreSQL como base de datos de producción. Ver [DEPLOYMENT_QUICKSTART.md](./docs/DEPLOYMENT_QUICKSTART.md) para los pasos detallados.
 
 ```bash
 # Docker (opcional)
@@ -132,21 +132,21 @@ Todas las guías están escritas para usuarios sin conocimientos técnicos.
 
 | Guía | Módulo |
 |------|--------|
-| [Usuarios y Roles](./GUIA_USUARIOS.md) | Registro, login, tipos de usuario |
-| [Administradores](./GUIA_ADMINISTRADORES.md) | Gestión de usuarios y sistema |
-| [Tickets](./GUIA_TICKETS.md) | Mesa de ayuda, estados, colaboradores |
-| [Mi Trabajo / Asistencia](./GUIA_ASISTENCIA.md) | Registro de tareas y asistencia |
-| [Bitácora](./GUIA_BITACORA.md) | Novedades, exportación, estadísticas |
-| [Configuración Personal](./GUIA_CONFIGURACION.md) | Tema, notificaciones push |
-| [Panel de Administración](./GUIA_ADMINISTRACION_DASHBOARD.md) | Métricas y gestión de tickets |
-| [Operaciones Limpieza](./GUIA_OPERACIONES_LIMPIEZA.md) | Informes, tareas, personal, uniformes |
-| [Logística](./GUIA_LOGISTICA.md) | Agenda web, envíos, órdenes de compra |
-| [Seguridad Electrónica](./GUIA_SEGURIDAD_ELECTRONICA.md) | Monitoreo y mantenimiento |
-| [Cotización](./GUIA_COTIZACION.md) | Tarifas, liquidación, reportes |
-| [RRHH](./GUIA_RRHH.md) | Agenda web de uniformes |
-| [Gestión de Usuarios (Admin)](./GUIA_ADMIN_USUARIOS.md) | Alta, edición, permisos, funcionarios |
-| [Configuración del Sistema (Admin)](./GUIA_ADMIN_CONFIG.md) | Ubicaciones, sectores, herramientas |
-| [Registro de Limpieza](./GUIA_REGISTRO_LIMPIEZA.md) | Pantalla pública con cédula |
-| [Turno / Agenda Uniformes](./GUIA_TURNO.md) | Consulta pública de turno |
-| [Respaldos](./BACKUPS.md) | Procedimientos de backup |
-| [Despliegue](./DEPLOYMENT_QUICKSTART.md) | Guía rápida Railway |
+| [Usuarios y Roles](./docs/guias/GUIA_USUARIOS.md) | Registro, login, tipos de usuario |
+| [Administradores](./docs/guias/GUIA_ADMINISTRADORES.md) | Gestión de usuarios y sistema |
+| [Tickets](./docs/guias/GUIA_TICKETS.md) | Mesa de ayuda, estados, colaboradores |
+| [Mi Trabajo / Asistencia](./docs/guias/GUIA_ASISTENCIA.md) | Registro de tareas y asistencia |
+| [Bitácora](./docs/guias/GUIA_BITACORA.md) | Novedades, exportación, estadísticas |
+| [Configuración Personal](./docs/guias/GUIA_CONFIGURACION.md) | Tema, notificaciones push |
+| [Panel de Administración](./docs/guias/GUIA_ADMINISTRACION_DASHBOARD.md) | Métricas y gestión de tickets |
+| [Operaciones Limpieza](./docs/guias/GUIA_OPERACIONES_LIMPIEZA.md) | Informes, tareas, personal, uniformes |
+| [Logística](./docs/guias/GUIA_LOGISTICA.md) | Agenda web, envíos, órdenes de compra |
+| [Seguridad Electrónica](./docs/guias/GUIA_SEGURIDAD_ELECTRONICA.md) | Monitoreo y mantenimiento |
+| [Cotización](./docs/guias/GUIA_COTIZACION.md) | Tarifas, liquidación, reportes |
+| [RRHH](./docs/guias/GUIA_RRHH.md) | Agenda web de uniformes |
+| [Gestión de Usuarios (Admin)](./docs/guias/GUIA_ADMIN_USUARIOS.md) | Alta, edición, permisos, funcionarios |
+| [Configuración del Sistema (Admin)](./docs/guias/GUIA_ADMIN_CONFIG.md) | Ubicaciones, sectores, herramientas |
+| [Registro de Limpieza](./docs/guias/GUIA_REGISTRO_LIMPIEZA.md) | Pantalla pública con cédula |
+| [Turno / Agenda Uniformes](./docs/guias/GUIA_TURNO.md) | Consulta pública de turno |
+| [Respaldos](./docs/BACKUPS.md) | Procedimientos de backup |
+| [Despliegue](./docs/DEPLOYMENT_QUICKSTART.md) | Guía rápida Railway |

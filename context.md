@@ -212,8 +212,8 @@ npm run migrate:limpieza-personal  # migración segura limpieza → Postgres
 ## Documentación adicional en el repo
 
 - [README](./README.md) — instalación y visión general.
-- [DEPLOYMENT_QUICKSTART](./DEPLOYMENT_QUICKSTART.md) — Railway.
-- [BACKUPS](./BACKUPS.md) — procedimientos de backup de base de datos.
+- [DEPLOYMENT_QUICKSTART](./docs/DEPLOYMENT_QUICKSTART.md) — Railway.
+- [BACKUPS](./docs/BACKUPS.md) — procedimientos de backup de base de datos.
 
 ### Guías de usuario (GUIA_*.md)
 
@@ -221,22 +221,22 @@ Todas las guías están escritas para usuarios sin conocimientos técnicos.
 
 | Archivo | Módulo |
 |---------|--------|
-| [GUIA_USUARIOS](./GUIA_USUARIOS.md) | Roles, registro, login |
-| [GUIA_ADMINISTRADORES](./GUIA_ADMINISTRADORES.md) | Gestión global de usuarios y sistema |
-| [GUIA_TICKETS](./GUIA_TICKETS.md) | Mesa de ayuda, estados, colaboradores |
-| [GUIA_ASISTENCIA](./GUIA_ASISTENCIA.md) | Registro de tareas y asistencia automática |
-| [GUIA_BITACORA](./GUIA_BITACORA.md) | Novedades, exportación, estadísticas |
-| [GUIA_CONFIGURACION](./GUIA_CONFIGURACION.md) | Ajustes personales, tema, notificaciones push |
-| [GUIA_ADMINISTRACION_DASHBOARD](./GUIA_ADMINISTRACION_DASHBOARD.md) | Panel de métricas y gestión de tickets |
-| [GUIA_OPERACIONES_LIMPIEZA](./GUIA_OPERACIONES_LIMPIEZA.md) | Informes, tareas, personal, uniformes |
-| [GUIA_LOGISTICA](./GUIA_LOGISTICA.md) | Agenda web, envíos, órdenes de compra, calendario |
-| [GUIA_SEGURIDAD_ELECTRONICA](./GUIA_SEGURIDAD_ELECTRONICA.md) | Monitoreo y mantenimiento de equipos |
-| [GUIA_COTIZACION](./GUIA_COTIZACION.md) | Tarifas, liquidación, reportes Excel |
-| [GUIA_RRHH](./GUIA_RRHH.md) | Agenda web de uniformes desde RRHH |
-| [GUIA_ADMIN_USUARIOS](./GUIA_ADMIN_USUARIOS.md) | Alta, edición, permisos, funcionarios |
-| [GUIA_ADMIN_CONFIG](./GUIA_ADMIN_CONFIG.md) | Ubicaciones, sectores, herramientas de sistema |
-| [GUIA_REGISTRO_LIMPIEZA](./GUIA_REGISTRO_LIMPIEZA.md) | Pantalla pública de registro por cédula |
-| [GUIA_TURNO](./GUIA_TURNO.md) | Consulta pública de turno de uniformes |
+| [GUIA_USUARIOS](./docs/guias/GUIA_USUARIOS.md) | Roles, registro, login |
+| [GUIA_ADMINISTRADORES](./docs/guias/GUIA_ADMINISTRADORES.md) | Gestión global de usuarios y sistema |
+| [GUIA_TICKETS](./docs/guias/GUIA_TICKETS.md) | Mesa de ayuda, estados, colaboradores |
+| [GUIA_ASISTENCIA](./docs/guias/GUIA_ASISTENCIA.md) | Registro de tareas y asistencia automática |
+| [GUIA_BITACORA](./docs/guias/GUIA_BITACORA.md) | Novedades, exportación, estadísticas |
+| [GUIA_CONFIGURACION](./docs/guias/GUIA_CONFIGURACION.md) | Ajustes personales, tema, notificaciones push |
+| [GUIA_ADMINISTRACION_DASHBOARD](./docs/guias/GUIA_ADMINISTRACION_DASHBOARD.md) | Panel de métricas y gestión de tickets |
+| [GUIA_OPERACIONES_LIMPIEZA](./docs/guias/GUIA_OPERACIONES_LIMPIEZA.md) | Informes, tareas, personal, uniformes |
+| [GUIA_LOGISTICA](./docs/guias/GUIA_LOGISTICA.md) | Agenda web, envíos, órdenes de compra, calendario |
+| [GUIA_SEGURIDAD_ELECTRONICA](./docs/guias/GUIA_SEGURIDAD_ELECTRONICA.md) | Monitoreo y mantenimiento de equipos |
+| [GUIA_COTIZACION](./docs/guias/GUIA_COTIZACION.md) | Tarifas, liquidación, reportes Excel |
+| [GUIA_RRHH](./docs/guias/GUIA_RRHH.md) | Agenda web de uniformes desde RRHH |
+| [GUIA_ADMIN_USUARIOS](./docs/guias/GUIA_ADMIN_USUARIOS.md) | Alta, edición, permisos, funcionarios |
+| [GUIA_ADMIN_CONFIG](./docs/guias/GUIA_ADMIN_CONFIG.md) | Ubicaciones, sectores, herramientas de sistema |
+| [GUIA_REGISTRO_LIMPIEZA](./docs/guias/GUIA_REGISTRO_LIMPIEZA.md) | Pantalla pública de registro por cédula |
+| [GUIA_TURNO](./docs/guias/GUIA_TURNO.md) | Consulta pública de turno de uniformes |
 
 ---
 
