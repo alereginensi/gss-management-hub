@@ -1118,6 +1118,14 @@ class DbWrapper {
             console.log('🐘 Migrating logbook: adding images column');
             await this.pgPool!.query('ALTER TABLE logbook ADD COLUMN images TEXT');
           }
+          if (!existingCols.includes('acciones')) {
+            console.log('🐘 Migrating logbook: adding acciones column');
+            await this.pgPool!.query('ALTER TABLE logbook ADD COLUMN acciones TEXT');
+          }
+          if (!existingCols.includes('status')) {
+            console.log('🐘 Migrating logbook: adding status column');
+            await this.pgPool!.query('ALTER TABLE logbook ADD COLUMN status TEXT');
+          }
 
           // Migrate notifications ID to BIGINT for Postgres
           const notifCols = await this.pgPool!.query(`
@@ -1650,6 +1658,12 @@ class DbWrapper {
         }
         if (!existingCols.includes('images')) {
           this.sqliteDb.exec('ALTER TABLE logbook ADD COLUMN images TEXT');
+        }
+        if (!existingCols.includes('acciones')) {
+          this.sqliteDb.exec('ALTER TABLE logbook ADD COLUMN acciones TEXT');
+        }
+        if (!existingCols.includes('status')) {
+          this.sqliteDb.exec('ALTER TABLE logbook ADD COLUMN status TEXT');
         }
 
         // Ensure logbook_stats_snapshots exists for SQLite

@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
         const items = Array.isArray(body) ? body : [body];
 
         const insertSql = `
-            INSERT INTO logbook (date, sector, supervisor, location, incident, report, staff_member, uniform, extra_data, supervised_by, time, images)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO logbook (date, sector, supervisor, location, incident, report, staff_member, uniform, extra_data, supervised_by, time, images, acciones, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         await db.transaction(async (tx) => {
@@ -82,7 +82,9 @@ export async function POST(req: NextRequest) {
                     JSON.stringify(entry.extra_data || {}),
                     entry.supervised_by || null,
                     entry.time || null,
-                    JSON.stringify(entry.images || [])
+                    JSON.stringify(entry.images || []),
+                    entry.acciones || null,
+                    entry.status || null
                 ]);
             }
         });
@@ -97,19 +99,20 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
-        const { id, date, sector, supervisor, location, incident, report, staff_member, uniform, extra_data, supervised_by, time, images } = body;
+        const { id, date, sector, supervisor, location, incident, report, staff_member, uniform, extra_data, supervised_by, time, images, acciones, status } = body;
 
         if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 });
 
         await db.run(
             `UPDATE logbook
-             SET date = ?, sector = ?, supervisor = ?, location = ?, incident = ?, report = ?, staff_member = ?, uniform = ?, extra_data = ?, supervised_by = ?, time = ?, images = ?
+             SET date = ?, sector = ?, supervisor = ?, location = ?, incident = ?, report = ?, staff_member = ?, uniform = ?, extra_data = ?, supervised_by = ?, time = ?, images = ?, acciones = ?, status = ?
              WHERE id = ?`,
             [
                 date || null, sector || null, supervisor || null, location || null,
                 incident || '', report || '', staff_member || '', uniform || '',
                 JSON.stringify(extra_data || {}), supervised_by || null,
-                time || null, JSON.stringify(images || []), id
+                time || null, JSON.stringify(images || []),
+                acciones || null, status || null, id
             ]
         );
 

@@ -49,6 +49,8 @@ interface LogEntry {
     supervised_by: string;
     extra_data: Record<string, any>;
     images: string[];
+    acciones?: string;
+    status?: string;
 }
 
 interface ReportItem {
@@ -63,6 +65,15 @@ interface ReportItem {
 }
 
 const SUPERVISO_OPTIONS = ['Limpieza', 'Seguridad Física', 'Seguridad Electrónica', 'Tercerizados', 'Administrativos'];
+
+const STATUS_OPTIONS = ['Pendiente', 'En proceso', 'Resuelto', 'Sin acción requerida'];
+
+const STATUS_STYLES: Record<string, { bg: string; color: string; border: string }> = {
+    'Pendiente':            { bg: 'rgba(245,158,11,0.1)',  color: '#d97706', border: 'rgba(245,158,11,0.4)' },
+    'En proceso':           { bg: 'rgba(59,130,246,0.1)',  color: '#2563eb', border: 'rgba(59,130,246,0.4)' },
+    'Resuelto':             { bg: 'rgba(34,197,94,0.1)',   color: '#16a34a', border: 'rgba(34,197,94,0.4)'  },
+    'Sin acción requerida': { bg: 'rgba(100,116,139,0.1)', color: '#475569', border: 'rgba(100,116,139,0.4)' },
+};
 const UNIFORMS = ['Completo', 'Parcial', 'Sin Uniforme', 'Otro'];
 
 const INCIDENT_CATEGORIES = [
@@ -413,6 +424,29 @@ export default function LogbookPage() {
 
     // Selection State
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+    // Inline seguimiento state
+    const [openStatusId, setOpenStatusId] = useState<number | null>(null);
+    const [editingAccionesId, setEditingAccionesId] = useState<number | null>(null);
+    const [editingAccionesText, setEditingAccionesText] = useState('');
+
+    const saveFollowUp = async (entry: LogEntry, patch: { status?: string; acciones?: string }) => {
+        const updated = { ...entry, ...patch };
+        await fetch('/api/logbook', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updated)
+        });
+        setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, ...patch } : e));
+    };
+
+    // Cerrar dropdown de estado al hacer click fuera
+    useEffect(() => {
+        if (!openStatusId) return;
+        const handler = () => setOpenStatusId(null);
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [openStatusId]);
 
     // Submit state to prevent duplicates
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1091,11 +1125,11 @@ export default function LogbookPage() {
                 )}
 
                 {/* Desktop Table View */}
-                <div className="card desktop-view" style={{ padding: 0, overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <div className="card desktop-view" style={{ padding: 0, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' }}>
                         <thead>
                             <tr style={{ backgroundColor: 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border-color)' }}>
-                                <th style={{ padding: '1rem', width: '40px' }}>
+                                <th style={{ padding: '0.75rem 0.5rem', width: '3%' }}>
                                     <input
                                         type="checkbox"
                                         checked={searchFilteredEntries.length > 0 && selectedIds.size === searchFilteredEntries.length}
@@ -1103,19 +1137,19 @@ export default function LogbookPage() {
                                         style={{ cursor: 'pointer' }}
                                     />
                                 </th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem', minWidth: '140px' }}>Fecha / Hora</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Tipo de Servicio</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem', minWidth: '150px' }}>Responsable</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem', minWidth: '170px' }}>Cliente</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem', minWidth: '120px' }}>Sector</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem', minWidth: '150px' }}>Funcionario</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Uniforme</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Incidencia</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Reporte</th>
-                                <th style={{ padding: '1rem', fontSize: '0.85rem' }}>Fotos</th>
+                                <th style={{ padding: '0.75rem 0.8rem', fontSize: '0.85rem', width: '8%' }}>Fecha / Hora</th>
+                                <th style={{ padding: '0.75rem 0.8rem', fontSize: '0.85rem', width: '8%' }}>Tipo de Servicio</th>
+                                <th style={{ padding: '0.75rem 0.8rem', fontSize: '0.85rem', width: '9%' }}>Responsable</th>
+                                <th style={{ padding: '0.75rem 0.8rem', fontSize: '0.85rem', width: '9%' }}>Cliente</th>
+                                <th style={{ padding: '0.75rem 0.8rem', fontSize: '0.85rem', width: '7%' }}>Sector</th>
+                                <th style={{ padding: '0.75rem 0.8rem', fontSize: '0.85rem', width: '9%' }}>Funcionario</th>
+                                <th style={{ padding: '0.75rem 0.8rem', fontSize: '0.85rem', width: '6%' }}>Uniforme</th>
+                                <th style={{ padding: '0.75rem 0.8rem', fontSize: '0.85rem', width: '8%' }}>Incidencia</th>
+                                <th style={{ padding: '0.75rem 0.8rem', fontSize: '0.85rem', width: '17%' }}>Reporte</th>
+                                <th style={{ padding: '0.75rem 0.8rem', fontSize: '0.85rem', width: '6%' }}>Fotos</th>
                                 {columns.map(col => (
-                                    <th key={col.id} style={{ padding: '1rem', fontSize: '0.85rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <th key={col.id} style={{ padding: '0.5rem 0.6rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                             {col.label}
                                             <button
                                                 onClick={() => handleDeleteColumn(col.name, col.label)}
@@ -1129,24 +1163,24 @@ export default function LogbookPage() {
                                         </div>
                                     </th>
                                 ))}
-                                <th style={{ padding: '1rem' }}></th>
+                                <th style={{ padding: '0.5rem 0.6rem', width: '10%' }}></th>
                             </tr>
                             <tr style={{ borderBottom: '2px solid var(--accent-color)', backgroundColor: 'rgba(59, 130, 246, 0.05)' }}>
-                                <td style={{ padding: '0.5rem' }}></td>
-                                <td style={{ padding: '0.5rem' }}>
+                                <td style={{ padding: '0.5rem', overflow: 'hidden' }}></td>
+                                <td style={{ padding: '0.5rem', overflow: 'hidden' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                        <input type="date" value={inlineData.date} onChange={e => setInlineData({ ...inlineData, date: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }} />
-                                        <input type="text" readOnly value={realTime} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem', backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)', cursor: 'not-allowed' }} />
+                                        <input type="date" value={inlineData.date} onChange={e => setInlineData({ ...inlineData, date: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }} />
+                                        <input type="text" readOnly value={realTime} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box', backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)', cursor: 'not-allowed' }} />
                                     </div>
                                 </td>
-                                <td style={{ padding: '0.5rem' }}>
-                                    <select value={inlineData.supervised_by} onChange={e => setInlineData({ ...inlineData, supervised_by: e.target.value, supervisor: currentUser?.role === 'supervisor' ? currentUser.name : '' })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
+                                <td style={{ padding: '0.5rem', overflow: 'hidden' }}>
+                                    <select value={inlineData.supervised_by} onChange={e => setInlineData({ ...inlineData, supervised_by: e.target.value, supervisor: currentUser?.role === 'supervisor' ? currentUser.name : '' })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}>
                                         {SUPERVISO_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                                     </select>
                                 </td>
-                                <td style={{ padding: '0.5rem' }}>
+                                <td style={{ padding: '0.5rem', overflow: 'hidden' }}>
                                     {currentUser?.role === 'supervisor' ? (
-                                        <input type="text" readOnly value={currentUser.name} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem', backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)' }} />
+                                        <input type="text" readOnly value={currentUser.name} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box', backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)' }} />
                                     ) : (
                                         <SearchableSelect
                                             options={supervisores.filter(s => {
@@ -1159,12 +1193,12 @@ export default function LogbookPage() {
                                             value={inlineData.supervisor || ''}
                                             onChange={v => setInlineData({ ...inlineData, supervisor: v })}
                                             placeholder="Responsable..."
-                                            style={{ fontSize: '0.85rem' }}
+                                            style={{ minWidth: 0 }}
                                             inputStyle={{ padding: '0.4rem', fontSize: '0.85rem' }}
                                         />
                                     )}
                                 </td>
-                                <td style={{ padding: '0.5rem' }}>
+                                <td style={{ padding: '0.5rem', overflow: 'hidden' }}>
                                     <SearchableSelect
                                         options={availableLocations}
                                         value={inlineData.location || ''}
@@ -1173,11 +1207,11 @@ export default function LogbookPage() {
                                             setInlineData({ ...inlineData, location: newLoc, sector: sectors[0] || '' });
                                         }}
                                         placeholder="Cliente..."
-                                        style={{ fontSize: '0.85rem' }}
+                                        style={{ minWidth: 0 }}
                                         inputStyle={{ padding: '0.4rem', fontSize: '0.85rem' }}
                                     />
                                 </td>
-                                <td style={{ padding: '0.5rem' }}>
+                                <td style={{ padding: '0.5rem', overflow: 'hidden' }}>
                                     {(() => {
                                         const sectors = getSectorsForLocation(inlineData.location || '');
                                         return sectors.length === 1 && sectors[0] === 'Sector Único' ? (
@@ -1186,7 +1220,7 @@ export default function LogbookPage() {
                                                 readOnly
                                                 value="Sector Único"
                                                 className="input"
-                                                style={{ padding: '0.4rem', fontSize: '0.85rem', backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)' }}
+                                                style={{ padding: '0.4rem', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box', backgroundColor: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)' }}
                                             />
                                         ) : (
                                             <SearchableSelect
@@ -1194,48 +1228,49 @@ export default function LogbookPage() {
                                                 value={inlineData.sector || ''}
                                                 onChange={v => setInlineData({ ...inlineData, sector: v })}
                                                 placeholder="Sector..."
-                                                style={{ fontSize: '0.85rem' }}
+                                                style={{ minWidth: 0 }}
                                                 inputStyle={{ padding: '0.4rem', fontSize: '0.85rem' }}
                                             />
                                         );
                                     })()}
                                 </td>
-                                <td style={{ padding: '0.5rem' }}>
+                                <td style={{ padding: '0.5rem', overflow: 'hidden' }}>
                                     <SearchableSelect
                                         options={funcionarios}
                                         value={inlineData.staff_member || ''}
                                         onChange={v => setInlineData({ ...inlineData, staff_member: v })}
                                         placeholder="Funcionario..."
+                                        style={{ minWidth: 0 }}
                                         inputStyle={{ padding: '0.4rem', fontSize: '0.85rem' }}
                                     />
                                 </td>
-                                <td style={{ padding: '0.5rem' }}>
-                                    <select value={inlineData.uniform} onChange={e => setInlineData({ ...inlineData, uniform: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem' }}>
+                                <td style={{ padding: '0.5rem', overflow: 'hidden' }}>
+                                    <select value={inlineData.uniform} onChange={e => setInlineData({ ...inlineData, uniform: e.target.value })} className="input" style={{ padding: '0.4rem', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}>
                                         {UNIFORMS.map(u => <option key={u} value={u}>{u}</option>)}
                                     </select>
                                 </td>
-                                <td style={{ padding: '0.5rem' }}>
+                                <td style={{ padding: '0.5rem', overflow: 'hidden' }}>
                                     <select
                                         value={inlineData.incident}
                                         onChange={e => setInlineData({ ...inlineData, incident: e.target.value })}
                                         className="input"
-                                        style={{ padding: '0.4rem', fontSize: '0.85rem' }}
+                                        style={{ padding: '0.4rem', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
                                     >
                                         <option value="">Seleccionar...</option>
                                         {INCIDENT_CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                                     </select>
                                 </td>
-                                <td style={{ padding: '0.5rem' }}>
+                                <td style={{ padding: '0.5rem', overflow: 'hidden' }}>
                                     <textarea
                                         placeholder="Reporte..."
                                         value={inlineData.report}
                                         onChange={e => setInlineData({ ...inlineData, report: e.target.value })}
                                         className="input"
                                         rows={2}
-                                        style={{ padding: '0.4rem', fontSize: '0.85rem', resize: 'vertical', minHeight: '60px' }}
+                                        style={{ padding: '0.4rem', fontSize: '0.85rem', resize: 'vertical', minHeight: '60px', width: '100%', boxSizing: 'border-box' }}
                                     />
                                 </td>
-                                <td style={{ padding: '0.5rem' }}>
+                                <td style={{ padding: '0.5rem', overflow: 'hidden' }}>
                                     <ImageUploader
                                         images={inlineData.images || []}
                                         onChange={imgs => setInlineData({ ...inlineData, images: imgs })}
@@ -1311,7 +1346,7 @@ export default function LogbookPage() {
                                         <React.Fragment key={entry.id}>
                                             {isNewSector && index > 0 && (
                                                 <tr style={{ height: '8px', backgroundColor: 'rgba(0,0,0,0.03)' }}>
-                                                    <td colSpan={11 + columns.length} style={{ padding: 0, borderTop: '2px solid var(--border-color)' }}></td>
+                                                    <td colSpan={11 + columns.length} style={{ padding: 0, borderTop: '1px solid var(--border-color)' }}></td>
                                                 </tr>
                                             )}
                                             <tr style={{
@@ -1320,7 +1355,7 @@ export default function LogbookPage() {
                                                 backgroundColor: rowBgColor,
                                                 borderLeft: `3px solid ${serviceColors.border}`
                                             }}>
-                                                <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                                <td style={{ padding: '0.5rem 0.4rem', textAlign: 'center' }}>
                                                     <input
                                                         type="checkbox"
                                                         checked={selectedIds.has(entry.id)}
@@ -1328,38 +1363,38 @@ export default function LogbookPage() {
                                                         style={{ cursor: 'pointer' }}
                                                     />
                                                 </td>
-                                                <td style={{ padding: '1rem' }}>
-                                                    <div style={{ fontWeight: 500 }}>{entry.date}</div>
+                                                <td style={{ padding: '0.75rem 0.8rem', overflow: 'hidden' }}>
+                                                    <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.date}</div>
                                                     {entry.time && (
                                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
                                                             <Clock size={11} />{entry.time}
                                                         </div>
                                                     )}
                                                 </td>
-                                                <td style={{ padding: '1rem' }}>
+                                                <td style={{ padding: '0.75rem 0.8rem', overflow: 'hidden' }}>
                                                     {(() => {
                                                         const c = SERVICE_TYPE_COLORS[entry.supervised_by];
                                                         return c ? (
-                                                            <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem', borderRadius: '10px', backgroundColor: c.light, color: c.text, border: `1px solid ${c.border}50`, fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                                            <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem', borderRadius: '10px', backgroundColor: c.light, color: c.text, border: `1px solid ${c.border}50`, fontWeight: 500, whiteSpace: 'nowrap', display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                                                                 {entry.supervised_by}
                                                             </span>
-                                                        ) : (entry.supervised_by || '-');
+                                                        ) : <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.supervised_by || '-'}</span>;
                                                     })()}
                                                 </td>
-                                                <td style={{ padding: '1rem' }}>{entry.supervisor || '-'}</td>
-                                                <td style={{ padding: '1rem' }}>{entry.location}</td>
-                                                <td style={{ padding: '1rem', fontWeight: isNewSector ? 600 : 400 }}>{entry.sector}</td>
-                                                <td style={{ padding: '1rem' }}>{entry.staff_member}</td>
-                                                <td style={{ padding: '1rem' }}>
-                                                    <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '10px', backgroundColor: entry.uniform === 'Completo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: entry.uniform === 'Completo' ? '#22c55e' : '#ef4444', border: '1px solid currentColor' }}>
+                                                <td style={{ padding: '0.75rem 0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.supervisor || '-'}</td>
+                                                <td style={{ padding: '0.75rem 0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.location}</td>
+                                                <td style={{ padding: '0.75rem 0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: isNewSector ? 600 : 400 }}>{entry.sector}</td>
+                                                <td style={{ padding: '0.75rem 0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.staff_member}</td>
+                                                <td style={{ padding: '0.75rem 0.8rem', overflow: 'hidden' }}>
+                                                    <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '10px', backgroundColor: entry.uniform === 'Completo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: entry.uniform === 'Completo' ? '#22c55e' : '#ef4444', border: '1px solid currentColor', whiteSpace: 'nowrap' }}>
                                                         {entry.uniform}
                                                     </span>
                                                 </td>
-                                                <td style={{ padding: '1rem' }}>{entry.incident}</td>
-                                                <td style={{ padding: '1rem', verticalAlign: 'top', whiteSpace: 'normal', lineBreak: 'anywhere', minWidth: '250px' }}>{entry.report}</td>
-                                                <td style={{ padding: '0.75rem' }}>
+                                                <td style={{ padding: '0.75rem 0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.incident}</td>
+                                                <td style={{ padding: '0.75rem 0.8rem', verticalAlign: 'top', whiteSpace: 'normal', overflow: 'hidden', wordBreak: 'break-word' }}>{entry.report}</td>
+                                                <td style={{ padding: '0.75rem', overflow: 'hidden' }}>
                                                     {entry.images && entry.images.length > 0 ? (
-                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem' }}>
                                                             {entry.images.map(url => (
                                                                 <img
                                                                     key={url}
@@ -1367,7 +1402,7 @@ export default function LogbookPage() {
                                                                     alt="foto"
                                                                     onClick={() => window.open(url, '_blank')}
                                                                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                                                                    style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 5, cursor: 'pointer', border: '1px solid var(--border-color)' }}
+                                                                    style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-color)' }}
                                                                 />
                                                             ))}
                                                         </div>
@@ -1376,7 +1411,78 @@ export default function LogbookPage() {
                                                 {columns.map(col => (
                                                     <td key={col.id} style={{ padding: '1rem' }}>{entry.extra_data[col.name] || '-'}</td>
                                                 ))}
-                                                <td style={{ padding: '1rem' }}></td>
+                                                <td style={{ padding: '0.75rem' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-start', minWidth: '120px' }}>
+
+                                                        {/* ── Estado inline ── */}
+                                                        <div style={{ position: 'relative' }}>
+                                                            {(() => {
+                                                                const st = entry.status
+                                                                    ? (STATUS_STYLES[entry.status] || { bg: 'rgba(100,116,139,0.1)', color: '#475569', border: 'rgba(100,116,139,0.4)' })
+                                                                    : { bg: 'rgba(100,116,139,0.06)', color: '#94a3b8', border: 'rgba(100,116,139,0.2)' };
+                                                                return (
+                                                                    <button
+                                                                        onClick={() => setOpenStatusId(openStatusId === entry.id ? null : entry.id)}
+                                                                        style={{ fontSize: '0.7rem', padding: '0.25rem 0.55rem', borderRadius: '10px', backgroundColor: st.bg, color: st.color, border: `1px solid ${st.border}`, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                                                                    >
+                                                                        {entry.status || 'Sin revisar'}
+                                                                        <span style={{ opacity: 0.6, fontSize: '0.6rem' }}>▼</span>
+                                                                    </button>
+                                                                );
+                                                            })()}
+                                                            {openStatusId === entry.id && (
+                                                                <div style={{ position: 'fixed', zIndex: 9999, background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '10px', boxShadow: '0 6px 20px rgba(0,0,0,0.15)', padding: '0.4rem', minWidth: '160px' }}
+                                                                    ref={el => {
+                                                                        if (el) {
+                                                                            const btn = el.previousElementSibling as HTMLElement;
+                                                                            if (btn) {
+                                                                                const r = btn.getBoundingClientRect();
+                                                                                el.style.top = r.bottom + 4 + 'px';
+                                                                                el.style.left = r.left + 'px';
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    {['', ...STATUS_OPTIONS].map(opt => {
+                                                                        const st2 = opt ? (STATUS_STYLES[opt] || { bg: 'transparent', color: 'var(--text-primary)', border: 'transparent' }) : { bg: 'transparent', color: '#94a3b8', border: 'transparent' };
+                                                                        return (
+                                                                            <div
+                                                                                key={opt || '__none__'}
+                                                                                onMouseDown={async () => {
+                                                                                    setOpenStatusId(null);
+                                                                                    await saveFollowUp(entry, { status: opt || undefined });
+                                                                                }}
+                                                                                style={{ padding: '0.4rem 0.6rem', borderRadius: '7px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: opt === entry.status ? 700 : 400, backgroundColor: opt === entry.status ? 'rgba(0,0,0,0.05)' : 'transparent', color: st2.color }}
+                                                                                onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)'; }}
+                                                                                onMouseLeave={e => { e.currentTarget.style.backgroundColor = opt === entry.status ? 'rgba(0,0,0,0.05)' : 'transparent'; }}
+                                                                            >
+                                                                                {opt || '— Sin estado —'}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* ── Acciones botón ── */}
+                                                        <button
+                                                            onClick={() => { setEditingAccionesId(entry.id); setEditingAccionesText(entry.acciones || ''); }}
+                                                            style={{ fontSize: '0.7rem', padding: '0.25rem 0.55rem', borderRadius: '10px', border: '1px dashed var(--border-color)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', maxWidth: '160px', textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                                            title={entry.acciones || 'Agregar acciones'}
+                                                        >
+                                                            {entry.acciones ? entry.acciones : '+ Acciones'}
+                                                        </button>
+
+                                                        {/* ── Ver detalles ── */}
+                                                        <button
+                                                            onClick={() => { setSelectedReport(entry); setEditData({}); }}
+                                                            className="btn btn-secondary"
+                                                            style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem', borderRadius: '8px' }}
+                                                        >
+                                                            Ver detalles
+                                                        </button>
+                                                    </div>
+                                                </td>
                                             </tr>
                                         </React.Fragment>
                                     );
@@ -1502,6 +1608,25 @@ export default function LogbookPage() {
                                         }}>
                                             {entry.uniform}
                                         </span>
+                                        {(() => {
+                                            const st = entry.status
+                                                ? (STATUS_STYLES[entry.status] || { bg: 'rgba(100,116,139,0.1)', color: '#475569', border: 'rgba(100,116,139,0.4)' })
+                                                : { bg: 'rgba(100,116,139,0.08)', color: '#94a3b8', border: 'rgba(100,116,139,0.2)' };
+                                            return (
+                                                <span style={{
+                                                    fontSize: '0.68rem',
+                                                    padding: '0.2rem 0.55rem',
+                                                    borderRadius: '20px',
+                                                    backgroundColor: st.bg,
+                                                    color: st.color,
+                                                    fontWeight: 700,
+                                                    border: `1px solid ${st.border}`,
+                                                    whiteSpace: 'nowrap'
+                                                }}>
+                                                    {entry.status || 'Sin revisar'}
+                                                </span>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
 
@@ -1530,14 +1655,21 @@ export default function LogbookPage() {
                                         ))}
                                     </div>
                                 )}
-                                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 600 }}>
-                                        {entry.incident || 'Sin incidencia'}
+                                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--accent-color)', fontWeight: 600 }}>
+                                            {entry.incident || 'Sin incidencia'}
+                                        </div>
+                                        {entry.acciones && (
+                                            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.3rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }} title={entry.acciones}>
+                                                <span style={{ opacity: 0.55, marginRight: '0.3rem' }}>Acciones:</span>{entry.acciones}
+                                            </div>
+                                        )}
                                     </div>
                                     <button
-                                        onClick={() => setSelectedReport(entry)}
+                                        onClick={() => { setSelectedReport(entry); setEditData({}); }}
                                         className="btn btn-secondary"
-                                        style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem', borderRadius: '8px' }}
+                                        style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem', borderRadius: '8px', flexShrink: 0 }}
                                     >
                                         Ver Detalles
                                     </button>
@@ -1818,6 +1950,52 @@ export default function LogbookPage() {
                     </div>
                 )}
 
+                {/* MODAL ACCIONES */}
+                {editingAccionesId !== null && (() => {
+                    const entry = entries.find(e => e.id === editingAccionesId);
+                    if (!entry) return null;
+                    return (
+                        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100, padding: '1rem' }}>
+                            <div className="card" style={{ width: '100%', maxWidth: '500px', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '0.25rem' }}>Acciones tomadas</h3>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                        {entry.date}{entry.time ? ` • ${entry.time}` : ''} — {entry.location} / {entry.sector}
+                                    </div>
+                                </div>
+                                <textarea
+                                    autoFocus
+                                    rows={6}
+                                    value={editingAccionesText}
+                                    onChange={e => setEditingAccionesText(e.target.value)}
+                                    className="input"
+                                    placeholder="Describí las acciones tomadas sobre esta novedad…"
+                                    style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.9rem', lineHeight: '1.5' }}
+                                />
+                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                    <button
+                                        className="btn btn-primary"
+                                        style={{ flex: 2 }}
+                                        onClick={async () => {
+                                            await saveFollowUp(entry, { acciones: editingAccionesText });
+                                            setEditingAccionesId(null);
+                                        }}
+                                    >
+                                        <Save size={15} /> Guardar
+                                    </button>
+                                    <button
+                                        className="btn"
+                                        style={{ flex: 1 }}
+                                        onClick={() => setEditingAccionesId(null)}
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
+
                 {/* VIEW/EDIT MODAL */}
                 {selectedReport && (
                     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '1rem' }}>
@@ -1897,9 +2075,69 @@ export default function LogbookPage() {
                                         ))}
                                     </div>
                                 )}
+
+                                {/* ── Seguimiento ────────────────────────────────── */}
+                                <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
+                                    <div style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent-color)', marginBottom: '1rem' }}>
+                                        Seguimiento
+                                    </div>
+                                    <div style={{ display: 'grid', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', opacity: 0.6, marginBottom: '0.4rem' }}>Estado</label>
+                                            <select
+                                                className="input"
+                                                value={editData.status ?? (selectedReport.status || '')}
+                                                onChange={e => setEditData(prev => ({ ...prev, status: e.target.value || undefined }))}
+                                                style={{ width: '100%' }}
+                                            >
+                                                <option value="">— Sin estado —</option>
+                                                {STATUS_OPTIONS.map(o => (
+                                                    <option key={o} value={o}>{o}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', opacity: 0.6, marginBottom: '0.4rem' }}>Acciones tomadas</label>
+                                            <textarea
+                                                className="input"
+                                                rows={3}
+                                                placeholder="Describí las acciones tomadas sobre esta novedad…"
+                                                value={editData.acciones ?? (selectedReport.acciones || '')}
+                                                onChange={e => setEditData(prev => ({ ...prev, acciones: e.target.value }))}
+                                                style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit', fontSize: '0.875rem' }}
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={async () => {
+                                                const payload = {
+                                                    ...selectedReport,
+                                                    status: editData.status ?? selectedReport.status ?? null,
+                                                    acciones: editData.acciones ?? selectedReport.acciones ?? null,
+                                                };
+                                                const res = await fetch('/api/logbook', {
+                                                    method: 'PUT',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify(payload)
+                                                });
+                                                if (res.ok) {
+                                                    const updated = { ...selectedReport, ...payload } as LogEntry;
+                                                    setSelectedReport(updated);
+                                                    setEditData({});
+                                                    fetchData();
+                                                } else {
+                                                    alert('Error al guardar seguimiento');
+                                                }
+                                            }}
+                                            className="btn btn-primary"
+                                            style={{ alignSelf: 'flex-start' }}
+                                        >
+                                            <Save size={15} /> Guardar seguimiento
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem' }}>
+                            <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
                                 <button
                                     onClick={async () => {
                                         if (confirm('¿Eliminar este reporte permanentemente?')) {
