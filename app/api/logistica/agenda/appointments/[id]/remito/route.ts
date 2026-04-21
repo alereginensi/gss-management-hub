@@ -150,7 +150,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       await db.run(
         `UPDATE agenda_appointments SET
           remito_return_pdf_url = ?,
-          remito_return_filename = ?,
           remito_return_number = COALESCE(?, remito_return_number),
           parsed_remito_return_text = COALESCE(?, parsed_remito_return_text),
           parsed_remito_return_data = COALESCE(?, parsed_remito_return_data),
@@ -158,23 +157,28 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           has_return = 1,
           updated_at = ${nowSql}
          WHERE id = ?`,
-        [fileUrl, originalFilename, finalRemitoNumber || null, extractedText || null, parsedPayload, returnPayload, id]
+        [fileUrl, finalRemitoNumber || null, extractedText || null, parsedPayload, returnPayload, id]
       );
+      if (originalFilename) {
+        try { await db.run(`UPDATE agenda_appointments SET remito_return_filename = ? WHERE id = ?`, [originalFilename, id]); } catch { /* columna puede no existir aún */ }
+      }
     } else {
       const reconciledDelivery = buildDeliveredItems(appt.order_items, parsedRows);
       const deliveryPayload = reconciledDelivery ? JSON.stringify(reconciledDelivery) : null;
       await db.run(
         `UPDATE agenda_appointments SET
           remito_pdf_url = ?,
-          remito_filename = ?,
           remito_number = COALESCE(?, remito_number),
           parsed_remito_text = COALESCE(?, parsed_remito_text),
           parsed_remito_data = COALESCE(?, parsed_remito_data),
           delivered_order_items = COALESCE(?, delivered_order_items),
           updated_at = ${nowSql}
          WHERE id = ?`,
-        [fileUrl, originalFilename, finalRemitoNumber || null, extractedText || null, parsedPayload, deliveryPayload, id]
+        [fileUrl, finalRemitoNumber || null, extractedText || null, parsedPayload, deliveryPayload, id]
       );
+      if (originalFilename) {
+        try { await db.run(`UPDATE agenda_appointments SET remito_filename = ? WHERE id = ?`, [originalFilename, id]); } catch { /* columna puede no existir aún */ }
+      }
     }
 
     const returnedItems = parsedRows.map(r => ({ article_type: r.item, size: r.size, color: r.color, qty: r.qty }));
@@ -222,7 +226,6 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       await db.run(
         `UPDATE agenda_appointments SET
           remito_return_pdf_url = NULL,
-          remito_return_filename = NULL,
           remito_return_number = NULL,
           parsed_remito_return_text = NULL,
           parsed_remito_return_data = NULL,
@@ -232,11 +235,12 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
          WHERE id = ?`,
         [id]
       );
+      // Columna nueva — puede no existir aún si la migración no corrió
+      try { await db.run(`UPDATE agenda_appointments SET remito_return_filename = NULL WHERE id = ?`, [id]); } catch { /* ignorar si la columna no existe */ }
     } else {
       await db.run(
         `UPDATE agenda_appointments SET
           remito_pdf_url = NULL,
-          remito_filename = NULL,
           remito_number = NULL,
           parsed_remito_text = NULL,
           parsed_remito_data = NULL,
@@ -244,11 +248,13 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
          WHERE id = ?`,
         [id]
       );
+      try { await db.run(`UPDATE agenda_appointments SET remito_filename = NULL WHERE id = ?`, [id]); } catch { /* ignorar si la columna no existe */ }
     }
     await logAudit('delete', 'appointment', id, session.user.id, { kind: isReturn ? 'return_remito' : 'delivery_remito' });
+    console.log(`[remito delete] appt=${id} kind=${kind} OK`);
     return NextResponse.json({ ok: true });
-  } catch (err) {
-    console.error('Error eliminando remito:', err);
-    return NextResponse.json({ error: 'Error interno' }, { status: 500 });
+  } catch (err: any) {
+    console.error(`[remito delete] appt=${id} kind=${kind} ERROR:`, err?.message || err);
+    return NextResponse.json({ error: err?.message || 'Error interno al eliminar' }, { status: 500 });
   }
 }
