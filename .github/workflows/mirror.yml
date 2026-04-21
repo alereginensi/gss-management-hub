@@ -1,0 +1,28 @@
+name: Mirror to personal portfolio
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # No persistir credenciales del GITHUB_TOKEN — interferían con el push al mirror
+          persist-credentials: false
+
+      - name: Push mirror (HTTPS + PAT)
+        env:
+          MIRROR_PAT: ${{ secrets.MIRROR_PAT }}
+        run: |
+          if [ -z "$MIRROR_PAT" ]; then
+            echo "::error::Secret MIRROR_PAT no está configurado. Ver docs del workflow."
+            exit 1
+          fi
+          git remote add mirror "https://x-access-token:${MIRROR_PAT}@github.com/alereginensi/gss-management-hub.git"
+          git push mirror main --force
