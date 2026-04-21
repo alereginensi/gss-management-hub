@@ -59,6 +59,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const suffix = isReturn ? 'return' : 'delivery';
     const filename = `remito-${suffix}-appt${id}-${Date.now()}.${ext}`;
     const fileUrl = await saveAgendaFile(buffer, filename, 'remitos');
+    console.log(`[remito upload] appt=${id} kind=${kind} stored=${fileUrl.slice(0, 60)}`);
 
     // Extraer texto del PDF, reconciliar contra catálogo de la empresa del empleado
     let extractedText = '';

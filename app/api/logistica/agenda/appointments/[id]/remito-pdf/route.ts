@@ -1,8 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
+import path from 'path';
+import fs from 'fs/promises';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
 
 const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
+
+function serveBuffer(buffer: Buffer, id: number, kind: string): NextResponse {
+  const head = buffer.slice(0, 8);
+  const isPdf = head.slice(0, 4).toString('ascii') === '%PDF';
+  const isPng = head[0] === 0x89 && head.slice(1, 4).toString('ascii') === 'PNG';
+  const isJpg = head[0] === 0xff && head[1] === 0xd8;
+  const contentType = isPdf ? 'application/pdf' : isPng ? 'image/png' : isJpg ? 'image/jpeg' : 'application/octet-stream';
+  const ext = isPdf ? 'pdf' : isPng ? 'png' : isJpg ? 'jpg' : 'bin';
+  const suffix = kind === 'return' ? '-devolucion' : '';
+  return new NextResponse(new Uint8Array(buffer), {
+    headers: {
+      'Content-Type': contentType,
+      'Content-Disposition': `${isPdf ? 'inline' : 'attachment'}; filename="remito-${id}${suffix}.${ext}"`,
+      'Cache-Control': 'private, max-age=3600',
+    },
+  });
+}
 
 // GET /api/logistica/agenda/appointments/[id]/remito-pdf
 // Proxy para servir el PDF del remito desde nuestro dominio.
@@ -22,63 +41,79 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const kind = request.nextUrl.searchParams.get('kind') || 'delivery';
   const originalUrl = kind === 'return' ? row.remito_return_pdf_url : row.remito_pdf_url;
   if (!originalUrl) return NextResponse.json({ error: 'Remito no disponible' }, { status: 404 });
+  console.log(`[remito-pdf] appt=${id} kind=${kind} url=${originalUrl.slice(0, 80)}`);
 
-  // URL relativa local (ej /uploads/agenda/remitos/...) apunta al filesystem
-  // efímero de Railway que ya no existe: el archivo se perdió al redeploy.
-  if (!/^https?:\/\//i.test(originalUrl)) {
-    return NextResponse.json(
-      { error: 'El remito se guardó en filesystem local y se perdió en un redeploy. Volvé a subirlo.' },
-      { status: 410 }
-    );
+  // ── Railway Volume (volume:///agenda/...) ──────────────────────────────────
+  if (originalUrl.startsWith('volume:///')) {
+    const volumeBase = process.env.AGENDA_STORAGE_PATH;
+    if (!volumeBase) {
+      return NextResponse.json({ error: 'Storage volume no montado (AGENDA_STORAGE_PATH no configurado)' }, { status: 503 });
+    }
+    try {
+      const relPath = originalUrl.slice('volume:///'.length);
+      const buffer = await fs.readFile(path.join(volumeBase, relPath));
+      return serveBuffer(Buffer.from(buffer), id, kind);
+    } catch {
+      return NextResponse.json({ error: 'Archivo no encontrado en el volumen' }, { status: 404 });
+    }
   }
 
-  // Con la restricción "PDF and ZIP" destildada en Cloudinary, el URL público
-  // del PDF se sirve sin firma. El proxy mantiene la capa de auth del backend.
+  // ── Filesystem local de desarrollo (/uploads/agenda/...) ───────────────────
+  if (originalUrl.startsWith('/uploads/')) {
+    try {
+      const buffer = await fs.readFile(path.join(process.cwd(), 'public', originalUrl));
+      return serveBuffer(Buffer.from(buffer), id, kind);
+    } catch {
+      return NextResponse.json(
+        { error: 'El remito se guardó en filesystem local y se perdió en un redeploy. Volvé a subirlo.' },
+        { status: 410 }
+      );
+    }
+  }
+
+  // ── URL externa (Cloudinary u otro CDN) ────────────────────────────────────
+  if (!/^https?:\/\//i.test(originalUrl)) {
+    return NextResponse.json({ error: 'URL de remito no válida. Volvé a subirlo.' }, { status: 410 });
+  }
+
+  // Cloudinary raw PDF: la restricción "Restricted media types: PDF" bloquea el
+  // acceso público. Usamos private_download_url (signed, short-lived) para bypasearla.
+  if (/res\.cloudinary\.com.*\/raw\//.test(originalUrl)) {
+    const hasCreds = !!(
+      process.env.CLOUDINARY_URL ||
+      (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)
+    );
+    if (hasCreds) {
+      try {
+        const { v2: cld } = await import('cloudinary');
+        const m = /\/raw\/(?:upload|authenticated)\/(?:v\d+\/)?(.+)$/.exec(originalUrl);
+        if (m) {
+          const signedUrl = cld.utils.private_download_url(m[1], '', {
+            resource_type: 'raw',
+            expires_at: Math.floor(Date.now() / 1000) + 300,
+          });
+          const upstream = await fetch(signedUrl, { cache: 'no-store' });
+          if (upstream.ok) return serveBuffer(Buffer.from(await upstream.arrayBuffer()), id, kind);
+          console.error(`[remito-pdf] signed URL error ${upstream.status}`);
+        }
+      } catch (e: any) {
+        console.error('[remito-pdf] private_download_url failed:', e?.message);
+      }
+    }
+  }
+
+  // Fallback: fetch directo (imágenes u otros CDN sin restricción)
   try {
     const upstream = await fetch(originalUrl, { cache: 'no-store' });
     if (!upstream.ok) {
+      console.error(`[remito-pdf] upstream error ${upstream.status} for url=${originalUrl.slice(0, 80)}`);
       return NextResponse.json(
         { error: `No se pudo obtener el archivo (upstream ${upstream.status})` },
         { status: 502 }
       );
     }
     const buffer = Buffer.from(await upstream.arrayBuffer());
-
-    // Detectar content-type real por magic bytes.
-    let contentType = 'application/pdf';
-    let extension = 'pdf';
-    const head = buffer.slice(0, 8);
-    const isPdf = head.slice(0, 4).toString('ascii') === '%PDF';
-    const isZip = head[0] === 0x50 && head[1] === 0x4b; // PK (zip/xlsx/docx)
-    const isPng = head[0] === 0x89 && head.slice(1, 4).toString('ascii') === 'PNG';
-    const isJpg = head[0] === 0xff && head[1] === 0xd8;
-    if (isPdf) {
-      contentType = 'application/pdf';
-      extension = 'pdf';
-    } else if (isZip) {
-      contentType = 'application/octet-stream';
-      extension = 'bin';
-    } else if (isPng) {
-      contentType = 'image/png';
-      extension = 'png';
-    } else if (isJpg) {
-      contentType = 'image/jpeg';
-      extension = 'jpg';
-    } else {
-      // Usar el content-type que devolvió Cloudinary si no reconocimos magic bytes
-      contentType = upstream.headers.get('content-type') || 'application/octet-stream';
-    }
-
-    const disposition = isPdf ? 'inline' : 'attachment';
-    const suffix = kind === 'return' ? '-devolucion' : '';
-
-    return new NextResponse(new Uint8Array(buffer), {
-      headers: {
-        'Content-Type': contentType,
-        'Content-Disposition': `${disposition}; filename="remito-${id}${suffix}.${extension}"`,
-        'Cache-Control': 'private, max-age=3600',
-      },
-    });
+    return serveBuffer(buffer, id, kind);
   } catch (err: any) {
     console.error('Error proxy remito:', err);
     return NextResponse.json({ error: err?.message || 'Error interno' }, { status: 500 });

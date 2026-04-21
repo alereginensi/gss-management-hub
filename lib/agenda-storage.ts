@@ -2,16 +2,19 @@ import path from 'path';
 import fs from 'fs/promises';
 
 // ─── Abstracción de almacenamiento para archivos del módulo agenda ───────────
-// Por defecto guarda en public/uploads/agenda/{folder}/{filename}
-// Si CLOUDINARY_URL está definido → Cloudinary
-// Si AGENDA_S3_BUCKET está definido → S3 (placeholder)
+// Prioridad: Cloudinary → Railway Volume (AGENDA_STORAGE_PATH) → filesystem local (solo dev)
 
 function isCloudinaryConfigured(): boolean {
+  // Requiere credenciales server-side reales — NEXT_PUBLIC_ solo sirve para el browser
   return !!(
     process.env.CLOUDINARY_URL ||
-    process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
     (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)
   );
+}
+
+// AGENDA_STORAGE_PATH apunta al mount point del Railway Volume (ej. /data)
+function getVolumeBasePath(): string | null {
+  return process.env.AGENDA_STORAGE_PATH || null;
 }
 
 export async function saveAgendaFile(
@@ -27,15 +30,27 @@ export async function saveAgendaFile(
       return url;
     } catch (err) {
       console.error('Cloudinary upload failed:', err);
-      // En producción no caemos al filesystem — el FS de Railway es efímero y
-      // los archivos se pierden en cada redeploy. Fallar aquí es preferible a
-      // escribir algo que luego no se puede leer.
       if (process.env.NODE_ENV === 'production') {
         throw err instanceof Error ? err : new Error('Cloudinary upload failed');
       }
     }
-  } else if (process.env.NODE_ENV === 'production') {
-    throw new Error('Cloudinary no está configurado en producción. Setear CLOUDINARY_URL o CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET.');
+  }
+
+  // ── Railway Volume ──────────────────────────────────────────────────────────
+  const volumeBase = getVolumeBasePath();
+  if (volumeBase) {
+    const dir = path.join(volumeBase, 'agenda', folder);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, filename), buffer);
+    // Prefijo "volume:///" para que el proxy sepa que debe leer del volumen
+    return `volume:///agenda/${folder}/${filename}`;
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'No hay storage persistente configurado. ' +
+      'Setear CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET o AGENDA_STORAGE_PATH (Railway Volume mount path).'
+    );
   }
 
   // ── Filesystem local (solo dev) ─────────────────────────────────────────────
@@ -49,13 +64,18 @@ export async function saveAgendaFile(
 export async function deleteAgendaFile(fileUrl: string): Promise<void> {
   if (!fileUrl) return;
 
-  // Solo aplica para archivos locales
+  if (fileUrl.startsWith('volume:///')) {
+    const volumeBase = getVolumeBasePath();
+    if (!volumeBase) return;
+    try {
+      await fs.unlink(path.join(volumeBase, fileUrl.slice('volume:///'.length)));
+    } catch { /* ignorar si no existe */ }
+    return;
+  }
+
   if (fileUrl.startsWith('/uploads/agenda/')) {
     try {
-      const filePath = path.join(process.cwd(), 'public', fileUrl);
-      await fs.unlink(filePath);
-    } catch {
-      // Ignorar si no existe
-    }
+      await fs.unlink(path.join(process.cwd(), 'public', fileUrl));
+    } catch { /* ignorar si no existe */ }
   }
 }
