@@ -86,7 +86,7 @@ export async function verifyJWT(token: string, secret: string) {
             ['verify']
         );
 
-        const isValid = await crypto.subtle.verify('HMAC', key, signature, data);
+        const isValid = await crypto.subtle.verify('HMAC', key, signature.buffer.slice(0) as ArrayBuffer, data.buffer.slice(0) as ArrayBuffer);
         if (!isValid) return null;
 
         // Decode payload (must use TextDecoder to handle UTF-8 names with accents)
