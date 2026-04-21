@@ -93,9 +93,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'URL de remito no válida. Volvé a subirlo.' }, { status: 410 });
   }
 
-  // Cloudinary raw PDF: la restricción "Restricted media types: PDF" bloquea el
-  // acceso público. Usamos private_download_url (signed, short-lived) para bypasearla.
-  if (/res\.cloudinary\.com.*\/raw\//.test(originalUrl)) {
+  // Cloudinary: la restricción de cuenta "Restricted media types: PDF"
+  // bloquea el acceso público a PDFs tanto en /raw/upload/ como en /image/upload/.
+  // Usamos private_download_url (signed, short-lived) para bypasearla en cualquiera
+  // de los dos casos.
+  const cloudinaryMatch = /res\.cloudinary\.com\/[^/]+\/(raw|image|video)\/(?:upload|authenticated)\/(?:v\d+\/)?(.+?)(\.[a-z0-9]+)?$/i.exec(originalUrl);
+  if (cloudinaryMatch) {
+    const resourceType = cloudinaryMatch[1] as 'raw' | 'image' | 'video';
+    const publicId = cloudinaryMatch[2];
+    const extFromUrl = (cloudinaryMatch[3] || '').replace(/^\./, '');
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
@@ -104,21 +110,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (hasCreds) {
       try {
         const { v2: cld } = await import('cloudinary');
-        // Configurar explícitamente — no depender de que lib/cloudinary.ts haya sido importado antes
         if (cloudName && apiKey && apiSecret) {
           cld.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret, secure: true });
         }
-        const m = /\/raw\/(?:upload|authenticated)\/(?:v\d+\/)?(.+)$/.exec(originalUrl);
-        if (m) {
-          const signedUrl = cld.utils.private_download_url(m[1], '', {
-            resource_type: 'raw',
-            expires_at: Math.floor(Date.now() / 1000) + 300,
-          });
-          console.log(`[remito-pdf] trying signed URL: ${signedUrl.slice(0, 100)}`);
-          const upstream = await fetch(signedUrl, { cache: 'no-store' });
-          if (upstream.ok) return serveBuffer(Buffer.from(await upstream.arrayBuffer()), id, kind);
-          console.error(`[remito-pdf] signed URL failed ${upstream.status}`);
-        }
+        // Para raw: ext va en el public_id. Para image/video: ext va aparte.
+        const signedPublicId = resourceType === 'raw' && extFromUrl ? `${publicId}.${extFromUrl}` : publicId;
+        const signedUrl = cld.utils.private_download_url(signedPublicId, extFromUrl || '', {
+          resource_type: resourceType,
+          expires_at: Math.floor(Date.now() / 1000) + 300,
+        });
+        console.log(`[remito-pdf] signed (${resourceType}): ${signedUrl.slice(0, 120)}`);
+        const upstream = await fetch(signedUrl, { cache: 'no-store' });
+        if (upstream.ok) return serveBuffer(Buffer.from(await upstream.arrayBuffer()), id, kind);
+        console.error(`[remito-pdf] signed URL failed ${upstream.status} — fallback al fetch directo`);
       } catch (e: any) {
         console.error('[remito-pdf] private_download_url error:', e?.message);
       }

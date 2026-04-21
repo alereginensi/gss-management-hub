@@ -26,8 +26,12 @@ export async function saveAgendaFile(
   if (isCloudinaryConfigured()) {
     try {
       const { uploadToCloudinary } = await import('@/lib/cloudinary');
-      const url = await uploadToCloudinary(buffer, `agenda/${folder}`, filename.replace(/\.[^/.]+$/, ''));
-      console.log(`[storage] cloudinary upload ok: ${url.slice(0, 80)}`);
+      // PDFs siempre como "raw" para poder bypass-ear la restricción "PDF restricted"
+      // con private_download_url. URLs "image/upload/" con PDFs devuelven 401/403.
+      const ext = filename.split('.').pop()?.toLowerCase();
+      const resourceType: 'auto' | 'raw' = ext === 'pdf' ? 'raw' : 'auto';
+      const url = await uploadToCloudinary(buffer, `agenda/${folder}`, filename.replace(/\.[^/.]+$/, ''), resourceType);
+      console.log(`[storage] cloudinary upload ok (${resourceType}): ${url.slice(0, 100)}`);
       return url;
     } catch (err) {
       console.error('[storage] cloudinary upload failed:', err);
