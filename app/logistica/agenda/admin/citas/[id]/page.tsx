@@ -719,7 +719,7 @@ export default function CitaDetallePage() {
                   <h3 style={{ margin: '0 0 1rem', fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>Remito PDF</h3>
                   {appt.remito_pdf_url && (
                     <div style={{ marginBottom: '0.75rem', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                      <a href={`/api/logistica/agenda/appointments/${appt.id}/remito-pdf`} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <a href={`/api/logistica/agenda/appointments/${appt.id}/remito-pdf?t=${appt.updated_at || Date.now()}`} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                         <FileText size={14} /> Ver remito actual
                       </a>
                       {appt.remito_filename && (
@@ -815,7 +815,7 @@ export default function CitaDetallePage() {
                       </div>
                       {appt.remito_return_pdf_url && (
                         <div style={{ marginBottom: '0.75rem', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                          <a href={`/api/logistica/agenda/appointments/${appt.id}/remito-pdf?kind=return`} target="_blank" rel="noopener noreferrer" style={{ color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <a href={`/api/logistica/agenda/appointments/${appt.id}/remito-pdf?kind=return&t=${appt.updated_at || Date.now()}`} target="_blank" rel="noopener noreferrer" style={{ color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                             <FileText size={14} /> Ver remito devolución
                           </a>
                           {appt.remito_return_filename && (

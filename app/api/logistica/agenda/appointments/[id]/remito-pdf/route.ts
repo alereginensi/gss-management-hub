@@ -6,6 +6,15 @@ import { getSession } from '@/lib/auth-server';
 
 const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
+// Respuesta de error sin cache para que el browser no se quede pegado
+// con un 410/404 viejo después de resubir el remito.
+function errorResponse(body: object, status: number): NextResponse {
+  return NextResponse.json(body, {
+    status,
+    headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
+  });
+}
+
 function serveBuffer(buffer: Buffer, id: number, kind: string): NextResponse {
   const head = buffer.slice(0, 8);
   const isPdf = head.slice(0, 4).toString('ascii') === '%PDF';
@@ -18,7 +27,8 @@ function serveBuffer(buffer: Buffer, id: number, kind: string): NextResponse {
     headers: {
       'Content-Type': contentType,
       'Content-Disposition': `${isPdf ? 'inline' : 'attachment'}; filename="remito-${id}${suffix}.${ext}"`,
-      'Cache-Control': 'private, max-age=3600',
+      // no-store para evitar que el browser sirva un PDF viejo después de resubir
+      'Cache-Control': 'private, no-store',
     },
   });
 }
@@ -30,7 +40,7 @@ function serveBuffer(buffer: Buffer, id: number, kind: string): NextResponse {
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession(request);
   if (!session || !AUTH_ROLES.includes(session.user.role)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return errorResponse({ error: 'Unauthorized' }, 401);
   }
 
   const { id: idStr } = await params;
@@ -44,7 +54,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const col = isReturn ? 'remito_return_pdf_data' : 'remito_pdf_data';
     const urlCol = isReturn ? 'remito_return_pdf_url' : 'remito_pdf_url';
     const row = await db.get(`SELECT ${col} AS data, ${urlCol} AS url FROM agenda_appointments WHERE id = ?`, [id]);
-    if (!row) return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 });
+    if (!row) return errorResponse({ error: 'Cita no encontrada' }, 404);
     if (row.data) {
       const buf = Buffer.isBuffer(row.data) ? row.data : Buffer.from(row.data);
       console.log(`[remito-pdf] appt=${id} kind=${kind} served from DB (${buf.length} bytes)`);
@@ -52,15 +62,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
     // No hay bytes en DB — fallback al flujo antiguo por URL
     const originalUrl = row.url;
-    if (!originalUrl) return NextResponse.json({ error: 'Remito no disponible' }, { status: 404 });
+    if (!originalUrl) return errorResponse({ error: 'Remito no disponible' }, 404);
     return await serveFromUrl(originalUrl, id, kind);
   } catch (err) {
     // Si el SELECT falla (p.ej. columna _pdf_data no existe), caemos al flujo viejo
     console.warn(`[remito-pdf] fallback to URL flow:`, (err as Error).message);
     const row = await db.get('SELECT remito_pdf_url, remito_return_pdf_url FROM agenda_appointments WHERE id = ?', [id]);
-    if (!row) return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 });
+    if (!row) return errorResponse({ error: 'Cita no encontrada' }, 404);
     const originalUrl = isReturn ? row.remito_return_pdf_url : row.remito_pdf_url;
-    if (!originalUrl) return NextResponse.json({ error: 'Remito no disponible' }, { status: 404 });
+    if (!originalUrl) return errorResponse({ error: 'Remito no disponible' }, 404);
     return await serveFromUrl(originalUrl, id, kind);
   }
 }
@@ -72,14 +82,14 @@ async function serveFromUrl(originalUrl: string, id: number, kind: string): Prom
   if (originalUrl.startsWith('volume:///')) {
     const volumeBase = process.env.AGENDA_STORAGE_PATH;
     if (!volumeBase) {
-      return NextResponse.json({ error: 'Storage volume no montado (AGENDA_STORAGE_PATH no configurado)' }, { status: 503 });
+      return errorResponse({ error: 'Storage volume no montado (AGENDA_STORAGE_PATH no configurado)' }, 503);
     }
     try {
       const relPath = originalUrl.slice('volume:///'.length);
       const buffer = await fs.readFile(path.join(volumeBase, relPath));
       return serveBuffer(Buffer.from(buffer), id, kind);
     } catch {
-      return NextResponse.json({ error: 'Archivo no encontrado en el volumen' }, { status: 404 });
+      return errorResponse({ error: 'Archivo no encontrado en el volumen' }, 404);
     }
   }
 
@@ -102,20 +112,20 @@ async function serveFromUrl(originalUrl: string, id: number, kind: string): Prom
       }
     }
     console.error(`[remito-pdf] local file not found for appt=${id} url=${originalUrl} cwd=${process.cwd()}`);
-    return NextResponse.json(
+    return errorResponse(
       {
         error: 'El archivo del remito no se encuentra en el filesystem. ' +
                'Probablemente se perdió en un redeploy (filesystem local no es persistente en Railway). ' +
                'Subí el remito de nuevo; si Cloudinary está configurado se guardará ahí automáticamente.',
         debug: { originalUrl, cwd: process.cwd(), triedPaths: candidates },
       },
-      { status: 410 }
+      410
     );
   }
 
   // ── URL externa (Cloudinary u otro CDN) ────────────────────────────────────
   if (!/^https?:\/\//i.test(originalUrl)) {
-    return NextResponse.json({ error: 'URL de remito no válida. Volvé a subirlo.' }, { status: 410 });
+    return errorResponse({ error: 'URL de remito no válida. Volvé a subirlo.' }, 410);
   }
 
   // Cloudinary: la restricción de cuenta "Restricted media types: PDF"
@@ -161,15 +171,12 @@ async function serveFromUrl(originalUrl: string, id: number, kind: string): Prom
     const upstream = await fetch(originalUrl, { cache: 'no-store' });
     if (!upstream.ok) {
       console.error(`[remito-pdf] upstream error ${upstream.status} for url=${originalUrl.slice(0, 80)}`);
-      return NextResponse.json(
-        { error: `No se pudo obtener el archivo (upstream ${upstream.status})` },
-        { status: 502 }
-      );
+      return errorResponse({ error: `No se pudo obtener el archivo (upstream ${upstream.status})` }, 502);
     }
     const buffer = Buffer.from(await upstream.arrayBuffer());
     return serveBuffer(buffer, id, kind);
   } catch (err: any) {
     console.error('Error proxy remito:', err);
-    return NextResponse.json({ error: err?.message || 'Error interno' }, { status: 500 });
+    return errorResponse({ error: err?.message || 'Error interno' }, 500);
   }
 }
