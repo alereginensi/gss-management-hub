@@ -494,6 +494,11 @@ export default function CitaDetallePage() {
                       <a href={`/api/logistica/agenda/appointments/${appt.id}/remito-pdf`} target="_blank" rel="noopener noreferrer" style={{ color: '#1e40af', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                         <FileText size={14} /> Ver remito actual
                       </a>
+                      {appt.remito_filename && (
+                        <span style={{ color: '#64748b', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px', whiteSpace: 'nowrap' }} title={appt.remito_filename}>
+                          {appt.remito_filename}
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={async () => {
@@ -599,6 +604,11 @@ export default function CitaDetallePage() {
                           <a href={`/api/logistica/agenda/appointments/${appt.id}/remito-pdf?kind=return`} target="_blank" rel="noopener noreferrer" style={{ color: '#991b1b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                             <FileText size={14} /> Ver remito devolución
                           </a>
+                          {appt.remito_return_filename && (
+                            <span style={{ color: '#64748b', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px', whiteSpace: 'nowrap' }} title={appt.remito_return_filename}>
+                              {appt.remito_return_filename}
+                            </span>
+                          )}
                           <button
                             type="button"
                             onClick={async () => {

@@ -1552,6 +1552,8 @@ class DbWrapper {
  ['remito_return_pdf_url', 'TEXT'],
  ['parsed_remito_return_text', 'TEXT'],
  ['parsed_remito_return_data', 'TEXT'],
+ ['remito_filename', 'TEXT'],
+ ['remito_return_filename', 'TEXT'],
  ];
  for (const [col, def] of newApCols) {
  if (!apColNames.includes(col)) {
@@ -1862,6 +1864,8 @@ class DbWrapper {
  ['remito_return_pdf_url', 'TEXT'],
  ['parsed_remito_return_text', 'TEXT'],
  ['parsed_remito_return_data', 'TEXT'],
+ ['remito_filename', 'TEXT'],
+ ['remito_return_filename', 'TEXT'],
  ];
  for (const [col, def] of newApCols) {
  if (!apCols.includes(col)) {

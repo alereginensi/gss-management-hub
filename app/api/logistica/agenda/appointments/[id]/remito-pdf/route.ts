@@ -60,15 +60,32 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   // ── Filesystem local de desarrollo (/uploads/agenda/...) ───────────────────
   if (originalUrl.startsWith('/uploads/')) {
-    try {
-      const buffer = await fs.readFile(path.join(process.cwd(), 'public', originalUrl));
-      return serveBuffer(Buffer.from(buffer), id, kind);
-    } catch {
-      return NextResponse.json(
-        { error: 'El remito se guardó en filesystem local y se perdió en un redeploy. Volvé a subirlo.' },
-        { status: 410 }
-      );
+    const candidates = [
+      path.join(process.cwd(), 'public', originalUrl),
+      // Next.js standalone output: public/ queda en la raíz del standalone, no dentro de .next
+      path.join(process.cwd(), '..', 'public', originalUrl),
+      // Algunos deploys: public/ está al mismo nivel que el server
+      path.join(process.cwd(), originalUrl.replace(/^\//, '')),
+    ];
+    for (const candidate of candidates) {
+      try {
+        const buffer = await fs.readFile(candidate);
+        console.log(`[remito-pdf] served from local fs: ${candidate}`);
+        return serveBuffer(Buffer.from(buffer), id, kind);
+      } catch (err: any) {
+        console.log(`[remito-pdf] tried ${candidate} → ${err?.code || err?.message}`);
+      }
     }
+    console.error(`[remito-pdf] local file not found for appt=${id} url=${originalUrl} cwd=${process.cwd()}`);
+    return NextResponse.json(
+      {
+        error: 'El archivo del remito no se encuentra en el filesystem. ' +
+               'Probablemente se perdió en un redeploy (filesystem local no es persistente en Railway). ' +
+               'Subí el remito de nuevo; si Cloudinary está configurado se guardará ahí automáticamente.',
+        debug: { originalUrl, cwd: process.cwd(), triedPaths: candidates },
+      },
+      { status: 410 }
+    );
   }
 
   // ── URL externa (Cloudinary u otro CDN) ────────────────────────────────────

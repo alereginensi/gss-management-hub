@@ -27,9 +27,10 @@ export async function saveAgendaFile(
     try {
       const { uploadToCloudinary } = await import('@/lib/cloudinary');
       const url = await uploadToCloudinary(buffer, `agenda/${folder}`, filename.replace(/\.[^/.]+$/, ''));
+      console.log(`[storage] cloudinary upload ok: ${url.slice(0, 80)}`);
       return url;
     } catch (err) {
-      console.error('Cloudinary upload failed:', err);
+      console.error('[storage] cloudinary upload failed:', err);
       if (process.env.NODE_ENV === 'production') {
         throw err instanceof Error ? err : new Error('Cloudinary upload failed');
       }
@@ -41,8 +42,9 @@ export async function saveAgendaFile(
   if (volumeBase) {
     const dir = path.join(volumeBase, 'agenda', folder);
     await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, filename), buffer);
-    // Prefijo "volume:///" para que el proxy sepa que debe leer del volumen
+    const absPath = path.join(dir, filename);
+    await fs.writeFile(absPath, buffer);
+    console.log(`[storage] volume write ok: ${absPath}`);
     return `volume:///agenda/${folder}/${filename}`;
   }
 
@@ -58,6 +60,13 @@ export async function saveAgendaFile(
   await fs.mkdir(uploadDir, { recursive: true });
   const filePath = path.join(uploadDir, filename);
   await fs.writeFile(filePath, buffer);
+  // Readback verification — si esto falla, logueamos el problema en vez de devolver silenciosamente
+  try {
+    const stat = await fs.stat(filePath);
+    console.log(`[storage] local fs write ok: ${filePath} (${stat.size} bytes)`);
+  } catch (err: any) {
+    console.error(`[storage] local fs write verification failed: ${filePath} → ${err?.code || err?.message}`);
+  }
   return `/uploads/agenda/${folder}/${filename}`;
 }
 

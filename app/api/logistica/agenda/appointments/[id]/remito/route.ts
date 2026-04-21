@@ -142,12 +142,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       parsedRows.map(r => ({ article_type: r.item, size: r.size, color: r.color, qty: r.qty }))
     ) : null;
 
+    const originalFilename = file.name || null;
+
     if (isReturn) {
       const reconciledReturn = buildDeliveredItems(appt.returned_order_items, parsedRows);
       const returnPayload = reconciledReturn ? JSON.stringify(reconciledReturn) : null;
       await db.run(
         `UPDATE agenda_appointments SET
           remito_return_pdf_url = ?,
+          remito_return_filename = ?,
           remito_return_number = COALESCE(?, remito_return_number),
           parsed_remito_return_text = COALESCE(?, parsed_remito_return_text),
           parsed_remito_return_data = COALESCE(?, parsed_remito_return_data),
@@ -155,7 +158,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           has_return = 1,
           updated_at = ${nowSql}
          WHERE id = ?`,
-        [fileUrl, finalRemitoNumber || null, extractedText || null, parsedPayload, returnPayload, id]
+        [fileUrl, originalFilename, finalRemitoNumber || null, extractedText || null, parsedPayload, returnPayload, id]
       );
     } else {
       const reconciledDelivery = buildDeliveredItems(appt.order_items, parsedRows);
@@ -163,13 +166,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       await db.run(
         `UPDATE agenda_appointments SET
           remito_pdf_url = ?,
+          remito_filename = ?,
           remito_number = COALESCE(?, remito_number),
           parsed_remito_text = COALESCE(?, parsed_remito_text),
           parsed_remito_data = COALESCE(?, parsed_remito_data),
           delivered_order_items = COALESCE(?, delivered_order_items),
           updated_at = ${nowSql}
          WHERE id = ?`,
-        [fileUrl, finalRemitoNumber || null, extractedText || null, parsedPayload, deliveryPayload, id]
+        [fileUrl, originalFilename, finalRemitoNumber || null, extractedText || null, parsedPayload, deliveryPayload, id]
       );
     }
 
@@ -218,6 +222,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       await db.run(
         `UPDATE agenda_appointments SET
           remito_return_pdf_url = NULL,
+          remito_return_filename = NULL,
           remito_return_number = NULL,
           parsed_remito_return_text = NULL,
           parsed_remito_return_data = NULL,
@@ -231,6 +236,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       await db.run(
         `UPDATE agenda_appointments SET
           remito_pdf_url = NULL,
+          remito_filename = NULL,
           remito_number = NULL,
           parsed_remito_text = NULL,
           parsed_remito_data = NULL,

@@ -108,8 +108,16 @@ export interface AgendaAppointment {
   delivered_order_items?: OrderItem[] | string;
   remito_number?: string;
   remito_pdf_url?: string;
+  remito_filename?: string;
+  remito_return_number?: string;
+  remito_return_pdf_url?: string;
+  remito_return_filename?: string;
   parsed_remito_text?: string;
   parsed_remito_data?: string;
+  parsed_remito_return_text?: string;
+  parsed_remito_return_data?: string;
+  has_return?: number;
+  returned_order_items?: OrderItem[] | string;
   employee_signature_url?: string;
   responsible_signature_url?: string;
   delivery_notes?: string;
