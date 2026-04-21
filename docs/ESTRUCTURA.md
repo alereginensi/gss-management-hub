@@ -57,6 +57,10 @@ Cada subcarpeta de `app/` corresponde a una sección del sistema.
 | [`app/asistencia/`](../app/asistencia/) | `/asistencia` | Registro de tareas y asistencia del día |
 | [`app/operaciones/`](../app/operaciones/) | `/operaciones` | Operaciones limpieza: informes, personal, tareas |
 | [`app/logistica/`](../app/logistica/) | `/logistica` | Logística de uniformes: agenda, envíos, órdenes |
+| [`app/logistica/agenda/admin/citas/`](../app/logistica/agenda/admin/citas/) | `/logistica/agenda/admin/citas` | Lista de citas con acciones Finalizar/No asistió/Cancelar |
+| [`app/logistica/agenda/admin/citas/[id]/`](../app/logistica/agenda/admin/citas/[id]/) | `/logistica/agenda/admin/citas/:id` | Detalle de cita: remito, firmas, walk-in, devolución |
+| [`app/logistica/agenda/admin/historial/`](../app/logistica/agenda/admin/historial/) | `/logistica/agenda/admin/historial` | Búsqueda por cédula: citas, ausencias, intentos fallidos, entregas |
+| [`app/logistica/agenda/admin/entregas/`](../app/logistica/agenda/admin/entregas/) | `/logistica/agenda/admin/entregas` | Solo entregas completadas (exportable a Excel) |
 | [`app/seguridad-electronica/`](../app/seguridad-electronica/) | `/seguridad-electronica` | Monitoreo y mantenimientos técnicos |
 | [`app/cotizacion/`](../app/cotizacion/) | `/cotizacion` | Cotización comercial y liquidación de horas |
 | [`app/rrhh/`](../app/rrhh/) | `/rrhh` | RRHH — agenda web de uniformes |
@@ -97,7 +101,7 @@ Dentro de cada módulo hay una carpeta `api/` con los endpoints:
 | [`Header.tsx`](../app/components/Header.tsx) | Barra superior: logo, usuario, botón de logout |
 | [`Sidebar.tsx`](../app/components/Sidebar.tsx) | Menú lateral con navegación entre módulos |
 | [`ThemeWrapper.tsx`](../app/components/ThemeWrapper.tsx) | Aplica el tema claro/oscuro desde localStorage |
-| [`InactivityGuard.tsx`](../app/components/InactivityGuard.tsx) | Cierra sesión automáticamente tras inactividad |
+| [`InactivityGuard.tsx`](../app/components/InactivityGuard.tsx) | Auto-logout tras 30 min de inactividad. Avisos a los 25 min (amarillo, "5 min") y 29 min (rojo, "1 min"). Redirect robusto con `router.push + window.location.href`. |
 | [`PushManager.tsx`](../app/components/PushManager.tsx) | Solicita permiso y registra suscripción Web Push |
 | [`SWRegistration.tsx`](../app/components/SWRegistration.tsx) | Registra el Service Worker |
 | [`SignaturePad.tsx`](../app/components/SignaturePad.tsx) | Lienzo para capturar firma digital |
@@ -129,7 +133,7 @@ Código TypeScript puro, sin dependencias de Next.js. Se importa desde páginas 
 |---------|---------|
 | [`auth.ts`](../lib/auth.ts) | Funciones principales: generar y verificar JWT, obtener usuario desde request |
 | [`auth-server.ts`](../lib/auth-server.ts) | Versión para Server Components: lee cookies en el servidor |
-| [`auth-edge.ts`](../lib/auth-edge.ts) | Versión para Edge Runtime (middleware): verifica JWT sin Node.js |
+| [`auth-edge.ts`](../lib/auth-edge.ts) | JWT sign/verify con WebCrypto (usado desde route handlers Node). `middleware.ts` NO lo usa — decodifica el payload sin verificar firma para evitar error `BufferSource` en el Edge runtime de Railway. |
 | [`auth_sync.ts`](../lib/auth_sync.ts) | Sincronización de sesión entre pestañas del navegador |
 | [`schemas/auth.ts`](../lib/schemas/auth.ts) | Esquemas Zod para validar datos de login y registro |
 

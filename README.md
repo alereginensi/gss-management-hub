@@ -93,7 +93,7 @@ Tablero con métricas generales: tickets pendientes, resueltos, tiempo promedio 
 Gestión del personal de limpieza y seguridad: informes de presencia con firma digital, asignación de tareas, historial, gestión de personal y solicitudes de uniformes. Incluye un editor de planillas configurable por el administrador.
 
 ### Logística
-Administración integral de uniformes: agenda web de entregas por empleado, seguimiento de envíos al interior del país, órdenes de compra con lectura automática de PDF, y calendario de eventos logísticos.
+Administración integral de uniformes: agenda web de entregas por empleado, seguimiento de envíos al interior del país, órdenes de compra con lectura automática de PDF, y calendario de eventos logísticos. Incluye **historial por empleado** (buscando por cédula se ven todas sus citas, intentos fallidos, canceladas y entregas completadas) y **reasignación de turno** desde la finalización de entrega cuando un empleado viene fuera de su turno original.
 
 ### Registro de Limpieza
 Pantalla pública (sin contraseña) donde el personal de limpieza confirma sus tareas del día con foto como evidencia, usando solo su número de cédula.
