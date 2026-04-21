@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
     ArrowLeft, Plus, X, Trash2, CalendarDays,
     Truck, PackageCheck, ClipboardList, FileText, Loader2,
-    Download, Search, PenLine
+    Download, Search, PenLine, Pencil, Feather
 } from 'lucide-react';
 import { useTicketContext } from '@/app/context/TicketContext';
 import { mergeLogisticaClientNames } from '@/lib/logistica-clients';
@@ -25,6 +25,7 @@ interface CalEvent {
     items: { article: string; quantity: number | string }[];
     file_url: string | null;
     firma_url: string | null;
+    firma_aclaracion: string | null;
     created_by: string;
 }
 
@@ -156,6 +157,8 @@ export default function CalendarioPage() {
     const [showModal, setShowModal] = useState(false);
     const [modalDate, setModalDate] = useState<string>('');
     const [modalTab, setModalTab] = useState<'entrega' | 'despacho' | 'solicitud'>('entrega');
+    // When set, the modal is in edit mode for an existing event (entrega/despacho)
+    const [editingId, setEditingId] = useState<number | null>(null);
 
     // Entrega / Despacho form
     const [calForm, setCalForm] = useState({
@@ -185,10 +188,16 @@ export default function CalendarioPage() {
     const [firmaDrawing, setFirmaDrawing] = useState(false);
     const [firmaHasStrokes, setFirmaHasStrokes] = useState(false);
     const [firmaSaving, setFirmaSaving] = useState(false);
+    const [firmaAclaracion, setFirmaAclaracion] = useState('');
     // canvas for creation modal (entrega only)
     const calFirmaCanvasRef = useRef<HTMLCanvasElement>(null);
     const [calFirmaDrawing, setCalFirmaDrawing] = useState(false);
     const [calFirmaHasStrokes, setCalFirmaHasStrokes] = useState(false);
+
+    // Sync aclaración input when opening firma modal
+    useEffect(() => {
+        setFirmaAclaracion(firmaEvent?.firma_aclaracion || '');
+    }, [firmaEvent]);
 
     // ── List view filters ─────────────────────────────────────────────────
     const [listDateFrom, setListDateFrom] = useState('');
@@ -305,6 +314,7 @@ export default function CalendarioPage() {
 
     // ── Open modal ────────────────────────────────────────────────────────
     function openModal(date: string, defaultTab: 'entrega' | 'despacho' | 'solicitud' = 'entrega') {
+        setEditingId(null);
         setModalDate(date);
         setModalTab(defaultTab);
         setCalForm({ titulo: '', descripcion: '', items: [{ article: '', quantity: '' }] });
@@ -314,6 +324,31 @@ export default function CalendarioPage() {
         setSolFile(null);
         setSolFileUrl('');
         // reset creation firma
+        setCalFirmaHasStrokes(false);
+        setTimeout(() => {
+            const c = calFirmaCanvasRef.current;
+            if (c) { const ctx = c.getContext('2d'); ctx?.clearRect(0, 0, c.width, c.height); }
+        }, 50);
+        setShowModal(true);
+    }
+
+    function openEditModal(ev: CalEvent) {
+        if (ev.tipo !== 'entrega' && ev.tipo !== 'despacho') return;
+        setEditingId(ev.id);
+        setModalDate(ev.fecha);
+        setModalTab(ev.tipo);
+        setCalForm({
+            titulo: ev.titulo || '',
+            descripcion: ev.descripcion || '',
+            items: ev.items && ev.items.length > 0
+                ? ev.items.map(i => ({ article: i.article, quantity: i.quantity }))
+                : [{ article: '', quantity: '' }],
+        });
+        setCalFile(null);
+        setCalFileUrl(ev.file_url || '');
+        setSolForm({ client: '', items: [] });
+        setSolFile(null);
+        setSolFileUrl('');
         setCalFirmaHasStrokes(false);
         setTimeout(() => {
             const c = calFirmaCanvasRef.current;
@@ -343,26 +378,43 @@ export default function CalendarioPage() {
                 if (!res.ok) { alert((await res.json()).error || 'Error'); return; }
             } else {
                 if (!modalDate) { alert('Seleccioná una fecha'); return; }
-                let firmaUrl: string | null = null;
-                if (modalTab === 'entrega' && calFirmaHasStrokes && calFirmaCanvasRef.current) {
-                    try { firmaUrl = await uploadSig(calFirmaCanvasRef.current, getAuthHeaders()); } catch { /* non-critical */ }
+                const items = calForm.items.filter(i => i.article.trim());
+                if (editingId) {
+                    // Edit: firma y aclaración se editan en el modal de firma.
+                    const res = await fetch(`/api/logistica/calendario?id=${editingId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                        body: JSON.stringify({
+                            titulo: calForm.titulo || null,
+                            descripcion: calForm.descripcion || null,
+                            items,
+                            file_url: calFileUrl || null,
+                        }),
+                    });
+                    if (!res.ok) { alert((await res.json()).error || 'Error'); return; }
+                } else {
+                    let firmaUrl: string | null = null;
+                    if (modalTab === 'entrega' && calFirmaHasStrokes && calFirmaCanvasRef.current) {
+                        try { firmaUrl = await uploadSig(calFirmaCanvasRef.current, getAuthHeaders()); } catch { /* non-critical */ }
+                    }
+                    const res = await fetch('/api/logistica/calendario', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                        body: JSON.stringify({
+                            fecha: modalDate,
+                            tipo: modalTab,
+                            titulo: calForm.titulo || null,
+                            descripcion: calForm.descripcion || null,
+                            items,
+                            file_url: calFileUrl || null,
+                            firma_url: firmaUrl,
+                        }),
+                    });
+                    if (!res.ok) { alert((await res.json()).error || 'Error'); return; }
                 }
-                const res = await fetch('/api/logistica/calendario', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-                    body: JSON.stringify({
-                        fecha: modalDate,
-                        tipo: modalTab,
-                        titulo: calForm.titulo || null,
-                        descripcion: calForm.descripcion || null,
-                        items: calForm.items.filter(i => i.article.trim()),
-                        file_url: calFileUrl || null,
-                        firma_url: firmaUrl,
-                    }),
-                });
-                if (!res.ok) { alert((await res.json()).error || 'Error'); return; }
             }
             setShowModal(false);
+            setEditingId(null);
             fetchAll();
         } finally {
             setSaving(false);
@@ -382,22 +434,42 @@ export default function CalendarioPage() {
     }
 
     async function firmaSave() {
+        if (!firmaEvent) return;
         const canvas = firmaCanvasRef.current;
-        if (!canvas || !firmaEvent || !firmaHasStrokes) return;
-        setFirmaSaving(true);
+        const hasExistingFirma = !!firmaEvent.firma_url;
+        const body: any = { firma_aclaracion: firmaAclaracion.trim() || null };
+
+        // Only upload a new signature if user drew something AND there's no existing firma
+        // (if there is one the modal shows it with "Reemplazar" which nulls firma_url first)
+        if (canvas && firmaHasStrokes) {
+            setFirmaSaving(true);
+            try {
+                body.firma_url = await uploadSig(canvas, getAuthHeaders());
+            } catch {
+                alert('Error al subir firma');
+                setFirmaSaving(false);
+                return;
+            }
+        } else if (!hasExistingFirma) {
+            // No existing firma and no new strokes → only aclaracion would be saved, which makes no sense
+            alert('Dibujá una firma antes de guardar');
+            return;
+        } else {
+            setFirmaSaving(true);
+        }
+
         try {
-            const fileUrl = await uploadSig(canvas, getAuthHeaders());
             const res = await fetch(`/api/logistica/calendario?id=${firmaEvent.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-                body: JSON.stringify({ firma_url: fileUrl }),
+                body: JSON.stringify(body),
             });
             if (!res.ok) { alert('Error al guardar firma'); return; }
             setFirmaEvent(null);
             setFirmaHasStrokes(false);
+            setFirmaAclaracion('');
             fetchAll();
-        } catch { alert('Error al subir firma'); }
-        finally { setFirmaSaving(false); }
+        } finally { setFirmaSaving(false); }
     }
 
     // ── Filtered list data ────────────────────────────────────────────────
@@ -696,6 +768,7 @@ export default function CalendarioPage() {
                                         items={selectedDayData!.entrega}
                                         onDelete={handleDeleteEvent}
                                         onFirma={setFirmaEvent}
+                                        onEdit={openEditModal}
                                     />
                                 )}
 
@@ -705,6 +778,7 @@ export default function CalendarioPage() {
                                         type="despacho"
                                         items={selectedDayData!.despacho}
                                         onDelete={handleDeleteEvent}
+                                        onEdit={openEditModal}
                                     />
                                 )}
 
@@ -841,7 +915,13 @@ export default function CalendarioPage() {
                                                 <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>{ev.titulo || <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>Sin título</span>}</div>
                                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>{fmtDate(ev.fecha)}</div>
                                             </div>
-                                            <button onClick={() => handleDeleteEvent(ev.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.15rem', flexShrink: 0 }}><Trash2 size={15} /></button>
+                                            <div style={{ display: 'flex', gap: '0.3rem', flexShrink: 0 }}>
+                                                <button onClick={() => openEditModal(ev)} title="Editar" style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', padding: '0.15rem' }}><Pencil size={15} /></button>
+                                                {ev.tipo === 'entrega' && (
+                                                    <button onClick={() => setFirmaEvent(ev)} title={ev.firma_url ? 'Editar firma/aclaración' : 'Agregar firma'} style={{ background: 'none', border: 'none', color: ev.firma_url ? '#22c55e' : 'var(--text-secondary)', cursor: 'pointer', padding: '0.15rem' }}><Feather size={15} /></button>
+                                                )}
+                                                <button onClick={() => handleDeleteEvent(ev.id)} title="Eliminar" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.15rem' }}><Trash2 size={15} /></button>
+                                            </div>
                                         </div>
                                         {/* Items */}
                                         {ev.items?.length > 0 && (
@@ -896,8 +976,14 @@ export default function CalendarioPage() {
                                                         ? <a href={`/api/file-proxy?url=${encodeURIComponent(ev.file_url)}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><FileText size={13} /> Ver</a>
                                                         : <span style={{ color: 'var(--text-secondary)' }}>—</span>}
                                                 </td>
-                                                <td style={{ padding: '0.6rem 0.75rem' }}>
-                                                    <button onClick={() => handleDeleteEvent(ev.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.2rem' }}><Trash2 size={13} /></button>
+                                                <td style={{ padding: '0.6rem 0.75rem', whiteSpace: 'nowrap' }}>
+                                                    <button onClick={() => openEditModal(ev)} title="Editar" style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', padding: '0.2rem' }}><Pencil size={13} /></button>
+                                                    {ev.tipo === 'entrega' && (
+                                                        <button onClick={() => setFirmaEvent(ev)} title={ev.firma_url ? 'Editar firma/aclaración' : 'Agregar firma'} style={{ background: 'none', border: 'none', color: ev.firma_url ? '#22c55e' : 'var(--text-secondary)', cursor: 'pointer', padding: '0.2rem' }}>
+                                                            <Feather size={13} />
+                                                        </button>
+                                                    )}
+                                                    <button onClick={() => handleDeleteEvent(ev.id)} title="Eliminar" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.2rem' }}><Trash2 size={13} /></button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -1004,8 +1090,10 @@ export default function CalendarioPage() {
                     <div style={{ backgroundColor: 'var(--surface-color)', borderRadius: 'var(--radius)', padding: m ? '1rem' : '1.5rem', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto' }}>
                         {/* Modal header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: m ? '0.85rem' : '1.25rem' }}>
-                            <h2 style={{ fontSize: m ? '0.98rem' : '1.05rem', fontWeight: 700, margin: 0 }}>Nuevo Evento</h2>
-                            <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={18} /></button>
+                            <h2 style={{ fontSize: m ? '0.98rem' : '1.05rem', fontWeight: 700, margin: 0 }}>
+                                {editingId ? `Editar ${TYPE_CONFIG[modalTab as 'entrega' | 'despacho']?.label || 'Evento'}` : 'Nuevo Evento'}
+                            </h2>
+                            <button onClick={() => { setShowModal(false); setEditingId(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={18} /></button>
                         </div>
 
                         {/* Date input */}
@@ -1019,25 +1107,27 @@ export default function CalendarioPage() {
                             />
                         </div>
 
-                        {/* Tab selector */}
-                        <div style={{ display: 'flex', gap: m ? '0.25rem' : '0.4rem', marginBottom: m ? '0.85rem' : '1.25rem', backgroundColor: 'var(--bg-color)', padding: m ? '0.2rem' : '0.25rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
-                            {(['entrega', 'despacho', 'solicitud'] as const).map(t => (
-                                <button
-                                    key={t}
-                                    onClick={() => setModalTab(t)}
-                                    style={{
-                                        flex: 1, padding: m ? '0.32rem 0.2rem' : '0.45rem', borderRadius: 'calc(var(--radius) - 2px)', border: 'none',
-                                        backgroundColor: modalTab === t ? TYPE_CONFIG[t].color : 'transparent',
-                                        color: modalTab === t ? 'white' : 'var(--text-secondary)',
-                                        fontSize: m ? '0.7rem' : '0.78rem', fontWeight: 600, cursor: 'pointer',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: m ? '0.15rem' : '0.3rem',
-                                        lineHeight: 1.2,
-                                    }}
-                                >
-                                    {TYPE_CONFIG[t].icon} {TYPE_CONFIG[t].label}
-                                </button>
-                            ))}
-                        </div>
+                        {/* Tab selector — solo al crear */}
+                        {!editingId && (
+                            <div style={{ display: 'flex', gap: m ? '0.25rem' : '0.4rem', marginBottom: m ? '0.85rem' : '1.25rem', backgroundColor: 'var(--bg-color)', padding: m ? '0.2rem' : '0.25rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}>
+                                {(['entrega', 'despacho', 'solicitud'] as const).map(t => (
+                                    <button
+                                        key={t}
+                                        onClick={() => setModalTab(t)}
+                                        style={{
+                                            flex: 1, padding: m ? '0.32rem 0.2rem' : '0.45rem', borderRadius: 'calc(var(--radius) - 2px)', border: 'none',
+                                            backgroundColor: modalTab === t ? TYPE_CONFIG[t].color : 'transparent',
+                                            color: modalTab === t ? 'white' : 'var(--text-secondary)',
+                                            fontSize: m ? '0.7rem' : '0.78rem', fontWeight: 600, cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: m ? '0.15rem' : '0.3rem',
+                                            lineHeight: 1.2,
+                                        }}
+                                    >
+                                        {TYPE_CONFIG[t].icon} {TYPE_CONFIG[t].label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
 
                         {/* ── Entrega / Despacho form ── */}
                         {(modalTab === 'entrega' || modalTab === 'despacho') && (
@@ -1125,8 +1215,8 @@ export default function CalendarioPage() {
                                     />
                                 </div>
 
-                                {/* Firma del receptor — solo para entrega */}
-                                {modalTab === 'entrega' && (
+                                {/* Firma del receptor — solo para entrega, al crear (la edición de firma va en su propio modal) */}
+                                {modalTab === 'entrega' && !editingId && (
                                     <div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
                                             <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
@@ -1253,7 +1343,7 @@ export default function CalendarioPage() {
 
                         {/* Modal actions */}
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: m ? '0.4rem' : '0.5rem', marginTop: m ? '1.1rem' : '1.5rem', flexWrap: 'wrap' }}>
-                            <button onClick={() => setShowModal(false)} style={{ padding: m ? '0.4rem 0.85rem' : '0.5rem 1rem', fontSize: m ? '0.8rem' : '0.85rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                            <button onClick={() => { setShowModal(false); setEditingId(null); }} style={{ padding: m ? '0.4rem 0.85rem' : '0.5rem 1rem', fontSize: m ? '0.8rem' : '0.85rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', cursor: 'pointer', color: 'var(--text-secondary)' }}>
                                 Cancelar
                             </button>
                             <button
@@ -1261,7 +1351,7 @@ export default function CalendarioPage() {
                                 disabled={saving || parsing}
                                 style={{ padding: m ? '0.4rem 0.95rem' : '0.5rem 1.1rem', fontSize: m ? '0.8rem' : '0.85rem', border: 'none', borderRadius: 'var(--radius)', backgroundColor: TYPE_CONFIG[modalTab].color, color: 'white', cursor: 'pointer', fontWeight: 600, opacity: saving || parsing ? 0.7 : 1 }}
                             >
-                                {saving ? 'Guardando...' : `Guardar ${TYPE_CONFIG[modalTab].label}`}
+                                {saving ? 'Guardando...' : editingId ? 'Guardar cambios' : `Guardar ${TYPE_CONFIG[modalTab].label}`}
                             </button>
                         </div>
                     </div>
@@ -1317,20 +1407,35 @@ export default function CalendarioPage() {
                                 {!firmaHasStrokes && (
                                     <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: '0.3rem 0 0', textAlign: 'center' }}>Área de firma</p>
                                 )}
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.25rem' }}>
-                                    <button onClick={() => { setFirmaEvent(null); setFirmaHasStrokes(false); }} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={firmaSave}
-                                        disabled={!firmaHasStrokes || firmaSaving}
-                                        style={{ padding: '0.5rem 1.1rem', fontSize: '0.85rem', border: 'none', borderRadius: 'var(--radius)', backgroundColor: '#22c55e', color: 'white', cursor: !firmaHasStrokes || firmaSaving ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: !firmaHasStrokes || firmaSaving ? 0.6 : 1 }}
-                                    >
-                                        {firmaSaving ? 'Guardando...' : 'Guardar firma'}
-                                    </button>
-                                </div>
                             </>
                         )}
+
+                        {/* Aclaración de firma (nombre y/o cédula del receptor) */}
+                        <div style={{ marginTop: '1rem' }}>
+                            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.25rem', color: 'var(--text-secondary)' }}>
+                                Aclaración <span style={{ fontWeight: 400, fontSize: '0.72rem' }}>(nombre y/o cédula del receptor)</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={firmaAclaracion}
+                                onChange={e => setFirmaAclaracion(e.target.value)}
+                                placeholder="Ej: Juan Pérez — CI 1.234.567-8"
+                                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', fontSize: '0.85rem', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)', boxSizing: 'border-box' }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.25rem' }}>
+                            <button onClick={() => { setFirmaEvent(null); setFirmaHasStrokes(false); setFirmaAclaracion(''); }} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', backgroundColor: 'var(--bg-color)', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={firmaSave}
+                                disabled={firmaSaving || (!firmaEvent.firma_url && !firmaHasStrokes)}
+                                style={{ padding: '0.5rem 1.1rem', fontSize: '0.85rem', border: 'none', borderRadius: 'var(--radius)', backgroundColor: '#22c55e', color: 'white', cursor: firmaSaving || (!firmaEvent.firma_url && !firmaHasStrokes) ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: firmaSaving || (!firmaEvent.firma_url && !firmaHasStrokes) ? 0.6 : 1 }}
+                            >
+                                {firmaSaving ? 'Guardando...' : 'Guardar'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1340,11 +1445,12 @@ export default function CalendarioPage() {
 
 // ── Sub-components ──────────────────────────────────────────────────────────
 
-function EventSection({ type, items, onDelete, onFirma }: {
+function EventSection({ type, items, onDelete, onFirma, onEdit }: {
     type: 'entrega' | 'despacho';
     items: CalEvent[];
     onDelete: (id: number) => void;
     onFirma?: (ev: CalEvent) => void;
+    onEdit?: (ev: CalEvent) => void;
 }) {
     const cfg = TYPE_CONFIG[type];
     return (
@@ -1381,6 +1487,17 @@ function EventSection({ type, items, onDelete, onFirma }: {
                                         <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', marginBottom: '0.2rem', fontWeight: 600, textTransform: 'uppercase' }}>Firma del receptor</div>
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img src={ev.firma_url} alt="Firma" style={{ maxWidth: '120px', border: '1px solid var(--border-color)', borderRadius: '4px', backgroundColor: 'white' }} />
+                                        {ev.firma_aclaracion && (
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-primary)', marginTop: '0.25rem', maxWidth: '220px' }}>{ev.firma_aclaracion}</div>
+                                        )}
+                                        {type === 'entrega' && onFirma && (
+                                            <button
+                                                onClick={() => onFirma(ev)}
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.3rem', background: 'none', border: 'none', color: 'var(--primary-color)', fontSize: '0.7rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                                            >
+                                                Editar firma/aclaración
+                                            </button>
+                                        )}
                                     </div>
                                 ) : (
                                     type === 'entrega' && onFirma && (
@@ -1393,9 +1510,16 @@ function EventSection({ type, items, onDelete, onFirma }: {
                                     )
                                 )}
                             </div>
-                            <button onClick={() => onDelete(ev.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.2rem', flexShrink: 0 }}>
-                                <Trash2 size={13} />
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
+                                {onEdit && (
+                                    <button onClick={() => onEdit(ev)} title="Editar" style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', padding: '0.2rem' }}>
+                                        <Pencil size={13} />
+                                    </button>
+                                )}
+                                <button onClick={() => onDelete(ev.id)} title="Eliminar" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.2rem' }}>
+                                    <Trash2 size={13} />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 ))}

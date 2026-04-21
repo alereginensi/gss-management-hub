@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { fecha, tipo, titulo, descripcion, items, file_url, firma_url } = body;
+        const { fecha, tipo, titulo, descripcion, items, file_url, firma_url, firma_aclaracion } = body;
 
         if (!fecha || !tipo) {
             return NextResponse.json({ error: 'fecha y tipo son obligatorios' }, { status: 400 });
@@ -58,10 +58,10 @@ export async function POST(request: NextRequest) {
         }
 
         await db.run(
-            `INSERT INTO logistica_calendario (fecha, tipo, titulo, descripcion, items, file_url, firma_url, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO logistica_calendario (fecha, tipo, titulo, descripcion, items, file_url, firma_url, firma_aclaracion, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [fecha, tipo, titulo || null, descripcion || null,
-             items ? JSON.stringify(items) : null, file_url || null, firma_url || null, session.user.name]
+             items ? JSON.stringify(items) : null, file_url || null, firma_url || null, firma_aclaracion || null, session.user.name]
         );
 
         return NextResponse.json({ success: true }, { status: 201 });
@@ -83,11 +83,27 @@ export async function PUT(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const { firma_url } = body;
+        const sets: string[] = [];
+        const params: any[] = [];
 
+        if ('titulo' in body) { sets.push('titulo = ?'); params.push(body.titulo || null); }
+        if ('descripcion' in body) { sets.push('descripcion = ?'); params.push(body.descripcion || null); }
+        if ('items' in body) {
+            sets.push('items = ?');
+            params.push(body.items ? JSON.stringify(body.items) : null);
+        }
+        if ('file_url' in body) { sets.push('file_url = ?'); params.push(body.file_url || null); }
+        if ('firma_url' in body) { sets.push('firma_url = ?'); params.push(body.firma_url || null); }
+        if ('firma_aclaracion' in body) { sets.push('firma_aclaracion = ?'); params.push(body.firma_aclaracion || null); }
+
+        if (sets.length === 0) {
+            return NextResponse.json({ error: 'Nada para actualizar' }, { status: 400 });
+        }
+
+        params.push(id);
         await db.run(
-            `UPDATE logistica_calendario SET firma_url = ? WHERE id = ?`,
-            [firma_url || null, id]
+            `UPDATE logistica_calendario SET ${sets.join(', ')} WHERE id = ?`,
+            params
         );
 
         return NextResponse.json({ success: true });

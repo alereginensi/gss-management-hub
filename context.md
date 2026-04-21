@@ -73,6 +73,8 @@ Rutas de UI bajo `app/logistica/`:
 
 - **`/`** — Hub de logística.
 - **`/logistica/calendario`** — Calendario de eventos: **entrega**, **ingreso mercadería** (antes “despacho” en código: tipo `despacho`), **solicitud**. Modal “Nuevo evento”, export Excel, firma en entregas, etc.
+  - **Editar entregas / ingresos** (tras creación): botón lápiz en la vista del día, en la tarjeta mobile y en la tabla desktop; reutiliza el modal de creación en modo edición (oculta tabs y canvas de firma). `PUT /api/logistica/calendario?id={id}` acepta body parcial con `titulo`, `descripcion`, `items`, `file_url`, `firma_url`, `firma_aclaracion`.
+  - **Aclaración de firma** (`firma_aclaracion TEXT` en `logistica_calendario`, ALTER aditivo PG+SQLite): input dentro del modal de firma ("nombre y/o cédula del receptor") que se muestra debajo de la imagen en la vista del día. Se puede guardar con o sin cambiar la firma.
 - **`/logistica/solicitud-materiales`** — Solicitudes de materiales (lista, filtros, modal “Nueva solicitud”).
 - **`/logistica/envios`**, **`/logistica/ordenes-compra`** — Envíos y órdenes de compra.
 

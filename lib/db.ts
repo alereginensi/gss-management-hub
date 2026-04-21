@@ -584,6 +584,7 @@ class DbWrapper {
  items TEXT,
  file_url TEXT,
  firma_url TEXT,
+ firma_aclaracion TEXT,
  created_by TEXT,
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
  );
@@ -1472,6 +1473,7 @@ class DbWrapper {
  items TEXT,
  file_url TEXT,
  firma_url TEXT,
+ firma_aclaracion TEXT,
  created_by TEXT,
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
  )
@@ -1479,6 +1481,9 @@ class DbWrapper {
  // Add firma_url column if missing (existing DBs)
  try {
  await this.pgPool!.query(`ALTER TABLE logistica_calendario ADD COLUMN IF NOT EXISTS firma_url TEXT`);
+ } catch (e) {}
+ try {
+ await this.pgPool!.query(`ALTER TABLE logistica_calendario ADD COLUMN IF NOT EXISTS firma_aclaracion TEXT`);
  } catch (e) {}
  } catch (e) {}
 
@@ -2105,11 +2110,13 @@ class DbWrapper {
  items TEXT,
  file_url TEXT,
  firma_url TEXT,
+ firma_aclaracion TEXT,
  created_by TEXT,
  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
  )
  `);
  try { this.sqliteDb.exec(`ALTER TABLE logistica_calendario ADD COLUMN firma_url TEXT`); } catch (e) {}
+ try { this.sqliteDb.exec(`ALTER TABLE logistica_calendario ADD COLUMN firma_aclaracion TEXT`); } catch (e) {}
  } catch (e) {}
 
  // mitrabajo_files: persist Excel reports in SQLite for dev
