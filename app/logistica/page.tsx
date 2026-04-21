@@ -85,7 +85,7 @@ export default function LogisticaPage() {
                             );
                             const onNav = () => {
                                 if (typeof window === 'undefined') return;
-                                try { sessionStorage.removeItem('agenda_origin'); } catch {}
+                                try { sessionStorage.setItem('agenda_origin', 'logistica'); } catch {}
                             };
                             return item.external ? (
                                 <a key={item.href} href={item.href} target="_blank" rel="noopener noreferrer" className="landing-card-btn">

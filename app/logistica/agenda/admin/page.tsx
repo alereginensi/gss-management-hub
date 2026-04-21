@@ -18,7 +18,8 @@ interface Stats {
 
 const QUICK_LINKS = [
   { label: 'Citas', href: '/logistica/agenda/admin/citas', icon: Calendar, desc: 'Gestionar turnos del día' },
-  { label: 'Entregas', href: '/logistica/agenda/admin/entregas', icon: PackageCheck, desc: 'Historial de uniformes entregados' },
+  { label: 'Entregas', href: '/logistica/agenda/admin/entregas', icon: PackageCheck, desc: 'Uniformes entregados (citas completadas)' },
+  { label: 'Historial', href: '/logistica/agenda/admin/historial', icon: History, desc: 'Buscar por cédula: citas, ausencias, intentos fallidos' },
   { label: 'No Habilitados', href: '/logistica/agenda/admin/no-habilitados', icon: ShieldAlert, desc: 'Intentos fallidos de registro' },
   { label: 'Empleados', href: '/logistica/agenda/admin/empleados', icon: Users, desc: 'Alta, edición, habilitación' },
   { label: 'Horarios', href: '/logistica/agenda/admin/horarios', icon: Clock, desc: 'Slots y generación mensual' },
@@ -39,6 +40,7 @@ export default function AgendaAdminDashboard() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [backHref, setBackHref] = useState('/logistica');
   const [backLabel, setBackLabel] = useState('Logística');
+  const [origin, setOrigin] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -48,12 +50,18 @@ export default function AgendaAdminDashboard() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const origin = sessionStorage.getItem('agenda_origin');
-    if (origin === 'rrhh') {
+    const o = sessionStorage.getItem('agenda_origin');
+    setOrigin(o);
+    if (o === 'rrhh') {
       setBackHref('/rrhh');
       setBackLabel('RRHH');
     }
-  }, []);
+    // Origen = logistica → redirigir directo a citas (solo sección permitida).
+    // Para ver el dashboard completo, entrar desde el menú principal (no desde /logistica).
+    if (o === 'logistica') {
+      router.replace('/logistica/agenda/admin/citas');
+    }
+  }, [router]);
 
   useEffect(() => {
     if (!isAuthenticated || loading) return;

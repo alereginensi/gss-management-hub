@@ -663,6 +663,15 @@ textarea {
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+@keyframes spin { to { transform: rotate(360deg); } }
+.animate-spin { animation: spin 0.8s linear infinite; }
+
+/* Walkin slots grid — 3 cols mobile, 4 cols desktop */
+.walkin-slot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
+@media (max-width: 768px) {
+  .walkin-slot-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
 @keyframes app-loader-l5 {
   0% {
     inset: 0 35px 35px 0;

@@ -123,7 +123,7 @@ export default function EntregasPage() {
           <Link href="/logistica/agenda/admin" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'rgba(255,255,255,0.7)', textDecoration: 'none', fontSize: '0.78rem' }}>
             <ArrowLeft size={13} />{!isMobile && ' Admin'}
           </Link>
-          <span style={{ color: 'white', fontWeight: 700, fontSize: '0.9rem' }}>Historial de Entregas</span>
+          <span style={{ color: 'white', fontWeight: 700, fontSize: '0.9rem' }}>Entregas</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           {!isMobile && <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.8rem' }}>{currentUser.name}</span>}

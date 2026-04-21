@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Printer, Save, Upload, FileText, CheckCircle, X, Truck, PackagePlus, RotateCcw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Printer, Save, Upload, FileText, CheckCircle, X, Truck, PackagePlus, RotateCcw, Trash2, CalendarClock, Calendar, Clock, Plus, Loader2, XCircle } from 'lucide-react';
 import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 import AgendaSignatureCanvas, { AgendaSignatureCanvasRef } from '@/app/components/AgendaSignatureCanvas';
@@ -63,6 +63,18 @@ export default function CitaDetallePage() {
   const [uploadingRemito, setUploadingRemito] = useState(false);
   const remitoFileRef = useRef<HTMLInputElement>(null);
 
+  // Walk-in (vino fuera de su turno) — reasignar a otro slot del día
+  const [walkinOpen, setWalkinOpen] = useState(false);
+  const [walkinDate, setWalkinDate] = useState('');
+  const [walkinSlots, setWalkinSlots] = useState<any[]>([]);
+  const [walkinSlotId, setWalkinSlotId] = useState<number | null>(null);
+  const [walkinLoadingSlots, setWalkinLoadingSlots] = useState(false);
+  const [walkinShowCreate, setWalkinShowCreate] = useState(false);
+  const [walkinNewStart, setWalkinNewStart] = useState('09:00');
+  const [walkinNewEnd, setWalkinNewEnd] = useState('09:30');
+  const [walkinCreatingSlot, setWalkinCreatingSlot] = useState(false);
+  const [walkinMoving, setWalkinMoving] = useState(false);
+
   useEffect(() => {
     if (loading) return;
     if (!isAuthenticated) { router.push('/login'); return; }
@@ -109,6 +121,73 @@ export default function CitaDetallePage() {
     if (isError) { setError(msg); setTimeout(() => setError(null), 4000); }
     else { setSuccess(msg); setTimeout(() => setSuccess(null), 3000); }
   };
+
+  // ── Walkin handlers ───────────────────────────────────────────────────────
+  async function fetchWalkinSlots(date: string) {
+    setWalkinSlots([]);
+    setWalkinSlotId(null);
+    setWalkinShowCreate(false);
+    if (!date) return;
+    setWalkinLoadingSlots(true);
+    try {
+      const res = await fetch(`/api/logistica/agenda/slots?from=${date}&to=${date}&limit=100`);
+      const data = await res.json();
+      const slots = (data?.slots || []).filter((s: any) => (s.estado ?? 'activo') === 'activo');
+      setWalkinSlots(slots);
+    } finally {
+      setWalkinLoadingSlots(false);
+    }
+  }
+
+  function resetWalkin() {
+    setWalkinOpen(false);
+    setWalkinDate('');
+    setWalkinSlots([]);
+    setWalkinSlotId(null);
+    setWalkinShowCreate(false);
+    setWalkinNewStart('09:00');
+    setWalkinNewEnd('09:30');
+  }
+
+  async function handleWalkinCreateSlot() {
+    if (!walkinDate || !walkinNewStart || !walkinNewEnd) return;
+    setWalkinCreatingSlot(true);
+    try {
+      const res = await fetch('/api/logistica/agenda/slots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fecha: walkinDate, start_time: walkinNewStart, end_time: walkinNewEnd, capacity: 1 }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showMessage(data.error || 'Error al crear turno', true); return; }
+      setWalkinShowCreate(false);
+      await fetchWalkinSlots(walkinDate);
+      if (data.id) setWalkinSlotId(data.id);
+      showMessage('Turno creado');
+    } finally {
+      setWalkinCreatingSlot(false);
+    }
+  }
+
+  async function handleWalkinMove() {
+    if (!walkinSlotId) return;
+    if (!confirm('¿Reasignar esta cita al turno seleccionado?')) return;
+    setWalkinMoving(true);
+    try {
+      const res = await fetch(`/api/logistica/agenda/appointments/${id}/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_slot_id: walkinSlotId }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showMessage(data.error || 'Error al reasignar', true); return; }
+      showMessage('Cita reasignada al nuevo turno');
+      resetWalkin();
+      fetchAppt();
+    } finally {
+      setWalkinMoving(false);
+    }
+  }
 
   const handleSaveStatus = async () => {
     setSaving(true);
@@ -436,6 +515,155 @@ export default function CitaDetallePage() {
               {/* ── Panel de edición (no print) ── */}
               <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
+                {/* Vino fuera de su turno — reasignar a otro slot */}
+                {appt.status !== 'completada' && appt.status !== 'cancelada' && (
+                  <div style={{
+                    border: `1px solid ${walkinOpen ? '#fcd34d' : '#e2e8f0'}`,
+                    background: walkinOpen ? '#fffbeb' : 'white',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    transition: 'all 0.15s',
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => { setWalkinOpen(v => !v); if (walkinOpen) resetWalkin(); }}
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '0.85rem 1rem', background: 'none', border: 'none', cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.88rem', fontWeight: 700, color: '#92400e' }}>
+                        <CalendarClock size={16} style={{ color: '#d97706' }} />
+                        Vino fuera de su turno
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        {walkinOpen ? 'Cancelar' : 'Cambiar fecha y turno'}
+                      </span>
+                    </button>
+
+                    {walkinOpen && (
+                      <div style={{ padding: '0 1rem 1rem', borderTop: '1px solid #fde68a', paddingTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#a16207' }}>
+                          Seleccioná la fecha real de la entrega y el turno correspondiente. Si no hay turnos, podés crear uno.
+                        </p>
+
+                        <div>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', fontWeight: 700, color: '#374151', marginBottom: '0.3rem' }}>
+                            <Calendar size={12} /> Fecha de la entrega
+                          </label>
+                          <input
+                            type="date"
+                            value={walkinDate}
+                            onChange={e => { setWalkinDate(e.target.value); void fetchWalkinSlots(e.target.value); }}
+                            style={{ width: '100%', border: '1px solid #fde68a', borderRadius: '8px', padding: '0.5rem 0.7rem', fontSize: '0.85rem', boxSizing: 'border-box', background: 'white' }}
+                          />
+                        </div>
+
+                        {walkinDate && (
+                          <div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', fontWeight: 700, color: '#374151', marginBottom: '0.4rem' }}>
+                              <Clock size={12} /> Turnos disponibles
+                            </label>
+                            {walkinLoadingSlots ? (
+                              <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                <Loader2 size={12} className="animate-spin" /> Cargando...
+                              </p>
+                            ) : walkinSlots.length === 0 ? (
+                              <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>No hay turnos para ese día.</p>
+                            ) : (
+                              <div className="walkin-slot-grid">
+                                {walkinSlots.map((slot: any) => {
+                                  const full = (slot.current_bookings ?? 0) >= (slot.capacity ?? 1);
+                                  const selected = walkinSlotId === slot.id;
+                                  return (
+                                    <button
+                                      key={slot.id}
+                                      type="button"
+                                      onClick={() => { if (!full || selected) setWalkinSlotId(slot.id); }}
+                                      disabled={full && !selected}
+                                      style={{
+                                        padding: '0.5rem 0.3rem',
+                                        borderRadius: '8px',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 600,
+                                        cursor: full && !selected ? 'not-allowed' : 'pointer',
+                                        border: '1px solid',
+                                        background: selected ? '#d97706' : full ? '#f1f5f9' : 'white',
+                                        borderColor: selected ? '#d97706' : full ? '#e2e8f0' : '#e2e8f0',
+                                        color: selected ? 'white' : full ? '#94a3b8' : '#334155',
+                                        textAlign: 'center',
+                                        lineHeight: 1.2,
+                                      }}
+                                    >
+                                      {slot.start_time}
+                                      {full && !selected && <div style={{ fontSize: '0.65rem', marginTop: '0.15rem', color: '#94a3b8' }}>Completo</div>}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {!walkinShowCreate ? (
+                              <button
+                                type="button"
+                                onClick={() => setWalkinShowCreate(true)}
+                                style={{ marginTop: '0.6rem', background: 'none', border: 'none', color: '#b45309', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: 0 }}
+                              >
+                                <Plus size={13} /> Crear turno en esta fecha
+                              </button>
+                            ) : (
+                              <div style={{ marginTop: '0.75rem', border: '1px solid #fde68a', borderRadius: '8px', padding: '0.75rem', background: 'white' }}>
+                                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#374151', marginBottom: '0.5rem' }}>Nuevo turno</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                  <div>
+                                    <label style={{ fontSize: '0.7rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Inicio</label>
+                                    <input type="time" value={walkinNewStart} onChange={e => setWalkinNewStart(e.target.value)}
+                                      style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.4rem 0.5rem', fontSize: '0.82rem', boxSizing: 'border-box' }} />
+                                  </div>
+                                  <div>
+                                    <label style={{ fontSize: '0.7rem', color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>Fin</label>
+                                    <input type="time" value={walkinNewEnd} onChange={e => setWalkinNewEnd(e.target.value)}
+                                      style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.4rem 0.5rem', fontSize: '0.82rem', boxSizing: 'border-box' }} />
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.6rem' }}>
+                                  <button type="button" onClick={() => setWalkinShowCreate(false)}
+                                    style={{ flex: 1, padding: '0.4rem', fontSize: '0.78rem', background: 'white', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer' }}>
+                                    Cancelar
+                                  </button>
+                                  <button type="button" onClick={() => void handleWalkinCreateSlot()} disabled={walkinCreatingSlot}
+                                    style={{ flex: 2, padding: '0.4rem', fontSize: '0.78rem', background: '#d97706', color: 'white', border: 'none', borderRadius: '6px', cursor: walkinCreatingSlot ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', fontWeight: 600 }}>
+                                    {walkinCreatingSlot ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                                    Crear y seleccionar
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {walkinSlotId && (
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px solid #fde68a' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#15803d', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flex: 1 }}>
+                              <CheckCircle size={13} /> Turno seleccionado
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => void handleWalkinMove()}
+                              disabled={walkinMoving}
+                              style={{ padding: '0.5rem 0.9rem', background: '#d97706', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 700, cursor: walkinMoving ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                            >
+                              {walkinMoving ? <Loader2 size={13} className="animate-spin" /> : <CalendarClock size={13} />}
+                              Reasignar cita
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Estado y notas */}
                 <div className="card" style={{ padding: '1.25rem' }}>
                   <h3 style={{ margin: '0 0 1rem', fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>Estado de la cita</h3>
@@ -495,7 +723,7 @@ export default function CitaDetallePage() {
                         <FileText size={14} /> Ver remito actual
                       </a>
                       {appt.remito_filename && (
-                        <span style={{ color: '#64748b', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px', whiteSpace: 'nowrap' }} title={appt.remito_filename}>
+                        <span style={{ color: '#64748b', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMobile ? '160px' : '280px', whiteSpace: 'nowrap' }} title={appt.remito_filename}>
                           {appt.remito_filename}
                         </span>
                       )}
@@ -559,26 +787,10 @@ export default function CitaDetallePage() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.75rem' }}>
                         {returnedItems.map((item, i) => (
                           <div key={i} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                            <input
-                              value={item.article_type || ''}
-                              onChange={e => updateReturnedItem(i, 'article_type', e.target.value)}
-                              placeholder="Prenda devuelta"
-                              style={{ flex: 3, border: '1px solid #fecaca', borderRadius: '6px', padding: '0.35rem 0.6rem', fontSize: '0.8rem', boxSizing: 'border-box' }}
-                            />
-                            <input
-                              value={item.size || ''}
-                              onChange={e => updateReturnedItem(i, 'size', e.target.value)}
-                              placeholder="Talla"
-                              style={{ flex: 1, border: '1px solid #fecaca', borderRadius: '6px', padding: '0.35rem 0.6rem', fontSize: '0.8rem', boxSizing: 'border-box' }}
-                            />
-                            <input
-                              type="number"
-                              min={1}
-                              value={item.qty || 1}
-                              onChange={e => updateReturnedItem(i, 'qty', parseInt(e.target.value, 10) || 1)}
-                              style={{ width: '60px', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.35rem 0.6rem', fontSize: '0.8rem', boxSizing: 'border-box' }}
-                            />
-                            <button onClick={() => removeReturnedItem(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                            <div style={{ flex: 3, fontSize: '0.8rem', color: '#1e293b', fontWeight: 600 }}>
+                              {renderOrderItemLabel(item)}
+                            </div>
+                            <button onClick={() => removeReturnedItem(i)} aria-label="Eliminar ítem" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '0.25rem' }}>
                               <X size={14} />
                             </button>
                           </div>
@@ -587,7 +799,9 @@ export default function CitaDetallePage() {
                           <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>Sin ítems devueltos. Agregá al menos uno.</p>
                         )}
                       </div>
-                      <button onClick={addReturnedItem} className="btn btn-secondary" style={{ fontSize: '0.78rem' }}>+ Agregar ítem devuelto</button>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+                        <button onClick={addReturnedItem} className="btn btn-secondary" style={{ fontSize: '0.78rem' }}>+ Agregar ítem devuelto</button>
+                      </div>
                     </div>
 
                     {/* Remito devolución */}
@@ -605,7 +819,7 @@ export default function CitaDetallePage() {
                             <FileText size={14} /> Ver remito devolución
                           </a>
                           {appt.remito_return_filename && (
-                            <span style={{ color: '#64748b', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px', whiteSpace: 'nowrap' }} title={appt.remito_return_filename}>
+                            <span style={{ color: '#64748b', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMobile ? '160px' : '280px', whiteSpace: 'nowrap' }} title={appt.remito_return_filename}>
                               {appt.remito_return_filename}
                             </span>
                           )}
