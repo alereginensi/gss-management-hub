@@ -64,6 +64,11 @@ export async function middleware(request: NextRequest) {
         return NextResponse.next();
     }
 
+    // Alias corto para el flujo público de funcionarios
+    if (pathname === '/agenda' || pathname === '/agenda/') {
+        return NextResponse.redirect(new URL('/logistica/agenda', request.url));
+    }
+
     // For page routes: check if there's any auth token available
     const publicPages = ['/login', '/register', '/', '/registro-limpieza', '/turno'];
     // Agenda Web: flujo público de empleados (sin sesión GSS requerida)
