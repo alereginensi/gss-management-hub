@@ -1,6 +1,27 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyJWT } from './lib/auth-edge';
+
+// Decodifica el payload de un JWT **sin** verificar la firma.
+// Lo usamos solo para enforcement de panel_access (UX) — la auth real
+// se verifica dentro de cada route handler vía getSession(request).
+// Evitamos crypto.subtle.verify() acá porque genera errores espurios
+// de BufferSource en el Edge runtime de Next.js sobre Railway.
+function decodeJwtPayloadUnsafe(token: string): any | null {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+        const json = new TextDecoder().decode(
+            Uint8Array.from(atob(padded), c => c.charCodeAt(0))
+        );
+        const payload = JSON.parse(json);
+        if (payload.exp && Date.now() >= payload.exp * 1000) return null;
+        return payload;
+    } catch {
+        return null;
+    }
+}
 
 /**
  * Middleware is now minimal - it only handles page-level redirects
@@ -30,12 +51,6 @@ const PANEL_GENERAL_PREFIXES = [
     '/mitrabajo',
 ];
 
-function getJwtSecret(): string {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) return 'dev-only-fallback-not-for-production-use';
-    return secret;
-}
-
 function isPanelGeneralPath(pathname: string): boolean {
     return PANEL_GENERAL_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'));
 }
@@ -62,20 +77,14 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/login', request.url));
     }
 
-    // Intentar decodificar la sesión para enforcement de panel_access
-    try {
-        const result = await verifyJWT(sessionCookie, getJwtSecret());
-        const user = result?.payload?.user;
-
-        // Si el usuario NO es admin y tiene panel_access=0, bloquear rutas del panel general
-        // y mandarlo de vuelta al landing donde verá sus módulos.
-        if (user && user.role !== 'admin' && Number(user.panel_access) === 0) {
-            if (isPanelGeneralPath(pathname)) {
-                return NextResponse.redirect(new URL('/', request.url));
-            }
+    // Decodificar (sin verificar firma) para enforcement de panel_access.
+    // La verificación de firma real ocurre en getSession() dentro de cada route handler.
+    const payload = decodeJwtPayloadUnsafe(sessionCookie);
+    const user = payload?.user;
+    if (user && user.role !== 'admin' && Number(user.panel_access) === 0) {
+        if (isPanelGeneralPath(pathname)) {
+            return NextResponse.redirect(new URL('/', request.url));
         }
-    } catch {
-        // Si no podemos decodificar, dejamos pasar (cada route handler hace su propio getSession()).
     }
 
     return NextResponse.next();
