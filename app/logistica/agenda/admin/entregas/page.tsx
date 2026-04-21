@@ -277,7 +277,7 @@ export default function EntregasPage() {
                         <Printer size={12} /> Constancia
                       </Link>
                       {appt.remito_pdf_url && (
-                        <a href={`/api/logistica/agenda/appointments/${appt.id}/remito-pdf`} target="_blank" rel="noopener noreferrer"
+                        <a href={`/api/logistica/agenda/appointments/${appt.id}/remito-pdf?t=${appt.delivered_at || Date.now()}`} target="_blank" rel="noopener noreferrer"
                           style={{ fontSize: '0.72rem', color: '#059669', textDecoration: 'none', background: '#f0fdf4', borderRadius: '4px', padding: '0.2rem 0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                           <Download size={12} /> Remito
                         </a>

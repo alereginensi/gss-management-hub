@@ -359,7 +359,7 @@ ${remitoLine}
                         )}
                         <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
                           {a.remito_pdf_url && (
-                            <a href={`/api/logistica/agenda/appointments/${a.id}/remito-pdf`} target="_blank" rel="noopener noreferrer"
+                            <a href={`/api/logistica/agenda/appointments/${a.id}/remito-pdf?t=${a.updated_at || Date.now()}`} target="_blank" rel="noopener noreferrer"
                               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '0.3rem 0.55rem', fontSize: '0.72rem', fontWeight: 600, textDecoration: 'none' }}>
                               <FileText size={12} /> Remito
                             </a>
