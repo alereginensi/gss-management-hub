@@ -17,14 +17,20 @@ export default function ThemeWrapper({ children }: { children: React.ReactNode }
     useEffect(() => {
         if (loading) return;
 
-        const publicRoutes = ['/login', '/register'];
+        // Rutas sin auth. Mantener sincronizado con middleware.ts.
+        const authOnlyBouncesToHome = ['/login', '/register']; // si hay sesión, estas mandan a /
+        const publicRoutes = [
+            '/', '/login', '/register', '/registro-limpieza', '/turno',
+            '/agenda', '/agenda/',
+            '/logistica/agenda', '/logistica/agenda/pedido', '/logistica/agenda/turno', '/logistica/agenda/confirmacion',
+        ];
         const isPublicRoute = publicRoutes.includes(pathname);
 
         if (isAuthenticated) {
-            if (isPublicRoute) {
+            if (authOnlyBouncesToHome.includes(pathname)) {
                 router.push('/');
             }
-        } else if (!isPublicRoute && pathname !== '/') {
+        } else if (!isPublicRoute) {
             router.push('/login');
         }
     }, [isAuthenticated, pathname, isMounted, router, currentUser?.role, loading]);

@@ -1,0 +1,46 @@
+name: Actualizar timer del README
+
+on:
+  push:
+    branches: [main]
+    # Evita bucles cuando el bot hace el commit de actualización del timer.
+    paths-ignore:
+      - 'README.md'
+  schedule:
+    # Cada 6 horas (UTC) para que el medidor de tiempo calendario se actualice
+    # aunque no haya commits nuevos.
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Actualizar bloque TIMER en README
+        run: node scripts/update-readme-timer.js
+
+      - name: Commit y push si hay cambios
+        run: |
+          if git diff --quiet README.md; then
+            echo "README sin cambios, nada que pushear."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "chore(readme): actualizar timer automatico [skip ci]"
+          git push
