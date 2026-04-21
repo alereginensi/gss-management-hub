@@ -79,26 +79,34 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // Cloudinary raw PDF: la restricción "Restricted media types: PDF" bloquea el
   // acceso público. Usamos private_download_url (signed, short-lived) para bypasearla.
   if (/res\.cloudinary\.com.*\/raw\//.test(originalUrl)) {
-    const hasCreds = !!(
-      process.env.CLOUDINARY_URL ||
-      (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)
-    );
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    const cloudinaryUrl = process.env.CLOUDINARY_URL;
+    const hasCreds = !!(cloudinaryUrl || (cloudName && apiKey && apiSecret));
     if (hasCreds) {
       try {
         const { v2: cld } = await import('cloudinary');
+        // Configurar explícitamente — no depender de que lib/cloudinary.ts haya sido importado antes
+        if (cloudName && apiKey && apiSecret) {
+          cld.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret, secure: true });
+        }
         const m = /\/raw\/(?:upload|authenticated)\/(?:v\d+\/)?(.+)$/.exec(originalUrl);
         if (m) {
           const signedUrl = cld.utils.private_download_url(m[1], '', {
             resource_type: 'raw',
             expires_at: Math.floor(Date.now() / 1000) + 300,
           });
+          console.log(`[remito-pdf] trying signed URL: ${signedUrl.slice(0, 100)}`);
           const upstream = await fetch(signedUrl, { cache: 'no-store' });
           if (upstream.ok) return serveBuffer(Buffer.from(await upstream.arrayBuffer()), id, kind);
-          console.error(`[remito-pdf] signed URL error ${upstream.status}`);
+          console.error(`[remito-pdf] signed URL failed ${upstream.status}`);
         }
       } catch (e: any) {
-        console.error('[remito-pdf] private_download_url failed:', e?.message);
+        console.error('[remito-pdf] private_download_url error:', e?.message);
       }
+    } else {
+      console.warn('[remito-pdf] Cloudinary credentials not configured server-side');
     }
   }
 
