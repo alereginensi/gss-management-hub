@@ -35,12 +35,37 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { id: idStr } = await params;
   const id = parseInt(idStr, 10);
-  const row = await db.get('SELECT remito_pdf_url, remito_return_pdf_url FROM agenda_appointments WHERE id = ?', [id]);
-  if (!row) return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 });
-
   const kind = request.nextUrl.searchParams.get('kind') || 'delivery';
-  const originalUrl = kind === 'return' ? row.remito_return_pdf_url : row.remito_pdf_url;
-  if (!originalUrl) return NextResponse.json({ error: 'Remito no disponible' }, { status: 404 });
+  const isReturn = kind === 'return';
+
+  // Intento leer los bytes del PDF directo desde DB (nueva estrategia).
+  // Si las columnas _pdf_data no existen todavía (migración no corrió), caemos al flujo por URL.
+  try {
+    const col = isReturn ? 'remito_return_pdf_data' : 'remito_pdf_data';
+    const urlCol = isReturn ? 'remito_return_pdf_url' : 'remito_pdf_url';
+    const row = await db.get(`SELECT ${col} AS data, ${urlCol} AS url FROM agenda_appointments WHERE id = ?`, [id]);
+    if (!row) return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 });
+    if (row.data) {
+      const buf = Buffer.isBuffer(row.data) ? row.data : Buffer.from(row.data);
+      console.log(`[remito-pdf] appt=${id} kind=${kind} served from DB (${buf.length} bytes)`);
+      return serveBuffer(buf, id, kind);
+    }
+    // No hay bytes en DB — fallback al flujo antiguo por URL
+    const originalUrl = row.url;
+    if (!originalUrl) return NextResponse.json({ error: 'Remito no disponible' }, { status: 404 });
+    return await serveFromUrl(originalUrl, id, kind);
+  } catch (err) {
+    // Si el SELECT falla (p.ej. columna _pdf_data no existe), caemos al flujo viejo
+    console.warn(`[remito-pdf] fallback to URL flow:`, (err as Error).message);
+    const row = await db.get('SELECT remito_pdf_url, remito_return_pdf_url FROM agenda_appointments WHERE id = ?', [id]);
+    if (!row) return NextResponse.json({ error: 'Cita no encontrada' }, { status: 404 });
+    const originalUrl = isReturn ? row.remito_return_pdf_url : row.remito_pdf_url;
+    if (!originalUrl) return NextResponse.json({ error: 'Remito no disponible' }, { status: 404 });
+    return await serveFromUrl(originalUrl, id, kind);
+  }
+}
+
+async function serveFromUrl(originalUrl: string, id: number, kind: string): Promise<NextResponse> {
   console.log(`[remito-pdf] appt=${id} kind=${kind} url=${originalUrl.slice(0, 80)}`);
 
   // ── Railway Volume (volume:///agenda/...) ──────────────────────────────────

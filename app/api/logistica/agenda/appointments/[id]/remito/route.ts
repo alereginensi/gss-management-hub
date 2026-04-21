@@ -6,6 +6,7 @@ import { saveAgendaFile } from '@/lib/agenda-storage';
 import { reconcileOrderItemsFromRemitoPdf, detectRemitoNumber, type RemitoPdfItemWithQty } from '@/lib/agenda-remito-pdf-parser';
 
 const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
+const MAX_PDF_SIZE_BYTES = 8 * 1024 * 1024;
 
 // POST /api/logistica/agenda/appointments/[id]/remito
 // FormData: file (PDF o imagen), remito_number (opcional), raw_text (opcional; si no → se extrae del filename)
@@ -56,10 +57,30 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         { status: 400 }
       );
     }
+    if (isPdfMagic && buffer.length > MAX_PDF_SIZE_BYTES) {
+      return NextResponse.json(
+        { error: `El PDF supera el límite de ${Math.round(MAX_PDF_SIZE_BYTES / 1024 / 1024)}MB.` },
+        { status: 400 }
+      );
+    }
     const suffix = isReturn ? 'return' : 'delivery';
     const filename = `remito-${suffix}-appt${id}-${Date.now()}.${ext}`;
-    const fileUrl = await saveAgendaFile(buffer, filename, 'remitos');
-    console.log(`[remito upload] appt=${id} kind=${kind} stored=${fileUrl.slice(0, 60)}`);
+
+    // Estrategia de storage:
+    // - PDFs → guardar bytes en DB (columna BYTEA/BLOB). Evita restricciones PDF de
+    //   Cloudinary y el filesystem efímero de Railway. URL usa marker "db://<id>".
+    // - Imágenes → Cloudinary (sin restricciones) o fallback al filesystem.
+    const isPdf = isPdfMagic || ext === 'pdf' || file.type === 'application/pdf';
+    let fileUrl: string;
+    let pdfBytes: Buffer | null = null;
+    if (isPdf) {
+      pdfBytes = buffer;
+      fileUrl = `db://${id}${isReturn ? '-return' : ''}`;
+      console.log(`[remito upload] appt=${id} kind=${kind} stored=db (${buffer.length} bytes)`);
+    } else {
+      fileUrl = await saveAgendaFile(buffer, filename, 'remitos');
+      console.log(`[remito upload] appt=${id} kind=${kind} stored=${fileUrl.slice(0, 60)}`);
+    }
 
     // Extraer texto del PDF, reconciliar contra catálogo de la empresa del empleado
     let extractedText = '';
@@ -159,6 +180,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
          WHERE id = ?`,
         [fileUrl, finalRemitoNumber || null, extractedText || null, parsedPayload, returnPayload, id]
       );
+      if (pdfBytes) {
+        try { await db.run(`UPDATE agenda_appointments SET remito_return_pdf_data = ? WHERE id = ?`, [pdfBytes, id]); } catch (e) { console.warn('remito_return_pdf_data update failed:', (e as Error).message); }
+      }
       if (originalFilename) {
         try { await db.run(`UPDATE agenda_appointments SET remito_return_filename = ? WHERE id = ?`, [originalFilename, id]); } catch { /* columna puede no existir aún */ }
       }
@@ -176,6 +200,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
          WHERE id = ?`,
         [fileUrl, finalRemitoNumber || null, extractedText || null, parsedPayload, deliveryPayload, id]
       );
+      if (pdfBytes) {
+        try { await db.run(`UPDATE agenda_appointments SET remito_pdf_data = ? WHERE id = ?`, [pdfBytes, id]); } catch (e) { console.warn('remito_pdf_data update failed:', (e as Error).message); }
+      }
       if (originalFilename) {
         try { await db.run(`UPDATE agenda_appointments SET remito_filename = ? WHERE id = ?`, [originalFilename, id]); } catch { /* columna puede no existir aún */ }
       }
@@ -235,8 +262,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
          WHERE id = ?`,
         [id]
       );
-      // Columna nueva — puede no existir aún si la migración no corrió
+      // Columnas nuevas — pueden no existir aún si la migración no corrió
       try { await db.run(`UPDATE agenda_appointments SET remito_return_filename = NULL WHERE id = ?`, [id]); } catch { /* ignorar si la columna no existe */ }
+      try { await db.run(`UPDATE agenda_appointments SET remito_return_pdf_data = NULL WHERE id = ?`, [id]); } catch { /* ignorar si la columna no existe */ }
     } else {
       await db.run(
         `UPDATE agenda_appointments SET
@@ -249,6 +277,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
         [id]
       );
       try { await db.run(`UPDATE agenda_appointments SET remito_filename = NULL WHERE id = ?`, [id]); } catch { /* ignorar si la columna no existe */ }
+      try { await db.run(`UPDATE agenda_appointments SET remito_pdf_data = NULL WHERE id = ?`, [id]); } catch { /* ignorar si la columna no existe */ }
     }
     await logAudit('delete', 'appointment', id, session.user.id, { kind: isReturn ? 'return_remito' : 'delivery_remito' });
     console.log(`[remito delete] appt=${id} kind=${kind} OK`);

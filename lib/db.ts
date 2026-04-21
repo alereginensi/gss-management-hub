@@ -1554,6 +1554,9 @@ class DbWrapper {
  ['parsed_remito_return_data', 'TEXT'],
  ['remito_filename', 'TEXT'],
  ['remito_return_filename', 'TEXT'],
+ // Guardar PDF directo en DB (BYTEA) — evita restricciones PDF de Cloudinary y filesystem ephimero
+ ['remito_pdf_data', 'BYTEA'],
+ ['remito_return_pdf_data', 'BYTEA'],
  ];
  for (const [col, def] of newApCols) {
  if (!apColNames.includes(col)) {
@@ -1866,6 +1869,9 @@ class DbWrapper {
  ['parsed_remito_return_data', 'TEXT'],
  ['remito_filename', 'TEXT'],
  ['remito_return_filename', 'TEXT'],
+ // SQLite usa BLOB en vez de BYTEA
+ ['remito_pdf_data', 'BLOB'],
+ ['remito_return_pdf_data', 'BLOB'],
  ];
  for (const [col, def] of newApCols) {
  if (!apCols.includes(col)) {
