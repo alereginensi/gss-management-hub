@@ -30,6 +30,13 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  async rewrites() {
+    return [
+      // Alias público para que funcionarios accedan directo a /agenda
+      { source: '/agenda', destination: '/logistica/agenda' },
+    ];
+  },
+
   async headers() {
     const securityHeaders = [
       {
