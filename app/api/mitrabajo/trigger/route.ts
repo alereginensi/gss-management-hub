@@ -18,14 +18,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Playwright es costoso — máx 1 trigger manual cada 5 minutos por IP
-    const ip = getClientIp(request);
-    const limit = rateLimit(ip, 'mitrabajo-trigger', { windowMs: 5 * 60 * 1000, max: 1 });
-    if (!limit.success) {
-        return NextResponse.json(
-            { error: 'Too many requests', retryAfter: limit.retryAfter },
-            { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
-        );
+    // Playwright es costoso — rate limit por IP.
+    // Admin: sin limite (puede testear libremente).
+    // Otros roles con acceso: max 3 cada 5 min (antes: 1 cada 5 min — muy restrictivo).
+    if (session.user.role !== 'admin') {
+        const ip = getClientIp(request);
+        const limit = rateLimit(ip, 'mitrabajo-trigger', { windowMs: 5 * 60 * 1000, max: 3 });
+        if (!limit.success) {
+            return NextResponse.json(
+                { error: 'Demasiadas descargas recientes. Esperá unos minutos antes de reintentar.', retryAfter: limit.retryAfter },
+                { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+            );
+        }
     }
 
     const body = await request.json().catch(() => ({}));

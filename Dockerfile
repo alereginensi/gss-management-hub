@@ -78,10 +78,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/playwright ./node_mo
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/playwright-core ./node_modules/playwright-core
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/xlsx ./node_modules/xlsx
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/node-cron ./node_modules/node-cron
+# nodemailer: usado por lib/mitrabajo-mailer.cjs desde el script standalone del cron
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/nodemailer ./node_modules/nodemailer
 
-RUN mkdir -p ./scripts
+RUN mkdir -p ./scripts ./lib
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/download-mitrabajo.cjs ./scripts/download-mitrabajo.cjs
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/cron-mitrabajo.cjs ./scripts/cron-mitrabajo.cjs
+# mitrabajo-mailer es requerido por download-mitrabajo.cjs con require relativo ../lib/
+COPY --from=builder --chown=nextjs:nodejs /app/lib/mitrabajo-mailer.cjs ./lib/mitrabajo-mailer.cjs
 
 # Binarios de Playwright (no vienen en standalone)
 COPY --from=builder --chown=nextjs:nodejs /app/.playwright-browsers ./.playwright-browsers
