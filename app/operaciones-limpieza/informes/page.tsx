@@ -522,7 +522,10 @@ export default function InformesOperativosPage() {
         try {
             const fd = new FormData();
             fd.append('file', uploadFile);
-            const res = await fetch('/api/limpieza/planilla/parse-puestos', { method: 'POST', body: fd, headers: getAuthHeaders() });
+            // NO pasar getAuthHeaders(): setea Content-Type:application/json y pisa el
+            // multipart/form-data que el browser auto-genera con el boundary. La auth
+            // viaja en cookie, no hace falta el header.
+            const res = await fetch('/api/limpieza/planilla/parse-puestos', { method: 'POST', body: fd });
             const data = await res.json();
             if (!res.ok) {
                 alert(data.error || 'No se pudo leer el archivo.');
@@ -574,7 +577,7 @@ export default function InformesOperativosPage() {
         try {
             const res = await fetch('/api/limpieza/planilla/import-puestos', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     fecha,
                     cliente: clienteSeleccionado,
