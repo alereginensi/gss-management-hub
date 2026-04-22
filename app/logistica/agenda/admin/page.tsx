@@ -66,11 +66,9 @@ export default function AgendaAdminDashboard() {
       setBackHref('/rrhh');
       setBackLabel('RRHH');
     }
-    // Origen = logistica → redirigir directo a citas (solo sección permitida).
-    // Para ver el dashboard completo, entrar desde el menú principal (no desde /logistica).
-    if (o === 'logistica') {
-      router.replace('/logistica/agenda/admin/citas');
-    }
+    // Nota: antes había un redirect para origen=logistica que lo mandaba directo
+    // a /admin/citas. Ya no es necesario: el dashboard filtra por rol y muestra
+    // solo las 4 cards permitidas (Citas, Entregas, Egresos, Ingresos).
   }, [router]);
 
   useEffect(() => {
