@@ -22,6 +22,12 @@ function normKey(s: string): string {
 
 const SIZE_ALIASES: Record<string, string> = {
   '2xl': 'XXL',
+  '3xl': 'XXXL',
+  '4xl': 'XXXXL',
+  '5xl': 'XXXXXL',
+  xxxxxl: 'XXXXXL',
+  xxxxl: 'XXXXL',
+  xxxl: 'XXXL',
   xxl: 'XXL',
   xl: 'XL',
   l: 'L',
@@ -33,9 +39,14 @@ function normalizeSizeToken(raw: string): string {
   const t = raw.trim();
   const nk = normKey(t);
   if (SIZE_ALIASES[nk]) return SIZE_ALIASES[nk];
-  if (t.toUpperCase() === 'XXL') return 'XXL';
+  const up = t.toUpperCase();
+  if (up === 'XXL' || up === 'XXXL' || up === 'XXXXL' || up === 'XXXXXL') return up;
   return t;
 }
+
+// Patrón de talles válidos reutilizable: letras (S/M/L/XL/XXL/XXXL/3XL/4XL/5XL)
+// o números de calzado 36-46. Extender acá si aparecen nuevos talles.
+const SIZE_TOKEN_PATTERN = '(?:S|M|L|XL|XXL|XXXL|XXXXL|XXXXXL|3XL|4XL|5XL|3[6-9]|4[0-6])';
 
 function splitBodyAndTrailingSize(desc: string): { body: string; size: string } | null {
   const last = desc.lastIndexOf(' - ');
@@ -107,7 +118,7 @@ export function mapOneRemitoArticleLine(desc: string, uniforms: UniformItem[]): 
   return { item: best.name, size: split.size, color };
 }
 
-const VALID_SIZE_TOKEN = /^(S|M|L|XL|XXL|3[6-9]|4[0-6])$/i;
+const VALID_SIZE_TOKEN = new RegExp(`^${SIZE_TOKEN_PATTERN}$`, 'i');
 
 function extractSizeToken(afterLastDash: string): string | null {
   const raw = afterLastDash.trim();
@@ -172,10 +183,10 @@ function extractLooseArticlePhrases(text: string): DescWithQty[] {
     seen.add(k);
     out.push({ desc: t, qty: 1 });
   };
-  const rLine = /\bR\s*-\s*[^\-]{2,100}?\s*-\s*(S|M|L|XL|XXL|3[6-9]|4[0-6])\b/gi;
+  const rLine = new RegExp(`\\bR\\s*-\\s*[^\\-]{2,100}?\\s*-\\s*${SIZE_TOKEN_PATTERN}\\b`, 'gi');
   let rm: RegExpExecArray | null;
   while ((rm = rLine.exec(full)) !== null) add(rm[0].trim());
-  const phrase = /([A-Za-zÁÉÍÓÚáéíóúÑñ][A-Za-zÁÉÍÓÚáéíóúÑñ0-9\s\-]{4,100}?)\s+-\s+(?:[Tt]alle\s+)?(S|M|L|XL|XXL|3[6-9]|4[0-6])\b/g;
+  const phrase = new RegExp(`([A-Za-zÁÉÍÓÚáéíóúÑñ][A-Za-zÁÉÍÓÚáéíóúÑñ0-9\\s\\-]{4,100}?)\\s+-\\s+(?:[Tt]alle\\s+)?${SIZE_TOKEN_PATTERN}\\b`, 'g');
   let pm: RegExpExecArray | null;
   while ((pm = phrase.exec(full)) !== null) {
     const body = pm[1].trim();
@@ -221,8 +232,11 @@ function extractStandaloneRMinusLines(text: string, existing: DescWithQty[]): De
 function normalizeRemitoText(text: string): string {
   // "R • Article" → "R - Article"
   let t = text.replace(/\bR\s*•\s*/g, 'R - ');
-  // "Article + S/M/L/XL/XXL/36-46" → "Article - S/M/L/XL/XXL/36-46"
-  t = t.replace(/\s*\+\s*(S|M|L|XL|XXL|3[6-9]|4[0-6])\b/gi, (_, sz) => ` - ${sz.toUpperCase()}`);
+  // "Article + TALLE" → "Article - TALLE" (S/M/L/XL/XXL/XXXL/3XL/4XL/5XL/36-46)
+  t = t.replace(new RegExp(`\\s*\\+\\s*${SIZE_TOKEN_PATTERN}\\b`, 'gi'), (match) => {
+    const sz = match.replace(/^\s*\+\s*/, '').toUpperCase();
+    return ` - ${sz}`;
+  });
   return t;
 }
 
@@ -277,7 +291,7 @@ export function extractRemitoArticleDescriptions(rawText: string): DescWithQty[]
 
   if (map.size === 0) {
     const full = text.replace(/\s+/g, ' ');
-    const re = /\b(\d{3,5})\s+(\d+)\s+([A-Za-zÁÉÍÓÚáéíóúÑñ0-9][^.\n]{0,120}?\s*-\s*(?:S|M|L|XL|XXL|3[6-9]|4[0-6]))\b/g;
+    const re = new RegExp(`\\b(\\d{3,5})\\s+(\\d+)\\s+([A-Za-zÁÉÍÓÚáéíóúÑñ0-9][^.\\n]{0,120}?\\s*-\\s*${SIZE_TOKEN_PATTERN})\\b`, 'g');
     let m: RegExpExecArray | null;
     while ((m = re.exec(full)) !== null) {
       const qty = parseInt(m[2], 10) || 1;

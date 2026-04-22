@@ -102,17 +102,17 @@ export async function POST(request: NextRequest) {
     // Si el empleado tiene artículos vencidos, SOLO podrá pedir renovación de esos.
     // Si no tiene ninguno (primera entrega o habilitado manual sin vencimientos),
     // el front muestra el catálogo completo.
-    const isPg = (db as any).type === 'pg';
-    const nowSql = isPg ? 'CURRENT_DATE' : "date('now')";
+    // Comparación TEXT vs TEXT con ISO YYYY-MM-DD (PG no auto-castea TEXT→DATE).
+    const todayIso = new Date().toISOString().slice(0, 10);
     const expiredArticles = await db.query(
       `SELECT id, article_type, size, delivery_date, expiration_date, useful_life_months
        FROM agenda_articles
        WHERE employee_id = ?
          AND current_status = 'activo'
          AND expiration_date IS NOT NULL
-         AND expiration_date <= ${nowSql}
+         AND expiration_date <= ?
        ORDER BY expiration_date ASC`,
-      [employee.id]
+      [employee.id, todayIso]
     );
 
     // Obtener citas previas (historial breve)

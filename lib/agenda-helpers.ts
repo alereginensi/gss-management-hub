@@ -95,10 +95,13 @@ export async function confirmSlotBooking(slotId: number, holdToken: string): Pro
  * @returns cantidad de empleados habilitados en esta ejecución.
  */
 export async function syncEmployeeRenewalStatus(employeeId?: number): Promise<number> {
-  const isPg = (db as any).type === 'pg';
-  const nowSql = isPg ? 'CURRENT_DATE' : "date('now')";
+  // Comparar como TEXT vs TEXT: expiration_date es TEXT en el schema, y PG no
+  // hace auto-cast de TEXT a DATE en comparaciones. ISO 'YYYY-MM-DD' se compara
+  // correctamente lexicográficamente.
+  const todayIso = new Date().toISOString().slice(0, 10);
   const whereEmployee = employeeId ? 'AND a.employee_id = ?' : '';
-  const params = employeeId ? [employeeId] : [];
+  const params: (string | number)[] = [todayIso];
+  if (employeeId) params.push(employeeId);
 
   const sql = `
     UPDATE agenda_employees
@@ -108,7 +111,7 @@ export async function syncEmployeeRenewalStatus(employeeId?: number): Promise<nu
       FROM agenda_articles a
       WHERE a.current_status = 'activo'
         AND a.expiration_date IS NOT NULL
-        AND a.expiration_date <= ${nowSql}
+        AND a.expiration_date <= ?
         ${whereEmployee}
     )
     AND allow_reorder = 0
