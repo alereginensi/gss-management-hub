@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
-import { parseOrderItems, logAudit, calculateExpirationDate } from '@/lib/agenda-helpers';
+import { parseOrderItems, logAudit, calculateExpirationDate, APPOINTMENT_COLUMNS_LIGHT } from '@/lib/agenda-helpers';
 
 const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
@@ -104,7 +104,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
-    const updated = await db.get('SELECT * FROM agenda_appointments WHERE id = ?', [id]);
+    const updated = await db.get(
+      `SELECT ${APPOINTMENT_COLUMNS_LIGHT.join(', ')} FROM agenda_appointments WHERE id = ?`,
+      [id]
+    );
     await logAudit('complete_delivery', 'appointment', id, session.user.id, {
       items_count: delivered_order_items.length,
       create_articles: !!create_articles,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
-import { parseOrderItems, logAudit } from '@/lib/agenda-helpers';
+import { parseOrderItems, logAudit, APPOINTMENT_COLUMNS_LIGHT } from '@/lib/agenda-helpers';
 
 const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const id = parseInt(idStr, 10);
   try {
     const row = await db.get(
-      `SELECT a.*,
+      `SELECT ${APPOINTMENT_COLUMNS_LIGHT.map(c => `a.${c}`).join(', ')},
               e.nombre as employee_nombre, e.documento as employee_documento,
               e.empresa as employee_empresa, e.sector as employee_sector,
               e.puesto as employee_puesto, e.talle_superior, e.talle_inferior, e.calzado,
@@ -68,7 +68,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       [status || null, delivery_notes ?? null, remito_number ?? null, id]
     );
 
-    const updated = await db.get('SELECT * FROM agenda_appointments WHERE id = ?', [id]);
+    const updated = await db.get(
+      `SELECT ${APPOINTMENT_COLUMNS_LIGHT.join(', ')} FROM agenda_appointments WHERE id = ?`,
+      [id]
+    );
     await logAudit('update', 'appointment', id, session.user.id, { changes: body });
     return NextResponse.json({
       ...updated,

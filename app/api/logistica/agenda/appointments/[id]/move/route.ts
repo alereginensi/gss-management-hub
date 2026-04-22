@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
-import { logAudit } from '@/lib/agenda-helpers';
+import { logAudit, APPOINTMENT_COLUMNS_LIGHT } from '@/lib/agenda-helpers';
 
 const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh'];
 
@@ -67,7 +67,10 @@ export async function POST(
       new_slot_id,
     });
 
-    const updatedAppt = await db.get('SELECT * FROM agenda_appointments WHERE id = ?', [apptId]);
+    const updatedAppt = await db.get(
+      `SELECT ${APPOINTMENT_COLUMNS_LIGHT.join(', ')} FROM agenda_appointments WHERE id = ?`,
+      [apptId]
+    );
     return NextResponse.json({ ok: true, appointment: updatedAppt });
   } catch (err) {
     console.error('Error moviendo cita:', err);

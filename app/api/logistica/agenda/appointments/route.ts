@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
-import { parseOrderItems } from '@/lib/agenda-helpers';
+import { parseOrderItems, APPOINTMENT_COLUMNS_LIGHT } from '@/lib/agenda-helpers';
 
 const AUTH_ROLES = ['admin', 'logistica', 'jefe', 'rrhh', 'supervisor'];
 
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     const [rows, total] = await Promise.all([
       db.query(
-        `SELECT a.*,
+        `SELECT ${APPOINTMENT_COLUMNS_LIGHT.map(c => `a.${c}`).join(', ')},
                 e.nombre as employee_nombre, e.documento as employee_documento,
                 e.empresa as employee_empresa, e.sector as employee_sector,
                 s.fecha as slot_fecha, s.start_time as slot_start, s.end_time as slot_end

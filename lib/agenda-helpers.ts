@@ -149,6 +149,21 @@ export function parseOrderItems(raw: unknown): OrderItem[] {
   return Array.isArray(raw) ? raw : [];
 }
 
+// Columnas de agenda_appointments SIN los BYTEA de PDFs. Usar en SELECTs que devuelven
+// al cliente: traer los blobs rompe HTTP/2 cuando el listado es grande.
+// Los bytes se sirven solo via /api/logistica/agenda/appointments/[id]/remito-pdf.
+export const APPOINTMENT_COLUMNS_LIGHT = [
+  'id', 'employee_id', 'time_slot_id', 'status',
+  'order_items', 'delivered_order_items', 'returned_order_items',
+  'remito_number', 'remito_pdf_url', 'parsed_remito_text', 'parsed_remito_data',
+  'remito_return_number', 'remito_return_pdf_url', 'parsed_remito_return_text', 'parsed_remito_return_data',
+  'remito_filename', 'remito_return_filename',
+  'has_return',
+  'employee_signature_url', 'responsible_signature_url',
+  'delivery_notes', 'delivered_at', 'delivered_by',
+  'created_at', 'updated_at',
+];
+
 export function articleNeedsRenewal(article: AgendaArticle): boolean {
   if (!article.expiration_date) return false;
   return isRenewalEnabled(article.expiration_date) && article.current_status === 'activo';
