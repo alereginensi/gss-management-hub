@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, ClipboardList, ChevronDown, ChevronUp, Calendar, Clock, Building2,
-  Pencil, XCircle, Trash2, CheckCircle, FileText, Printer, PenSquare, PackageMinus,
+  Pencil, XCircle, Trash2, CheckCircle, FileText, Printer, PenSquare, PackageMinus, PackageCheck,
 } from 'lucide-react';
 import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
@@ -210,6 +210,10 @@ ${remitoLine}
               <ClipboardList size={16} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />Citas Agendadas
             </h1>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <Link href="/logistica/agenda/admin/ingresos/nuevo"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '8px', padding: '0.4rem 0.8rem', fontSize: '0.78rem', color: '#166534', fontWeight: 600, textDecoration: 'none' }}>
+                <PackageCheck size={12} /> Registrar ingreso
+              </Link>
               <Link href="/logistica/agenda/admin/devoluciones-egreso/nueva"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', padding: '0.4rem 0.8rem', fontSize: '0.78rem', color: '#b91c1c', fontWeight: 600, textDecoration: 'none' }}>
                 <PackageMinus size={12} /> Devolución por egreso

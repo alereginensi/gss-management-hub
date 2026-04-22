@@ -20,6 +20,7 @@ const QUICK_LINKS = [
   { label: 'Citas', href: '/logistica/agenda/admin/citas', icon: Calendar, desc: 'Gestionar turnos del día' },
   { label: 'Entregas', href: '/logistica/agenda/admin/entregas', icon: PackageCheck, desc: 'Uniformes entregados (citas completadas)' },
   { label: 'Egresos', href: '/logistica/agenda/admin/devoluciones-egreso', icon: PackageMinus, desc: 'Devoluciones al finalizar relación laboral' },
+  { label: 'Ingresos', href: '/logistica/agenda/admin/ingresos', icon: PackageCheck, desc: 'Alta de turno para empleado que recién ingresa' },
   { label: 'Historial', href: '/logistica/agenda/admin/historial', icon: History, desc: 'Buscar por cédula: citas, ausencias, intentos fallidos' },
   { label: 'No Habilitados', href: '/logistica/agenda/admin/no-habilitados', icon: ShieldAlert, desc: 'Intentos fallidos de registro' },
   { label: 'Empleados', href: '/logistica/agenda/admin/empleados', icon: Users, desc: 'Alta, edición, habilitación' },
@@ -32,6 +33,14 @@ const QUICK_LINKS = [
   { label: 'Migración', href: '/logistica/agenda/admin/migracion', icon: History, desc: 'Historial del sistema anterior' },
   { label: 'Auditoría', href: '/logistica/agenda/admin/auditoria', icon: ShieldAlert, desc: 'Log de acciones críticas' },
   { label: 'Configuración', href: '/logistica/agenda/admin/configuracion', icon: Settings, desc: 'Reglas globales del sistema' },
+];
+
+// Paths visibles para rol logistica (vista restringida: solo gestión operativa de citas)
+const LOGISTICA_ALLOWED_PATHS: readonly string[] = [
+  '/logistica/agenda/admin/citas',
+  '/logistica/agenda/admin/entregas',
+  '/logistica/agenda/admin/devoluciones-egreso',
+  '/logistica/agenda/admin/ingresos',
 ];
 
 export default function AgendaAdminDashboard() {
@@ -111,15 +120,17 @@ export default function AgendaAdminDashboard() {
             </p>
           </div>
 
-          {/* Stats del día */}
-          {!statsLoading && stats && stats.hoy && stats.empleados && stats.alertas && (
-            <div className="stats-grid">
-              {[
-                { label: 'Citas hoy', value: stats.hoy.citas_total ?? 0, sub: `${stats.hoy.citas_pendientes ?? 0} pend.`, color: '#29416b', icon: Calendar, href: '/logistica/agenda/admin/citas' },
-                { label: 'Historial', value: stats.hoy.total_historico ?? 0, sub: 'registros', color: '#065f46', icon: History, href: '/logistica/agenda/admin/entregas' },
-                { label: 'Empleados', value: stats.empleados.total ?? 0, sub: `${stats.empleados.habilitados ?? 0} hab.`, color: '#1e40af', icon: Users, href: '/logistica/agenda/admin/empleados' },
-                { label: 'Solicitudes', value: stats.alertas.solicitudes_emergentes ?? 0, sub: 'emergentes pendientes', color: '#92400e', icon: ClipboardList, href: '/logistica/agenda/admin/solicitudes?emergency=1' },
-              ].map(({ label, value, sub, color, icon: Icon, href }) => (
+          {/* Stats del día (filtradas para rol logistica) */}
+          {!statsLoading && stats && stats.hoy && stats.empleados && stats.alertas && (() => {
+            const isLogistica = currentUser?.role === 'logistica';
+            const allStats = [
+              { label: 'Citas hoy', value: stats.hoy.citas_total ?? 0, sub: `${stats.hoy.citas_pendientes ?? 0} pend.`, color: '#29416b', icon: Calendar, href: '/logistica/agenda/admin/citas' },
+              { label: 'Historial', value: stats.hoy.total_historico ?? 0, sub: 'registros', color: '#065f46', icon: History, href: '/logistica/agenda/admin/entregas' },
+              { label: 'Empleados', value: stats.empleados.total ?? 0, sub: `${stats.empleados.habilitados ?? 0} hab.`, color: '#1e40af', icon: Users, href: '/logistica/agenda/admin/empleados' },
+              { label: 'Solicitudes', value: stats.alertas.solicitudes_emergentes ?? 0, sub: 'emergentes pendientes', color: '#92400e', icon: ClipboardList, href: '/logistica/agenda/admin/solicitudes?emergency=1' },
+            ];
+            const visibleStats = isLogistica ? allStats.filter(s => LOGISTICA_ALLOWED_PATHS.some(p => s.href.startsWith(p))) : allStats;
+            return (<div className="stats-grid">{visibleStats.map(({ label, value, sub, color, icon: Icon, href }) => (
                 <Link key={label} href={href} style={{ textDecoration: 'none', color: 'inherit' }}><div className="card" style={{
                   padding: isMobile ? '0.85rem 0.5rem' : '1.25rem 1rem', 
                   display: 'flex', 
@@ -148,12 +159,11 @@ export default function AgendaAdminDashboard() {
                     <p style={{ margin: '0.1rem 0 0', fontSize: '0.65rem', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</p>
                   </div>
                 </div></Link>
-              ))}
-            </div>
-          )}
+              ))}</div>);
+          })()}
 
-          {/* Alertas destacadas */}
-          {stats && stats.alertas && ((stats.alertas.articulos_habilitados_renovacion ?? 0) > 0 || (stats.alertas.solicitudes_emergentes ?? 0) > 0) && (
+          {/* Alertas destacadas (ocultas para logistica: no pueden actuar sobre articulos/solicitudes) */}
+          {currentUser?.role !== 'logistica' && stats && stats.alertas && ((stats.alertas.articulos_habilitados_renovacion ?? 0) > 0 || (stats.alertas.solicitudes_emergentes ?? 0) > 0) && (
             <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '0.85rem 1rem', marginBottom: '1.25rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
               <AlertTriangle size={16} color="#92400e" style={{ marginTop: '2px', flexShrink: 0 }} />
               <div style={{ fontSize: '0.8rem', color: '#92400e', flex: 1 }}>
@@ -172,10 +182,13 @@ export default function AgendaAdminDashboard() {
             </div>
           )}
 
-          {/* Accesos rápidos */}
+          {/* Accesos rápidos (filtrados para rol logistica) */}
           <h2 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151', marginBottom: '0.75rem' }}>Secciones</h2>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '0.75rem' }}>
-            {QUICK_LINKS.map(({ label, href, icon: Icon, desc }) => (
+            {(currentUser?.role === 'logistica'
+              ? QUICK_LINKS.filter(l => LOGISTICA_ALLOWED_PATHS.includes(l.href))
+              : QUICK_LINKS
+            ).map(({ label, href, icon: Icon, desc }) => (
               <Link key={href} href={href} style={{ textDecoration: 'none' }}>
                 <div className="card" style={{ padding: '1rem', cursor: 'pointer', transition: 'box-shadow 200ms', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}
                   onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 12px rgba(41,65,107,0.15)')}

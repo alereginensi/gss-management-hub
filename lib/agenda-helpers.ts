@@ -196,7 +196,7 @@ export const APPOINTMENT_COLUMNS_LIGHT = [
   'remito_number', 'remito_pdf_url', 'parsed_remito_text', 'parsed_remito_data',
   'remito_return_number', 'remito_return_pdf_url', 'parsed_remito_return_text', 'parsed_remito_return_data',
   'remito_filename', 'remito_return_filename',
-  'has_return',
+  'has_return', 'is_ingreso',
   'employee_signature_url', 'responsible_signature_url',
   'delivery_notes', 'delivered_at', 'delivered_by',
   'created_at', 'updated_at',
