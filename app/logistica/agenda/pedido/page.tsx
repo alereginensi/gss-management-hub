@@ -17,6 +17,40 @@ function normArticle(s: string): string {
   return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 }
 
+const CLOTHING_SIZES = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+const SHOE_SIZES = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
+
+function inferSizes(articleType: string): string[] {
+  const n = articleType.toLowerCase();
+  if (/zapato|calzado|bota|croc|bot[ií]n/.test(n)) return SHOE_SIZES;
+  if (/casco|corbata|pa[ñn]uelo|gorra/.test(n)) return ['Única'];
+  return CLOTHING_SIZES;
+}
+
+// Construye un item virtual del catálogo a partir de un renewable_article.
+// Usado cuando el article está vencido pero no está en el catálogo de la
+// empresa actual del empleado (ej. empleado cambió de empresa).
+function renewableAsCatalogItem(r: RenewableArticle, idOffset: number): AgendaUniformCatalogItem {
+  return {
+    id: -(idOffset + 1000),
+    empresa: null,
+    sector: null,
+    puesto: null,
+    workplace_category: null,
+    article_type: r.article_type,
+    article_name_normalized: null,
+    quantity: 1,
+    useful_life_months: 12,
+    initial_enabled: 1,
+    renewable: 1,
+    reusable_allowed: 0,
+    special_authorization_required: 0,
+    sizes: inferSizes(r.article_type),
+    colors: undefined,
+    created_at: new Date().toISOString(),
+  } as AgendaUniformCatalogItem;
+}
+
 export default function AgendaPedidoPage() {
   const router = useRouter();
   const [employee, setEmployee] = useState<AgendaEmployee | null>(null);
@@ -36,16 +70,30 @@ export default function AgendaPedidoPage() {
     setRenewableArticles(renewable);
 
     // Si el empleado tiene artículos vencidos, solo puede pedir renovación de esos.
-    // Filtrar el catálogo por el article_type normalizado.
+    // Filtrar el catálogo por article_type normalizado + agregar items virtuales
+    // para los renewable que NO están en el catálogo de la empresa (caso de
+    // empleado que cambió de empresa: catalogo nuevo no contiene prendas viejas).
     let filteredCatalog = fullCatalog;
     if (renewable.length > 0) {
       const renewableKeys = new Set(renewable.map(r => normArticle(r.article_type)));
-      filteredCatalog = fullCatalog.filter(c => renewableKeys.has(normArticle(c.article_type)));
+      const matched = fullCatalog.filter(c => renewableKeys.has(normArticle(c.article_type)));
+      const matchedKeys = new Set(matched.map(c => normArticle(c.article_type)));
+      const missing = renewable
+        .filter(r => !matchedKeys.has(normArticle(r.article_type)))
+        .map((r, i) => renewableAsCatalogItem(r, i));
+      filteredCatalog = [...matched, ...missing];
+    }
+
+    // Preseleccionar el talle previo del empleado si el renewable tenía uno
+    const preselectSizes: Record<number, { size: string; color: string }> = {};
+    for (const item of filteredCatalog) {
+      const prev = renewable.find(r => normArticle(r.article_type) === normArticle(item.article_type));
+      preselectSizes[item.id] = { size: prev?.size || '', color: '' };
     }
 
     setEmployee(JSON.parse(emp));
     setCatalog(filteredCatalog);
-    setSelections(Object.fromEntries(filteredCatalog.map(item => [item.id, { size: '', color: '' }])));
+    setSelections(preselectSizes);
   }, [router]);
 
   const toggleSkip = (id: number) => {
