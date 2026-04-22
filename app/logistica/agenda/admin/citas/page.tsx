@@ -141,37 +141,97 @@ export default function CitasPage() {
   const hasCancelled = appointments.some(a => a.status === 'cancelada');
 
   function handlePrint(apt: any) {
-    const items: any[] = Array.isArray(apt.delivered_order_items) && apt.delivered_order_items.length
+    const delivered: any[] = Array.isArray(apt.delivered_order_items) && apt.delivered_order_items.length
       ? apt.delivered_order_items
       : (Array.isArray(apt.order_items) ? apt.order_items : []);
-    const rows = items
+    const returned: any[] = Array.isArray(apt.returned_order_items) ? apt.returned_order_items : [];
+
+    const rows = delivered
       .map(i => `<tr><td>${escapeHtml(i.article_type || '')}</td><td>${escapeHtml(i.size || '')}${i.color ? ` · ${escapeHtml(i.color)}` : ''}</td><td>${i.qty || 1}</td></tr>`)
       .join('');
+    const returnedRows = returned
+      .map(i => `<tr><td>${escapeHtml(i.article_type || '')}</td><td>${escapeHtml(i.size || '')}${i.color ? ` · ${escapeHtml(i.color)}` : ''}</td><td>${i.qty || 1}</td></tr>`)
+      .join('');
+
     const remitoLine = apt.remito_number ? `<p class="remito">Remito N° ${escapeHtml(apt.remito_number)}</p>` : '';
+    const remitoReturnLine = apt.remito_return_number ? `<p class="remito-return">Remito de devolución N° ${escapeHtml(apt.remito_return_number)}</p>` : '';
+    const notesLine = apt.delivery_notes ? `<div class="notes"><strong>Notas:</strong><br/>${escapeHtml(apt.delivery_notes).replace(/\n/g, '<br/>')}</div>` : '';
+
+    const deliveredAt = apt.delivered_at
+      ? new Date(apt.delivered_at).toLocaleString('es-UY', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : formatDate(apt.slot_fecha);
+
+    const returnBlock = (apt.has_return && returnedRows) ? `
+      <h2 class="return-title">Prendas devueltas por el empleado</h2>
+      <table class="return-table"><thead><tr><th>Prenda</th><th>Talla / Color</th><th>Cant.</th></tr></thead><tbody>${returnedRows}</tbody></table>
+      ${remitoReturnLine}
+    ` : '';
+
+    const sigResponsable = apt.responsible_signature_url
+      ? `<img src="${escapeHtml(apt.responsible_signature_url)}" alt="firma responsable" />`
+      : '<span class="sig-empty">Sin firma</span>';
+    const sigFuncionario = apt.employee_signature_url
+      ? `<img src="${escapeHtml(apt.employee_signature_url)}" alt="firma funcionario" />`
+      : '<span class="sig-empty">Sin firma</span>';
+
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8" /><title>Constancia ${apt.id}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; font-size: 13px; color: #111; padding: 32px; max-width: 680px; margin: auto; }
   h1 { font-size: 18px; margin-bottom: 4px; }
+  h2 { font-size: 14px; margin: 20px 0 8px; }
   .subtitle { color: #555; font-size: 12px; margin-bottom: 20px; }
   .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; margin-bottom: 20px; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
   th { background: #f3f4f6; text-align: left; padding: 7px 10px; font-size: 12px; border: 1px solid #e5e7eb; }
   td { padding: 7px 10px; border: 1px solid #e5e7eb; }
   .remito { font-size: 12px; color: #555; margin-bottom: 20px; }
-  @media print { body { padding: 16px; } }
+  .remito-return { font-size: 12px; color: #991b1b; font-weight: 600; margin-bottom: 20px; }
+  .return-title { color: #991b1b; border-bottom: 2px solid #fecaca; padding-bottom: 4px; }
+  .return-table th { background: #fef2f2; }
+  .notes { margin: 16px 0; padding: 10px 12px; background: #fefce8; border-left: 3px solid #facc15; font-size: 12px; line-height: 1.5; }
+  .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 40px; page-break-inside: avoid; }
+  .sig-block { text-align: center; }
+  .sig-block img { max-width: 100%; max-height: 90px; border-bottom: 1px solid #111; padding-bottom: 4px; }
+  .sig-empty { display: inline-block; color: #94a3b8; font-style: italic; font-size: 11px; padding: 30px 0 6px; border-bottom: 1px dashed #cbd5e1; width: 80%; }
+  .sig-label { margin-top: 4px; font-size: 11px; color: #555; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+  .footer { margin-top: 30px; font-size: 10px; color: #94a3b8; text-align: center; border-top: 1px solid #e5e7eb; padding-top: 8px; }
+  @media print { body { padding: 16px; } .signatures { page-break-inside: avoid; } }
 </style></head><body>
 <h1>Constancia de Entrega de Uniformes</h1>
-<p class="subtitle">Fecha: ${formatDate(apt.slot_fecha)}</p>
+<p class="subtitle">Fecha de entrega: ${escapeHtml(deliveredAt)}</p>
+
 <div class="info-grid">
   <div><strong>Empleado</strong><br/>${escapeHtml(apt.employee_nombre || '')}</div>
   <div><strong>Documento</strong><br/>${escapeHtml(apt.employee_documento || '')}</div>
-  <div><strong>Empresa</strong><br/>${escapeHtml(apt.employee_empresa || '')}</div>
+  <div><strong>Empresa</strong><br/>${escapeHtml(apt.employee_empresa || '—')}</div>
   <div><strong>Sector</strong><br/>${escapeHtml(apt.employee_sector || '—')}</div>
 </div>
+
+<h2>Prendas entregadas</h2>
 <table><thead><tr><th>Prenda</th><th>Talla / Color</th><th>Cant.</th></tr></thead><tbody>${rows}</tbody></table>
 ${remitoLine}
-<script>window.onload = () => { window.print(); }</script>
+
+${returnBlock}
+
+${notesLine}
+
+<div class="signatures">
+  <div class="sig-block">
+    ${sigFuncionario}
+    <div class="sig-label">Firma del funcionario</div>
+    <div style="font-size:11px;color:#333;margin-top:2px">${escapeHtml(apt.employee_nombre || '')}</div>
+  </div>
+  <div class="sig-block">
+    ${sigResponsable}
+    <div class="sig-label">Firma del responsable</div>
+    <div style="font-size:11px;color:#333;margin-top:2px">GSS Facility Services</div>
+  </div>
+</div>
+
+<div class="footer">Documento generado el ${escapeHtml(new Date().toLocaleString('es-UY'))} — Constancia #${apt.id}</div>
+
+<script>window.onload = () => { setTimeout(() => window.print(), 300); }</script>
 </body></html>`;
     const win = window.open('', '_blank');
     if (win) { win.document.write(html); win.document.close(); }
