@@ -1,3 +1,23 @@
+[build]
+# Solo dispara deploy cuando cambian paths que afectan build/runtime.
+# Evita deploys por cambios en README (timer automatico del bot), docs/, .gitignore, workflows, etc.
+watchPatterns = [
+  "app/**",
+  "lib/**",
+  "scripts/**",
+  "public/**",
+  "Dockerfile",
+  "startup.sh",
+  "railway.toml",
+  "nixpacks.toml",
+  "next.config.*",
+  "middleware.ts",
+  "tsconfig.json",
+  "eslint.config.*",
+  "package.json",
+  "package-lock.json",
+]
+
 [deploy]
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
