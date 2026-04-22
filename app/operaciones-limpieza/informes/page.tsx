@@ -328,6 +328,22 @@ export default function InformesOperativosPage() {
     const [uploading, setUploading] = useState(false);
     const [uploadFile, setUploadFile] = useState<File | null>(null);
     const [uploadCategoria, setUploadCategoria] = useState<'LIMPIADOR' | 'AUXILIAR' | 'VIDRIERO' | 'ENCARGADO' | ''>('');
+    // Flujo nuevo: parse → preview → confirmar
+    interface ParsedRow {
+        lugar_sistema: string;
+        lugar_planilla: string;
+        turno: string;
+        turno_raw: string;
+        frecuencia: string;
+        cantidad: number;
+        funcionario_nombre?: string;
+        funcionario_cedula?: string;
+    }
+    interface ParsedSheet { name: string; rows: ParsedRow[]; missing_headers: string[]; }
+    const [previewSheets, setPreviewSheets] = useState<ParsedSheet[] | null>(null);
+    const [sheetSectorMap, setSheetSectorMap] = useState<Record<string, string>>({});
+    const [parsingPreview, setParsingPreview] = useState(false);
+    const [importing, setImporting] = useState(false);
     const [exporting, setExporting] = useState<'' | 'excel' | 'versus'>('');
 
     const isAdmin = currentUser?.role === 'admin';
@@ -497,36 +513,102 @@ export default function InformesOperativosPage() {
         }
     }, [isEncargado, lockedSector, sectorSeleccionado, clienteSeleccionado]);
 
-    const handleUploadPlanilla = async () => {
-        if (!uploadFile || !fecha || !turnoSeleccionado || !clienteSeleccionado) {
-            alert('Faltan campos: fecha, turno, cliente y archivo xlsx.');
+    const handleParsePreview = async () => {
+        if (!uploadFile || !fecha || !clienteSeleccionado) {
+            alert('Faltan: fecha, cliente y archivo xlsx.');
             return;
         }
-        setUploading(true);
+        setParsingPreview(true);
         try {
             const fd = new FormData();
             fd.append('file', uploadFile);
-            fd.append('fecha', fecha);
-            fd.append('seccion', turnoSeleccionado);
-            fd.append('cliente', clienteSeleccionado);
-            if (sectorSeleccionado) fd.append('sector', sectorSeleccionado);
-            if (uploadCategoria) fd.append('categoria', uploadCategoria);
-            const res = await fetch('/api/limpieza/planilla/import', { method: 'POST', body: fd, headers: getAuthHeaders() });
+            const res = await fetch('/api/limpieza/planilla/parse-puestos', { method: 'POST', body: fd, headers: getAuthHeaders() });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || 'No se pudo leer el archivo.');
+                return;
+            }
+            setPreviewSheets(data.sheets || []);
+            // Auto-mapear: si el nombre de la hoja contiene el nombre de algún sector configurado, lo preselecciona.
+            const sectoresActivos = getSectoresForCliente(clienteSeleccionado);
+            const map: Record<string, string> = {};
+            for (const sheet of (data.sheets || []) as ParsedSheet[]) {
+                const sheetLower = sheet.name.toLowerCase();
+                const match = sectoresActivos.find((s: string) => sheetLower.includes(s.toLowerCase()));
+                map[sheet.name] = match || '';
+            }
+            setSheetSectorMap(map);
+        } catch (err: any) {
+            alert('Error al leer el Excel: ' + (err?.message || err));
+        } finally {
+            setParsingPreview(false);
+        }
+    };
+
+    const handleConfirmImport = async () => {
+        if (!previewSheets || !fecha || !clienteSeleccionado) return;
+        // Validar que cada hoja con rows tenga sector mapeado
+        const unmapped = previewSheets.filter(s => s.rows.length > 0 && !sheetSectorMap[s.name]);
+        if (unmapped.length > 0) {
+            alert(`Falta asignar sector para las hojas: ${unmapped.map(s => s.name).join(', ')}`);
+            return;
+        }
+        const items: any[] = [];
+        for (const sheet of previewSheets) {
+            const sector = sheetSectorMap[sheet.name];
+            if (!sector) continue;
+            for (const row of sheet.rows) {
+                items.push({
+                    sector,
+                    puesto: row.lugar_planilla,
+                    turno: row.turno,
+                    nombre: row.funcionario_nombre || null,
+                    cedula: row.funcionario_cedula || null,
+                    categoria: uploadCategoria || null,
+                });
+            }
+        }
+        if (!items.length) { alert('No hay filas válidas para importar.'); return; }
+
+        setImporting(true);
+        try {
+            const res = await fetch('/api/limpieza/planilla/import-puestos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify({
+                    fecha,
+                    cliente: clienteSeleccionado,
+                    filename: uploadFile?.name || 'planilla.xlsx',
+                    items,
+                }),
+            });
             const data = await res.json();
             if (!res.ok) {
                 alert(data.error || 'Error al importar');
             } else {
-                alert(`Importación OK: ${data.created} funcionarios cargados${data.skipped?.length ? ` — ${data.skipped.length} duplicados omitidos` : ''}.`);
-                setShowUpload(false); setUploadFile(null); setUploadCategoria('');
+                alert(`Importación OK: ${data.created} filas creadas${data.skipped?.length ? ` — ${data.skipped.length} duplicados omitidos` : ''}.`);
+                setShowUpload(false);
+                setUploadFile(null);
+                setUploadCategoria('');
+                setPreviewSheets(null);
+                setSheetSectorMap({});
                 if (clienteSeleccionado && sectorSeleccionado && turnoSeleccionado) {
                     fetchAsistencia(fecha, clienteSeleccionado, sectorSeleccionado, turnoSeleccionado);
                 }
             }
         } catch (err: any) {
-            alert('Error al subir planilla: ' + (err?.message || err));
+            alert('Error: ' + (err?.message || err));
         } finally {
-            setUploading(false);
+            setImporting(false);
         }
+    };
+
+    const resetUploadModal = () => {
+        setShowUpload(false);
+        setUploadFile(null);
+        setUploadCategoria('');
+        setPreviewSheets(null);
+        setSheetSectorMap({});
     };
 
     const handleExport = async (type: 'excel' | 'versus') => {
@@ -1329,37 +1411,122 @@ export default function InformesOperativosPage() {
 
             {showUpload && (
                 <div className="no-print" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-                    <div style={{ background: '#fff', borderRadius: '12px', maxWidth: '520px', width: '100%', padding: '1.5rem', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
+                    <div style={{ background: '#fff', borderRadius: '12px', maxWidth: previewSheets ? '900px' : '520px', width: '100%', maxHeight: '92vh', overflow: 'auto', padding: '1.5rem', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#1d3461', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Upload size={18}/> Subir planilla del turno</h2>
-                            <button onClick={() => setShowUpload(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={20}/></button>
+                            <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#1d3461', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Upload size={18}/> {previewSheets ? 'Preview de importación' : 'Subir planilla del turno'}
+                            </h2>
+                            <button onClick={resetUploadModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={20}/></button>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.6rem 0.8rem', fontSize: '0.78rem', color: '#1d3461' }}>
-                                <strong>Fecha:</strong> {fecha} &nbsp; <strong>Cliente:</strong> {clienteSeleccionado || '—'} &nbsp; <strong>Sector:</strong> {sectorSeleccionado || '—'} &nbsp; <strong>Turno:</strong> {turnoSeleccionado || '—'}
+
+                        {!previewSheets ? (
+                            // ── Paso 1: elegir archivo ────────────────────────────────────────
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.6rem 0.8rem', fontSize: '0.78rem', color: '#1d3461' }}>
+                                    <strong>Fecha:</strong> {fecha} &nbsp; <strong>Cliente:</strong> {clienteSeleccionado || '—'}
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>Archivo xlsx</label>
+                                    <input type="file" accept=".xlsx,.xls" onChange={e => setUploadFile(e.target.files?.[0] || null)} style={{ width: '100%' }} />
+                                    <p style={{ fontSize: '0.72rem', color: '#64748b', margin: '0.35rem 0 0', lineHeight: 1.45 }}>
+                                        El archivo debe tener columnas <strong>Lugar en sistema / Lugar</strong>, <strong>Lugar en Planilla / Titular / Puesto</strong> y <strong>Turno</strong>.
+                                        Cada <strong>hoja</strong> = un sector. Funcionario/Cédula opcionales.
+                                    </p>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>Categoría por defecto (opcional)</label>
+                                    <select value={uploadCategoria} onChange={e => setUploadCategoria(e.target.value as any)} style={{ width: '100%', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.82rem' }}>
+                                        <option value="">-- Sin categoría --</option>
+                                        <option value="LIMPIADOR">LIMPIADOR</option>
+                                        <option value="AUXILIAR">AUXILIAR</option>
+                                        <option value="VIDRIERO">VIDRIERO</option>
+                                        <option value="ENCARGADO">ENCARGADO</option>
+                                    </select>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                                    <button onClick={resetUploadModal} style={{ padding: '0.55rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', background: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>Cancelar</button>
+                                    <button onClick={handleParsePreview} disabled={parsingPreview || !uploadFile} style={{ padding: '0.55rem 1rem', border: 'none', borderRadius: '8px', background: '#1d3461', color: '#fff', cursor: parsingPreview || !uploadFile ? 'not-allowed' : 'pointer', fontSize: '0.85rem', fontWeight: 700, opacity: parsingPreview || !uploadFile ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        {parsingPreview ? 'Analizando...' : 'Ver preview →'}
+                                    </button>
+                                </div>
                             </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>Archivo xlsx</label>
-                                <input type="file" accept=".xlsx,.xls" onChange={e => setUploadFile(e.target.files?.[0] || null)} style={{ width: '100%' }} />
-                                <p style={{ fontSize: '0.72rem', color: '#64748b', margin: '0.35rem 0 0' }}>El archivo debe tener columnas Nombre y Documento (o Cédula/CI). Opcionalmente Sector, Puesto, Categoría.</p>
+                        ) : (
+                            // ── Paso 2: preview con mapeo hoja→sector ─────────────────────────
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.6rem 0.8rem', fontSize: '0.78rem', color: '#1d3461' }}>
+                                    <strong>Fecha:</strong> {fecha} &nbsp; <strong>Cliente:</strong> {clienteSeleccionado || '—'} &nbsp; <strong>Total filas detectadas:</strong> {previewSheets.reduce((sum, s) => sum + s.rows.length, 0)}
+                                </div>
+                                {previewSheets.map(sheet => {
+                                    const sectoresDisponibles = getSectoresForCliente(clienteSeleccionado || '');
+                                    return (
+                                        <div key={sheet.name} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.75rem 0.9rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                                                <div>
+                                                    <div style={{ fontWeight: 700, color: '#1d3461', fontSize: '0.88rem' }}>
+                                                        Hoja: {sheet.name}
+                                                        <span style={{ marginLeft: '0.5rem', fontSize: '0.72rem', color: '#64748b', fontWeight: 500 }}>({sheet.rows.length} fila{sheet.rows.length !== 1 ? 's' : ''})</span>
+                                                    </div>
+                                                    {sheet.missing_headers.length > 0 && (
+                                                        <div style={{ color: '#b91c1c', fontSize: '0.72rem', marginTop: '0.2rem' }}>
+                                                            ⚠ No se encontraron columnas requeridas ({sheet.missing_headers.join(', ')})
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {sheet.rows.length > 0 && (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                        <label style={{ fontSize: '0.74rem', color: '#334155', fontWeight: 600 }}>Sector destino:</label>
+                                                        <select
+                                                            value={sheetSectorMap[sheet.name] || ''}
+                                                            onChange={e => setSheetSectorMap(m => ({ ...m, [sheet.name]: e.target.value }))}
+                                                            style={{ padding: '0.3rem 0.55rem', borderRadius: '6px', border: `1px solid ${sheetSectorMap[sheet.name] ? '#cbd5e1' : '#fca5a5'}`, fontSize: '0.8rem', minWidth: '160px' }}
+                                                        >
+                                                            <option value="">-- Elegir --</option>
+                                                            {sectoresDisponibles.map(s => <option key={s} value={s}>{s}</option>)}
+                                                        </select>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {sheet.rows.length > 0 && (
+                                                <div style={{ maxHeight: '220px', overflow: 'auto', border: '1px solid #f1f5f9', borderRadius: '6px' }}>
+                                                    <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                                                        <thead style={{ background: '#f8fafc', position: 'sticky', top: 0 }}>
+                                                            <tr>
+                                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Puesto (Lugar en planilla)</th>
+                                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Turno</th>
+                                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Funcionario</th>
+                                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Frec.</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {sheet.rows.map((row, idx) => (
+                                                                <tr key={idx} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                                                    <td style={{ padding: '0.3rem 0.5rem', color: '#1e293b' }}>{row.lugar_planilla}</td>
+                                                                    <td style={{ padding: '0.3rem 0.5rem', color: '#1e293b' }}>{row.turno || '—'}</td>
+                                                                    <td style={{ padding: '0.3rem 0.5rem', color: row.funcionario_nombre ? '#1e293b' : '#94a3b8' }}>
+                                                                        {row.funcionario_nombre || '(vacío)'}
+                                                                        {row.funcionario_cedula && <span style={{ color: '#64748b', marginLeft: '0.35rem' }}>· CI {row.funcionario_cedula}</span>}
+                                                                    </td>
+                                                                    <td style={{ padding: '0.3rem 0.5rem', color: '#64748b' }}>{row.frecuencia || '—'}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', marginTop: '1rem', flexWrap: 'wrap' }}>
+                                    <button onClick={() => { setPreviewSheets(null); setSheetSectorMap({}); }} style={{ padding: '0.55rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', background: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>← Cambiar archivo</button>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button onClick={resetUploadModal} style={{ padding: '0.55rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', background: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>Cancelar</button>
+                                        <button onClick={handleConfirmImport} disabled={importing} style={{ padding: '0.55rem 1rem', border: 'none', borderRadius: '8px', background: '#16a34a', color: '#fff', cursor: importing ? 'not-allowed' : 'pointer', fontSize: '0.85rem', fontWeight: 700, opacity: importing ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <Upload size={14}/>{importing ? 'Importando...' : 'Confirmar importación'}
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>Categoría por defecto (opcional)</label>
-                                <select value={uploadCategoria} onChange={e => setUploadCategoria(e.target.value as any)} style={{ width: '100%', padding: '0.45rem 0.6rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.82rem' }}>
-                                    <option value="">-- Usar columna Categoría del Excel si existe --</option>
-                                    <option value="LIMPIADOR">LIMPIADOR</option>
-                                    <option value="AUXILIAR">AUXILIAR</option>
-                                    <option value="VIDRIERO">VIDRIERO</option>
-                                    <option value="ENCARGADO">ENCARGADO</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
-                            <button onClick={() => setShowUpload(false)} style={{ padding: '0.55rem 1rem', border: '1px solid #d1d5db', borderRadius: '8px', background: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>Cancelar</button>
-                            <button onClick={handleUploadPlanilla} disabled={uploading || !uploadFile} style={{ padding: '0.55rem 1rem', border: 'none', borderRadius: '8px', background: '#16a34a', color: '#fff', cursor: uploading || !uploadFile ? 'not-allowed' : 'pointer', fontSize: '0.85rem', fontWeight: 700, opacity: uploading || !uploadFile ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                <Upload size={14}/>{uploading ? 'Subiendo...' : 'Subir'}
-                            </button>
-                        </div>
+                        )}
                     </div>
                 </div>
             )}
