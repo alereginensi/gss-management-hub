@@ -59,6 +59,7 @@ export default function AgendaLookupPage() {
       sessionStorage.setItem('agenda_employee', JSON.stringify(data.employee));
       sessionStorage.setItem('agenda_catalog', JSON.stringify(data.catalog));
       sessionStorage.setItem('agenda_prev_appointments', JSON.stringify(data.previous_appointments || []));
+      sessionStorage.setItem('agenda_renewable_articles', JSON.stringify(data.renewable_articles || []));
 
       router.push('/logistica/agenda/pedido');
     } catch {

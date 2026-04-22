@@ -359,8 +359,23 @@ El módulo legacy `admin/cambios` y sus endpoints `/api/logistica/agenda/changes
 - `app/components/AgendaSignatureCanvas.tsx` — canvas de firma con `signature_pad`; `forwardRef` con ref `{ clear(), isEmpty() }`; props `onChange(dataUrl)`, `disabled?`, `label?`
 
 ### Cron y scripts
-- `scripts/cron-agenda.cjs` — auto-generación mensual de slots con `node-cron` (día 5 de cada mes, 09:00 Montevideo)
-- `npm run agenda:slots -- --manual 2025-08` — genera slots de un mes específico
+- `scripts/cron-agenda.cjs` — dos schedules:
+  - **Slots**: auto-generación mensual el día 28 a las 09:00 Montevideo.
+  - **Renovaciones**: diario a las 02:00 Montevideo — llama `syncEmployeeRenewalStatus()` para marcar `allow_reorder=1` en empleados con artículos vencidos.
+- `npm run agenda:slots -- --manual 2025-08` — genera slots de un mes específico (también dispara sync de renovaciones).
+- `node scripts/cron-agenda.cjs --sync-renewals` — corre solo el sync de renovaciones, útil para ejecución manual.
+- `scripts/backfill-articulos-desde-entregas.cjs` — backfill de `agenda_articles` a partir de citas completadas (dedup por `(appointment_id, article_type, size)`). Soporta `--apply` (default: dry-run) y `--employee=<CI>`.
+
+### Renovación automática y pedido restringido
+
+Feature A (auto-habilitar por vencimiento):
+- `syncEmployeeRenewalStatus(employeeId?)` en [lib/agenda-helpers.ts](lib/agenda-helpers.ts): UPDATE que marca `allow_reorder=1` en empleados con artículos `expiration_date <= CURRENT_DATE`, `current_status='activo'`, `enabled=1`, `estado='activo'`.
+- Se ejecuta en 3 lugares: (1) cron diario 02:00, (2) on-read en `/api/logistica/agenda/public/lookup` (solo el empleado que consulta, instantáneo), (3) manualmente via `--sync-renewals`.
+
+Feature B (pedido restringido a vencidos):
+- El endpoint `lookup` devuelve `renewable_articles[]` con los artículos vencidos del empleado.
+- El front (`app/logistica/agenda/pedido/page.tsx`) filtra el catálogo para mostrar solo los artículos cuyo `article_type` coincide con alguno de los `renewable_articles`. Si el array está vacío (primera entrega o habilitado manualmente sin vencimientos), muestra el catálogo completo.
+- Banner naranja encima de las cards: "Tenés que renovar N prendas vencidas: ...".
 
 ### DB — `agenda_appointments` (columnas nuevas aditivas)
 ALTER TABLE aditivo (PG: `information_schema.columns`, SQLite: `PRAGMA table_info`):

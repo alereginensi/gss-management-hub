@@ -2,13 +2,26 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Check, ShirtIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ShirtIcon, AlertCircle } from 'lucide-react';
 import type { AgendaEmployee, AgendaUniformCatalogItem, OrderItem } from '@/lib/agenda-types';
+
+interface RenewableArticle {
+  id: number;
+  article_type: string;
+  size?: string | null;
+  delivery_date?: string | null;
+  expiration_date?: string | null;
+}
+
+function normArticle(s: string): string {
+  return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+}
 
 export default function AgendaPedidoPage() {
   const router = useRouter();
   const [employee, setEmployee] = useState<AgendaEmployee | null>(null);
   const [catalog, setCatalog] = useState<AgendaUniformCatalogItem[]>([]);
+  const [renewableArticles, setRenewableArticles] = useState<RenewableArticle[]>([]);
   const [selections, setSelections] = useState<Record<number, { size: string; color: string }>>({});
   const [skipped, setSkipped] = useState<Set<number>>(new Set());
   const [error, setError] = useState('');
@@ -17,10 +30,22 @@ export default function AgendaPedidoPage() {
     const emp = sessionStorage.getItem('agenda_employee');
     const cat = sessionStorage.getItem('agenda_catalog');
     if (!emp || !cat) { router.replace('/logistica/agenda'); return; }
-    const parsedCatalog = JSON.parse(cat) as AgendaUniformCatalogItem[];
+    const fullCatalog = JSON.parse(cat) as AgendaUniformCatalogItem[];
+    const rawRenewable = sessionStorage.getItem('agenda_renewable_articles');
+    const renewable = rawRenewable ? JSON.parse(rawRenewable) as RenewableArticle[] : [];
+    setRenewableArticles(renewable);
+
+    // Si el empleado tiene artículos vencidos, solo puede pedir renovación de esos.
+    // Filtrar el catálogo por el article_type normalizado.
+    let filteredCatalog = fullCatalog;
+    if (renewable.length > 0) {
+      const renewableKeys = new Set(renewable.map(r => normArticle(r.article_type)));
+      filteredCatalog = fullCatalog.filter(c => renewableKeys.has(normArticle(c.article_type)));
+    }
+
     setEmployee(JSON.parse(emp));
-    setCatalog(parsedCatalog);
-    setSelections(Object.fromEntries(parsedCatalog.map(item => [item.id, { size: '', color: '' }])));
+    setCatalog(filteredCatalog);
+    setSelections(Object.fromEntries(filteredCatalog.map(item => [item.id, { size: '', color: '' }])));
   }, [router]);
 
   const toggleSkip = (id: number) => {
@@ -131,6 +156,26 @@ export default function AgendaPedidoPage() {
             </span>
           </p>
         </div>
+
+        {/* Banner de renovación por vencimiento */}
+        {renewableArticles.length > 0 && (
+          <div style={{
+            background: '#fff7ed', border: '1px solid #fed7aa',
+            borderRadius: '10px', padding: '0.85rem 1rem', marginBottom: '1rem',
+            display: 'flex', gap: '0.65rem', alignItems: 'flex-start',
+          }}>
+            <AlertCircle size={18} color="#c2410c" style={{ flexShrink: 0, marginTop: '1px' }} />
+            <div>
+              <p style={{ margin: '0 0 0.35rem', fontWeight: 700, color: '#9a3412', fontSize: '0.88rem' }}>
+                Tenés que renovar {renewableArticles.length} prenda{renewableArticles.length !== 1 ? 's' : ''} vencida{renewableArticles.length !== 1 ? 's' : ''}
+              </p>
+              <p style={{ margin: 0, fontSize: '0.78rem', color: '#7c2d12' }}>
+                Solo podés pedir renovación de lo que ya se venció:{' '}
+                <strong>{renewableArticles.map(r => r.article_type + (r.size ? ` (${r.size})` : '')).join(', ')}</strong>
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Cards */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

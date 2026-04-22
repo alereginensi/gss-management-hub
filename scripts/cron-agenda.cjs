@@ -21,6 +21,17 @@ const args = process.argv.slice(2);
 const manualIdx = args.indexOf('--manual');
 const manualTarget = manualIdx !== -1 ? args[manualIdx + 1] : null;
 
+async function syncRenewals() {
+  const now = new Date().toISOString();
+  try {
+    const { syncEmployeeRenewalStatus } = await import('../lib/agenda-helpers.js');
+    const count = await syncEmployeeRenewalStatus();
+    console.log(`[cron-agenda] ${now} — sync renovaciones: ${count} empleado${count !== 1 ? 's' : ''} habilitado${count !== 1 ? 's' : ''} por vencimiento.`);
+  } catch (err) {
+    console.error('[cron-agenda] ERROR al sync renovaciones:', err.message || err);
+  }
+}
+
 async function generateSlots(yearMonth) {
   const now = new Date().toISOString();
   console.log(`[cron-agenda] ${now} — Generando slots para ${yearMonth || 'próximo mes'}...`);
@@ -75,16 +86,27 @@ async function generateSlots(yearMonth) {
 // ── Modo manual ──────────────────────────────────────────────────────────────
 
 if (manualTarget) {
-  generateSlots(manualTarget).then(() => process.exit(0));
+  (async () => {
+    await syncRenewals();
+    await generateSlots(manualTarget);
+    process.exit(0);
+  })();
+} else if (args.includes('--sync-renewals')) {
+  syncRenewals().then(() => process.exit(0));
 } else {
-  // ── Modo cron: ejecutar el día 28 de cada mes a las 09:00 AM ─────────────────
-  const CRON_SCHEDULE = '0 9 28 * *';
+  // ── Modo cron ───────────────────────────────────────────────────────────────
+  // - Generación de slots: día 28 de cada mes a las 09:00
+  // - Sync de renovaciones: todos los días a las 02:00 (marca allow_reorder=1
+  //   en empleados con artículos vencidos)
+  const SLOTS_SCHEDULE = '0 9 28 * *';
+  const RENEWAL_SCHEDULE = '0 2 * * *';
 
-  console.log(`[cron-agenda] Iniciado. Próxima ejecución: día 28 de cada mes a las 09:00 (${CRON_SCHEDULE})`);
+  console.log(`[cron-agenda] Iniciado.`);
+  console.log(`[cron-agenda]   slots:       ${SLOTS_SCHEDULE} (día 28, 09:00)`);
+  console.log(`[cron-agenda]   renovaciones: ${RENEWAL_SCHEDULE} (diario, 02:00)`);
 
-  cron.schedule(CRON_SCHEDULE, () => {
-    generateSlots(null);
-  }, { timezone: 'America/Montevideo' });
+  cron.schedule(SLOTS_SCHEDULE, () => generateSlots(null), { timezone: 'America/Montevideo' });
+  cron.schedule(RENEWAL_SCHEDULE, () => syncRenewals(), { timezone: 'America/Montevideo' });
 
   // Mantener proceso vivo
   process.on('SIGTERM', () => {

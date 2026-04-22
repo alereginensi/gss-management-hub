@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getCatalogForEmployee } from '@/lib/agenda-catalog';
 import { getUniformsForEmpresa, type UniformItem } from '@/lib/agenda-uniforms';
+import { syncEmployeeRenewalStatus } from '@/lib/agenda-helpers';
 
 const CLOTHING_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 const SHOE_SIZES = ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'];
@@ -64,6 +65,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Auto-habilitar si tiene artículos vencidos (feature A).
+    // Se ejecuta al consultar para que sea instantáneo — el cron diario
+    // es solo un safety net para casos donde nadie haya consultado.
+    try {
+      const updated = await syncEmployeeRenewalStatus(employee.id);
+      if (updated > 0) {
+        // Refetch para que el flag quede reflejado en la response.
+        employee.allow_reorder = 1;
+      }
+    } catch (err) {
+      console.warn('[lookup] sync renewal fallo (no crítico):', (err as Error).message);
+    }
+
     if (!employee.enabled || employee.estado !== 'activo') {
       // Registrado pero inhabilitado: sí se loguea
       await db.run(
@@ -82,6 +96,23 @@ export async function POST(request: NextRequest) {
       employee.sector,
       employee.puesto,
       employee.workplace_category
+    );
+
+    // Feature B: obtener artículos vencidos del empleado (para limitar el pedido).
+    // Si el empleado tiene artículos vencidos, SOLO podrá pedir renovación de esos.
+    // Si no tiene ninguno (primera entrega o habilitado manual sin vencimientos),
+    // el front muestra el catálogo completo.
+    const isPg = (db as any).type === 'pg';
+    const nowSql = isPg ? 'CURRENT_DATE' : "date('now')";
+    const expiredArticles = await db.query(
+      `SELECT id, article_type, size, delivery_date, expiration_date, useful_life_months
+       FROM agenda_articles
+       WHERE employee_id = ?
+         AND current_status = 'activo'
+         AND expiration_date IS NOT NULL
+         AND expiration_date <= ${nowSql}
+       ORDER BY expiration_date ASC`,
+      [employee.id]
     );
 
     // Obtener citas previas (historial breve)
@@ -119,6 +150,7 @@ export async function POST(request: NextRequest) {
         allow_reorder: employee.allow_reorder,
       },
       catalog: catalogWithSizes,
+      renewable_articles: expiredArticles,
       previous_appointments: prevAppointments,
     });
   } catch (err) {

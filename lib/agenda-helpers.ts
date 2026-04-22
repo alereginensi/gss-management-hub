@@ -84,6 +84,41 @@ export async function confirmSlotBooking(slotId: number, holdToken: string): Pro
   return result.changes > 0;
 }
 
+// ─── Sincronización de habilitación automática por vencimiento ──────────────
+
+/**
+ * Habilita `allow_reorder=1` en empleados que tengan al menos un artículo
+ * activo con expiration_date <= hoy. Idempotente: no hace nada si el empleado
+ * ya está habilitado.
+ *
+ * @param employeeId - si se pasa, sincroniza solo ese empleado; si no, todos.
+ * @returns cantidad de empleados habilitados en esta ejecución.
+ */
+export async function syncEmployeeRenewalStatus(employeeId?: number): Promise<number> {
+  const isPg = (db as any).type === 'pg';
+  const nowSql = isPg ? 'CURRENT_DATE' : "date('now')";
+  const whereEmployee = employeeId ? 'AND a.employee_id = ?' : '';
+  const params = employeeId ? [employeeId] : [];
+
+  const sql = `
+    UPDATE agenda_employees
+    SET allow_reorder = 1
+    WHERE id IN (
+      SELECT DISTINCT a.employee_id
+      FROM agenda_articles a
+      WHERE a.current_status = 'activo'
+        AND a.expiration_date IS NOT NULL
+        AND a.expiration_date <= ${nowSql}
+        ${whereEmployee}
+    )
+    AND allow_reorder = 0
+    AND enabled = 1
+    AND estado = 'activo'
+  `;
+  const result = await db.run(sql, params);
+  return result.changes || 0;
+}
+
 // ─── Auditoría ───────────────────────────────────────────────────────────────
 
 export async function logAudit(
