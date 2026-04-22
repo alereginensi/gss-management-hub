@@ -44,6 +44,52 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
+// PUT /api/logistica/agenda/egress-returns/[id]
+// Edita campos básicos del egreso: items, notas, numero de remito.
+// No toca estado del empleado ni de los articulos (para eso usar DELETE → recrear).
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession(request);
+  if (!session || !AUTH_ROLES.includes(session.user.role)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const { id: idStr } = await params;
+  const id = parseInt(idStr, 10);
+  try {
+    const existing = await db.get('SELECT id FROM agenda_egress_returns WHERE id = ?', [id]);
+    if (!existing) return NextResponse.json({ error: 'Egreso no encontrado' }, { status: 404 });
+
+    const body = await request.json();
+    const items = Array.isArray(body.returned_items)
+      ? body.returned_items.filter((it: any) => it && typeof it.article_type === 'string' && it.article_type.trim())
+      : null;
+    const remitoNumber = typeof body.remito_number === 'string' ? body.remito_number.trim() || null : undefined;
+    const notes = typeof body.notes === 'string' ? body.notes.trim() || null : undefined;
+
+    const isPg = (db as any).type === 'pg';
+    const nowSql = isPg ? 'NOW()' : "datetime('now')";
+
+    await db.run(
+      `UPDATE agenda_egress_returns SET
+         returned_items = COALESCE(?, returned_items),
+         remito_number = COALESCE(?, remito_number),
+         notes = COALESCE(?, notes),
+         updated_at = ${nowSql}
+       WHERE id = ?`,
+      [items ? JSON.stringify(items) : null, remitoNumber ?? null, notes ?? null, id]
+    );
+
+    await logAudit('update', 'egress_return', id, session.user.id, {
+      items_count: items?.length,
+      remito_changed: remitoNumber !== undefined,
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('Error editando egreso:', err);
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  }
+}
+
 // DELETE /api/logistica/agenda/egress-returns/[id]
 // Solo admin y rrhh. Borra el registro y revierte los efectos:
 //   - reactiva al empleado (enabled=1, estado='activo')

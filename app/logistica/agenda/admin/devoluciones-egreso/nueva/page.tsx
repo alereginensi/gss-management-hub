@@ -100,6 +100,30 @@ export default function NuevaDevolucionEgresoPage() {
 
   const handlePdfChange = useCallback(async (file: File | null) => {
     if (!file) { setPdfFile(null); return; }
+
+    // Logs para depurar problemas en tablet/móvil donde iOS Safari puede enviar
+    // MIME vacío o tipo distinto al esperado, o el usuario puede subir una foto
+    // en vez del PDF real.
+    console.log('[pdf-upload] file seleccionado', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified,
+    });
+
+    // Validación cliente: rechazar archivos que claramente no son PDF
+    const nameLower = file.name.toLowerCase();
+    const looksLikeImage = /\.(jpe?g|png|heic|heif|gif|webp)$/i.test(nameLower) ||
+      file.type.startsWith('image/');
+    if (looksLikeImage) {
+      setMsg({
+        ok: false,
+        text: 'Parece que subiste una imagen (foto). Necesitamos el PDF del remito. En tablet/celular elegí "Archivos" en el picker, no "Cámara" o "Fotos".',
+      });
+      setPdfFile(null);
+      return;
+    }
+
     setPdfFile(file);
     setPdfParsing(true);
     setMsg(null);
@@ -108,8 +132,9 @@ export default function NuevaDevolucionEgresoPage() {
       fd.append('file', file);
       const res = await fetch('/api/logistica/agenda/remito/parse-pdf', { method: 'POST', body: fd });
       const data = await res.json();
+      console.log('[pdf-upload] response', { status: res.status, data });
       if (!res.ok) {
-        setMsg({ ok: false, text: data.error || 'No se pudo leer el PDF.' });
+        setMsg({ ok: false, text: data.error || `Error del servidor (${res.status}) al leer PDF.` });
       } else {
         setPdfText(data.parsed_text || '');
         if (data.remito_number && !remitoNumber) setRemitoNumber(data.remito_number);
@@ -121,11 +146,15 @@ export default function NuevaDevolucionEgresoPage() {
           })));
           setMsg({ ok: true, text: `Se detectaron ${data.parsed_items.length} items del remito.` });
         } else {
-          setMsg({ ok: true, text: 'PDF cargado. No se detectaron items — agregá manualmente.' });
+          setMsg({
+            ok: false,
+            text: 'PDF leído pero no se detectaron items. Revisá "Ver texto extraído" debajo. Agregá los items manualmente o intentá con otro PDF.',
+          });
         }
       }
     } catch (e: any) {
-      setMsg({ ok: false, text: e.message });
+      console.error('[pdf-upload] fetch fallo', e);
+      setMsg({ ok: false, text: `Fallo de red al leer PDF: ${e.message || e}` });
     } finally {
       setPdfParsing(false);
     }
@@ -275,7 +304,7 @@ export default function NuevaDevolucionEgresoPage() {
                   {pdfParsing ? 'Leyendo PDF...' : pdfFile ? `Cambiar PDF (${pdfFile.name})` : 'Subir PDF de remito'}
                   <input
                     type="file"
-                    accept=".pdf,application/pdf"
+                    accept="application/pdf"
                     onChange={e => handlePdfChange(e.target.files?.[0] || null)}
                     style={{ display: 'none' }}
                     disabled={pdfParsing}

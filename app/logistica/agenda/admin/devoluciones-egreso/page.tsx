@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, LogOut, Search, LogOut as LogOutIcon, FileText, Calendar,
-  PackageMinus, User, Building2, PenSquare, Plus, RefreshCw, Trash2,
+  PackageMinus, User, Building2, PenSquare, Plus, RefreshCw, Trash2, Pencil,
 } from 'lucide-react';
 import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 
@@ -222,29 +222,50 @@ export default function DevolucionesEgresoPage() {
                       </span>
                     )}
                   </div>
-                  {canDelete && (
-                    <button
-                      onClick={() => handleDelete(it.id, it.employee_nombre)}
-                      disabled={deleting === it.id}
-                      title="Eliminar devolución por egreso"
+                  <div style={{ display: 'flex', gap: '0.3rem' }}>
+                    <Link
+                      href={`/logistica/agenda/admin/devoluciones-egreso/${it.id}/editar`}
+                      title="Editar devolución"
                       style={{
                         fontSize: '0.72rem',
-                        background: '#fef2f2',
-                        color: '#b91c1c',
-                        border: '1px solid #fca5a5',
+                        background: '#eff6ff',
+                        color: '#1d4ed8',
+                        border: '1px solid #bfdbfe',
                         borderRadius: '4px',
                         padding: '0.2rem 0.5rem',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '0.25rem',
-                        cursor: deleting === it.id ? 'wait' : 'pointer',
-                        opacity: deleting === it.id ? 0.6 : 1,
+                        textDecoration: 'none',
                         fontWeight: 600,
                       }}
                     >
-                      <Trash2 size={11} /> {deleting === it.id ? 'Eliminando...' : 'Eliminar'}
-                    </button>
-                  )}
+                      <Pencil size={11} /> Editar
+                    </Link>
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDelete(it.id, it.employee_nombre)}
+                        disabled={deleting === it.id}
+                        title="Eliminar devolución por egreso"
+                        style={{
+                          fontSize: '0.72rem',
+                          background: '#fef2f2',
+                          color: '#b91c1c',
+                          border: '1px solid #fca5a5',
+                          borderRadius: '4px',
+                          padding: '0.2rem 0.5rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          cursor: deleting === it.id ? 'wait' : 'pointer',
+                          opacity: deleting === it.id ? 0.6 : 1,
+                          fontWeight: 600,
+                        }}
+                      >
+                        <Trash2 size={11} /> {deleting === it.id ? 'Eliminando...' : 'Eliminar'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

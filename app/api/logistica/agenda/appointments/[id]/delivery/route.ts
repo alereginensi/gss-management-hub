@@ -83,6 +83,36 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // Crear artículos en agenda_articles si se solicitó
     if (create_articles) {
       const deliveryDate = nowVal.split('T')[0];
+
+      // Auto-marcar como 'renovado' los artículos activos vencidos del empleado
+      // cuyo article_type matchea los items entregados. Esto hace que el contador
+      // "articulos habilitados para renovación" baje al completar la entrega.
+      // Match por article_type normalizado (lowercase + strip acentos).
+      const normArt = (s: string) => (s || '').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+      const deliveredTypes = new Set(
+        (delivered_order_items as { article_type: string }[])
+          .map(it => normArt(it.article_type))
+          .filter(Boolean)
+      );
+
+      const existingActive = await db.query(
+        `SELECT id, article_type FROM agenda_articles
+         WHERE employee_id = ? AND current_status = 'activo'
+           AND renewal_enabled_at IS NOT NULL AND renewal_enabled_at <= ?`,
+        [appt.employee_id, deliveryDate]
+      );
+      const toRenew = (existingActive as { id: number; article_type: string }[])
+        .filter(a => deliveredTypes.has(normArt(a.article_type)))
+        .map(a => a.id);
+      if (toRenew.length > 0) {
+        const placeholders = toRenew.map(() => '?').join(',');
+        await db.run(
+          `UPDATE agenda_articles SET current_status = 'renovado' WHERE id IN (${placeholders})`,
+          toRenew
+        );
+      }
+
       for (const item of delivered_order_items as { article_type: string; size?: string; qty: number; useful_life_months?: number }[]) {
         const usefulLife = item.useful_life_months ?? 12;
         const expirationDate = calculateExpirationDate(deliveryDate, usefulLife);
