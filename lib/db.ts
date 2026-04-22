@@ -521,6 +521,7 @@ class DbWrapper {
  cantidad INTEGER NOT NULL DEFAULT 1,
  orden INTEGER DEFAULT 0,
  active INTEGER DEFAULT 1,
+ lugar_sistema TEXT,
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
  );
 
@@ -874,6 +875,16 @@ class DbWrapper {
  } catch (err) {
  console.error('Error migrate SQLite asistencia:', err);
  }
+ // Migración limpieza_puestos: agregar lugar_sistema (SQLite)
+ try {
+ const puestosInfo = this.sqliteDb.prepare("PRAGMA table_info(limpieza_puestos)").all() as any[];
+ const puestosColNames = puestosInfo.map((c: any) => c.name);
+ if (puestosColNames.length > 0 && !puestosColNames.includes('lugar_sistema')) {
+ this.sqliteDb.prepare(`ALTER TABLE limpieza_puestos ADD COLUMN lugar_sistema TEXT`).run();
+ }
+ } catch (err) {
+ console.error('Error migrate SQLite limpieza_puestos:', err);
+ }
  // Migración users: cliente_asignado / sector_asignado
  try {
  const info = this.sqliteDb.prepare("PRAGMA table_info(users)").all();
@@ -934,6 +945,7 @@ class DbWrapper {
  cantidad INTEGER NOT NULL DEFAULT 1,
  orden INTEGER DEFAULT 0,
  active INTEGER DEFAULT 1,
+ lugar_sistema TEXT,
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
  );
  `);
@@ -1032,6 +1044,16 @@ class DbWrapper {
  await this.pgPool!.query(`ALTER TABLE limpieza_asistencia ADD COLUMN ${col} ${type}`);
  }
  }
+
+ // Migrate limpieza_puestos: agregar lugar_sistema para cruzar con Panel Mitrabajo
+ try {
+ const puestosCols = await this.pgPool!.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'limpieza_puestos'`);
+ const puestosNames = puestosCols.rows.map((r: any) => r.column_name);
+ if (puestosNames.length > 0 && !puestosNames.includes('lugar_sistema')) {
+ console.log('Migrating limpieza_puestos: adding lugar_sistema column');
+ await this.pgPool!.query(`ALTER TABLE limpieza_puestos ADD COLUMN lugar_sistema TEXT`);
+ }
+ } catch (e) { console.error('Error migrating limpieza_puestos (PG):', e); }
 
  // Migrate users: cliente_asignado / sector_asignado
  const userColsPG = await this.pgPool!.query(`

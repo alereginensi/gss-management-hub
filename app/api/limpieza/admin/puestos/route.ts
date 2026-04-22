@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
         const sectorId = searchParams.get('sector_id');
         if (!sectorId) return NextResponse.json({ error: 'sector_id requerido' }, { status: 400 });
         const rows = await db.query(
-            'SELECT id, sector_id, turno, nombre, cantidad, orden, active FROM limpieza_puestos WHERE sector_id = ? ORDER BY turno ASC, orden ASC, id ASC',
+            'SELECT id, sector_id, turno, nombre, cantidad, orden, active, lugar_sistema FROM limpieza_puestos WHERE sector_id = ? ORDER BY turno ASC, orden ASC, id ASC',
             [sectorId]
         );
         return NextResponse.json(rows);
@@ -27,15 +27,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     if (!(await requireAdmin(request))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     try {
-        const { sector_id, turno, nombre, cantidad, orden } = await request.json();
+        const { sector_id, turno, nombre, cantidad, orden, lugar_sistema } = await request.json();
         if (!sector_id || !turno || !nombre) return NextResponse.json({ error: 'sector_id, turno, nombre requeridos' }, { status: 400 });
         const cant = Number(cantidad) > 0 ? Number(cantidad) : 1;
         const ord = Number.isFinite(Number(orden)) ? Number(orden) : 0;
+        const ls = typeof lugar_sistema === 'string' ? lugar_sistema.trim() || null : null;
         const res = await db.run(
-            'INSERT INTO limpieza_puestos (sector_id, turno, nombre, cantidad, orden) VALUES (?, ?, ?, ?, ?)',
-            [sector_id, String(turno).trim(), String(nombre).trim(), cant, ord]
+            'INSERT INTO limpieza_puestos (sector_id, turno, nombre, cantidad, orden, lugar_sistema) VALUES (?, ?, ?, ?, ?, ?)',
+            [sector_id, String(turno).trim(), String(nombre).trim(), cant, ord, ls]
         );
-        return NextResponse.json({ id: res.lastInsertRowid, sector_id, turno, nombre, cantidad: cant, orden: ord, active: 1 });
+        return NextResponse.json({ id: res.lastInsertRowid, sector_id, turno, nombre, cantidad: cant, orden: ord, active: 1, lugar_sistema: ls });
     } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }

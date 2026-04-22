@@ -520,18 +520,16 @@ export default function InformesOperativosPage() {
     }, [isEncargado, lockedSector, sectorSeleccionado, clienteSeleccionado]);
 
     const handleParsePreview = async () => {
-        if (!uploadFile || !fecha || !clienteSeleccionado) {
-            alert('Faltan: fecha, cliente y archivo xlsx.');
+        if (!uploadFile || !clienteSeleccionado) {
+            alert('Faltan: cliente y archivo del Panel.');
             return;
         }
         setParsingPreview(true);
         try {
             const fd = new FormData();
-            fd.append('file', uploadFile);
-            if (panelFile) fd.append('panel', panelFile);
-            // NO pasar getAuthHeaders(): setea Content-Type:application/json y pisa el
-            // multipart/form-data que el browser auto-genera con el boundary. La auth
-            // viaja en cookie, no hace falta el header.
+            // El archivo principal ahora ES el Panel Mitrabajo
+            fd.append('panel', uploadFile);
+            fd.append('cliente', clienteSeleccionado);
             const res = await fetch('/api/limpieza/planilla/parse-puestos', { method: 'POST', body: fd });
             const data = await res.json();
             if (!res.ok) {
@@ -540,14 +538,12 @@ export default function InformesOperativosPage() {
             }
             setPreviewSheets(data.sheets || []);
             setPanelStats(data.panel_stats || null);
-            setPreviewMode(data.mode || 'template');
-            // Auto-mapear: si el nombre de la hoja contiene el nombre de algún sector configurado, lo preselecciona.
-            const sectoresActivos = getSectoresForCliente(clienteSeleccionado);
+            setPreviewMode(data.mode || 'crossed');
+            // Con el mapeo de DB los sectores ya vienen correctos (nombre del sector
+            // = name de limpieza_sectores). Auto-mapear hoja=sector.
             const map: Record<string, string> = {};
             for (const sheet of (data.sheets || []) as ParsedSheet[]) {
-                const sheetLower = sheet.name.toLowerCase();
-                const match = sectoresActivos.find((s: string) => sheetLower.includes(s.toLowerCase()));
-                map[sheet.name] = match || '';
+                map[sheet.name] = sheet.name;
             }
             setSheetSectorMap(map);
         } catch (err: any) {
@@ -985,8 +981,8 @@ export default function InformesOperativosPage() {
                         {isAdmin && (
                             <button
                                 onClick={() => setShowUpload(true)}
-                                disabled={!clienteSeleccionado || !turnoSeleccionado}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.5rem 0.75rem', backgroundColor: '#d32e2e', border: 'none', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 650, color: '#fff', cursor: (clienteSeleccionado && turnoSeleccionado) ? 'pointer' : 'not-allowed', opacity: (!clienteSeleccionado || !turnoSeleccionado) ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                                disabled={!clienteSeleccionado}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.5rem 0.75rem', backgroundColor: '#d32e2e', border: 'none', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 650, color: '#fff', cursor: clienteSeleccionado ? 'pointer' : 'not-allowed', opacity: !clienteSeleccionado ? 0.6 : 1, whiteSpace: 'nowrap' }}
                                 title="Subir planilla del turno desde Excel (solo admin)"
                             >
                                 <Upload size={15} /> Subir planilla
@@ -1442,17 +1438,10 @@ export default function InformesOperativosPage() {
                                     <strong>Fecha:</strong> {fecha} &nbsp; <strong>Cliente:</strong> {clienteSeleccionado || '—'}
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>1. Plantilla de puestos (Excel Casmu)</label>
+                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>Archivo del Panel de control (Mitrabajo)</label>
                                     <input type="file" accept=".xlsx,.xls" onChange={e => setUploadFile(e.target.files?.[0] || null)} style={{ width: '100%' }} />
                                     <p style={{ fontSize: '0.72rem', color: '#64748b', margin: '0.35rem 0 0', lineHeight: 1.45 }}>
-                                        Columnas: <strong>Lugar en sistema / Lugar</strong>, <strong>Lugar en Planilla / Titular / Puesto</strong>, <strong>Turno</strong>. Cada hoja = un sector.
-                                    </p>
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>2. Panel de control (Mitrabajo) — opcional</label>
-                                    <input type="file" accept=".xlsx,.xls" onChange={e => setPanelFile(e.target.files?.[0] || null)} style={{ width: '100%' }} />
-                                    <p style={{ fontSize: '0.72rem', color: '#64748b', margin: '0.35rem 0 0', lineHeight: 1.45 }}>
-                                        Excel exportado del panel Mitrabajo con los funcionarios reales (fecha, local, CI, nombre). Si lo subís, el sistema cruza cada fila con la plantilla y autocompleta el funcionario. Los registros que no matchean con ningún puesto de la plantilla <strong>se descartan</strong>.
+                                        Excel con columnas <strong>Fecha</strong>, <strong>Local</strong>, <strong>CI</strong>, <strong>Nombre</strong>, <strong>Entrada/Salida planificada</strong>. El sistema cruza cada fila contra el mapeo <strong>Lugar en sistema</strong> configurado en el Editor de Planillas del cliente <strong>{clienteSeleccionado || '—'}</strong>. Los registros de otros locales o sin mapeo <strong>se descartan</strong>.
                                     </p>
                                 </div>
                                 <div>
@@ -1529,33 +1518,51 @@ export default function InformesOperativosPage() {
                                                     </div>
                                                 )}
                                             </div>
-                                            {sheet.rows.length > 0 && (
-                                                <div style={{ maxHeight: '220px', overflow: 'auto', border: '1px solid #f1f5f9', borderRadius: '6px' }}>
-                                                    <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
-                                                        <thead style={{ background: '#f8fafc', position: 'sticky', top: 0 }}>
-                                                            <tr>
-                                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Puesto (Lugar en planilla)</th>
-                                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Turno</th>
-                                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Funcionario</th>
-                                                                <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Frec.</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {sheet.rows.map((row, idx) => (
-                                                                <tr key={idx} style={{ borderTop: '1px solid #f1f5f9' }}>
-                                                                    <td style={{ padding: '0.3rem 0.5rem', color: '#1e293b' }}>{row.lugar_planilla}</td>
-                                                                    <td style={{ padding: '0.3rem 0.5rem', color: '#1e293b' }}>{row.turno || '—'}</td>
-                                                                    <td style={{ padding: '0.3rem 0.5rem', color: row.funcionario_nombre ? '#1e293b' : '#94a3b8' }}>
-                                                                        {row.funcionario_nombre || '(vacío)'}
-                                                                        {row.funcionario_cedula && <span style={{ color: '#64748b', marginLeft: '0.35rem' }}>· CI {row.funcionario_cedula}</span>}
-                                                                    </td>
-                                                                    <td style={{ padding: '0.3rem 0.5rem', color: '#64748b' }}>{row.frecuencia || '—'}</td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
+                                            {sheet.rows.length > 0 && (() => {
+                                                // Agrupar filas por turno dentro de la hoja
+                                                const byTurno = new Map<string, ParsedRow[]>();
+                                                for (const r of sheet.rows) {
+                                                    const t = r.turno || '(sin turno)';
+                                                    if (!byTurno.has(t)) byTurno.set(t, []);
+                                                    byTurno.get(t)!.push(r);
+                                                }
+                                                const turnosOrdenados = [...byTurno.keys()].sort();
+                                                return (
+                                                    <div style={{ maxHeight: '320px', overflow: 'auto', border: '1px solid #f1f5f9', borderRadius: '6px' }}>
+                                                        {turnosOrdenados.map(turno => {
+                                                            const rowsTurno = byTurno.get(turno)!;
+                                                            return (
+                                                                <div key={turno} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                                                    <div style={{ background: '#e0f2fe', padding: '0.35rem 0.6rem', fontSize: '0.75rem', fontWeight: 700, color: '#075985', position: 'sticky', top: 0, borderBottom: '1px solid #bae6fd' }}>
+                                                                        Turno {turno} <span style={{ color: '#0369a1', fontWeight: 500, marginLeft: '0.35rem' }}>({rowsTurno.length} {rowsTurno.length === 1 ? 'fila' : 'filas'})</span>
+                                                                    </div>
+                                                                    <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                                                                        <thead style={{ background: '#f8fafc' }}>
+                                                                            <tr>
+                                                                                <th style={{ padding: '0.3rem 0.5rem', textAlign: 'left', fontWeight: 600, color: '#64748b' }}>Puesto</th>
+                                                                                <th style={{ padding: '0.3rem 0.5rem', textAlign: 'left', fontWeight: 600, color: '#64748b' }}>Funcionario</th>
+                                                                                <th style={{ padding: '0.3rem 0.5rem', textAlign: 'left', fontWeight: 600, color: '#64748b' }}>Frec.</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>
+                                                                            {rowsTurno.map((row, idx) => (
+                                                                                <tr key={idx} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                                                                    <td style={{ padding: '0.3rem 0.5rem', color: '#1e293b' }}>{row.lugar_planilla}</td>
+                                                                                    <td style={{ padding: '0.3rem 0.5rem', color: row.funcionario_nombre ? '#1e293b' : '#94a3b8' }}>
+                                                                                        {row.funcionario_nombre || '(vacío)'}
+                                                                                        {row.funcionario_cedula && <span style={{ color: '#64748b', marginLeft: '0.35rem' }}>· CI {row.funcionario_cedula}</span>}
+                                                                                    </td>
+                                                                                    <td style={{ padding: '0.3rem 0.5rem', color: '#64748b' }}>{row.frecuencia || '—'}</td>
+                                                                                </tr>
+                                                                            ))}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     );
                                 })}

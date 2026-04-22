@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, Edit2, Save, X, Settings, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, Save, X, Settings, AlertTriangle, Upload } from 'lucide-react';
 import { useTicketContext } from '@/app/context/TicketContext';
 
 interface Cliente { id: number; name: string; active: number; }
 interface Sector { id: number; cliente_id: number; name: string; active: number; }
-interface Puesto { id: number; sector_id: number; turno: string; nombre: string; cantidad: number; orden: number; active: number; }
+interface Puesto { id: number; sector_id: number; turno: string; nombre: string; cantidad: number; orden: number; active: number; lugar_sistema?: string | null; }
 
 const TURNOS_SUGERIDOS = ['6 A 14', '14 A 22', '22 A 06', '12 A 20', '15 A 23', 'HEMOTERAPIA'];
 
@@ -27,8 +27,52 @@ export default function PlanillasConfigPage() {
     const [editingCliente, setEditingCliente] = useState<{ id: number; name: string } | null>(null);
     const [editingSector, setEditingSector] = useState<{ id: number; name: string } | null>(null);
     const [fetching, setFetching] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [analyzing, setAnalyzing] = useState(false);
+    const [applying, setApplying] = useState(false);
+    interface ImportMatch { puesto_id: number; sector: string; turno: string; nombre: string; lugar_sistema_actual: string | null; lugar_sistema_nuevo: string; }
+    interface ImportUnmatched { sheet: string; turno: string; puesto: string; lugar_sistema: string; }
+    interface ImportPreview { matches: ImportMatch[]; unmatched: ImportUnmatched[]; matches_count: number; skipped: number; }
+    const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+    const [importApplied, setImportApplied] = useState<{ updated: number } | null>(null);
 
     const isAdmin = currentUser?.role === 'admin';
+
+    const runImport = async (apply: boolean) => {
+        if (!importFile || !clienteSel) { alert('Seleccioná un cliente y un archivo.'); return; }
+        apply ? setApplying(true) : setAnalyzing(true);
+        try {
+            const fd = new FormData();
+            fd.append('file', importFile);
+            fd.append('cliente_id', String(clienteSel));
+            fd.append('apply', apply ? '1' : '0');
+            const res = await fetch('/api/limpieza/admin/puestos/import-mapeo', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok) { alert(data.error || 'Error'); return; }
+            if (apply) {
+                setImportApplied({ updated: data.updated });
+                if (sectorSel) fetchPuestos(sectorSel);
+            } else {
+                setImportPreview({
+                    matches: data.matches || [],
+                    unmatched: data.unmatched || [],
+                    matches_count: data.matches_count || 0,
+                    skipped: data.skipped || 0,
+                });
+            }
+        } catch (e: any) {
+            alert('Error: ' + (e?.message || e));
+        } finally {
+            setAnalyzing(false);
+            setApplying(false);
+        }
+    };
+
+    const resetImport = () => {
+        setImportFile(null);
+        setImportPreview(null);
+        setImportApplied(null);
+    };
 
     useEffect(() => {
         if (loading) return;
@@ -155,6 +199,102 @@ export default function PlanillasConfigPage() {
                     <span>Los cambios solo afectan planillas futuras. Los informes ya guardados conservan su configuración original. Eliminar un cliente/sector no borra los informes históricos — sólo los oculta del selector.</span>
                 </div>
 
+                {/* Bulk import de "Lugar en sistema" desde Excel (p.ej. Casmu) */}
+                {clienteSel && (
+                    <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.75rem 0.9rem', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.8rem', color: '#1e3a8a' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}>
+                            <Upload size={15} /> Importar mapeo "Lugar en sistema" desde Excel
+                        </div>
+                        <p style={{ margin: 0, fontSize: '0.76rem', color: '#334155' }}>
+                            Subí el Excel de distribución de puestos (ej. Planillas Casmu) para autocompletar el campo "Lugar en sistema" de cada puesto de <strong>{activos.find(c => c.id === clienteSel)?.name || ''}</strong>. Cada hoja debe corresponder a un sector. Match por sector + turno + nombre del puesto.
+                        </p>
+
+                        {/* PASO 1: elegir archivo y analizar */}
+                        {!importPreview && !importApplied && (
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <input type="file" accept=".xlsx,.xls" onChange={e => setImportFile(e.target.files?.[0] || null)} style={{ flex: 1, minWidth: 0 }} />
+                                <button onClick={() => runImport(false)} disabled={!importFile || analyzing} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: '6px', background: importFile ? '#29416b' : '#94a3b8', color: '#fff', cursor: importFile && !analyzing ? 'pointer' : 'not-allowed', fontSize: '0.8rem', fontWeight: 700 }}>
+                                    {analyzing ? 'Analizando...' : 'Analizar y ver preview →'}
+                                </button>
+                            </div>
+                        )}
+
+                        {/* PASO 2: preview, confirmar o cancelar */}
+                        {importPreview && !importApplied && (
+                            <div style={{ marginTop: '0.25rem', padding: '0.6rem 0.8rem', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.78rem', color: '#1e293b' }}>
+                                <div style={{ fontWeight: 700, marginBottom: '0.4rem', color: '#0f172a' }}>
+                                    Preview de cambios (nada aplicado todavía)
+                                </div>
+                                <div style={{ marginBottom: '0.5rem' }}>
+                                    <strong style={{ color: '#15803d' }}>{importPreview.matches_count}</strong> puestos a actualizar ·
+                                    <strong style={{ color: '#b91c1c', marginLeft: '0.35rem' }}>{importPreview.skipped}</strong> filas sin match
+                                </div>
+
+                                {importPreview.matches.length > 0 && (
+                                    <details open style={{ marginBottom: '0.4rem' }}>
+                                        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Puestos a actualizar ({importPreview.matches.length})</summary>
+                                        <div style={{ marginTop: '0.3rem', maxHeight: '220px', overflow: 'auto', border: '1px solid #f1f5f9', borderRadius: '4px' }}>
+                                            <table style={{ width: '100%', fontSize: '0.72rem', borderCollapse: 'collapse' }}>
+                                                <thead style={{ background: '#f8fafc', position: 'sticky', top: 0 }}>
+                                                    <tr>
+                                                        <th style={{ padding: '0.3rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Sector</th>
+                                                        <th style={{ padding: '0.3rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Turno</th>
+                                                        <th style={{ padding: '0.3rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Puesto</th>
+                                                        <th style={{ padding: '0.3rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Actual</th>
+                                                        <th style={{ padding: '0.3rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Nuevo</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {importPreview.matches.map(m => (
+                                                        <tr key={m.puesto_id} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                                            <td style={{ padding: '0.25rem 0.5rem' }}>{m.sector}</td>
+                                                            <td style={{ padding: '0.25rem 0.5rem' }}>{m.turno}</td>
+                                                            <td style={{ padding: '0.25rem 0.5rem' }}>{m.nombre}</td>
+                                                            <td style={{ padding: '0.25rem 0.5rem', color: '#94a3b8' }}>{m.lugar_sistema_actual || '—'}</td>
+                                                            <td style={{ padding: '0.25rem 0.5rem', color: '#15803d', fontWeight: 600 }}>{m.lugar_sistema_nuevo}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </details>
+                                )}
+
+                                {importPreview.unmatched.length > 0 && (
+                                    <details>
+                                        <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#b91c1c' }}>Filas no matcheadas ({importPreview.unmatched.length})</summary>
+                                        <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.3rem', fontSize: '0.72rem', maxHeight: '180px', overflow: 'auto' }}>
+                                            {importPreview.unmatched.map((u, i) => (
+                                                <li key={i} style={{ marginBottom: '0.15rem' }}>
+                                                    <strong>{u.sheet}</strong> · {u.turno} · "{u.puesto}" → <em>{u.lugar_sistema}</em>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        <p style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: '#64748b' }}>
+                                            Estas filas del Excel no encontraron un puesto configurado con ese sector + turno + nombre. Creá los puestos faltantes abajo y reintenta.
+                                        </p>
+                                    </details>
+                                )}
+
+                                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.7rem' }}>
+                                    <button onClick={resetImport} disabled={applying} style={{ padding: '0.4rem 0.9rem', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>Cancelar</button>
+                                    <button onClick={() => runImport(true)} disabled={applying || importPreview.matches_count === 0} style={{ padding: '0.4rem 0.9rem', border: 'none', borderRadius: '6px', background: importPreview.matches_count === 0 ? '#94a3b8' : '#16a34a', color: '#fff', cursor: (applying || importPreview.matches_count === 0) ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 700 }}>
+                                        {applying ? 'Aplicando...' : `Aplicar cambios (${importPreview.matches_count})`}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* PASO 3: resultado aplicado */}
+                        {importApplied && (
+                            <div style={{ marginTop: '0.25rem', padding: '0.55rem 0.75rem', background: '#dcfce7', border: '1px solid #86efac', borderRadius: '6px', fontSize: '0.78rem', color: '#14532d', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                <div>✓ <strong>{importApplied.updated}</strong> puestos actualizados correctamente.</div>
+                                <button onClick={resetImport} style={{ padding: '0.3rem 0.7rem', border: '1px solid #86efac', borderRadius: '6px', background: '#fff', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: '#14532d' }}>Importar otro</button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
                     {/* Clientes */}
                     <div style={colCard}>
@@ -246,10 +386,32 @@ export default function PlanillasConfigPage() {
                                             </div>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                                                 {puestos.filter(p => p.turno === turno && p.active === 1).map(p => (
-                                                    <div key={p.id} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', background: '#fff', padding: '0.35rem 0.5rem', borderRadius: '5px' }}>
-                                                        <input style={{ ...inputStyle, padding: '0.3rem 0.5rem', flex: 2 }} defaultValue={p.nombre} onBlur={e => { if (e.target.value.trim() && e.target.value !== p.nombre) actualizarPuesto(p.id, { nombre: e.target.value.trim() }); }} />
-                                                        <input type="number" min={1} style={{ ...inputStyle, padding: '0.3rem 0.5rem', flex: 0.5, width: '60px' }} defaultValue={p.cantidad} onBlur={e => { const v = Math.max(1, Number(e.target.value) || 1); if (v !== p.cantidad) actualizarPuesto(p.id, { cantidad: v }); }} />
-                                                        <button style={{ ...btnMuted, color: '#dc2626' }} onClick={() => borrarPuesto(p.id)}><Trash2 size={13}/></button>
+                                                    <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', background: '#fff', padding: '0.4rem 0.55rem', borderRadius: '5px', border: '1px solid #e2e8f0' }}>
+                                                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                            <input
+                                                                style={{ ...inputStyle, padding: '0.3rem 0.5rem', flex: 2 }}
+                                                                defaultValue={p.nombre}
+                                                                placeholder="Nombre del puesto (ej. Asilo)"
+                                                                onBlur={e => { if (e.target.value.trim() && e.target.value !== p.nombre) actualizarPuesto(p.id, { nombre: e.target.value.trim() }); }}
+                                                            />
+                                                            <input
+                                                                type="number"
+                                                                min={1}
+                                                                style={{ ...inputStyle, padding: '0.3rem 0.5rem', flex: 0.5, width: '60px' }}
+                                                                defaultValue={p.cantidad}
+                                                                onBlur={e => { const v = Math.max(1, Number(e.target.value) || 1); if (v !== p.cantidad) actualizarPuesto(p.id, { cantidad: v }); }}
+                                                            />
+                                                            <button style={{ ...btnMuted, color: '#dc2626' }} onClick={() => borrarPuesto(p.id)}><Trash2 size={13}/></button>
+                                                        </div>
+                                                        <input
+                                                            style={{ ...inputStyle, padding: '0.25rem 0.5rem', fontSize: '0.74rem', color: '#475569', background: '#f8fafc' }}
+                                                            defaultValue={p.lugar_sistema || ''}
+                                                            placeholder="Lugar en sistema (ej. Casmu - Asilo - Limpiador) — para cruzar con Panel Mitrabajo"
+                                                            onBlur={e => {
+                                                                const val = e.target.value.trim();
+                                                                if (val !== (p.lugar_sistema || '')) actualizarPuesto(p.id, { lugar_sistema: val || null });
+                                                            }}
+                                                        />
                                                     </div>
                                                 ))}
                                                 {puestos.filter(p => p.turno === turno && p.active === 1).length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.72rem', margin: 0 }}>Turno sin puestos.</p>}

@@ -12,7 +12,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (!(await requireAdmin(request))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     try {
         const { id } = await params;
-        const { nombre, cantidad, orden, turno, active } = await request.json();
+        const { nombre, cantidad, orden, turno, active, lugar_sistema } = await request.json();
         const updates: string[] = [];
         const values: any[] = [];
         if (nombre !== undefined) { updates.push('nombre = ?'); values.push(String(nombre).trim()); }
@@ -20,6 +20,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         if (orden !== undefined) { updates.push('orden = ?'); values.push(Number(orden) || 0); }
         if (turno !== undefined) { updates.push('turno = ?'); values.push(String(turno).trim()); }
         if (active !== undefined) { updates.push('active = ?'); values.push(active ? 1 : 0); }
+        if (lugar_sistema !== undefined) {
+            updates.push('lugar_sistema = ?');
+            values.push(typeof lugar_sistema === 'string' ? lugar_sistema.trim() || null : null);
+        }
         if (updates.length === 0) return NextResponse.json({ error: 'Nada que actualizar' }, { status: 400 });
         values.push(id);
         await db.run(`UPDATE limpieza_puestos SET ${updates.join(', ')} WHERE id = ?`, values);
