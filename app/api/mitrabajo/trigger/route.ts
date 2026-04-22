@@ -40,9 +40,13 @@ export async function POST(request: NextRequest) {
         if (targetDate) args.push(targetDate);
 
         execFile(args[0], args.slice(1), { env: process.env, timeout: 120_000 }, (error, stdout, stderr) => {
+            // Propagar stdout/stderr del script a los logs del server (Railway deploy logs).
+            // Sin esto los console.log del script quedan atrapados en el buffer del callback
+            // y no se ven nunca en Railway.
+            if (stdout) process.stdout.write(`[mitrabajo trigger stdout]\n${stdout}`);
+            if (stderr) process.stderr.write(`[mitrabajo trigger stderr]\n${stderr}`);
             if (error) {
-                console.error('[mitrabajo trigger]', error.message);
-                console.error(stderr);
+                console.error('[mitrabajo trigger] error:', error.message);
                 resolve(NextResponse.json({
                     ok: false,
                     error: error.message,
