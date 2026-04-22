@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
     const clienteIdRaw = form.get('cliente_id');
     const clienteId = clienteIdRaw ? parseInt(String(clienteIdRaw), 10) : null;
     const apply = form.get('apply') === '1';
+    const createMissing = form.get('create_missing') === '1';
     if (!file) return NextResponse.json({ error: 'Archivo requerido' }, { status: 400 });
     if (!clienteId) return NextResponse.json({ error: 'cliente_id requerido' }, { status: 400 });
 
@@ -96,9 +97,19 @@ export async function POST(request: NextRequest) {
 
     let updated = 0;
     let skipped = 0;
+    let created = 0;
+    let createdSectors = 0;
     const unmatched: { sheet: string; turno: string; puesto: string; lugar_sistema: string }[] = [];
     const matches: { puesto_id: number; sector: string; turno: string; nombre: string; lugar_sistema_actual: string | null; lugar_sistema_nuevo: string }[] = [];
+    const toCreate: { sector: string; turno: string; nombre: string; lugar_sistema: string; sector_exists: boolean }[] = [];
     const seenPuestoIds = new Set<number>();
+    const plannedCreate = new Set<string>(); // sector|turno|nombre ya agendado para crear
+
+    // Indexar sectores existentes por norm para crear los faltantes si hace falta
+    const sectoresMap = new Map<string, { id: number; name: string }>();
+    for (const s of sectores as any[]) {
+      sectoresMap.set(normNombre(s.name), { id: s.id, name: s.name });
+    }
 
     for (const ws of wb.worksheets) {
       // Detectar cabecera. Si hay 2 columnas llamadas "Turno" (ej hoja Torre 2
@@ -145,6 +156,11 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+      // Si createMissing y la hoja no matchea con ningún sector existente,
+      // usar el nombre de la hoja como sector target (se creará si hace falta).
+      if (!targetSector && createMissing) {
+        targetSector = ws.name;
+      }
       if (!targetSector) continue; // hoja no matchea ningún sector del cliente
 
       for (let r = hdrRow + 1; r <= ws.rowCount; r++) {
@@ -159,6 +175,13 @@ export async function POST(request: NextRequest) {
         const key = `${normNombre(targetSector)}|${turno}|${normNombre(lugar_planilla)}`;
         const pInfo = puestoIndex.get(key);
         if (!pInfo) {
+          // Puesto inexistente: registrar en unmatched siempre; si createMissing,
+          // agendar su creación (dedup por key para no crear duplicados del mismo puesto).
+          if (createMissing && !plannedCreate.has(key)) {
+            plannedCreate.add(key);
+            const sectorExists = sectoresMap.has(normNombre(targetSector));
+            toCreate.push({ sector: targetSector, turno, nombre: lugar_planilla, lugar_sistema, sector_exists: sectorExists });
+          }
           unmatched.push({ sheet: ws.name, turno, puesto: lugar_planilla, lugar_sistema });
           skipped++;
           continue;
@@ -182,13 +205,55 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Si apply y createMissing, crear sectores/puestos faltantes
+    if (apply && createMissing && toCreate.length > 0) {
+      const isPg = (db as any).type === 'pg';
+      for (const c of toCreate) {
+        let sectorId: number | undefined;
+        const existingSector = sectoresMap.get(normNombre(c.sector));
+        if (existingSector) {
+          sectorId = existingSector.id;
+        } else {
+          // Crear sector
+          const sectorRes = await db.run(
+            'INSERT INTO limpieza_sectores (cliente_id, name) VALUES (?, ?)',
+            [clienteId, c.sector]
+          );
+          if (isPg) {
+            const r = await db.get(
+              'SELECT id FROM limpieza_sectores WHERE cliente_id = ? AND name = ? ORDER BY id DESC LIMIT 1',
+              [clienteId, c.sector]
+            );
+            sectorId = r?.id;
+          } else {
+            sectorId = sectorRes.lastInsertRowid as number;
+          }
+          if (sectorId) {
+            sectoresMap.set(normNombre(c.sector), { id: sectorId, name: c.sector });
+            createdSectors++;
+          }
+        }
+        if (!sectorId) continue;
+        // Crear puesto
+        await db.run(
+          'INSERT INTO limpieza_puestos (sector_id, turno, nombre, cantidad, orden, lugar_sistema) VALUES (?, ?, ?, 1, 0, ?)',
+          [sectorId, c.turno, c.nombre, c.lugar_sistema]
+        );
+        created++;
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       mode: apply ? 'applied' : 'preview',
       updated,
+      created,
+      createdSectors,
       skipped,
       matches_count: matches.length,
+      to_create_count: toCreate.length,
       matches,
+      to_create: toCreate,
       unmatched,
     });
   } catch (e: any) {

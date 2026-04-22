@@ -32,9 +32,11 @@ export default function PlanillasConfigPage() {
     const [applying, setApplying] = useState(false);
     interface ImportMatch { puesto_id: number; sector: string; turno: string; nombre: string; lugar_sistema_actual: string | null; lugar_sistema_nuevo: string; }
     interface ImportUnmatched { sheet: string; turno: string; puesto: string; lugar_sistema: string; }
-    interface ImportPreview { matches: ImportMatch[]; unmatched: ImportUnmatched[]; matches_count: number; skipped: number; }
+    interface ImportToCreate { sector: string; turno: string; nombre: string; lugar_sistema: string; sector_exists: boolean; }
+    interface ImportPreview { matches: ImportMatch[]; unmatched: ImportUnmatched[]; to_create: ImportToCreate[]; matches_count: number; to_create_count: number; skipped: number; }
     const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
-    const [importApplied, setImportApplied] = useState<{ updated: number } | null>(null);
+    const [importApplied, setImportApplied] = useState<{ updated: number; created: number; createdSectors: number } | null>(null);
+    const [createMissing, setCreateMissing] = useState(true);
 
     const isAdmin = currentUser?.role === 'admin';
 
@@ -46,17 +48,22 @@ export default function PlanillasConfigPage() {
             fd.append('file', importFile);
             fd.append('cliente_id', String(clienteSel));
             fd.append('apply', apply ? '1' : '0');
+            fd.append('create_missing', createMissing ? '1' : '0');
             const res = await fetch('/api/limpieza/admin/puestos/import-mapeo', { method: 'POST', body: fd });
             const data = await res.json();
             if (!res.ok) { alert(data.error || 'Error'); return; }
             if (apply) {
-                setImportApplied({ updated: data.updated });
+                setImportApplied({ updated: data.updated, created: data.created || 0, createdSectors: data.createdSectors || 0 });
                 if (sectorSel) fetchPuestos(sectorSel);
+                // Refrescar sectores si se crearon nuevos
+                if (data.createdSectors > 0 && clienteSel) fetchSectores(clienteSel);
             } else {
                 setImportPreview({
                     matches: data.matches || [],
                     unmatched: data.unmatched || [],
+                    to_create: data.to_create || [],
                     matches_count: data.matches_count || 0,
+                    to_create_count: data.to_create_count || 0,
                     skipped: data.skipped || 0,
                 });
             }
@@ -211,11 +218,17 @@ export default function PlanillasConfigPage() {
 
                         {/* PASO 1: elegir archivo y analizar */}
                         {!importPreview && !importApplied && (
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <input type="file" accept=".xlsx,.xls" onChange={e => setImportFile(e.target.files?.[0] || null)} style={{ flex: 1, minWidth: 0 }} />
-                                <button onClick={() => runImport(false)} disabled={!importFile || analyzing} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: '6px', background: importFile ? '#29416b' : '#94a3b8', color: '#fff', cursor: importFile && !analyzing ? 'pointer' : 'not-allowed', fontSize: '0.8rem', fontWeight: 700 }}>
-                                    {analyzing ? 'Analizando...' : 'Analizar y ver preview →'}
-                                </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <input type="file" accept=".xlsx,.xls" onChange={e => setImportFile(e.target.files?.[0] || null)} style={{ flex: 1, minWidth: 0 }} />
+                                    <button onClick={() => runImport(false)} disabled={!importFile || analyzing} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: '6px', background: importFile ? '#29416b' : '#94a3b8', color: '#fff', cursor: importFile && !analyzing ? 'pointer' : 'not-allowed', fontSize: '0.8rem', fontWeight: 700 }}>
+                                        {analyzing ? 'Analizando...' : 'Analizar y ver preview →'}
+                                    </button>
+                                </div>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.76rem', color: '#334155', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={createMissing} onChange={e => setCreateMissing(e.target.checked)} />
+                                    Crear sectores y puestos faltantes automáticamente (recomendado para primer import)
+                                </label>
                             </div>
                         )}
 
@@ -226,8 +239,13 @@ export default function PlanillasConfigPage() {
                                     Preview de cambios (nada aplicado todavía)
                                 </div>
                                 <div style={{ marginBottom: '0.5rem' }}>
-                                    <strong style={{ color: '#15803d' }}>{importPreview.matches_count}</strong> puestos a actualizar ·
-                                    <strong style={{ color: '#b91c1c', marginLeft: '0.35rem' }}>{importPreview.skipped}</strong> filas sin match
+                                    <strong style={{ color: '#15803d' }}>{importPreview.matches_count}</strong> puestos a actualizar
+                                    {createMissing && (
+                                        <> · <strong style={{ color: '#2563eb' }}>{importPreview.to_create_count}</strong> puestos nuevos a crear</>
+                                    )}
+                                    {!createMissing && (
+                                        <> · <strong style={{ color: '#b91c1c' }}>{importPreview.skipped}</strong> filas sin match</>
+                                    )}
                                 </div>
 
                                 {importPreview.matches.length > 0 && (
@@ -260,7 +278,37 @@ export default function PlanillasConfigPage() {
                                     </details>
                                 )}
 
-                                {importPreview.unmatched.length > 0 && (
+                                {createMissing && importPreview.to_create.length > 0 && (
+                                    <details open style={{ marginBottom: '0.4rem' }}>
+                                        <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#2563eb' }}>Puestos nuevos a crear ({importPreview.to_create.length})</summary>
+                                        <div style={{ marginTop: '0.3rem', maxHeight: '220px', overflow: 'auto', border: '1px solid #f1f5f9', borderRadius: '4px' }}>
+                                            <table style={{ width: '100%', fontSize: '0.72rem', borderCollapse: 'collapse' }}>
+                                                <thead style={{ background: '#eff6ff', position: 'sticky', top: 0 }}>
+                                                    <tr>
+                                                        <th style={{ padding: '0.3rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#1e3a8a' }}>Sector</th>
+                                                        <th style={{ padding: '0.3rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#1e3a8a' }}>Turno</th>
+                                                        <th style={{ padding: '0.3rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#1e3a8a' }}>Puesto</th>
+                                                        <th style={{ padding: '0.3rem 0.5rem', textAlign: 'left', fontWeight: 700, color: '#1e3a8a' }}>Lugar en sistema</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {importPreview.to_create.map((u, i) => (
+                                                        <tr key={i} style={{ borderTop: '1px solid #f1f5f9' }}>
+                                                            <td style={{ padding: '0.25rem 0.5rem' }}>
+                                                                {u.sector}
+                                                                {!u.sector_exists && <span style={{ marginLeft: '0.35rem', fontSize: '0.65rem', color: '#2563eb', background: '#dbeafe', padding: '0.1rem 0.3rem', borderRadius: '3px', fontWeight: 600 }}>NUEVO</span>}
+                                                            </td>
+                                                            <td style={{ padding: '0.25rem 0.5rem' }}>{u.turno}</td>
+                                                            <td style={{ padding: '0.25rem 0.5rem' }}>{u.nombre}</td>
+                                                            <td style={{ padding: '0.25rem 0.5rem', color: '#059669', fontWeight: 500 }}>{u.lugar_sistema}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </details>
+                                )}
+                                {!createMissing && importPreview.unmatched.length > 0 && (
                                     <details>
                                         <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#b91c1c' }}>Filas no matcheadas ({importPreview.unmatched.length})</summary>
                                         <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.3rem', fontSize: '0.72rem', maxHeight: '180px', overflow: 'auto' }}>
@@ -271,16 +319,21 @@ export default function PlanillasConfigPage() {
                                             ))}
                                         </ul>
                                         <p style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: '#64748b' }}>
-                                            Estas filas del Excel no encontraron un puesto configurado con ese sector + turno + nombre. Creá los puestos faltantes abajo y reintenta.
+                                            Estas filas del Excel no encontraron un puesto configurado con ese sector + turno + nombre. Activá "Crear faltantes" arriba o creá los puestos manualmente.
                                         </p>
                                     </details>
                                 )}
 
                                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.7rem' }}>
                                     <button onClick={resetImport} disabled={applying} style={{ padding: '0.4rem 0.9rem', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>Cancelar</button>
-                                    <button onClick={() => runImport(true)} disabled={applying || importPreview.matches_count === 0} style={{ padding: '0.4rem 0.9rem', border: 'none', borderRadius: '6px', background: importPreview.matches_count === 0 ? '#94a3b8' : '#16a34a', color: '#fff', cursor: (applying || importPreview.matches_count === 0) ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 700 }}>
-                                        {applying ? 'Aplicando...' : `Aplicar cambios (${importPreview.matches_count})`}
-                                    </button>
+                                    {(() => {
+                                        const totalOps = importPreview.matches_count + (createMissing ? importPreview.to_create_count : 0);
+                                        return (
+                                            <button onClick={() => runImport(true)} disabled={applying || totalOps === 0} style={{ padding: '0.4rem 0.9rem', border: 'none', borderRadius: '6px', background: totalOps === 0 ? '#94a3b8' : '#16a34a', color: '#fff', cursor: (applying || totalOps === 0) ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontWeight: 700 }}>
+                                                {applying ? 'Aplicando...' : `Aplicar cambios (${totalOps})`}
+                                            </button>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         )}
@@ -288,7 +341,11 @@ export default function PlanillasConfigPage() {
                         {/* PASO 3: resultado aplicado */}
                         {importApplied && (
                             <div style={{ marginTop: '0.25rem', padding: '0.55rem 0.75rem', background: '#dcfce7', border: '1px solid #86efac', borderRadius: '6px', fontSize: '0.78rem', color: '#14532d', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                <div>✓ <strong>{importApplied.updated}</strong> puestos actualizados correctamente.</div>
+                                <div>
+                                    ✓ <strong>{importApplied.updated}</strong> puestos actualizados
+                                    {importApplied.created > 0 && <> · <strong>{importApplied.created}</strong> puestos nuevos creados</>}
+                                    {importApplied.createdSectors > 0 && <> · <strong>{importApplied.createdSectors}</strong> sectores nuevos</>}
+                                </div>
                                 <button onClick={resetImport} style={{ padding: '0.3rem 0.7rem', border: '1px solid #86efac', borderRadius: '6px', background: '#fff', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: '#14532d' }}>Importar otro</button>
                             </div>
                         )}
