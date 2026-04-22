@@ -124,6 +124,14 @@ export default function PlanillasConfigPage() {
         await fetch(`/api/limpieza/admin/puestos/${id}`, { method: 'DELETE' });
         if (sectorSel) fetchPuestos(sectorSel);
     };
+    const borrarTurno = async (turno: string) => {
+        if (!sectorSel) return;
+        const delPuestos = puestos.filter(p => p.turno === turno && p.active === 1);
+        const count = delPuestos.length;
+        if (!confirm(`¿Eliminar el turno "${turno}"${count > 0 ? ` y sus ${count} puesto${count !== 1 ? 's' : ''}` : ''}?\n\nEsta acción no afecta los informes ya guardados.`)) return;
+        await Promise.all(delPuestos.map(p => fetch(`/api/limpieza/admin/puestos/${p.id}`, { method: 'DELETE' })));
+        fetchPuestos(sectorSel);
+    };
 
     const activos = clientes.filter(c => c.active === 1);
     const sectoresActivos = sectores.filter(s => s.active === 1);
@@ -229,9 +237,12 @@ export default function PlanillasConfigPage() {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem', overflowY: 'auto', maxHeight: '500px' }}>
                                     {turnosDelSector.map(turno => (
                                         <div key={turno} style={{ background: '#f1f5f9', borderRadius: '8px', padding: '0.7rem', border: '1px solid #cbd5e1' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem', gap: '0.4rem' }}>
                                                 <span style={{ fontWeight: 800, color: '#1d3461', fontSize: '0.82rem', letterSpacing: '0.04em' }}>{turno}</span>
-                                                <button style={{ ...btnPrimary, padding: '0.3rem 0.55rem', fontSize: '0.72rem' }} onClick={() => agregarPuesto(turno)}><Plus size={12}/> Puesto</button>
+                                                <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                                                    <button style={{ ...btnPrimary, padding: '0.3rem 0.55rem', fontSize: '0.72rem' }} onClick={() => agregarPuesto(turno)}><Plus size={12}/> Puesto</button>
+                                                    <button style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: '6px', padding: '0.3rem 0.5rem', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 700 }} onClick={() => borrarTurno(turno)} title="Eliminar turno completo"><Trash2 size={12}/> Turno</button>
+                                                </div>
                                             </div>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                                                 {puestos.filter(p => p.turno === turno && p.active === 1).map(p => (
