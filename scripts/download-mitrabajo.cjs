@@ -20,6 +20,7 @@ const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 const XLSX = require('xlsx');
+const { sendMitrabajoEmail } = require('../lib/mitrabajo-mailer.cjs');
 
 async function saveToDb(fecha, xlsxPath) {
   const data = fs.readFileSync(xlsxPath);
@@ -55,6 +56,7 @@ async function saveToDb(fecha, xlsxPath) {
          )`
       );
       console.log(`[mitrabajo] Guardado en DB (PG): ${filename} (${data.length} bytes)`);
+      await sendMitrabajoEmail({ ctx: { type: 'pg', pool }, fecha, filename, buffer: data });
     } finally {
       await pool.end();
     }
@@ -79,8 +81,9 @@ async function saveToDb(fecha, xlsxPath) {
            SELECT id FROM mitrabajo_files ORDER BY file_date DESC LIMIT 5
          )`
       ).run();
-      sqlite.close();
       console.log(`[mitrabajo] Guardado en DB (SQLite): ${filename}`);
+      await sendMitrabajoEmail({ ctx: { type: 'sqlite', sqlite }, fecha, filename, buffer: data });
+      sqlite.close();
     }
   }
 }

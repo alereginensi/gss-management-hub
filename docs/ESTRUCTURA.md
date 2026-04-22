@@ -183,6 +183,7 @@ Código TypeScript puro, sin dependencias de Next.js. Se importa desde páginas 
 |---------|---------|
 | [`cloudinary.ts`](../lib/cloudinary.ts) | Cliente Cloudinary: subir y borrar archivos en la nube |
 | [`mitrabajo-download.js`](../lib/mitrabajo-download.js) | Descarga de reportes desde mitrabajo.uy con Playwright (versión lib) |
+| [`mitrabajo-mailer.cjs`](../lib/mitrabajo-mailer.cjs) | Envío del Excel como adjunto vía SMTP tras guardar en DB (lee destinatarios de `mitrabajo_config`) |
 | [`rate-limit.ts`](../lib/rate-limit.ts) | Rate limiting en memoria por IP y clave. Incluye `getClientIp` (compatible con Railway) |
 
 ---

@@ -160,13 +160,19 @@ Integración con el portal externo **mitrabajo.uy** (sistema de asistencia del M
 | Archivo | Rol |
 |---------|-----|
 | `lib/mitrabajo-download.js` | Lógica principal: login, filtro de fecha, descarga, conversión `.xls→.xlsx`. Importado directamente por el API route (no `execFile`) |
+| `lib/mitrabajo-mailer.cjs` | Envío del Excel como adjunto vía SMTP (nodemailer). Llamado desde ambos `saveToDb`; lee destinatarios de `mitrabajo_config`; falla silenciosamente si falla SMTP |
 | `scripts/download-mitrabajo.cjs` | CLI wrapper — llama a `lib/mitrabajo-download.js`. Uso: `npm run mitrabajo:download` o con `--debug` para ver el browser |
 | `scripts/cron-mitrabajo.cjs` | Proceso cron persistente con `node-cron`. En Railway corre como `node scripts/cron-mitrabajo.cjs & next start` |
-| `app/mitrabajo/page.tsx` | UI: lista archivos descargados, descarga individual, elimina, trigger manual con fecha opcional |
+| `app/mitrabajo/page.tsx` | UI: lista archivos descargados, descarga individual, elimina, trigger manual con fecha opcional, config de destinatarios del mail automático |
 | `app/api/mitrabajo/files/` | Lista archivos `.xlsx` en `downloads/mitrabajo/` |
 | `app/api/mitrabajo/download/` | Sirve un archivo con auth (sin URL pública directa) |
 | `app/api/mitrabajo/delete/` | Elimina un archivo |
 | `app/api/mitrabajo/trigger/` | Dispara descarga on-demand importando `lib/mitrabajo-download.js` |
+| `app/api/mitrabajo/config/` | GET/PUT config de destinatarios y toggle `email_enabled` (tabla `mitrabajo_config`) |
+
+### Envío automático por email
+
+Tras cada `saveToDb` (cron diario o trigger manual), el helper `lib/mitrabajo-mailer.cjs` lee la tabla `mitrabajo_config` (singleton id=1 con `email_recipients TEXT`, `email_enabled INTEGER`) y si hay destinatarios y el toggle está activo envía el xlsx como adjunto usando las vars SMTP estándar. Es **fail-open**: si SMTP no está configurado, no hay recipients, o falla el envío, loguea y sigue (no rompe el cron). La tabla se crea/seedea en `lib/db.ts` y también defensivamente desde el mailer (`ensureTable`) para que el cron funcione aunque arranque antes que Next.
 
 ### Acceso y roles
 
@@ -181,6 +187,8 @@ MITRABAJO_USER=        # usuario del portal mitrabajo.uy
 MITRABAJO_PASS=        # contraseña
 MITRABAJO_DOWNLOAD_DIR= # opcional, default: downloads/mitrabajo
 ```
+
+Para el envío automático por email usa las vars SMTP globales (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`). Los destinatarios no son env var — se configuran desde la UI en `/mitrabajo` y se guardan en `mitrabajo_config.email_recipients` (CSV).
 
 ### Deploy en Railway
 

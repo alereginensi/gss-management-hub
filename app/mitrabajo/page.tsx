@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Download, RefreshCw, FileSpreadsheet, Calendar, LogOut, AlertCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, FileSpreadsheet, Calendar, LogOut, AlertCircle, Trash2, Mail, Save } from 'lucide-react';
 import { useTicketContext } from '@/app/context/TicketContext';
 
 interface MitrabajoFile {
@@ -39,6 +39,11 @@ export default function MitrabajoPage() {
     const [triggerMsg, setTriggerMsg] = useState<{ ok: boolean; text: string } | null>(null);
     const [customDate, setCustomDate] = useState('');
 
+    const [emailRecipients, setEmailRecipients] = useState('');
+    const [emailEnabled, setEmailEnabled] = useState(true);
+    const [savingConfig, setSavingConfig] = useState(false);
+    const [configMsg, setConfigMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
     const getAuthHeaders = (): HeadersInit => {
         return {};
     };
@@ -56,12 +61,46 @@ export default function MitrabajoPage() {
         }
     }, []);
 
+    const loadConfig = useCallback(async () => {
+        try {
+            const res = await fetch('/api/mitrabajo/config');
+            if (!res.ok) return;
+            const data = await res.json();
+            setEmailRecipients(data.email_recipients ?? '');
+            setEmailEnabled(!!data.email_enabled);
+        } catch { /* ignore */ }
+    }, []);
+
+    const saveConfig = async () => {
+        setSavingConfig(true);
+        setConfigMsg(null);
+        try {
+            const res = await fetch('/api/mitrabajo/config', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email_recipients: emailRecipients, email_enabled: emailEnabled }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setEmailRecipients(data.email_recipients ?? '');
+                setConfigMsg({ ok: true, text: 'Configuracion guardada.' });
+            } else {
+                setConfigMsg({ ok: false, text: data.error ?? 'Error al guardar.' });
+            }
+        } catch (e: any) {
+            setConfigMsg({ ok: false, text: e.message });
+        } finally {
+            setSavingConfig(false);
+        }
+    };
+
     useEffect(() => {
         if (loading) return;
         if (!isAuthenticated) { router.push('/login'); return; }
         if (currentUser && !hasMitrabajoAccess(currentUser)) { router.push('/'); return; }
         loadFiles();
-    }, [loading, isAuthenticated, currentUser, router, loadFiles]);
+        loadConfig();
+    }, [loading, isAuthenticated, currentUser, router, loadFiles, loadConfig]);
 
     const handleDownloadFile = (filename: string) => {
         const url = `/api/mitrabajo/download?file=${encodeURIComponent(filename)}`;
@@ -178,6 +217,48 @@ export default function MitrabajoPage() {
                             {triggerMsg.text}
                         </div>
                     )}
+                </div>
+
+                {/* Notificaciones por email */}
+                <div className="card" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
+                    <h2 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                        <Mail size={16} color="var(--primary-color)" /> Notificaciones por email
+                    </h2>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: '0.85rem' }}>
+                        Tras cada descarga, el sistema envia el Excel como adjunto a estas direcciones. Separalas con comas.
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        <input
+                            type="text"
+                            value={emailRecipients}
+                            onChange={e => setEmailRecipients(e.target.value)}
+                            placeholder="persona1@gss.com.uy, persona2@ejemplo.com"
+                            className="input"
+                            style={{ padding: '0.55rem 0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-color)', color: 'var(--text-primary)', fontSize: '0.85rem', width: '100%' }}
+                        />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                            <input
+                                type="checkbox"
+                                checked={emailEnabled}
+                                onChange={e => setEmailEnabled(e.target.checked)}
+                            />
+                            Activar envio automatico
+                        </label>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <button
+                                onClick={saveConfig}
+                                disabled={savingConfig}
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.55rem 1rem', backgroundColor: 'var(--primary-color)', color: '#fff', border: 'none', borderRadius: 'var(--radius)', cursor: savingConfig ? 'not-allowed' : 'pointer', fontSize: '0.82rem', fontWeight: 600, opacity: savingConfig ? 0.7 : 1 }}
+                            >
+                                <Save size={14} /> {savingConfig ? 'Guardando...' : 'Guardar'}
+                            </button>
+                            {configMsg && (
+                                <span style={{ fontSize: '0.8rem', color: configMsg.ok ? '#166534' : '#991b1b' }}>
+                                    {configMsg.text}
+                                </span>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Lista de archivos */}

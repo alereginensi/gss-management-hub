@@ -131,7 +131,7 @@ Gestión comercial y liquidación de horas: categorías de empleados, tarifas po
 Acceso al sistema de gestión de uniformes desde el área de RRHH. Permite consultar y registrar entregas al personal.
 
 ### Mi Trabajo (Mitrabajo)
-Descarga automática diaria del reporte de asistencia desde el portal externo mitrabajo.uy. Los archivos quedan disponibles para descarga directa desde el sistema.
+Descarga automática diaria del reporte de asistencia desde el portal externo mitrabajo.uy. Los archivos quedan disponibles para descarga directa desde el sistema y, opcionalmente, se envían por email como adjunto a los destinatarios configurados en la misma sección.
 
 ### Administración de Usuarios
 Gestión completa de cuentas: aprobar registros nuevos, crear usuarios manualmente, asignar roles y módulos, bloquear accesos y administrar el personal de campo (funcionarios).

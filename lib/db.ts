@@ -1613,6 +1613,20 @@ class DbWrapper {
  `);
  } catch (e) {}
 
+ // mitrabajo_config: singleton con destinatarios del mail automatico tras la descarga diaria
+ try {
+ await this.pgPool!.query(`
+ CREATE TABLE IF NOT EXISTS mitrabajo_config (
+ id INTEGER PRIMARY KEY DEFAULT 1,
+ email_recipients TEXT,
+ email_enabled INTEGER DEFAULT 1,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ CHECK (id = 1)
+ )
+ `);
+ await this.pgPool!.query(`INSERT INTO mitrabajo_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING`);
+ } catch (e) {}
+
  } catch (err) {
  console.error('Error initializing Postgres:', err);
  }
@@ -2130,6 +2144,17 @@ class DbWrapper {
  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
  )
  `);
+
+ // mitrabajo_config: singleton con destinatarios del mail automatico
+ this.sqliteDb.exec(`
+ CREATE TABLE IF NOT EXISTS mitrabajo_config (
+ id INTEGER PRIMARY KEY CHECK (id = 1),
+ email_recipients TEXT,
+ email_enabled INTEGER DEFAULT 1,
+ updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+ )
+ `);
+ this.sqliteDb.exec(`INSERT OR IGNORE INTO mitrabajo_config (id) VALUES (1)`);
 
  // Seed funcionarios_list for SQLite
  const funcCountSqlite = this.sqliteDb.prepare('SELECT COUNT(*) as count FROM funcionarios_list').get();
