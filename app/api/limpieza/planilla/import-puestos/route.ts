@@ -11,6 +11,7 @@ interface ItemToImport {
   nombre?: string;
   cedula?: string;
   categoria?: string;
+  fecha?: string; // si viene del panel, cada fila trae su propia fecha (override)
 }
 
 // POST /api/limpieza/planilla/import-puestos
@@ -64,6 +65,8 @@ export async function POST(request: NextRequest) {
       const turno = String(it.turno || '').trim();
       if (!sector || !puesto || !turno) continue;
 
+      // Si la fila trae su propia fecha (del panel), usarla; sino usar la fecha del form
+      const fechaRow = it.fecha && /^\d{4}-\d{2}-\d{2}$/.test(it.fecha) ? it.fecha : fecha;
       const nombre = it.nombre ? String(it.nombre).trim() : null;
       const cedula = it.cedula ? String(it.cedula).trim() : null;
       const categoria = it.categoria ? String(it.categoria).trim() : null;
@@ -73,13 +76,13 @@ export async function POST(request: NextRequest) {
         ? await db.get(
             `SELECT id FROM limpieza_asistencia
              WHERE fecha = ? AND seccion = ? AND cliente = ? AND sector = ? AND puesto = ? AND cedula = ?`,
-            [fecha, turno, cliente, sector, puesto, cedula]
+            [fechaRow, turno, cliente, sector, puesto, cedula]
           )
         : await db.get(
             `SELECT id FROM limpieza_asistencia
              WHERE fecha = ? AND seccion = ? AND cliente = ? AND sector = ? AND puesto = ?
                AND (cedula IS NULL OR cedula = '')`,
-            [fecha, turno, cliente, sector, puesto]
+            [fechaRow, turno, cliente, sector, puesto]
           );
       if (dup) { skipped.push({ puesto, sector, turno, cedula: cedula || undefined }); continue; }
 
@@ -90,7 +93,7 @@ export async function POST(request: NextRequest) {
         `INSERT INTO limpieza_asistencia
          (fecha, seccion, funcionario_id, nombre, cedula, cliente, sector, puesto, categoria, planificado, import_batch_id, asistio)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, NULL)`,
-        [fecha, turno, lu?.id || null, nombre, cedula, cliente, sector, puesto, categoria, batchId]
+        [fechaRow, turno, lu?.id || null, nombre, cedula, cliente, sector, puesto, categoria, batchId]
       );
       created++;
     }

@@ -338,12 +338,18 @@ export default function InformesOperativosPage() {
         cantidad: number;
         funcionario_nombre?: string;
         funcionario_cedula?: string;
+        categoria?: string;
+        fecha?: string;
     }
     interface ParsedSheet { name: string; rows: ParsedRow[]; missing_headers: string[]; }
+    interface PanelStats { panel_total: number; matched: number; discarded: number; discarded_samples: string[]; fechas_detectadas: string[]; }
     const [previewSheets, setPreviewSheets] = useState<ParsedSheet[] | null>(null);
     const [sheetSectorMap, setSheetSectorMap] = useState<Record<string, string>>({});
     const [parsingPreview, setParsingPreview] = useState(false);
     const [importing, setImporting] = useState(false);
+    const [panelFile, setPanelFile] = useState<File | null>(null);
+    const [panelStats, setPanelStats] = useState<PanelStats | null>(null);
+    const [previewMode, setPreviewMode] = useState<'template' | 'crossed'>('template');
     const [exporting, setExporting] = useState<'' | 'excel' | 'versus'>('');
 
     const isAdmin = currentUser?.role === 'admin';
@@ -522,6 +528,7 @@ export default function InformesOperativosPage() {
         try {
             const fd = new FormData();
             fd.append('file', uploadFile);
+            if (panelFile) fd.append('panel', panelFile);
             // NO pasar getAuthHeaders(): setea Content-Type:application/json y pisa el
             // multipart/form-data que el browser auto-genera con el boundary. La auth
             // viaja en cookie, no hace falta el header.
@@ -532,6 +539,8 @@ export default function InformesOperativosPage() {
                 return;
             }
             setPreviewSheets(data.sheets || []);
+            setPanelStats(data.panel_stats || null);
+            setPreviewMode(data.mode || 'template');
             // Auto-mapear: si el nombre de la hoja contiene el nombre de algún sector configurado, lo preselecciona.
             const sectoresActivos = getSectoresForCliente(clienteSeleccionado);
             const map: Record<string, string> = {};
@@ -567,7 +576,8 @@ export default function InformesOperativosPage() {
                     turno: row.turno,
                     nombre: row.funcionario_nombre || null,
                     cedula: row.funcionario_cedula || null,
-                    categoria: uploadCategoria || null,
+                    categoria: row.categoria || uploadCategoria || null,
+                    fecha: row.fecha || null,
                 });
             }
         }
@@ -612,6 +622,9 @@ export default function InformesOperativosPage() {
         setUploadCategoria('');
         setPreviewSheets(null);
         setSheetSectorMap({});
+        setPanelFile(null);
+        setPanelStats(null);
+        setPreviewMode('template');
     };
 
     const handleExport = async (type: 'excel' | 'versus') => {
@@ -1429,11 +1442,17 @@ export default function InformesOperativosPage() {
                                     <strong>Fecha:</strong> {fecha} &nbsp; <strong>Cliente:</strong> {clienteSeleccionado || '—'}
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>Archivo xlsx</label>
+                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>1. Plantilla de puestos (Excel Casmu)</label>
                                     <input type="file" accept=".xlsx,.xls" onChange={e => setUploadFile(e.target.files?.[0] || null)} style={{ width: '100%' }} />
                                     <p style={{ fontSize: '0.72rem', color: '#64748b', margin: '0.35rem 0 0', lineHeight: 1.45 }}>
-                                        El archivo debe tener columnas <strong>Lugar en sistema / Lugar</strong>, <strong>Lugar en Planilla / Titular / Puesto</strong> y <strong>Turno</strong>.
-                                        Cada <strong>hoja</strong> = un sector. Funcionario/Cédula opcionales.
+                                        Columnas: <strong>Lugar en sistema / Lugar</strong>, <strong>Lugar en Planilla / Titular / Puesto</strong>, <strong>Turno</strong>. Cada hoja = un sector.
+                                    </p>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '0.3rem' }}>2. Panel de control (Mitrabajo) — opcional</label>
+                                    <input type="file" accept=".xlsx,.xls" onChange={e => setPanelFile(e.target.files?.[0] || null)} style={{ width: '100%' }} />
+                                    <p style={{ fontSize: '0.72rem', color: '#64748b', margin: '0.35rem 0 0', lineHeight: 1.45 }}>
+                                        Excel exportado del panel Mitrabajo con los funcionarios reales (fecha, local, CI, nombre). Si lo subís, el sistema cruza cada fila con la plantilla y autocompleta el funcionario. Los registros que no matchean con ningún puesto de la plantilla <strong>se descartan</strong>.
                                     </p>
                                 </div>
                                 <div>
@@ -1457,8 +1476,29 @@ export default function InformesOperativosPage() {
                             // ── Paso 2: preview con mapeo hoja→sector ─────────────────────────
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                                 <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '0.6rem 0.8rem', fontSize: '0.78rem', color: '#1d3461' }}>
-                                    <strong>Fecha:</strong> {fecha} &nbsp; <strong>Cliente:</strong> {clienteSeleccionado || '—'} &nbsp; <strong>Total filas detectadas:</strong> {previewSheets.reduce((sum, s) => sum + s.rows.length, 0)}
+                                    <strong>Cliente:</strong> {clienteSeleccionado || '—'} &nbsp; <strong>Modo:</strong> {previewMode === 'crossed' ? 'Cruzado (plantilla + panel)' : 'Solo plantilla'} &nbsp; <strong>Filas a importar:</strong> {previewSheets.reduce((sum, s) => sum + s.rows.length, 0)}
+                                    {previewMode === 'template' && <span> &nbsp; <strong>Fecha:</strong> {fecha}</span>}
                                 </div>
+                                {panelStats && (
+                                    <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '8px', padding: '0.6rem 0.8rem', fontSize: '0.78rem', color: '#78350f' }}>
+                                        <div>
+                                            <strong>Panel de control:</strong> {panelStats.panel_total} filas leídas · <span style={{ color: '#15803d', fontWeight: 600 }}>{panelStats.matched} cruzadas</span> · <span style={{ color: '#b91c1c', fontWeight: 600 }}>{panelStats.discarded} descartadas</span>
+                                        </div>
+                                        {panelStats.fechas_detectadas.length > 0 && (
+                                            <div style={{ marginTop: '0.25rem' }}>
+                                                <strong>Fechas detectadas:</strong> {panelStats.fechas_detectadas.join(', ')}
+                                            </div>
+                                        )}
+                                        {panelStats.discarded_samples.length > 0 && (
+                                            <details style={{ marginTop: '0.3rem' }}>
+                                                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Ejemplos de locales descartados ({panelStats.discarded_samples.length} de {panelStats.discarded})</summary>
+                                                <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.3rem' }}>
+                                                    {panelStats.discarded_samples.map((d, i) => <li key={i}>{d}</li>)}
+                                                </ul>
+                                            </details>
+                                        )}
+                                    </div>
+                                )}
                                 {previewSheets.map(sheet => {
                                     const sectoresDisponibles = getSectoresForCliente(clienteSeleccionado || '');
                                     return (

@@ -43,12 +43,44 @@ interface ParsedRow {
   cantidad: number;
   funcionario_nombre?: string;
   funcionario_cedula?: string;
+  categoria?: string;
+  fecha?: string;
   raw: Record<string, string>;
 }
 interface ParsedSheet {
   name: string;
   rows: ParsedRow[];
   missing_headers: string[];
+}
+
+// Normaliza "Local" del panel y "Lugar en sistema" del template para matching.
+// Quita "Casmu 2" / "Casmu" prefix, tildes, dashes, dobles espacios.
+function normalizeLocal(s: string): string {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\bcasmu\s*2\b/g, '')
+    .replace(/\bcasmu\b/g, '')
+    .replace(/[\-\/]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Convierte entrada/salida planificada del panel (HH:MM) a turno tipo "6 A 14"
+function turnoFromHorario(entrada: string, salida: string): string {
+  if (!entrada || !salida) return '';
+  const e = entrada.split(':')[0].replace(/^0+/, '') || '0';
+  const s = salida.split(':')[0].replace(/^0+/, '') || '0';
+  if (e === '0' && salida === '23:59') return ''; // supervisor sin turno fijo
+  return `${e} A ${s}`;
+}
+
+// DD/MM/YYYY → YYYY-MM-DD
+function parseFechaPanel(raw: string): string {
+  const m = String(raw || '').trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (!m) return '';
+  return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
 }
 
 // POST /api/limpieza/planilla/parse-puestos
@@ -71,6 +103,7 @@ export async function POST(request: NextRequest) {
   try {
     const form = await request.formData();
     const file = form.get('file') as File | null;
+    const panelFile = form.get('panel') as File | null;
     if (!file) return NextResponse.json({ error: 'Archivo requerido' }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -140,9 +173,124 @@ export async function POST(request: NextRequest) {
       sheets.push({ name: ws.name, rows, missing_headers: [] });
     }
 
+    // Si vino también el Panel de Control (Mitrabajo), cruzar funcionarios reales
+    // con la estructura del template. Por cada row del panel que matchee un
+    // "Lugar en sistema" → crear row en el sheet correspondiente con los datos
+    // reales del funcionario. Rows del panel sin match → descartadas.
+    let matched = 0;
+    let discarded = 0;
+    let panelTotalRows = 0;
+    const discardedSamples: string[] = [];
+    let mode: 'template' | 'crossed' = 'template';
+    let fechasDetectadas: string[] = [];
+
+    if (panelFile) {
+      mode = 'crossed';
+      const panelBuf = Buffer.from(await panelFile.arrayBuffer());
+      const panelWb = new ExcelJS.Workbook();
+      await panelWb.xlsx.load(panelBuf as any);
+      const pWs = panelWb.worksheets[0];
+      if (!pWs) return NextResponse.json({ error: 'El panel no tiene hojas' }, { status: 400 });
+
+      // Detectar cabecera del panel (primer row con "local" + "ci" + "nombre")
+      let pHeaderRow = 0;
+      const pCols: Record<string, number> = {};
+      for (let r = 1; r <= Math.min(pWs.rowCount, 5); r++) {
+        const row = pWs.getRow(r);
+        const keys: Record<string, number> = {};
+        for (let c = 1; c <= Math.min(pWs.columnCount, 40); c++) {
+          const k = normKey(row.getCell(c).value);
+          if (k && !keys[k]) keys[k] = c;
+        }
+        if (keys['local'] && keys['ci'] && keys['nombre']) {
+          pHeaderRow = r;
+          Object.assign(pCols, keys);
+          break;
+        }
+      }
+      if (!pHeaderRow) {
+        return NextResponse.json({ error: 'El panel no tiene cabecera con Local, CI y Nombre.' }, { status: 400 });
+      }
+      const cLocal = pCols['local'];
+      const cCI = pCols['ci'] || pCols['cedula'] || pCols['documento'];
+      const cNombrePanel = pCols['nombre'];
+      const cFechaPanel = pCols['fecha'];
+      const cCategoriaPanel = pCols['categoria'];
+      const cEntrada = pCols['entradaplanificada'] || pCols['entrada'];
+      const cSalida = pCols['salidaplanificada'] || pCols['salida'];
+
+      // Indexar template por normalizeLocal(lugar_sistema)
+      const index = new Map<string, { sheet: string; lugar_planilla: string; turno: string; lugar_sistema: string }[]>();
+      for (const s of sheets) {
+        for (const r of s.rows) {
+          const key = normalizeLocal(r.lugar_sistema);
+          if (!key) continue;
+          if (!index.has(key)) index.set(key, []);
+          index.get(key)!.push({ sheet: s.name, lugar_planilla: r.lugar_planilla, turno: r.turno, lugar_sistema: r.lugar_sistema });
+        }
+      }
+
+      // Limpiar rows del template (vamos a poblarlas solo con matches del panel)
+      for (const s of sheets) s.rows = [];
+
+      const fechasSet = new Set<string>();
+
+      for (let r = pHeaderRow + 1; r <= pWs.rowCount; r++) {
+        const row = pWs.getRow(r);
+        const get = (c: number) => c ? cellText(row.getCell(c).value) : '';
+        const local = get(cLocal);
+        const ci = get(cCI);
+        const rawNombre = get(cNombrePanel);
+        if (!local && !ci && !rawNombre) continue; // fila vacía
+        if (!local || !ci || !rawNombre) continue;
+
+        panelTotalRows++;
+        const key = normalizeLocal(local);
+        const matches = index.get(key);
+        if (!matches || !matches.length) {
+          discarded++;
+          if (discardedSamples.length < 8) discardedSamples.push(local);
+          continue;
+        }
+        const entrada = get(cEntrada);
+        const salida = get(cSalida);
+        const turnoPanel = turnoFromHorario(entrada, salida);
+        // Elegir match: por turno si coincide, sino el primero
+        const m = matches.find(t => t.turno === turnoPanel) || matches[0];
+        const sheet = sheets.find(s => s.name === m.sheet);
+        if (!sheet) continue;
+
+        // Limpiar sufijos tipo "Nombre (S) (1234)"
+        const nombre = rawNombre.replace(/\s*\([Ss]\)/g, '').replace(/\s*\(\d+\)/g, '').trim();
+        const fecha = parseFechaPanel(get(cFechaPanel));
+        if (fecha) fechasSet.add(fecha);
+
+        sheet.rows.push({
+          lugar_sistema: m.lugar_sistema,
+          lugar_planilla: m.lugar_planilla,
+          turno: turnoPanel || m.turno,
+          turno_raw: `${entrada}-${salida}`,
+          frecuencia: '',
+          cantidad: 1,
+          funcionario_nombre: nombre || undefined,
+          funcionario_cedula: ci || undefined,
+          categoria: get(cCategoriaPanel) || undefined,
+          fecha: fecha || undefined,
+          raw: {},
+        });
+        matched++;
+      }
+      fechasDetectadas = [...fechasSet].sort();
+    }
+
     // Totales
     const totalRows = sheets.reduce((sum, s) => sum + s.rows.length, 0);
-    return NextResponse.json({ sheets, total_rows: totalRows });
+    return NextResponse.json({
+      sheets,
+      total_rows: totalRows,
+      mode,
+      panel_stats: panelFile ? { panel_total: panelTotalRows, matched, discarded, discarded_samples: discardedSamples, fechas_detectadas: fechasDetectadas } : null,
+    });
   } catch (err: any) {
     console.error('Error parse planilla:', err);
     return NextResponse.json({ error: err.message || 'Error al leer el Excel' }, { status: 500 });
