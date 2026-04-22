@@ -215,6 +215,7 @@ export default function AgendaEmpleadosPage() {
   };
 
   if (loading || !currentUser) return null;
+  const isAdmin = currentUser.role === 'admin';
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f5f7fa' }}>
@@ -354,9 +355,11 @@ export default function AgendaEmpleadosPage() {
                             style={{ background: 'none', border: `1px solid ${emp.allow_reorder ? '#93c5fd' : '#e2e8f0'}`, borderRadius: '4px', padding: '0.25rem 0.4rem', cursor: togglingId === emp.id ? 'wait' : 'pointer', color: emp.allow_reorder ? '#2563eb' : '#94a3b8', display: 'flex', alignItems: 'center', opacity: togglingId === emp.id ? 0.5 : 1 }}>
                             <PackagePlus size={13} />
                           </button>
-                          <button onClick={() => setConfirmDelete(emp)} type="button" title="Eliminar empleado" style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '4px', padding: '0.25rem 0.4rem', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
-                            <Trash2 size={13} />
-                          </button>
+                          {isAdmin && (
+                            <button onClick={() => setConfirmDelete(emp)} type="button" title="Eliminar empleado (borra todas sus referencias)" style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '4px', padding: '0.25rem 0.4rem', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center' }}>
+                              <Trash2 size={13} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -406,13 +409,15 @@ export default function AgendaEmpleadosPage() {
                       <button onClick={() => openEdit(emp)} className="agenda-mobile-btn">
                         <Edit2 size={14} /> Editar
                       </button>
-                      <button 
-                        onClick={() => setConfirmDelete(emp)} 
-                        className="agenda-mobile-btn" 
-                        style={{ color: '#ef4444', borderColor: '#fee2e2' }}
-                      >
-                        <Trash2 size={14} /> Eliminar
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => setConfirmDelete(emp)}
+                          className="agenda-mobile-btn"
+                          style={{ color: '#ef4444', borderColor: '#fee2e2' }}
+                        >
+                          <Trash2 size={14} /> Eliminar
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -449,10 +454,20 @@ export default function AgendaEmpleadosPage() {
               </div>
               <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#1e293b' }}>Eliminar empleado</h3>
             </div>
-            <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: '#475569', lineHeight: 1.5 }}>
-              ¿Confirmar eliminación de <strong>{confirmDelete.nombre}</strong> ({confirmDelete.documento})?<br />
-              <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>Esta acción no se puede deshacer.</span>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: '#475569', lineHeight: 1.5 }}>
+              ¿Confirmar eliminación de <strong>{confirmDelete.nombre}</strong> ({confirmDelete.documento})?
             </p>
+            <div style={{ margin: '0 0 1.25rem', padding: '0.65rem 0.8rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '0.78rem', color: '#7f1d1d', lineHeight: 1.45 }}>
+              <strong>Esta acción borra TODO lo asociado al empleado:</strong>
+              <ul style={{ margin: '0.35rem 0 0', paddingLeft: '1.1rem' }}>
+                <li>Citas (pasadas, futuras, completadas)</li>
+                <li>Artículos entregados / vencidos / renovados</li>
+                <li>Solicitudes emergentes y envíos al interior</li>
+                <li>Egresos registrados</li>
+                <li>Intentos fallidos de registro (por cédula)</li>
+              </ul>
+              <div style={{ marginTop: '0.4rem', color: '#991b1b', fontWeight: 600 }}>No se puede deshacer.</div>
+            </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button onClick={() => setConfirmDelete(null)} disabled={deleting} className="btn btn-secondary" style={{ fontSize: '0.82rem' }}>Cancelar</button>
               <button onClick={deleteEmployee} disabled={deleting} style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '0.45rem 1rem', cursor: deleting ? 'wait' : 'pointer', fontSize: '0.82rem', fontWeight: 600, opacity: deleting ? 0.7 : 1 }}>
