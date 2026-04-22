@@ -299,6 +299,8 @@ Sistema integral de gestión de turnos y uniformes bajo Logística.
 - `config/` — GET/PUT configuración global (solo admin PUT)
 - `failed-attempts/` — solo admin
 - `audit/` — solo admin
+- `egress-returns/` — devoluciones por egreso (empleado se va de la empresa y entrega uniformes sin recibir nuevos). GET lista + POST crear (JSON). `[id]/` detalle, `[id]/remito/` subir PDF con auto-parse, `[id]/remito-pdf/` proxy descarga, `[id]/sign/` reemplazar firmas. Al crear un egreso: desactiva el empleado (`enabled=0, estado='inactivo'`) y marca sus artículos activos como `current_status='devuelto'`.
+- `remito/parse-pdf/` — parsea un PDF sin persistir (preview para autollenar formularios).
 
 ### Panel admin — páginas nuevas o rediseñadas (rama `agenda-web`)
 
@@ -318,10 +320,17 @@ Sistema integral de gestión de turnos y uniformes bajo Logística.
 - "Crear turno en esta fecha" → mini-form que `POST /api/logistica/agenda/slots` con capacidad 1.
 - "Reasignar cita" → `POST /api/logistica/agenda/appointments/[id]/move` con `{ new_slot_id }`.
 
-**`admin/historial/`** — **nuevo**: búsqueda por cédula. Fetch paralelo a employees, appointments (con filtro exacto por documento) y failed-attempts. Muestra secciones:
+**`admin/historial/`** — **nuevo**: búsqueda por cédula. Fetch paralelo a employees, appointments, failed-attempts y egress-returns (con filtro exacto por documento). Muestra secciones:
 - Datos del empleado (con badge habilitado/no habilitado).
 - Intentos de registro no habilitados (traducidos a texto humano vía `MOTIVO_LABELS`).
 - Citas a las que no asistió (`ausente`), canceladas, agendadas/en curso, completadas.
+- **Devoluciones por egreso** — cards con items devueltos + nro remito + link al PDF.
+
+**`admin/devoluciones-egreso/`** — listado de egresos (filtros: búsqueda por nombre/CI, desde, hasta). Cards rojas con estilo coherente al botón trigger.
+
+**`admin/devoluciones-egreso/nueva`** — formulario para registrar un egreso nuevo. Flujo: buscador de empleado por cédula o nombre (debounced, usa `/api/logistica/agenda/employees/search`) → subir PDF que auto-parsea y autorrellena items → ajustar items manualmente → firma responsable (obligatoria) + funcionario (opcional) → click "Registrar egreso". Al confirmar dispara 2 llamadas: POST JSON a `/egress-returns` (crea + guarda firmas) y POST multipart a `/[id]/remito` (sube PDF si hay). Los endpoints usan `AGENDA_ADMIN_ROLES` (admin, logistica, jefe, rrhh).
+
+Botón de acceso rápido en `admin/citas` (pill rojo "Devolución por egreso") y tarjeta "Egresos" en el dashboard admin.
 
 **Filtro por origen**: si `sessionStorage.agenda_origin === 'logistica'`, el dashboard `admin/page.tsx` redirige automáticamente a `admin/citas` (no muestra el panel completo). Se setea en `app/logistica/page.tsx` al hacer click en "Agenda Web".
 
@@ -364,8 +373,8 @@ Los PDFs de remito (entrega y devolución) se guardan como bytes directo en DB e
 
 Links de "Ver remito" en UI incluyen `?t=${updated_at}` como cache-buster para que el browser no sirva una versión vieja después de resubir.
 
-### DB (14 tablas en `lib/db.ts`)
-`agenda_employees`, `agenda_time_slots`, `agenda_appointments`, `agenda_appointment_item_changes`, `agenda_config`, `agenda_failed_attempts`, `agenda_uniform_catalog`, `agenda_articles`, `agenda_requests`, `agenda_shipments`, `agenda_shipment_articles`, `agenda_change_events` (legacy — solo lectura, módulo removido), `agenda_import_jobs`, `agenda_audit_log`.
+### DB (15 tablas en `lib/db.ts`)
+`agenda_employees`, `agenda_time_slots`, `agenda_appointments`, `agenda_appointment_item_changes`, `agenda_config`, `agenda_failed_attempts`, `agenda_uniform_catalog`, `agenda_articles`, `agenda_requests`, `agenda_shipments`, `agenda_shipment_articles`, `agenda_change_events` (legacy — solo lectura, módulo removido), `agenda_import_jobs`, `agenda_audit_log`, `agenda_egress_returns` (devoluciones por egreso — tabla independiente, sin slot, BYTEA para PDF igual que appointments).
 
 ### Print CSS
 `app/globals.css` — clases `.no-print`, `.print-only`, `.print-comprobante` para impresión de comprobantes de entrega, solicitudes emergentes, envíos y **constancias de cambio de prenda**.

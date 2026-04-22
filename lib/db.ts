@@ -803,6 +803,25 @@ class DbWrapper {
  details TEXT,
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
  );
+
+ CREATE TABLE IF NOT EXISTS agenda_egress_returns (
+ id SERIAL PRIMARY KEY,
+ employee_id INTEGER NOT NULL REFERENCES agenda_employees(id),
+ returned_items TEXT,
+ remito_number TEXT,
+ remito_pdf_url TEXT,
+ remito_pdf_data BYTEA,
+ remito_filename TEXT,
+ parsed_remito_text TEXT,
+ parsed_remito_data TEXT,
+ employee_signature_url TEXT,
+ responsible_signature_url TEXT,
+ notes TEXT,
+ status TEXT DEFAULT 'registrada',
+ created_by INTEGER,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ );
  `;
 
  // Migration for limpieza_registros
@@ -1817,7 +1836,7 @@ class DbWrapper {
  // Table might not exist yet if initialize just ran, but sanitize anyway
  }
 
- this.sqliteDb.exec(schema.replace(/SERIAL/g, 'INTEGER').replace(/TIMESTAMP/g, 'DATETIME').replace(/REFERENCES\s+\w+\(\w+\)\s+ON DELETE CASCADE/g, '').replace(/REFERENCES\s+\w+\(\w+\)/g, ''));
+ this.sqliteDb.exec(schema.replace(/SERIAL/g, 'INTEGER').replace(/TIMESTAMP/g, 'DATETIME').replace(/BYTEA/g, 'BLOB').replace(/REFERENCES\s+\w+\(\w+\)\s+ON DELETE CASCADE/g, '').replace(/REFERENCES\s+\w+\(\w+\)/g, ''));
  console.log('SQLite tables verified/created');
 
  // Agenda Web: seed default config row for SQLite

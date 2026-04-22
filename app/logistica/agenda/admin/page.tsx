@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, Users, Calendar, Shirt, ClipboardList, Truck,
-  AlertTriangle, Clock, TrendingUp, Settings, Upload, History, ShieldAlert, PackageCheck
+  AlertTriangle, Clock, TrendingUp, Settings, Upload, History, ShieldAlert, PackageCheck, PackageMinus,
 } from 'lucide-react';
 import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
@@ -19,6 +19,7 @@ interface Stats {
 const QUICK_LINKS = [
   { label: 'Citas', href: '/logistica/agenda/admin/citas', icon: Calendar, desc: 'Gestionar turnos del día' },
   { label: 'Entregas', href: '/logistica/agenda/admin/entregas', icon: PackageCheck, desc: 'Uniformes entregados (citas completadas)' },
+  { label: 'Egresos', href: '/logistica/agenda/admin/devoluciones-egreso', icon: PackageMinus, desc: 'Devoluciones al finalizar relación laboral' },
   { label: 'Historial', href: '/logistica/agenda/admin/historial', icon: History, desc: 'Buscar por cédula: citas, ausencias, intentos fallidos' },
   { label: 'No Habilitados', href: '/logistica/agenda/admin/no-habilitados', icon: ShieldAlert, desc: 'Intentos fallidos de registro' },
   { label: 'Empleados', href: '/logistica/agenda/admin/empleados', icon: Users, desc: 'Alta, edición, habilitación' },

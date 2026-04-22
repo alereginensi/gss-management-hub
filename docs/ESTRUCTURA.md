@@ -61,6 +61,7 @@ Cada subcarpeta de `app/` corresponde a una sección del sistema.
 | [`app/logistica/agenda/admin/citas/[id]/`](../app/logistica/agenda/admin/citas/[id]/) | `/logistica/agenda/admin/citas/:id` | Detalle de cita: remito, firmas, walk-in, devolución |
 | [`app/logistica/agenda/admin/historial/`](../app/logistica/agenda/admin/historial/) | `/logistica/agenda/admin/historial` | Búsqueda por cédula: citas, ausencias, intentos fallidos, entregas |
 | [`app/logistica/agenda/admin/entregas/`](../app/logistica/agenda/admin/entregas/) | `/logistica/agenda/admin/entregas` | Solo entregas completadas (exportable a Excel) |
+| [`app/logistica/agenda/admin/devoluciones-egreso/`](../app/logistica/agenda/admin/devoluciones-egreso/) | `/logistica/agenda/admin/devoluciones-egreso` | Devoluciones al finalizar relación laboral (listado + alta de nuevo egreso) |
 | [`app/seguridad-electronica/`](../app/seguridad-electronica/) | `/seguridad-electronica` | Monitoreo y mantenimientos técnicos |
 | [`app/cotizacion/`](../app/cotizacion/) | `/cotizacion` | Cotización comercial y liquidación de horas |
 | [`app/rrhh/`](../app/rrhh/) | `/rrhh` | RRHH — agenda web de uniformes |

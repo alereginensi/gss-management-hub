@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, Search, History, User, ShieldAlert, CalendarX, XCircle, CheckCircle,
-  CalendarClock, Building2, Calendar, Clock, FileText, AlertTriangle,
+  CalendarClock, Building2, Calendar, Clock, FileText, AlertTriangle, PackageMinus,
 } from 'lucide-react';
 import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
@@ -42,6 +42,17 @@ interface FailedAttempt {
   ip?: string | null;
   context?: string | null;
   created_at: string;
+}
+
+interface EgressReturnRow {
+  id: number;
+  employee_documento: string;
+  returned_items: Array<{ article_type: string; size?: string; qty?: number }>;
+  remito_number?: string | null;
+  remito_pdf_url?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 function formatDate(s?: string | null) {
@@ -84,6 +95,7 @@ export default function HistorialPage() {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [failedAttempts, setFailedAttempts] = useState<FailedAttempt[]>([]);
+  const [egressReturns, setEgressReturns] = useState<EgressReturnRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   if (!loading && !isAuthenticated) { router.push('/login'); return null; }
@@ -98,22 +110,26 @@ export default function HistorialPage() {
     setEmployee(null);
     setAppointments([]);
     setFailedAttempts([]);
+    setEgressReturns([]);
 
     try {
-      const [empRes, apptRes, failRes] = await Promise.all([
+      const [empRes, apptRes, failRes, egressRes] = await Promise.all([
         fetch(`/api/logistica/agenda/employees?search=${encodeURIComponent(doc)}&limit=5`),
         fetch(`/api/logistica/agenda/appointments?search=${encodeURIComponent(doc)}&limit=500`),
         fetch(`/api/logistica/agenda/failed-attempts?search=${encodeURIComponent(doc)}&limit=500`),
+        fetch(`/api/logistica/agenda/egress-returns?search=${encodeURIComponent(doc)}&limit=500`),
       ]);
 
       const empData = empRes.ok ? await empRes.json() : { employees: [] };
       const apptData = apptRes.ok ? await apptRes.json() : { appointments: [] };
       const failData = failRes.ok ? await failRes.json() : { attempts: [] };
+      const egressData = egressRes.ok ? await egressRes.json() : { items: [] };
 
       const exactMatch = (empData.employees || []).find((e: Employee) => e.documento === doc) || (empData.employees || [])[0] || null;
       setEmployee(exactMatch);
       setAppointments((apptData.appointments || []).filter((a: Appointment) => a.employee_documento === doc));
       setFailedAttempts((failData.attempts || []).filter((f: FailedAttempt) => f.documento === doc));
+      setEgressReturns((egressData.items || []).filter((r: EgressReturnRow) => r.employee_documento === doc));
       setSearched(true);
     } catch (err: any) {
       setError(err?.message || 'Error al buscar');
@@ -281,6 +297,47 @@ export default function HistorialPage() {
                 isMobile={isMobile}
               >
                 <AppointmentList list={byStatus.completada} isMobile={isMobile} router={router} showRemito />
+              </SectionCard>
+
+              {/* Devoluciones por egreso */}
+              <SectionCard
+                title="Devoluciones por egreso"
+                count={egressReturns.length}
+                icon={<PackageMinus size={15} />}
+                color="#b91c1c"
+                bg="#fef2f2"
+                isMobile={isMobile}
+              >
+                {egressReturns.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>Sin devoluciones registradas.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {egressReturns.map(r => (
+                      <div key={r.id} style={{ padding: '0.65rem 0.85rem', border: '1px solid #fca5a5', borderRadius: '8px', background: '#fef2f2' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+                          <Calendar size={12} style={{ color: '#b91c1c' }} />
+                          <strong style={{ fontSize: '0.82rem', color: '#991b1b' }}>{formatDateTime(r.created_at)}</strong>
+                          {r.remito_number && (
+                            <span style={{ fontSize: '0.72rem', background: 'white', border: '1px solid #fca5a5', color: '#991b1b', borderRadius: '4px', padding: '0.1rem 0.45rem' }}>
+                              Remito {r.remito_number}
+                            </span>
+                          )}
+                          {r.remito_pdf_url && (
+                            <a href={`/api/logistica/agenda/egress-returns/${r.id}/remito-pdf?t=${r.updated_at}`} target="_blank" rel="noopener noreferrer"
+                               style={{ fontSize: '0.72rem', color: '#059669', textDecoration: 'none', background: '#f0fdf4', borderRadius: '4px', padding: '0.1rem 0.45rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <FileText size={11} /> Ver
+                            </a>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.77rem', color: '#374151' }}>
+                          <strong>{r.returned_items.length}</strong> ítem{r.returned_items.length !== 1 ? 's' : ''}:{' '}
+                          {r.returned_items.map(i => i.article_type + (i.size ? ` (${i.size})` : '')).join(', ')}
+                        </div>
+                        {r.notes && <div style={{ marginTop: '0.3rem', fontSize: '0.74rem', color: '#64748b', fontStyle: 'italic' }}>{r.notes}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </SectionCard>
             </div>
           ) : (

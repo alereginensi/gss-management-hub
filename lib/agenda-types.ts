@@ -311,7 +311,9 @@ export type AuditAction =
   | 'revert_delivery'
   | 'upload_remito'
   | 'upload_signature'
-  | 'config_change';
+  | 'config_change'
+  | 'create_egress_return'
+  | 'sign_egress_return';
 
 export type AuditEntityType =
   | 'employee'
@@ -322,7 +324,8 @@ export type AuditEntityType =
   | 'shipment'
   | 'catalog'
   | 'config'
-  | 'import';
+  | 'import'
+  | 'egress_return';
 
 export interface AgendaAuditLog {
   id: number;

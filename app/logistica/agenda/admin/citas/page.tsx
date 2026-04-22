@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, ClipboardList, ChevronDown, ChevronUp, Calendar, Clock, Building2,
-  Pencil, XCircle, Trash2, CheckCircle, FileText, Printer, PenSquare,
+  Pencil, XCircle, Trash2, CheckCircle, FileText, Printer, PenSquare, PackageMinus,
 } from 'lucide-react';
 import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
@@ -204,17 +204,23 @@ ${remitoLine}
 
       <main style={{ marginTop: '56px', padding: isMobile ? '1.25rem 1rem' : '1.5rem' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          {/* Header + limpiar canceladas */}
+          {/* Header + acciones */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
             <h1 style={{ margin: 0, fontSize: isMobile ? '1.05rem' : '1.2rem', fontWeight: 700, color: '#0f172a' }}>
               <ClipboardList size={16} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />Citas Agendadas
             </h1>
-            {hasCancelled && canCancel && (
-              <button onClick={deleteCancelled}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem 0.75rem', fontSize: '0.78rem', color: '#64748b', cursor: 'pointer' }}>
-                <Trash2 size={12} /> Limpiar canceladas
-              </button>
-            )}
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <Link href="/logistica/agenda/admin/devoluciones-egreso/nueva"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', padding: '0.4rem 0.8rem', fontSize: '0.78rem', color: '#b91c1c', fontWeight: 600, textDecoration: 'none' }}>
+                <PackageMinus size={12} /> Devolución por egreso
+              </Link>
+              {hasCancelled && canCancel && (
+                <button onClick={deleteCancelled}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.4rem 0.75rem', fontSize: '0.78rem', color: '#64748b', cursor: 'pointer' }}>
+                  <Trash2 size={12} /> Limpiar canceladas
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Filtros */}
