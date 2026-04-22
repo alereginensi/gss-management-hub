@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, LogOut, Search, LogOut as LogOutIcon, FileText, Calendar,
-  PackageMinus, User, Building2, PenSquare, Plus, RefreshCw,
+  PackageMinus, User, Building2, PenSquare, Plus, RefreshCw, Trash2,
 } from 'lucide-react';
 import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
 
@@ -44,6 +44,27 @@ export default function DevolucionesEgresoPage() {
   const [search, setSearch] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [deleting, setDeleting] = useState<number | null>(null);
+
+  const canDelete = currentUser?.role === 'admin' || currentUser?.role === 'rrhh';
+
+  const handleDelete = async (id: number, nombre: string) => {
+    if (!confirm(`¿Eliminar la devolución por egreso de ${nombre}?\n\nSe reactivará al empleado y sus artículos volverán a estado activo (si no tiene otros egresos).`)) return;
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/logistica/agenda/egress-returns/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Error al eliminar.');
+      } else {
+        setItems(prev => prev.filter(i => i.id !== id));
+      }
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   useEffect(() => {
     if (loading) return;
@@ -179,21 +200,50 @@ export default function DevolucionesEgresoPage() {
                     {it.returned_items.map(i => i.article_type + (i.size ? ` (${i.size})` : '')).join(', ')}
                   </div>
                 )}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', paddingTop: '0.3rem', borderTop: '1px solid var(--border-color)' }}>
-                  {it.remito_pdf_url && (
-                    <a
-                      href={`/api/logistica/agenda/egress-returns/${it.id}/remito-pdf?t=${it.updated_at}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ fontSize: '0.72rem', color: '#059669', textDecoration: 'none', background: '#f0fdf4', borderRadius: '4px', padding: '0.2rem 0.55rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', paddingTop: '0.3rem', borderTop: '1px solid var(--border-color)', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                    {it.remito_pdf_url ? (
+                      <a
+                        href={`/api/logistica/agenda/egress-returns/${it.id}/remito-pdf?t=${it.updated_at}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: '0.72rem', color: '#059669', textDecoration: 'none', background: '#f0fdf4', borderRadius: '4px', padding: '0.2rem 0.55rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', border: '1px solid #bbf7d0' }}
+                      >
+                        <FileText size={11} /> Ver remito{it.remito_number ? ` N° ${it.remito_number}` : ''}
+                      </a>
+                    ) : (
+                      <span style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'var(--bg-color)', borderRadius: '4px', padding: '0.2rem 0.55rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', border: '1px solid var(--border-color)' }}>
+                        <FileText size={11} /> Sin remito
+                      </span>
+                    )}
+                    {(it.employee_signature_url || it.responsible_signature_url) && (
+                      <span style={{ fontSize: '0.72rem', color: '#1d4ed8', background: '#eff6ff', borderRadius: '4px', padding: '0.2rem 0.55rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <PenSquare size={11} /> Firmas
+                      </span>
+                    )}
+                  </div>
+                  {canDelete && (
+                    <button
+                      onClick={() => handleDelete(it.id, it.employee_nombre)}
+                      disabled={deleting === it.id}
+                      title="Eliminar devolución por egreso"
+                      style={{
+                        fontSize: '0.72rem',
+                        background: '#fef2f2',
+                        color: '#b91c1c',
+                        border: '1px solid #fca5a5',
+                        borderRadius: '4px',
+                        padding: '0.2rem 0.5rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        cursor: deleting === it.id ? 'wait' : 'pointer',
+                        opacity: deleting === it.id ? 0.6 : 1,
+                        fontWeight: 600,
+                      }}
                     >
-                      <FileText size={11} /> Remito{it.remito_number ? ` N° ${it.remito_number}` : ''}
-                    </a>
-                  )}
-                  {(it.employee_signature_url || it.responsible_signature_url) && (
-                    <span style={{ fontSize: '0.72rem', color: '#1d4ed8', background: '#eff6ff', borderRadius: '4px', padding: '0.2rem 0.55rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <PenSquare size={11} /> Firmas
-                    </span>
+                      <Trash2 size={11} /> {deleting === it.id ? 'Eliminando...' : 'Eliminar'}
+                    </button>
                   )}
                 </div>
               </div>

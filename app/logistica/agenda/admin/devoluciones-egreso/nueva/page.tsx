@@ -8,6 +8,7 @@ import {
   X, Plus, Trash2, AlertCircle, CheckCircle, Loader2, PenSquare,
 } from 'lucide-react';
 import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
+// isMobile desde context — usado para layout responsivo de los items devueltos
 import AgendaSignatureCanvas, { type AgendaSignatureCanvasRef } from '@/app/components/AgendaSignatureCanvas';
 
 interface EmployeeLite {
@@ -29,7 +30,7 @@ interface ReturnedItem {
 }
 
 export default function NuevaDevolucionEgresoPage() {
-  const { currentUser, isAuthenticated, loading, logout } = useTicketContext();
+  const { currentUser, isAuthenticated, loading, logout, isMobile } = useTicketContext();
   const router = useRouter();
 
   const [search, setSearch] = useState('');
@@ -302,30 +303,36 @@ export default function NuevaDevolucionEgresoPage() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {items.map((it, idx) => (
-                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 70px auto', gap: '0.5rem', alignItems: 'center' }}>
+                    <div
+                      key={idx}
+                      style={isMobile
+                        ? { display: 'grid', gridTemplateColumns: '1fr 80px 60px auto', gap: '0.35rem', alignItems: 'center' }
+                        : { display: 'grid', gridTemplateColumns: '1fr 90px 70px auto', gap: '0.5rem', alignItems: 'center' }
+                      }
+                    >
                       <input
                         type="text"
                         value={it.article_type}
                         onChange={e => updateItem(idx, { article_type: e.target.value })}
-                        placeholder="Artículo (ej. remera)"
+                        placeholder={isMobile ? 'Artículo' : 'Artículo (ej. remera)'}
                         className="input"
-                        style={{ padding: '0.4rem 0.55rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)', fontSize: '0.82rem' }}
+                        style={{ padding: '0.4rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)', fontSize: isMobile ? '0.78rem' : '0.82rem', minWidth: 0 }}
                       />
                       <input
                         type="text"
                         value={it.size || ''}
                         onChange={e => updateItem(idx, { size: e.target.value })}
                         placeholder="Talle"
-                        style={{ padding: '0.4rem 0.55rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)', fontSize: '0.82rem' }}
+                        style={{ padding: '0.4rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)', fontSize: isMobile ? '0.78rem' : '0.82rem', minWidth: 0, width: '100%' }}
                       />
                       <input
                         type="number"
                         min={1}
                         value={it.qty}
                         onChange={e => updateItem(idx, { qty: parseInt(e.target.value, 10) || 1 })}
-                        style={{ padding: '0.4rem 0.55rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)', fontSize: '0.82rem' }}
+                        style={{ padding: '0.4rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)', fontSize: isMobile ? '0.78rem' : '0.82rem', minWidth: 0, width: '100%' }}
                       />
-                      <button onClick={() => removeItem(idx)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '0.3rem' }}>
+                      <button onClick={() => removeItem(idx)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '0.25rem', flexShrink: 0 }}>
                         <Trash2 size={14} />
                       </button>
                     </div>

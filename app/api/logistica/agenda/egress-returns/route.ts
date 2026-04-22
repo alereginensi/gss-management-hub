@@ -169,8 +169,9 @@ export async function POST(request: NextRequest) {
       `UPDATE agenda_employees SET enabled = 0, estado = 'inactivo' WHERE id = ?`,
       [employeeId]
     );
+    // agenda_articles NO tiene columna updated_at — solo actualizamos current_status
     await db.run(
-      `UPDATE agenda_articles SET current_status = 'devuelto', updated_at = ${nowSql}
+      `UPDATE agenda_articles SET current_status = 'devuelto'
        WHERE employee_id = ? AND current_status = 'activo'`,
       [employeeId]
     );

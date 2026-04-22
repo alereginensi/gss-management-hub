@@ -19,21 +19,26 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100', 10);
     const offset = (page - 1) * limit;
 
-    const isPg = (db as any).type === 'pg';
-    const nowFn = isPg ? 'NOW()' : "datetime('now')";
-    const plus30 = isPg ? `NOW() + INTERVAL '30 days'` : "datetime('now', '+30 days')";
+    // Comparar como TEXT: expiration_date/renewal_enabled_at son TEXT en schema,
+    // PG no auto-castea NOW() → TEXT. Pasamos la fecha como parámetro ISO YYYY-MM-DD.
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const plus30Iso = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
     let condition = '';
+    const condParams: unknown[] = [];
     if (mode === 'enabled') {
-      condition = `AND a.current_status = 'activo' AND a.renewal_enabled_at IS NOT NULL AND a.renewal_enabled_at <= ${nowFn}`;
+      condition = `AND a.current_status = 'activo' AND a.renewal_enabled_at IS NOT NULL AND a.renewal_enabled_at <= ?`;
+      condParams.push(todayIso);
     } else if (mode === 'expired') {
-      condition = `AND a.current_status = 'activo' AND a.expiration_date IS NOT NULL AND a.expiration_date < ${nowFn}`;
+      condition = `AND a.current_status = 'activo' AND a.expiration_date IS NOT NULL AND a.expiration_date < ?`;
+      condParams.push(todayIso);
     } else if (mode === 'upcoming') {
-      condition = `AND a.current_status = 'activo' AND a.expiration_date IS NOT NULL AND a.expiration_date BETWEEN ${nowFn} AND ${plus30}`;
+      condition = `AND a.current_status = 'activo' AND a.expiration_date IS NOT NULL AND a.expiration_date BETWEEN ? AND ?`;
+      condParams.push(todayIso, plus30Iso);
     }
 
     const empresaCond = empresa ? `AND e.empresa = ?` : '';
-    const params: unknown[] = empresa ? [empresa, limit, offset] : [limit, offset];
+    const empresaParams = empresa ? [empresa] : [];
 
     const [rows, total] = await Promise.all([
       db.query(
@@ -41,11 +46,11 @@ export async function GET(request: NextRequest) {
          FROM agenda_articles a JOIN agenda_employees e ON e.id = a.employee_id
          WHERE 1=1 ${condition} ${empresaCond}
          ORDER BY a.expiration_date ASC LIMIT ? OFFSET ?`,
-        params
+        [...condParams, ...empresaParams, limit, offset]
       ),
       db.get(
         `SELECT COUNT(*) as count FROM agenda_articles a JOIN agenda_employees e ON e.id = a.employee_id WHERE 1=1 ${condition} ${empresaCond}`,
-        empresa ? [empresa] : []
+        [...condParams, ...empresaParams]
       ),
     ]);
 

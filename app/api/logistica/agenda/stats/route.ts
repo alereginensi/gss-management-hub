@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
       slotsDisponiblesHoy,
       intentosFallidos,
       articulosVencidos,
+      articulosHabilitadosRenovacion,
       solicitudesPendientes,
       solicitudesEmergentes,
       totalHistorico,
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
       db.get(`SELECT COALESCE(SUM(capacity - current_bookings), 0) as count FROM agenda_time_slots WHERE fecha = ? AND estado = 'activo' AND current_bookings < capacity`, [today]),
       db.get(`SELECT COUNT(*) as count FROM agenda_failed_attempts WHERE date(created_at) = ?`, [today]),
       db.get(`SELECT COUNT(*) as count FROM agenda_articles WHERE current_status = 'activo' AND expiration_date IS NOT NULL AND expiration_date < ?`, [today]),
+      db.get(`SELECT COUNT(*) as count FROM agenda_articles WHERE current_status = 'activo' AND renewal_enabled_at IS NOT NULL AND renewal_enabled_at <= ?`, [today]),
       db.get(`SELECT COUNT(*) as count FROM agenda_requests WHERE status = 'pendiente'`, []),
       db.get(`SELECT COUNT(*) as count FROM agenda_requests WHERE status = 'pendiente' AND is_emergency = 1`, []),
       db.get(`SELECT COUNT(*) as count FROM agenda_appointments`, []),
@@ -51,6 +53,7 @@ export async function GET(request: NextRequest) {
       },
       alertas: {
         articulos_vencidos: articulosVencidos?.count || 0,
+        articulos_habilitados_renovacion: articulosHabilitadosRenovacion?.count || 0,
         solicitudes_pendientes: solicitudesPendientes?.count || 0,
         solicitudes_emergentes: solicitudesEmergentes?.count || 0,
       },

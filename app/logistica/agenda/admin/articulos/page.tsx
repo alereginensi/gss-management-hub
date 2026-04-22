@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Search, Package, AlertTriangle, Clock } from 'lucide-react';
 import { useTicketContext, canAccessAgenda } from '@/app/context/TicketContext';
@@ -21,11 +21,14 @@ type TabId = typeof TABS[number]['id'];
 export default function ArticulosPage() {
   const { currentUser, isAuthenticated, loading, logout, isMobile } = useTicketContext();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialTab = (searchParams.get('tab') as TabId) || 'all';
+  const validInitialTab = TABS.some(t => t.id === initialTab) ? initialTab : 'all';
 
   const [articles, setArticles] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [fetching, setFetching] = useState(true);
-  const [tab, setTab] = useState<TabId>('all');
+  const [tab, setTab] = useState<TabId>(validInitialTab);
   const [search, setSearch] = useState('');
   const [filterEmpresa, setFilterEmpresa] = useState('');
   const [filterStatus, setFilterStatus] = useState('');

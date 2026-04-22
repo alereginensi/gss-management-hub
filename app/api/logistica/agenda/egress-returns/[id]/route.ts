@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
-import { parseOrderItems } from '@/lib/agenda-helpers';
+import { parseOrderItems, logAudit } from '@/lib/agenda-helpers';
 import { AGENDA_ADMIN_ROLES } from '@/lib/agenda-roles';
 
 const AUTH_ROLES: readonly string[] = AGENDA_ADMIN_ROLES;
+// DELETE solo para admin y rrhh (no logistica/jefe)
+const DELETE_ROLES = ['admin', 'rrhh'];
 
 const LIGHT_COLS = [
   'id', 'employee_id', 'returned_items',
@@ -39,5 +41,62 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   } catch (err) {
     console.error('Error obteniendo egreso:', err);
     return NextResponse.json({ error: 'Error interno' }, { status: 500 });
+  }
+}
+
+// DELETE /api/logistica/agenda/egress-returns/[id]
+// Solo admin y rrhh. Borra el registro y revierte los efectos:
+//   - reactiva al empleado (enabled=1, estado='activo')
+//   - vuelve los artículos marcados 'devuelto' por este egreso a 'activo'
+// Limitación: revierte TODOS los artículos devueltos del empleado, sin distinguir
+// cuáles corresponden a este egreso específico (la tabla no guarda ese link). Si
+// el empleado tiene múltiples egresos, esto puede reactivar artículos de egresos
+// previos — hay que revisar manualmente en esos casos.
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession(request);
+  if (!session || !DELETE_ROLES.includes(session.user.role)) {
+    return NextResponse.json({ error: 'No autorizado para eliminar' }, { status: 401 });
+  }
+  const { id: idStr } = await params;
+  const id = parseInt(idStr, 10);
+  try {
+    const egreso = await db.get('SELECT id, employee_id FROM agenda_egress_returns WHERE id = ?', [id]);
+    if (!egreso) return NextResponse.json({ error: 'Egreso no encontrado' }, { status: 404 });
+
+    const employeeId = egreso.employee_id;
+
+    // Chequear si el empleado tiene OTROS egresos antes de revertir su estado.
+    const otros = await db.get(
+      'SELECT COUNT(*) AS count FROM agenda_egress_returns WHERE employee_id = ? AND id <> ?',
+      [employeeId, id]
+    );
+    const tieneOtrosEgresos = (otros?.count || 0) > 0;
+
+    await db.run('DELETE FROM agenda_egress_returns WHERE id = ?', [id]);
+
+    // Solo si no tiene otros egresos, reactivar al empleado y sus artículos.
+    if (!tieneOtrosEgresos) {
+      await db.run(
+        `UPDATE agenda_employees SET enabled = 1, estado = 'activo' WHERE id = ?`,
+        [employeeId]
+      );
+      await db.run(
+        `UPDATE agenda_articles SET current_status = 'activo' WHERE employee_id = ? AND current_status = 'devuelto'`,
+        [employeeId]
+      );
+    }
+
+    await logAudit('delete', 'egress_return', id, session.user.id, { employee_id: employeeId, reverted: !tieneOtrosEgresos });
+
+    return NextResponse.json({
+      ok: true,
+      employee_reactivated: !tieneOtrosEgresos,
+      message: tieneOtrosEgresos
+        ? 'Egreso eliminado. El empleado mantuvo su estado inactivo porque tiene otros egresos.'
+        : 'Egreso eliminado. Empleado reactivado y artículos devueltos vueltos a activos.',
+    });
+  } catch (err) {
+    console.error('Error eliminando egreso:', err);
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 }

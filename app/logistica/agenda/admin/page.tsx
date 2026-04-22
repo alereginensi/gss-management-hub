@@ -13,7 +13,7 @@ import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 interface Stats {
   hoy: { fecha: string; citas_total: number; citas_pendientes: number; citas_completadas: number; cupos_disponibles: number; intentos_fallidos: number; total_historico: number };
   empleados: { total: number; habilitados: number };
-  alertas: { articulos_vencidos: number; solicitudes_pendientes: number; solicitudes_emergentes: number };
+  alertas: { articulos_vencidos: number; articulos_habilitados_renovacion: number; solicitudes_pendientes: number; solicitudes_emergentes: number };
 }
 
 const QUICK_LINKS = [
@@ -153,11 +153,20 @@ export default function AgendaAdminDashboard() {
           )}
 
           {/* Alertas destacadas */}
-          {stats && stats.alertas && ((stats.alertas.articulos_vencidos ?? 0) > 0 || (stats.alertas.solicitudes_emergentes ?? 0) > 0) && (
+          {stats && stats.alertas && ((stats.alertas.articulos_habilitados_renovacion ?? 0) > 0 || (stats.alertas.solicitudes_emergentes ?? 0) > 0) && (
             <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '0.85rem 1rem', marginBottom: '1.25rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
               <AlertTriangle size={16} color="#92400e" style={{ marginTop: '2px', flexShrink: 0 }} />
-              <div style={{ fontSize: '0.8rem', color: '#92400e' }}>
-                {stats.alertas.articulos_vencidos > 0 && <p style={{ margin: '0 0 0.2rem' }}>⚠ <strong>{stats.alertas.articulos_vencidos}</strong> artículo{stats.alertas.articulos_vencidos !== 1 ? 's' : ''} vencido{stats.alertas.articulos_vencidos !== 1 ? 's' : ''} — habilitar renovación</p>}
+              <div style={{ fontSize: '0.8rem', color: '#92400e', flex: 1 }}>
+                {(stats.alertas.articulos_habilitados_renovacion ?? 0) > 0 && (
+                  <p style={{ margin: '0 0 0.2rem' }}>
+                    <Link
+                      href="/logistica/agenda/admin/articulos?tab=enabled"
+                      style={{ color: '#92400e', textDecoration: 'underline' }}
+                    >
+                      <strong>{stats.alertas.articulos_habilitados_renovacion}</strong> artículo{stats.alertas.articulos_habilitados_renovacion !== 1 ? 's' : ''} habilitado{stats.alertas.articulos_habilitados_renovacion !== 1 ? 's' : ''} para renovación →
+                    </Link>
+                  </p>
+                )}
                 {(stats.alertas.solicitudes_emergentes ?? 0) > 0 && <p style={{ margin: 0 }}>⚠ <strong>{stats.alertas.solicitudes_emergentes}</strong> solicitud{stats.alertas.solicitudes_emergentes !== 1 ? 'es' : ''} emergente{stats.alertas.solicitudes_emergentes !== 1 ? 's' : ''} pendiente{stats.alertas.solicitudes_emergentes !== 1 ? 's' : ''} de aprobación</p>}
               </div>
             </div>
