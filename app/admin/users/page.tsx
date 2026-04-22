@@ -317,10 +317,13 @@ export default function UserManagement() {
                                                     style={{
                                                         fontSize: '0.875rem',
                                                         padding: '0.5rem 1rem',
+                                                        minWidth: '120px',
+                                                        justifyContent: 'center',
                                                         backgroundColor: '#fee2e2',
                                                         color: '#b91c1c',
                                                         border: '1px solid #fecaca',
-                                                        display: 'flex', alignItems: 'center', gap: '0.25rem'
+                                                        fontWeight: 600,
+                                                        display: 'flex', alignItems: 'center', gap: '0.35rem',
                                                     }}
                                                     onClick={() => handleReject(user.email!)}
                                                     disabled={loading}
@@ -330,7 +333,14 @@ export default function UserManagement() {
                                                 </button>
                                                 <button
                                                     className="btn btn-primary"
-                                                    style={{ fontSize: '0.875rem', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                                    style={{
+                                                        fontSize: '0.875rem',
+                                                        padding: '0.5rem 1rem',
+                                                        minWidth: '120px',
+                                                        justifyContent: 'center',
+                                                        fontWeight: 600,
+                                                        display: 'flex', alignItems: 'center', gap: '0.35rem',
+                                                    }}
                                                     onClick={() => handleApprove(user.email!)}
                                                     disabled={loading}
                                                     title="Aprobar solicitud"
