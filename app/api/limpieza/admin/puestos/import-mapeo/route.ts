@@ -42,6 +42,12 @@ function normNombre(s: string): string {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 }
 
+// Normalización agresiva para match de nombres de hoja vs sector: quita espacios
+// y caracteres no alfanuméricos para que "Pisos Vip" matchee con "PisosVip".
+function normCollapsed(s: string): string {
+  return normNombre(s).replace(/[^a-z0-9]+/g, '');
+}
+
 // Parsea un turno tipo "6 A 14" → { start: 6, end: 14 }. Devuelve null si no es numérico.
 // Para turnos que cruzan medianoche ("22 A 6" → end=6+24=30) devuelve end > 24.
 function parseTurnoRango(t: string): { start: number; end: number } | null {
@@ -188,17 +194,18 @@ export async function POST(request: NextRequest) {
 
       // Buscar el sector correspondiente al nombre de la hoja.
       // 1) Match exacto.
-      // 2) Si no, elegir el sector cuyo nombre esté contenido en la hoja, con
-      //    el MAYOR score (longitud del nombre matcheado). Así una hoja
-      //    "Planilla Torre 1 PisosVip 4-5-6" matchea con el sector "PisosVip"
-      //    (específico) en lugar de "Torre 1" (ambos contenidos pero genérico).
+      // 2) Match colapsado (sin espacios): "Pisos Vip" vs hoja "PisosVip".
+      // 3) Elegir el sector cuyo nombre (colapsado) esté contenido en la hoja
+      //    colapsada, con el MAYOR score (más específico gana).
       const sheetNameNorm = normNombre(ws.name);
+      const sheetCollapsed = normCollapsed(ws.name);
       let targetSector = sectorByName.get(sheetNameNorm);
       if (!targetSector) {
         let bestScore = 0;
-        for (const [sn, sname] of sectorByName) {
-          if (sn && sheetNameNorm.includes(sn) && sn.length > bestScore) {
-            bestScore = sn.length;
+        for (const [, sname] of sectorByName) {
+          const snCollapsed = normCollapsed(sname);
+          if (snCollapsed && sheetCollapsed.includes(snCollapsed) && snCollapsed.length > bestScore) {
+            bestScore = snCollapsed.length;
             targetSector = sname;
           }
         }
