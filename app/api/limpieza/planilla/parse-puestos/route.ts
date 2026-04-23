@@ -217,6 +217,7 @@ export async function POST(request: NextRequest) {
     let discarded = 0;
     let panelTotalRows = 0;
     const discardedSamples: string[] = [];
+    const discardedFull: { fecha: string; local: string; ci: string; nombre: string; entrada: string; salida: string; categoria: string }[] = [];
     const fechasSet = new Set<string>();
 
     for (let r = pHeaderIdx + 1; r < panelRows.length; r++) {
@@ -234,6 +235,15 @@ export async function POST(request: NextRequest) {
       if (!matches || !matches.length) {
         discarded++;
         if (discardedSamples.length < 8 && !discardedSamples.includes(local)) discardedSamples.push(local);
+        discardedFull.push({
+          fecha: getV(cFechaPanel),
+          local,
+          ci,
+          nombre: rawNombre,
+          entrada: getV(cEntrada),
+          salida: getV(cSalida),
+          categoria: getV(cCategoriaPanel),
+        });
         continue;
       }
       const entrada = getV(cEntrada);
@@ -272,7 +282,7 @@ export async function POST(request: NextRequest) {
       sheets: sheets.filter(s => s.rows.length > 0),
       total_rows: totalRows,
       mode: 'crossed',
-      panel_stats: { panel_total: panelTotalRows, matched, discarded, discarded_samples: discardedSamples, fechas_detectadas: fechasDetectadas },
+      panel_stats: { panel_total: panelTotalRows, matched, discarded, discarded_samples: discardedSamples, discarded_full: discardedFull, fechas_detectadas: fechasDetectadas },
     });
   } catch (err: any) {
     console.error('Error parse planilla:', err);

@@ -342,7 +342,8 @@ export default function InformesOperativosPage() {
         fecha?: string;
     }
     interface ParsedSheet { name: string; rows: ParsedRow[]; missing_headers: string[]; }
-    interface PanelStats { panel_total: number; matched: number; discarded: number; discarded_samples: string[]; fechas_detectadas: string[]; }
+    interface DiscardedRow { fecha: string; local: string; ci: string; nombre: string; entrada: string; salida: string; categoria: string; }
+    interface PanelStats { panel_total: number; matched: number; discarded: number; discarded_samples: string[]; discarded_full?: DiscardedRow[]; fechas_detectadas: string[]; }
     const [previewSheets, setPreviewSheets] = useState<ParsedSheet[] | null>(null);
     const [sheetSectorMap, setSheetSectorMap] = useState<Record<string, string>>({});
     const [parsingPreview, setParsingPreview] = useState(false);
@@ -610,6 +611,26 @@ export default function InformesOperativosPage() {
         } finally {
             setImporting(false);
         }
+    };
+
+    const handleDownloadDescartados = async () => {
+        if (!panelStats?.discarded_full?.length) return;
+        // Import dinámico de xlsx (ya está en las deps del proyecto)
+        const XLSX = await import('xlsx');
+        const rows = panelStats.discarded_full.map(r => ({
+            Fecha: r.fecha,
+            Local: r.local,
+            CI: r.ci,
+            Nombre: r.nombre,
+            'Entrada planificada': r.entrada,
+            'Salida planificada': r.salida,
+            Categoría: r.categoria,
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Descartados');
+        const hoy = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(wb, `panel-descartados-${hoy}.xlsx`);
     };
 
     const resetUploadModal = () => {
@@ -1027,9 +1048,9 @@ export default function InformesOperativosPage() {
                             {seccionesActivas.map(seccion => {
                                                 const isAdicionales = seccion === 'ADICIONALES';
                                 const sectionConfig = !isAdicionales ? getPlanillaConfig(sectorSeleccionado, seccion) : null;
-                                const showPuestoCol = !!sectionConfig && sectionConfig.puestos.length > 0;
+                                const showPuestoCol = !!sectionConfig && Array.isArray(sectionConfig.puestos) && sectionConfig.puestos.length > 0;
                                 const turnoConfig = isAdicionales ? getPlanillaConfig(sectorSeleccionado, turnoSeleccionado) : null;
-                                const adicionalPuestoOpciones = turnoConfig?.puestos.map(p => p.nombre) ?? [];
+                                const adicionalPuestoOpciones = Array.isArray(turnoConfig?.puestos) ? turnoConfig.puestos.map(p => p.nombre) : [];
 
                                 const getTimeOptions = (sec: string) => {
                                     const times = [''];
@@ -1470,8 +1491,15 @@ export default function InformesOperativosPage() {
                                 </div>
                                 {panelStats && (
                                     <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '8px', padding: '0.6rem 0.8rem', fontSize: '0.78rem', color: '#78350f' }}>
-                                        <div>
-                                            <strong>Panel de control:</strong> {panelStats.panel_total} filas leídas · <span style={{ color: '#15803d', fontWeight: 600 }}>{panelStats.matched} cruzadas</span> · <span style={{ color: '#b91c1c', fontWeight: 600 }}>{panelStats.discarded} descartadas</span>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                            <div>
+                                                <strong>Panel de control:</strong> {panelStats.panel_total} filas leídas · <span style={{ color: '#15803d', fontWeight: 600 }}>{panelStats.matched} cruzadas</span> · <span style={{ color: '#b91c1c', fontWeight: 600 }}>{panelStats.discarded} descartadas</span>
+                                            </div>
+                                            {panelStats.discarded > 0 && (
+                                                <button onClick={handleDownloadDescartados} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', background: '#fff', border: '1px solid #fcd34d', borderRadius: '6px', cursor: 'pointer', fontSize: '0.74rem', fontWeight: 600, color: '#78350f' }}>
+                                                    <Download size={12} /> Descargar descartados (.xlsx)
+                                                </button>
+                                            )}
                                         </div>
                                         {panelStats.fechas_detectadas.length > 0 && (
                                             <div style={{ marginTop: '0.25rem' }}>
