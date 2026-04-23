@@ -32,7 +32,7 @@
 |---------|-------|
 | Primer commit | 2026-02-10 |
 | Último commit | 2026-04-23 |
-| Commits totales | 490 |
+| Commits totales | 491 |
 | Horas calendario (desde primer commit) | 1728 h |
 | Horas efectivas estimadas | 138 h |
 
