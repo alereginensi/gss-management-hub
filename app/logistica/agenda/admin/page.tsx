@@ -35,13 +35,24 @@ const QUICK_LINKS = [
   { label: 'Configuración', href: '/logistica/agenda/admin/configuracion', icon: Settings, desc: 'Reglas globales del sistema' },
 ];
 
-// Paths visibles para rol logistica (vista restringida: solo gestión operativa de citas)
+// Paths visibles para usuarios no-admin (vista restringida: gestión operativa + solicitudes + envíos)
 const LOGISTICA_ALLOWED_PATHS: readonly string[] = [
   '/logistica/agenda/admin/citas',
   '/logistica/agenda/admin/entregas',
   '/logistica/agenda/admin/devoluciones-egreso',
   '/logistica/agenda/admin/ingresos',
+  '/logistica/agenda/admin/solicitudes',
+  '/logistica/agenda/admin/envios-interior',
 ];
+
+// Regla: SOLO admin ve todo el panel admin. Cualquier otro rol (supervisor,
+// jefe, logistica, rrhh, encargado_limpieza, etc.) ve la vista restringida
+// con solo Citas, Entregas, Egresos e Ingresos.
+function isAgendaFullAccess(role?: string): boolean {
+  if (!role) return false;
+  const norm = role.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return norm === 'admin';
+}
 
 export default function AgendaAdminDashboard() {
   const { currentUser, isAuthenticated, loading, logout, isMobile } = useTicketContext();
@@ -118,16 +129,18 @@ export default function AgendaAdminDashboard() {
             </p>
           </div>
 
-          {/* Stats del día (filtradas para rol logistica) */}
+          {/* Stats del día (filtradas para no-admin: solo Citas hoy e Historial) */}
           {!statsLoading && stats && stats.hoy && stats.empleados && stats.alertas && (() => {
-            const isLogistica = currentUser?.role === 'logistica';
+            const isAdmin = isAgendaFullAccess(currentUser?.role);
             const allStats = [
               { label: 'Citas hoy', value: stats.hoy.citas_total ?? 0, sub: `${stats.hoy.citas_pendientes ?? 0} pend.`, color: '#29416b', icon: Calendar, href: '/logistica/agenda/admin/citas' },
               { label: 'Historial', value: stats.hoy.total_historico ?? 0, sub: 'registros', color: '#065f46', icon: History, href: '/logistica/agenda/admin/entregas' },
               { label: 'Empleados', value: stats.empleados.total ?? 0, sub: `${stats.empleados.habilitados ?? 0} hab.`, color: '#1e40af', icon: Users, href: '/logistica/agenda/admin/empleados' },
               { label: 'Solicitudes', value: stats.alertas.solicitudes_emergentes ?? 0, sub: 'emergentes pendientes', color: '#92400e', icon: ClipboardList, href: '/logistica/agenda/admin/solicitudes?emergency=1' },
             ];
-            const visibleStats = isLogistica ? allStats.filter(s => LOGISTICA_ALLOWED_PATHS.some(p => s.href.startsWith(p))) : allStats;
+            const visibleStats = isAdmin
+              ? allStats
+              : allStats.filter(s => s.label === 'Citas hoy' || s.label === 'Historial' || s.label === 'Solicitudes');
             return (<div className="stats-grid">{visibleStats.map(({ label, value, sub, color, icon: Icon, href }) => (
                 <Link key={label} href={href} style={{ textDecoration: 'none', color: 'inherit' }}><div className="card" style={{
                   padding: isMobile ? '0.85rem 0.5rem' : '1.25rem 1rem', 
@@ -160,8 +173,11 @@ export default function AgendaAdminDashboard() {
               ))}</div>);
           })()}
 
-          {/* Alertas destacadas (ocultas para logistica: no pueden actuar sobre articulos/solicitudes) */}
-          {currentUser?.role !== 'logistica' && stats && stats.alertas && ((stats.alertas.articulos_habilitados_renovacion ?? 0) > 0 || (stats.alertas.solicitudes_emergentes ?? 0) > 0) && (
+          {/* Alertas destacadas: admin ve ambas; no-admin solo ve solicitudes emergentes (no artículos por renovación) */}
+          {stats && stats.alertas && (
+            (isAgendaFullAccess(currentUser?.role) && ((stats.alertas.articulos_habilitados_renovacion ?? 0) > 0 || (stats.alertas.solicitudes_emergentes ?? 0) > 0)) ||
+            (!isAgendaFullAccess(currentUser?.role) && (stats.alertas.solicitudes_emergentes ?? 0) > 0)
+          ) && (
             <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '0.85rem 1rem', marginBottom: '1.25rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
               <AlertTriangle size={16} color="#92400e" style={{ marginTop: '2px', flexShrink: 0 }} />
               <div style={{ fontSize: '0.8rem', color: '#92400e', flex: 1 }}>
@@ -183,9 +199,9 @@ export default function AgendaAdminDashboard() {
           {/* Accesos rápidos (filtrados para rol logistica) */}
           <h2 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151', marginBottom: '0.75rem' }}>Secciones</h2>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '0.75rem' }}>
-            {(currentUser?.role === 'logistica'
-              ? QUICK_LINKS.filter(l => LOGISTICA_ALLOWED_PATHS.includes(l.href))
-              : QUICK_LINKS
+            {(isAgendaFullAccess(currentUser?.role)
+              ? QUICK_LINKS
+              : QUICK_LINKS.filter(l => LOGISTICA_ALLOWED_PATHS.includes(l.href))
             ).map(({ label, href, icon: Icon, desc }) => (
               <Link key={href} href={href} style={{ textDecoration: 'none' }}>
                 <div className="card" style={{ padding: '1rem', cursor: 'pointer', transition: 'box-shadow 200ms', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}

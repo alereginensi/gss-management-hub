@@ -55,6 +55,26 @@ function isPanelGeneralPath(pathname: string): boolean {
     return PANEL_GENERAL_PREFIXES.some(p => pathname === p || pathname.startsWith(p + '/'));
 }
 
+// Rutas de /logistica/agenda/admin accesibles para rol "logistica".
+// Todas las demás (empleados, catalogo, horarios, solicitudes, articulos,
+// auditoria, configuracion, envios-interior, historial, importaciones,
+// migracion, no-habilitados) están bloqueadas para logistica.
+const LOGISTICA_AGENDA_ALLOWED = [
+    '/logistica/agenda/admin',                       // dashboard (filtrado)
+    '/logistica/agenda/admin/citas',
+    '/logistica/agenda/admin/entregas',
+    '/logistica/agenda/admin/devoluciones-egreso',
+    '/logistica/agenda/admin/ingresos',
+];
+
+function isLogisticaAgendaAdminPath(pathname: string): boolean {
+    return pathname === '/logistica/agenda/admin' || pathname.startsWith('/logistica/agenda/admin/');
+}
+
+function isLogisticaAgendaAllowedForLogistica(pathname: string): boolean {
+    return LOGISTICA_AGENDA_ALLOWED.some(p => pathname === p || pathname.startsWith(p + '/'));
+}
+
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
@@ -86,6 +106,17 @@ export async function middleware(request: NextRequest) {
         if (isPanelGeneralPath(pathname)) {
             return NextResponse.redirect(new URL('/', request.url));
         }
+    }
+
+    // Agenda Web admin: SOLO admin tiene acceso completo. Cualquier otro rol
+    // (supervisor, jefe, logistica, rrhh, encargado_limpieza) queda limitado a
+    // citas / entregas / egresos / ingresos. Si intenta una ruta fuera de esas,
+    // redirige al dashboard (que filtra igual client-side).
+    const roleNorm = user?.role
+      ? String(user.role).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      : '';
+    if (user && roleNorm !== 'admin' && isLogisticaAgendaAdminPath(pathname) && !isLogisticaAgendaAllowedForLogistica(pathname)) {
+        return NextResponse.redirect(new URL('/logistica/agenda/admin', request.url));
     }
 
     return NextResponse.next();

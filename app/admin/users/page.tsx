@@ -638,7 +638,6 @@ export default function UserManagement() {
                                 >
                                     <option value="supervisor">Supervisor</option>
                                     <option value="jefe">Jefe de Departamento</option>
-                                    <option value="mitrabajo">Mitrabajo Panel de Control</option>
                                     <option value="encargado_limpieza">Encargado Limpieza (cliente/sector)</option>
                                     <option value="admin">Administrador</option>
                                 </select>
