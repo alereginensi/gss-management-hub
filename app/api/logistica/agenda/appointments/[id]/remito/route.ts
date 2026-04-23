@@ -111,7 +111,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // - items del remito que no estaban en el pedido → agregar como nuevos
     type DeliveredItem = { article_type: string; size?: string; qty: number; color?: string; [key: string]: unknown };
 
-    function normArticle(s: string): string {
+    function normArticle(s: string | undefined | null): string {
+      if (!s || typeof s !== 'string') return '';
       return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
     }
 
