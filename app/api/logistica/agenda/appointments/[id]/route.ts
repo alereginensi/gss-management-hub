@@ -53,19 +53,37 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   try {
     const body = await request.json();
-    const { status, delivery_notes, remito_number } = body;
+    const {
+      status, delivery_notes, remito_number,
+      // Editables post-entrega (cita completada):
+      delivered_order_items, has_return, returned_order_items, remito_return_number,
+    } = body;
 
     const isPg = (db as any).type === 'pg';
     const nowSql = isPg ? 'NOW()' : "datetime('now')";
+
+    // Serializar arrays de items si vienen. COALESCE preserva valor actual si no se envía.
+    const deliveredJson = delivered_order_items !== undefined
+      ? JSON.stringify(Array.isArray(delivered_order_items) ? delivered_order_items : [])
+      : null;
+    const returnedJson = returned_order_items !== undefined
+      ? JSON.stringify(Array.isArray(returned_order_items) ? returned_order_items : [])
+      : null;
+    const hasReturnVal = has_return !== undefined ? (has_return ? 1 : 0) : null;
 
     await db.run(
       `UPDATE agenda_appointments SET
         status = COALESCE(?, status),
         delivery_notes = COALESCE(?, delivery_notes),
         remito_number = COALESCE(?, remito_number),
+        delivered_order_items = COALESCE(?, delivered_order_items),
+        has_return = COALESCE(?, has_return),
+        returned_order_items = COALESCE(?, returned_order_items),
+        remito_return_number = COALESCE(?, remito_return_number),
         updated_at = ${nowSql}
        WHERE id = ?`,
-      [status || null, delivery_notes ?? null, remito_number ?? null, id]
+      [status || null, delivery_notes ?? null, remito_number ?? null,
+       deliveredJson, hasReturnVal, returnedJson, remito_return_number ?? null, id]
     );
 
     const updated = await db.get(

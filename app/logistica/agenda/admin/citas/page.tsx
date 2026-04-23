@@ -363,6 +363,19 @@ ${notesLine}
                               </button>
                             </>
                           )}
+                          {(() => {
+                            const tipoBadges: Record<string, { label: string; color: string; bg: string; border: string }> = {
+                              ingreso: { label: 'Nuevo ingreso', color: '#15803d', bg: '#dcfce7', border: '#86efac' },
+                              cambio: { label: 'Cambio de uniforme', color: '#b45309', bg: '#fef3c7', border: '#fcd34d' },
+                              agregado: { label: 'Agregado', color: '#6d28d9', bg: '#ede9fe', border: '#c4b5fd' },
+                            };
+                            const t = (a as any).tipo_cita as string | undefined;
+                            if (t && tipoBadges[t]) {
+                              const b = tipoBadges[t];
+                              return <span style={{ background: b.bg, color: b.color, border: `1px solid ${b.border}`, borderRadius: '6px', padding: '0.2rem 0.55rem', fontSize: '0.68rem', fontWeight: 700, whiteSpace: 'nowrap' }}>{b.label}</span>;
+                            }
+                            return null;
+                          })()}
                           <span style={{ background: badge.bg, color: badge.color, borderRadius: '6px', padding: '0.2rem 0.6rem', fontSize: '0.7rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
                             {badge.label}
                           </span>

@@ -932,9 +932,38 @@ export default function CitaDetallePage() {
                 )}
 
                 {appt.status === 'completada' && (
-                  <div className="card" style={{ padding: '1.25rem', borderTop: '4px solid #2563eb', textAlign: 'center' }}>
-                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem', fontWeight: 800, color: '#1e40af' }}>Constancia lista</h3>
-                    <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: '#64748b' }}>La cita ya fue completada. Podés imprimir la constancia cuando lo necesites.</p>
+                  <div className="card" style={{ padding: '1.25rem', borderTop: '4px solid #2563eb' }}>
+                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.95rem', fontWeight: 800, color: '#1e40af', textAlign: 'center' }}>Constancia lista</h3>
+                    <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: '#64748b', textAlign: 'center' }}>La cita ya fue completada. Podés imprimir la constancia cuando lo necesites.</p>
+                    <button
+                      onClick={async () => {
+                        setSaving(true);
+                        try {
+                          const res = await fetch(`/api/logistica/agenda/appointments/${id}`, {
+                            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              delivered_order_items: deliveredItems,
+                              delivery_notes: deliveryNotes,
+                              remito_number: remitoNumber,
+                              has_return: hasReturn ? 1 : 0,
+                              returned_order_items: hasReturn ? returnedItems : [],
+                              remito_return_number: hasReturn ? remitoReturnNumber : null,
+                            }),
+                          });
+                          if (!res.ok) { const d = await res.json().catch(() => ({})); showMessage(d.error || 'Error al guardar', true); return; }
+                          showMessage('Cambios guardados');
+                          await fetchAppt();
+                        } catch (e: any) {
+                          showMessage('Error: ' + (e?.message || e), true);
+                        } finally {
+                          setSaving(false);
+                        }
+                      }}
+                      disabled={saving}
+                      style={{ width: '100%', fontSize: '0.88rem', padding: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 700, background: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', cursor: saving ? 'not-allowed' : 'pointer', marginBottom: '0.75rem' }}
+                    >
+                      <CheckCircle size={15} /> {saving ? 'Guardando...' : 'Guardar cambios'}
+                    </button>
                     <button onClick={() => window.print()} className="btn btn-primary" style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                       <Printer size={14} /> Imprimir constancia
                     </button>
