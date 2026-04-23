@@ -764,7 +764,7 @@ export default function CitaDetallePage() {
                   </div>
                   <button
                     onClick={() => setHasReturn(v => !v)}
-                    disabled={appt.status === 'completada' || saving}
+                    disabled={saving}
                     style={{
                       display: 'flex', alignItems: 'center', gap: '0.35rem',
                       padding: '0.4rem 0.75rem',
