@@ -45,16 +45,22 @@ const LOGISTICA_ALLOWED_PATHS: readonly string[] = [
   '/logistica/agenda/admin/envios-interior',
 ];
 
-// Regla: SOLO el rol "logistica" tiene vista restringida (6 cards).
-// Admin, rrhh, jefe, supervisor y demás ven todo el panel admin.
-function isAgendaRestricted(role?: string): boolean {
-  if (!role) return false;
-  const norm = role.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  return norm === 'logistica';
+// Regla: vista restringida (6 cards) SOLO para usuarios de logistica.
+// Esto es: rol "logistica" O usuarios con módulo "logistica" asignado y SIN
+// módulo "rrhh" ni rol admin/rrhh. El módulo rrhh o rol rrhh dan acceso total
+// (los mismos privilegios que admin dentro de agenda web).
+function isAgendaRestricted(user: { role?: string; modules?: string | null } | null | undefined): boolean {
+  if (!user) return false;
+  const role = (user.role || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (role === 'admin' || role === 'rrhh') return false;
+  const mods = (user.modules || '').toLowerCase().split(',').map(m => m.trim()).filter(Boolean);
+  if (mods.includes('rrhh')) return false;
+  if (role === 'logistica') return true;
+  if (mods.includes('logistica')) return true;
+  return false;
 }
-// Alias mantenido para minimizar diff: "full access" = NO restringido.
-function isAgendaFullAccess(role?: string): boolean {
-  return !isAgendaRestricted(role);
+function isAgendaFullAccess(user: { role?: string; modules?: string | null } | null | undefined): boolean {
+  return !isAgendaRestricted(user);
 }
 
 export default function AgendaAdminDashboard() {
@@ -134,7 +140,7 @@ export default function AgendaAdminDashboard() {
 
           {/* Stats del día (filtradas para no-admin: solo Citas hoy e Historial) */}
           {!statsLoading && stats && stats.hoy && stats.empleados && stats.alertas && (() => {
-            const isAdmin = isAgendaFullAccess(currentUser?.role);
+            const isAdmin = isAgendaFullAccess(currentUser);
             const allStats = [
               { label: 'Citas hoy', value: stats.hoy.citas_total ?? 0, sub: `${stats.hoy.citas_pendientes ?? 0} pend.`, color: '#29416b', icon: Calendar, href: '/logistica/agenda/admin/citas' },
               { label: 'Historial', value: stats.hoy.total_historico ?? 0, sub: 'registros', color: '#065f46', icon: History, href: '/logistica/agenda/admin/entregas' },
@@ -178,8 +184,8 @@ export default function AgendaAdminDashboard() {
 
           {/* Alertas destacadas: admin ve ambas; no-admin solo ve solicitudes emergentes (no artículos por renovación) */}
           {stats && stats.alertas && (
-            (isAgendaFullAccess(currentUser?.role) && ((stats.alertas.articulos_habilitados_renovacion ?? 0) > 0 || (stats.alertas.solicitudes_emergentes ?? 0) > 0)) ||
-            (!isAgendaFullAccess(currentUser?.role) && (stats.alertas.solicitudes_emergentes ?? 0) > 0)
+            (isAgendaFullAccess(currentUser) && ((stats.alertas.articulos_habilitados_renovacion ?? 0) > 0 || (stats.alertas.solicitudes_emergentes ?? 0) > 0)) ||
+            (!isAgendaFullAccess(currentUser) && (stats.alertas.solicitudes_emergentes ?? 0) > 0)
           ) && (
             <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '0.85rem 1rem', marginBottom: '1.25rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
               <AlertTriangle size={16} color="#92400e" style={{ marginTop: '2px', flexShrink: 0 }} />
@@ -202,7 +208,7 @@ export default function AgendaAdminDashboard() {
           {/* Accesos rápidos (filtrados para rol logistica) */}
           <h2 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#374151', marginBottom: '0.75rem' }}>Secciones</h2>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '0.75rem' }}>
-            {(isAgendaFullAccess(currentUser?.role)
+            {(isAgendaFullAccess(currentUser)
               ? QUICK_LINKS
               : QUICK_LINKS.filter(l => LOGISTICA_ALLOWED_PATHS.includes(l.href))
             ).map(({ label, href, icon: Icon, desc }) => (

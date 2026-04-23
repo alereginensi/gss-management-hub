@@ -108,13 +108,18 @@ export async function middleware(request: NextRequest) {
         }
     }
 
-    // Agenda Web admin: SOLO el rol "logistica" tiene vista restringida.
-    // Admin, rrhh, jefe, supervisor y demás roles acceden a todo. Si logistica
-    // intenta una ruta fuera de las permitidas, redirige al dashboard.
+    // Agenda Web admin: vista restringida SOLO para usuarios de logistica.
+    // Admin, rol rrhh, o usuarios con módulo "rrhh" asignado → acceso total.
+    // Rol logistica o módulo logistica sin rrhh → restringido.
     const roleNorm = user?.role
       ? String(user.role).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
       : '';
-    if (user && roleNorm === 'logistica' && isLogisticaAgendaAdminPath(pathname) && !isLogisticaAgendaAllowedForLogistica(pathname)) {
+    const mods = user?.modules
+      ? String(user.modules).toLowerCase().split(',').map((m: string) => m.trim())
+      : [];
+    const hasRrhh = roleNorm === 'rrhh' || mods.includes('rrhh');
+    const isLogisticaOnly = !hasRrhh && roleNorm !== 'admin' && (roleNorm === 'logistica' || mods.includes('logistica'));
+    if (user && isLogisticaOnly && isLogisticaAgendaAdminPath(pathname) && !isLogisticaAgendaAllowedForLogistica(pathname)) {
         return NextResponse.redirect(new URL('/logistica/agenda/admin', request.url));
     }
 
