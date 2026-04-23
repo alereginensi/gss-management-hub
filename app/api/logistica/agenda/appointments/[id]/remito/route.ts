@@ -121,20 +121,28 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     ): DeliveredItem[] | null {
       if (remito.length === 0) return null;
 
-      // Índice de items del remito por article_type normalizado
+      // Índice de items del remito por article_type normalizado.
+      // Skipear items malformados sin article_type/item.
       const byType = new Map<string, RemitoPdfItemWithQty>();
-      for (const r of remito) byType.set(normArticle(r.item), r);
+      for (const r of remito) {
+        const key = normArticle(r.item);
+        if (key) byType.set(key, r);
+      }
 
       let orderItems: DeliveredItem[] = [];
       try {
-        orderItems = JSON.parse(orderItemsRaw || '[]') as DeliveredItem[];
+        // orderItemsRaw puede venir como string (SQLite) o ya parseado (Postgres jsonb)
+        const parsed = typeof orderItemsRaw === 'string' ? JSON.parse(orderItemsRaw || '[]') : (Array.isArray(orderItemsRaw) ? orderItemsRaw : []);
+        orderItems = Array.isArray(parsed) ? parsed : [];
       } catch { orderItems = []; }
 
       const result: DeliveredItem[] = [];
       const usedKeys = new Set<string>();
 
       for (const oi of orderItems) {
+        if (!oi || !oi.article_type) continue;
         const key = normArticle(oi.article_type);
+        if (!key) continue;
         const match = byType.get(key);
         if (match) {
           // Item presente en el remito: actualizar talle, cantidad y color; conservar resto del pedido
