@@ -26,13 +26,13 @@
 
 <!-- TIMER-START -->
 
-**Tiempo en desarrollo**: 2 meses · 11 días · 0 horas
+**Tiempo en desarrollo**: 2 meses · 11 días · 1 hora
 
 | Métrica | Valor |
 |---------|-------|
 | Primer commit | 2026-02-10 |
 | Último commit | 2026-04-23 |
-| Commits totales | 486 |
+| Commits totales | 488 |
 | Horas calendario (desde primer commit) | 1726 h |
 | Horas efectivas estimadas | 136 h |
 
