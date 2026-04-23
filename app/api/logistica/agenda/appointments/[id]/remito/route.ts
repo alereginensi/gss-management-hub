@@ -18,8 +18,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { id: idStr } = await params;
   const id = parseInt(idStr, 10);
+  // SELECT explícito sin los BYTEA (remito_pdf_data / remito_return_pdf_data)
+  // para no cargar hasta 16MB de PDFs viejos en memoria al procesar el upload.
   const appt = await db.get(
-    `SELECT a.*, e.empresa as employee_empresa
+    `SELECT a.id, a.employee_id, a.order_items, a.delivered_order_items, a.returned_order_items,
+            a.has_return, e.empresa as employee_empresa
      FROM agenda_appointments a
      JOIN agenda_employees e ON e.id = a.employee_id
      WHERE a.id = ?`,
@@ -224,8 +227,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       parsedText: extractedText,
     });
   } catch (err) {
-    console.error('Error subiendo remito:', err);
-    return NextResponse.json({ error: 'Error interno' }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[remito upload] appt=${id} ERROR:`, msg, err);
+    return NextResponse.json({ error: `Error al subir remito: ${msg}` }, { status: 500 });
   }
 }
 
