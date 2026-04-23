@@ -38,6 +38,42 @@ export default function PlanillasConfigPage() {
     const [importApplied, setImportApplied] = useState<{ updated: number; created: number; createdSectors: number } | null>(null);
     const [createMissing, setCreateMissing] = useState(true);
 
+    interface DupInfo { sector: string; turno: string; puesto: string; winner_id: number; losers_ids: number[]; merged_lugar_sistema: string | null; }
+    interface TurnoRename { id: number; turno_actual: string; turno_nuevo: string; }
+    interface DupPreview { turnos_renombrados: TurnoRename[]; duplicados: DupInfo[]; total_turnos_normalizar: number; total_grupos_duplicados: number; total_borrar: number; }
+    const [dupPreview, setDupPreview] = useState<DupPreview | null>(null);
+    const [dupApplying, setDupApplying] = useState(false);
+
+    const runDupLimpieza = async (apply: boolean) => {
+        if (!clienteSel) return;
+        setDupApplying(true);
+        try {
+            const fd = new FormData();
+            fd.append('cliente_id', String(clienteSel));
+            fd.append('apply', apply ? '1' : '0');
+            const res = await fetch('/api/limpieza/admin/puestos/limpiar-duplicados', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok) { alert(data.error || 'Error'); return; }
+            if (apply) {
+                alert(`Limpieza aplicada: ${data.total_turnos_normalizar} turnos normalizados · ${data.total_borrar} puestos duplicados fusionados.`);
+                setDupPreview(null);
+                if (sectorSel) fetchPuestos(sectorSel);
+            } else {
+                setDupPreview({
+                    turnos_renombrados: data.turnos_renombrados || [],
+                    duplicados: data.duplicados || [],
+                    total_turnos_normalizar: data.total_turnos_normalizar || 0,
+                    total_grupos_duplicados: data.total_grupos_duplicados || 0,
+                    total_borrar: data.total_borrar || 0,
+                });
+            }
+        } catch (e: any) {
+            alert('Error: ' + (e?.message || e));
+        } finally {
+            setDupApplying(false);
+        }
+    };
+
     const isAdmin = currentUser?.role === 'admin';
 
     const runImport = async (apply: boolean) => {
@@ -335,6 +371,57 @@ export default function PlanillasConfigPage() {
                                         );
                                     })()}
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Limpieza de duplicados de turnos */}
+                        {!importPreview && !importApplied && (
+                            <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed #bfdbfe' }}>
+                                {!dupPreview ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '0.76rem', color: '#334155' }}>
+                                            ¿Ves turnos duplicados (ej. "22 A 06" y "22 A 6")? Correr limpieza:
+                                        </span>
+                                        <button onClick={() => runDupLimpieza(false)} disabled={dupApplying} style={{ padding: '0.35rem 0.75rem', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff', cursor: dupApplying ? 'wait' : 'pointer', fontSize: '0.75rem', fontWeight: 600, color: '#334155' }}>
+                                            {dupApplying ? 'Analizando...' : 'Buscar duplicados'}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div style={{ background: '#fff', border: '1px solid #fcd34d', borderRadius: '6px', padding: '0.55rem 0.75rem', fontSize: '0.78rem', color: '#78350f' }}>
+                                        <div style={{ fontWeight: 700, marginBottom: '0.3rem' }}>Limpieza preview</div>
+                                        <div style={{ marginBottom: '0.35rem' }}>
+                                            <strong>{dupPreview.total_turnos_normalizar}</strong> turnos a normalizar · <strong>{dupPreview.total_grupos_duplicados}</strong> grupos duplicados · <strong>{dupPreview.total_borrar}</strong> puestos a fusionar (borrar)
+                                        </div>
+                                        {dupPreview.duplicados.length > 0 && (
+                                            <details style={{ marginBottom: '0.3rem' }}>
+                                                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Duplicados a fusionar ({dupPreview.duplicados.length})</summary>
+                                                <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.3rem', fontSize: '0.72rem', maxHeight: '160px', overflow: 'auto' }}>
+                                                    {dupPreview.duplicados.map((d, i) => (
+                                                        <li key={i} style={{ marginBottom: '0.15rem' }}>
+                                                            <strong>{d.sector}</strong> · {d.turno} · "{d.puesto}" — quedan {d.losers_ids.length} duplicados a borrar
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </details>
+                                        )}
+                                        {dupPreview.turnos_renombrados.length > 0 && (
+                                            <details>
+                                                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Turnos a normalizar ({dupPreview.turnos_renombrados.length})</summary>
+                                                <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.3rem', fontSize: '0.72rem', maxHeight: '160px', overflow: 'auto' }}>
+                                                    {dupPreview.turnos_renombrados.map((t, i) => (
+                                                        <li key={i}>"{t.turno_actual}" → <strong>{t.turno_nuevo}</strong></li>
+                                                    ))}
+                                                </ul>
+                                            </details>
+                                        )}
+                                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', marginTop: '0.4rem' }}>
+                                            <button onClick={() => setDupPreview(null)} style={{ padding: '0.3rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', background: '#fff', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>Cancelar</button>
+                                            <button onClick={() => runDupLimpieza(true)} disabled={dupApplying} style={{ padding: '0.3rem 0.75rem', border: 'none', borderRadius: '6px', background: '#d97706', color: '#fff', cursor: dupApplying ? 'wait' : 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+                                                {dupApplying ? 'Aplicando...' : 'Aplicar limpieza'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
