@@ -32,8 +32,9 @@ export default function PlanillasConfigPage() {
     const [applying, setApplying] = useState(false);
     interface ImportMatch { puesto_id: number; sector: string; turno: string; nombre: string; lugar_sistema_actual: string | null; lugar_sistema_nuevo: string; }
     interface ImportUnmatched { sheet: string; turno: string; puesto: string; lugar_sistema: string; }
-    interface ImportToCreate { sector: string; turno: string; nombre: string; lugar_sistema: string; sector_exists: boolean; }
-    interface ImportPreview { matches: ImportMatch[]; unmatched: ImportUnmatched[]; to_create: ImportToCreate[]; matches_count: number; to_create_count: number; skipped: number; }
+    interface ImportToCreate { sector: string; turno: string; nombre: string; lugar_sistema: string; sector_exists: boolean; turno_original?: string; }
+    interface ImportReassigned { sector: string; turno_original: string; turno_final: string; puesto: string; }
+    interface ImportPreview { matches: ImportMatch[]; unmatched: ImportUnmatched[]; to_create: ImportToCreate[]; reassigned: ImportReassigned[]; matches_count: number; to_create_count: number; skipped: number; }
     const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
     const [importApplied, setImportApplied] = useState<{ updated: number; created: number; createdSectors: number } | null>(null);
     const [createMissing, setCreateMissing] = useState(true);
@@ -98,6 +99,7 @@ export default function PlanillasConfigPage() {
                     matches: data.matches || [],
                     unmatched: data.unmatched || [],
                     to_create: data.to_create || [],
+                    reassigned: data.reassigned || [],
                     matches_count: data.matches_count || 0,
                     to_create_count: data.to_create_count || 0,
                     skipped: data.skipped || 0,
@@ -314,6 +316,23 @@ export default function PlanillasConfigPage() {
                                     </details>
                                 )}
 
+                                {importPreview.reassigned.length > 0 && (
+                                    <details open style={{ marginBottom: '0.4rem' }}>
+                                        <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#d97706' }}>
+                                            Turnos reasignados al rango estándar más cercano ({importPreview.reassigned.length})
+                                        </summary>
+                                        <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.3rem', fontSize: '0.72rem', maxHeight: '140px', overflow: 'auto' }}>
+                                            {importPreview.reassigned.map((r, i) => (
+                                                <li key={i} style={{ marginBottom: '0.15rem' }}>
+                                                    <strong>{r.sector}</strong> · "{r.puesto}" → turno <code style={{ background: '#fef3c7', padding: '0 0.25rem', borderRadius: '3px' }}>{r.turno_original}</code> se asigna a <code style={{ background: '#dcfce7', padding: '0 0.25rem', borderRadius: '3px' }}>{r.turno_final}</code>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        <p style={{ marginTop: '0.35rem', fontSize: '0.7rem', color: '#64748b' }}>
+                                            Regla: turnos que no existen en el sector se asignan al turno cuyo rango [start, end) contenga la hora de inicio.
+                                        </p>
+                                    </details>
+                                )}
                                 {createMissing && importPreview.to_create.length > 0 && (
                                     <details open style={{ marginBottom: '0.4rem' }}>
                                         <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#2563eb' }}>Puestos nuevos a crear ({importPreview.to_create.length})</summary>
