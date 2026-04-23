@@ -87,12 +87,16 @@ export async function confirmSlotBooking(slotId: number, holdToken: string): Pro
 // ─── Sincronización de habilitación automática por vencimiento ──────────────
 
 /**
- * Habilita `allow_reorder=1` en empleados que tengan al menos un artículo
- * activo con expiration_date <= hoy. Idempotente: no hace nada si el empleado
- * ya está habilitado.
+ * Re-habilita empleados para retirar uniforme cuando alguno de sus artículos
+ * activos ya expiró. Setea `enabled=1` y `allow_reorder=1`.
+ *
+ * Después de completar una entrega, el empleado queda con `enabled=0` (bloqueado
+ * para nuevas citas). Esta función los re-habilita automáticamente cuando sus
+ * artículos llegan al fin de su vida útil. Solo afecta empleados con
+ * `estado='activo'` (respeta egresos: `estado='inactivo'`).
  *
  * @param employeeId - si se pasa, sincroniza solo ese empleado; si no, todos.
- * @returns cantidad de empleados habilitados en esta ejecución.
+ * @returns cantidad de empleados re-habilitados en esta ejecución.
  */
 export async function syncEmployeeRenewalStatus(employeeId?: number): Promise<number> {
   // Comparar como TEXT vs TEXT: expiration_date es TEXT en el schema, y PG no
@@ -105,7 +109,7 @@ export async function syncEmployeeRenewalStatus(employeeId?: number): Promise<nu
 
   const sql = `
     UPDATE agenda_employees
-    SET allow_reorder = 1
+    SET enabled = 1, allow_reorder = 1
     WHERE id IN (
       SELECT DISTINCT a.employee_id
       FROM agenda_articles a
@@ -114,9 +118,8 @@ export async function syncEmployeeRenewalStatus(employeeId?: number): Promise<nu
         AND a.expiration_date <= ?
         ${whereEmployee}
     )
-    AND allow_reorder = 0
-    AND enabled = 1
     AND estado = 'activo'
+    AND (enabled = 0 OR allow_reorder = 0)
   `;
   const result = await db.run(sql, params);
   return result.changes || 0;

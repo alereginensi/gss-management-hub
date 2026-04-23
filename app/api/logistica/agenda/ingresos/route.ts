@@ -192,9 +192,11 @@ export async function POST(request: NextRequest) {
       [slotId]
     );
 
-    // Actualizar fecha_ingreso del empleado + habilitarlo si estaba inhabilitado
+    // Alta de ingreso = entrega inicial ya completada. Bloquear al empleado
+    // hasta que sus artículos venzan (syncEmployeeRenewalStatus los re-habilita).
+    // Estado pasa a 'activo' por si venía como 'inactivo' (ej. egreso anterior).
     await db.run(
-      `UPDATE agenda_employees SET fecha_ingreso = COALESCE(fecha_ingreso, ?), enabled = 1, estado = 'activo' WHERE id = ?`,
+      `UPDATE agenda_employees SET fecha_ingreso = COALESCE(fecha_ingreso, ?), enabled = 0, allow_reorder = 0, estado = 'activo' WHERE id = ?`,
       [fecha, employeeId]
     );
 

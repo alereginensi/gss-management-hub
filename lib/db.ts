@@ -1616,6 +1616,34 @@ class DbWrapper {
  console.error('Error migrating agenda_appointments (Postgres):', e);
  }
 
+ // One-time backfill: empleados activos con artículos vivos (expiration_date > hoy)
+ // quedan con enabled=0 para respetar el ciclo "al completar entrega → bloqueado
+ // hasta vencimiento". Flag idempotente en agenda_config para no re-correr.
+ try {
+ await this.pgPool!.query(`ALTER TABLE agenda_config ADD COLUMN IF NOT EXISTS delivery_disable_backfill_at TIMESTAMP`);
+ const cfgBF = await this.pgPool!.query('SELECT delivery_disable_backfill_at FROM agenda_config WHERE id = 1');
+ if (cfgBF.rows.length > 0 && !cfgBF.rows[0].delivery_disable_backfill_at) {
+ const todayIso = new Date().toISOString().slice(0, 10);
+ const upd = await this.pgPool!.query(
+ `UPDATE agenda_employees
+ SET enabled = 0, allow_reorder = 0
+ WHERE estado = 'activo'
+ AND id IN (
+ SELECT DISTINCT a.employee_id FROM agenda_articles a
+ WHERE a.current_status = 'activo'
+ AND a.expiration_date IS NOT NULL
+ AND a.expiration_date > $1
+ )
+ AND enabled = 1`,
+ [todayIso]
+ );
+ await this.pgPool!.query(`UPDATE agenda_config SET delivery_disable_backfill_at = NOW() WHERE id = 1`);
+ console.log(`[backfill] bloqueados ${upd.rowCount || 0} empleados con artículos vivos (Postgres)`);
+ }
+ } catch (e) {
+ console.error('Error backfill delivery_disable (Postgres):', e);
+ }
+
  // Migrate agenda_requests: add is_emergency + source + receiver_signature_url
  try {
  const reqCols = await this.pgPool!.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'agenda_requests'`);
@@ -1944,6 +1972,36 @@ class DbWrapper {
  }
  } catch (e) {
  console.error('Error migrating agenda_appointments (SQLite):', e);
+ }
+
+ // One-time backfill: empleados activos con artículos vivos (expiration_date > hoy)
+ // quedan con enabled=0 (ver bloque PG para detalles).
+ try {
+ const cfgInfo = this.sqliteDb.prepare("PRAGMA table_info(agenda_config)").all() as any[];
+ const cfgColNames = cfgInfo.map((c: any) => c.name);
+ if (!cfgColNames.includes('delivery_disable_backfill_at')) {
+ this.sqliteDb.exec(`ALTER TABLE agenda_config ADD COLUMN delivery_disable_backfill_at TEXT`);
+ }
+ const cfgBF = this.sqliteDb.prepare('SELECT delivery_disable_backfill_at FROM agenda_config WHERE id = 1').get() as any;
+ if (cfgBF && !cfgBF.delivery_disable_backfill_at) {
+ const todayIso = new Date().toISOString().slice(0, 10);
+ const res = this.sqliteDb.prepare(
+ `UPDATE agenda_employees
+ SET enabled = 0, allow_reorder = 0
+ WHERE estado = 'activo'
+ AND id IN (
+ SELECT DISTINCT a.employee_id FROM agenda_articles a
+ WHERE a.current_status = 'activo'
+ AND a.expiration_date IS NOT NULL
+ AND a.expiration_date > ?
+ )
+ AND enabled = 1`
+ ).run(todayIso);
+ this.sqliteDb.prepare(`UPDATE agenda_config SET delivery_disable_backfill_at = datetime('now') WHERE id = 1`).run();
+ console.log(`[backfill] bloqueados ${res.changes || 0} empleados con artículos vivos (SQLite)`);
+ }
+ } catch (e) {
+ console.error('Error backfill delivery_disable (SQLite):', e);
  }
 
  try {

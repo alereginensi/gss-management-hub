@@ -80,6 +80,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       ]
     );
 
+    // Al completar la entrega: bloquear al empleado para nuevas citas hasta que
+    // sus artículos venzan. El cron diario + el lookup público re-habilitan
+    // automáticamente via syncEmployeeRenewalStatus cuando expiration_date <= hoy.
+    await db.run(
+      `UPDATE agenda_employees SET enabled = 0, allow_reorder = 0 WHERE id = ? AND estado = 'activo'`,
+      [appt.employee_id]
+    );
+
     // Crear artículos en agenda_articles si se solicitó
     if (create_articles) {
       const deliveryDate = nowVal.split('T')[0];

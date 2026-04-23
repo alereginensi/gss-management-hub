@@ -71,7 +71,8 @@ export async function POST(request: NextRequest) {
     try {
       const updated = await syncEmployeeRenewalStatus(employee.id);
       if (updated > 0) {
-        // Refetch para que el flag quede reflejado en la response.
+        // Reflejar los flags en la response (sync los puso en 1).
+        employee.enabled = 1;
         employee.allow_reorder = 1;
       }
     } catch (err) {

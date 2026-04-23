@@ -361,15 +361,22 @@ El módulo legacy `admin/cambios` y sus endpoints `/api/logistica/agenda/changes
 ### Cron y scripts
 - `scripts/cron-agenda.cjs` — dos schedules:
   - **Slots**: auto-generación mensual el día 28 a las 09:00 Montevideo.
-  - **Renovaciones**: diario a las 02:00 Montevideo — llama `syncEmployeeRenewalStatus()` para marcar `allow_reorder=1` en empleados con artículos vencidos.
+  - **Renovaciones**: diario a las 02:00 Montevideo — llama `syncEmployeeRenewalStatus()` para marcar `enabled=1, allow_reorder=1` en empleados con artículos vencidos.
 - `npm run agenda:slots -- --manual 2025-08` — genera slots de un mes específico (también dispara sync de renovaciones).
 - `node scripts/cron-agenda.cjs --sync-renewals` — corre solo el sync de renovaciones, útil para ejecución manual.
 - `scripts/backfill-articulos-desde-entregas.cjs` — backfill de `agenda_articles` a partir de citas completadas (dedup por `(appointment_id, article_type, size)`). Soporta `--apply` (default: dry-run) y `--employee=<CI>`.
 
 ### Renovación automática y pedido restringido
 
+Ciclo de vida del flag `enabled` del empleado:
+- **Alta normal**: `enabled=1` (puede retirar uniformes).
+- **Al completar una entrega** (`PUT /api/logistica/agenda/appointments/[id]/delivery` o `POST /api/logistica/agenda/ingresos`): `enabled=0, allow_reorder=0`. El empleado queda bloqueado para agendar hasta que sus artículos venzan.
+- **Cuando algún artículo vence** (`expiration_date <= hoy`): `syncEmployeeRenewalStatus` re-habilita `enabled=1, allow_reorder=1`. Solo afecta empleados con `estado='activo'`.
+- **Revertir entrega** (`POST /api/logistica/agenda/appointments/[id]/revert-delivery`): `enabled=1, allow_reorder=1`.
+- **Egreso**: `enabled=0, estado='inactivo'`. El sync no toca empleados inactivos.
+
 Feature A (auto-habilitar por vencimiento):
-- `syncEmployeeRenewalStatus(employeeId?)` en [lib/agenda-helpers.ts](lib/agenda-helpers.ts): UPDATE que marca `allow_reorder=1` en empleados con artículos `expiration_date <= CURRENT_DATE`, `current_status='activo'`, `enabled=1`, `estado='activo'`.
+- `syncEmployeeRenewalStatus(employeeId?)` en [lib/agenda-helpers.ts](lib/agenda-helpers.ts): UPDATE que marca `enabled=1, allow_reorder=1` en empleados con artículos `expiration_date <= CURRENT_DATE`, `current_status='activo'`, `estado='activo'`.
 - Se ejecuta en 3 lugares: (1) cron diario 02:00, (2) on-read en `/api/logistica/agenda/public/lookup` (solo el empleado que consulta, instantáneo), (3) manualmente via `--sync-renewals`.
 
 Feature B (pedido restringido a vencidos):
