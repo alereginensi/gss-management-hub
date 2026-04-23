@@ -364,8 +364,10 @@ ${notesLine}
                             </>
                           )}
                           {(() => {
+                            // NOTA: "Nuevo ingreso" deshabilitado temporalmente hasta tener historial
+                            // completo (muchas citas viejas aparecerían como "nuevo ingreso" sin serlo).
+                            // Restaurar agregando: ingreso: { label: 'Nuevo ingreso', color: '#15803d', bg: '#dcfce7', border: '#86efac' },
                             const tipoBadges: Record<string, { label: string; color: string; bg: string; border: string }> = {
-                              ingreso: { label: 'Nuevo ingreso', color: '#15803d', bg: '#dcfce7', border: '#86efac' },
                               cambio: { label: 'Cambio de uniforme', color: '#b45309', bg: '#fef3c7', border: '#fcd34d' },
                               agregado: { label: 'Agregado', color: '#6d28d9', bg: '#ede9fe', border: '#c4b5fd' },
                             };
