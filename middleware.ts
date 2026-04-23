@@ -108,14 +108,13 @@ export async function middleware(request: NextRequest) {
         }
     }
 
-    // Agenda Web admin: SOLO admin tiene acceso completo. Cualquier otro rol
-    // (supervisor, jefe, logistica, rrhh, encargado_limpieza) queda limitado a
-    // citas / entregas / egresos / ingresos. Si intenta una ruta fuera de esas,
-    // redirige al dashboard (que filtra igual client-side).
+    // Agenda Web admin: SOLO el rol "logistica" tiene vista restringida.
+    // Admin, rrhh, jefe, supervisor y demás roles acceden a todo. Si logistica
+    // intenta una ruta fuera de las permitidas, redirige al dashboard.
     const roleNorm = user?.role
       ? String(user.role).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
       : '';
-    if (user && roleNorm !== 'admin' && isLogisticaAgendaAdminPath(pathname) && !isLogisticaAgendaAllowedForLogistica(pathname)) {
+    if (user && roleNorm === 'logistica' && isLogisticaAgendaAdminPath(pathname) && !isLogisticaAgendaAllowedForLogistica(pathname)) {
         return NextResponse.redirect(new URL('/logistica/agenda/admin', request.url));
     }
 

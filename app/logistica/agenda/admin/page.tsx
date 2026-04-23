@@ -45,13 +45,16 @@ const LOGISTICA_ALLOWED_PATHS: readonly string[] = [
   '/logistica/agenda/admin/envios-interior',
 ];
 
-// Regla: SOLO admin ve todo el panel admin. Cualquier otro rol (supervisor,
-// jefe, logistica, rrhh, encargado_limpieza, etc.) ve la vista restringida
-// con solo Citas, Entregas, Egresos e Ingresos.
-function isAgendaFullAccess(role?: string): boolean {
+// Regla: SOLO el rol "logistica" tiene vista restringida (6 cards).
+// Admin, rrhh, jefe, supervisor y demás ven todo el panel admin.
+function isAgendaRestricted(role?: string): boolean {
   if (!role) return false;
   const norm = role.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  return norm === 'admin';
+  return norm === 'logistica';
+}
+// Alias mantenido para minimizar diff: "full access" = NO restringido.
+function isAgendaFullAccess(role?: string): boolean {
+  return !isAgendaRestricted(role);
 }
 
 export default function AgendaAdminDashboard() {
