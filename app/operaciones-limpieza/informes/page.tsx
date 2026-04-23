@@ -441,6 +441,9 @@ export default function InformesOperativosPage() {
             if (res.ok) {
                 const data = await res.json();
                 const newAsistencia: SeccionesAsistencia = Object.fromEntries(SECCIONES.map(s => [s, []]));
+                // Garantizar que el turno seleccionado tenga su key aunque no esté en
+                // SECCIONES (ej turnos nuevos "22 A 6" que no están en la lista hardcoded)
+                if (turno && !(turno in newAsistencia)) newAsistencia[turno] = [];
 
                 // Build structured rows for the turno section if a planilla config exists
                 const config = getPlanillaConfig(sector, turno);
@@ -1109,7 +1112,7 @@ export default function InformesOperativosPage() {
 
                                         {/* ── MOBILE CARDS ── */}
                                         <div className="mobile-view">
-                                            {asistencia[seccion].map((row, idx) => {
+                                            {(asistencia[seccion] || []).map((row, idx) => {
                                                 const hasWorker = !!(row.funcionario_id || (row.isManual && row.nombre) || row.planificado);
                                                 return (
                                                 <div key={idx} style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.9rem', marginBottom: '0.75rem', backgroundColor: row.asistio === 1 ? '#f0fdf4' : row.asistio === 0 ? '#fef2f2' : '#fff' }}>
@@ -1249,7 +1252,7 @@ export default function InformesOperativosPage() {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {asistencia[seccion].map((row, idx) => (
+                                                    {(asistencia[seccion] || []).map((row, idx) => (
                                                         <tr key={idx} style={{ borderBottom: '1px solid #cbd5e1' }}>
                                                             {/* Puesto column */}
                                                             {showPuestoCol && !isAdicionales && (
