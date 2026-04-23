@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const type = (formData.get('type') as ImportJobType) || 'employees';
+    const sendToIngresosRaw = formData.get('send_to_ingresos');
+    const sendToIngresos = sendToIngresosRaw === 'true' || sendToIngresosRaw === '1' || sendToIngresosRaw === 'on';
 
     if (!file) return NextResponse.json({ error: 'Archivo requerido' }, { status: 400 });
     if (!['employees', 'articles_migration'].includes(type)) {
@@ -29,7 +31,7 @@ export async function POST(request: NextRequest) {
     if (rows.length === 0) return NextResponse.json({ error: 'El archivo está vacío o sin filas de datos' }, { status: 400 });
 
     const result = type === 'employees'
-      ? await importEmployees(rows, session.user.id)
+      ? await importEmployees(rows, session.user.id, { sendToIngresos })
       : await importArticlesMigration(rows, session.user.id);
 
     // Registrar job

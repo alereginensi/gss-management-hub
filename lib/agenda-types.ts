@@ -293,6 +293,8 @@ export interface ImportResult {
   successful: number;
   failed: number;
   errors: ImportError[];
+  ingresosCreated?: number;
+  ingresosSkipped?: number;
 }
 
 // ─── Auditoría ───────────────────────────────────────────────────────────────

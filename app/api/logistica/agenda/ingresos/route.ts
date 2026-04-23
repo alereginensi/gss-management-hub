@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')?.trim() || '';
     const limit = parseInt(searchParams.get('limit') || '100', 10);
 
+    const status = searchParams.get('status')?.trim() || '';
+
     const conditions: string[] = ['a.is_ingreso = 1'];
     const params: unknown[] = [];
     if (from) { conditions.push('s.fecha >= ?'); params.push(from); }
@@ -29,6 +31,11 @@ export async function GET(request: NextRequest) {
       conditions.push('(LOWER(e.nombre) LIKE ? OR LOWER(e.documento) LIKE ?)');
       const t = `%${search.toLowerCase()}%`;
       params.push(t, t);
+    }
+    if (status === 'pendiente') {
+      conditions.push(`a.status = 'confirmada'`);
+    } else if (status === 'completada') {
+      conditions.push(`a.status = 'completada'`);
     }
     const where = `WHERE ${conditions.join(' AND ')}`;
 
@@ -42,7 +49,8 @@ export async function GET(request: NextRequest) {
          JOIN agenda_employees e ON e.id = a.employee_id
          JOIN agenda_time_slots s ON s.id = a.time_slot_id
          ${where}
-         ORDER BY s.fecha DESC, s.start_time DESC
+         ORDER BY (CASE WHEN a.status = 'confirmada' THEN 0 ELSE 1 END) ASC,
+                  s.fecha DESC, s.start_time DESC
          LIMIT ?`,
         [...params, limit]
       ),

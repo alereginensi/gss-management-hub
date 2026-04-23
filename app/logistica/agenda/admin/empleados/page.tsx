@@ -15,6 +15,8 @@ const EMPTY_FORM = {
   workplace_category: '',
   fecha_ingreso: '', talle_superior: '', talle_inferior: '', calzado: '',
   enabled: 1, allow_reorder: 0, estado: 'activo' as string, observaciones: '',
+  // Al crear: si está activo, crea un turno pendiente para que logistica lo complete
+  send_to_ingresos: false,
 };
 
 export default function AgendaEmpleadosPage() {
@@ -109,6 +111,7 @@ export default function AgendaEmpleadosPage() {
       talle_inferior: emp.talle_inferior || '', calzado: emp.calzado || '',
       enabled: emp.enabled, allow_reorder: emp.allow_reorder,
       estado: emp.estado, observaciones: emp.observaciones || '',
+      send_to_ingresos: false,
     });
     setFormError(null);
     setShowModal(true);
@@ -117,6 +120,11 @@ export default function AgendaEmpleadosPage() {
   const handleSave = async () => {
     if (!form.documento.trim()) { setFormError('Documento requerido'); return; }
     if (!form.nombre.trim()) { setFormError('Nombre requerido'); return; }
+    // Si se solicita enviar a nuevos ingresos, la fecha de ingreso es obligatoria
+    if (!editEmployee && form.send_to_ingresos && !form.fecha_ingreso) {
+      setFormError('La fecha de ingreso es obligatoria para enviar a "Nuevos ingresos"');
+      return;
+    }
     setSaving(true);
     setFormError(null);
     try {
@@ -127,6 +135,16 @@ export default function AgendaEmpleadosPage() {
       if (!res.ok) { setFormError(data.error || 'Error al guardar'); return; }
       setShowModal(false);
       fetchEmployees();
+      // Feedback según el resultado del "enviar a nuevos ingresos"
+      if (!editEmployee && form.send_to_ingresos) {
+        if (data.ingreso_error) {
+          showToast(`Empleado creado, pero no se pudo crear el ingreso: ${data.ingreso_error}`, false);
+        } else if (data.pending_appointment_id) {
+          showToast('Empleado creado y enviado a Nuevos ingresos', true);
+        } else {
+          showToast('Empleado creado. El ingreso pendiente no se registró (verificá fecha de ingreso).', false);
+        }
+      }
     } finally {
       setSaving(false);
     }
@@ -559,7 +577,7 @@ export default function AgendaEmpleadosPage() {
                 </select>
               </div>
 
-              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '1rem' }}>
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', cursor: 'pointer' }}>
                   <input type="checkbox" checked={form.enabled === 1} onChange={e => setForm(f => ({ ...f, enabled: e.target.checked ? 1 : 0 }))} />
                   Habilitado para retirar uniformes
@@ -569,6 +587,25 @@ export default function AgendaEmpleadosPage() {
                   Permite reorden de prendas previas
                 </label>
               </div>
+
+              {/* Enviar a nuevos ingresos: crea un turno pendiente para logistica */}
+              {!editEmployee && (
+                <div style={{ gridColumn: '1 / -1', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '0.6rem 0.8rem', fontSize: '0.78rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: '#14532d', fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={form.send_to_ingresos}
+                      onChange={e => setForm(f => ({ ...f, send_to_ingresos: e.target.checked }))}
+                    />
+                    Enviar a nuevos ingresos (logística registrará la entrega)
+                  </label>
+                  {form.send_to_ingresos && (
+                    <p style={{ margin: '0.35rem 0 0 1.75rem', fontSize: '0.72rem', color: '#15803d' }}>
+                      Se creará un turno pendiente para la <strong>fecha de ingreso</strong> (obligatoria arriba). Logística lo ve en "Ingresos" y carga items + firma + remito.
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>Observaciones</label>

@@ -97,11 +97,19 @@ export function parseImportBuffer(buffer: Buffer): { headers: string[]; rows: Re
 
 export async function importEmployees(
   rows: Record<string, string>[],
-  createdBy: number
+  createdBy: number,
+  options: { sendToIngresos?: boolean } = {}
 ): Promise<ImportResult> {
   const errors: ImportError[] = [];
   let successful = 0;
+  let ingresosCreated = 0;
+  let ingresosSkipped = 0;
   const isPg = (db as any).type === 'pg';
+  const sendToIngresos = !!options.sendToIngresos;
+
+  // Para evitar colisión de horarios en el mismo día (capacity=1 por slot),
+  // llevamos un contador por fecha e incrementamos el minuto del slot.
+  const slotMinutesByDate = new Map<string, number>();
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -121,12 +129,13 @@ export async function importEmployees(
 
     const enabledVal = row.enabled === '0' || row.enabled === 'no' || row.enabled === 'false' || row.habilitado === '0' || (row.habilitado && String(row.habilitado).toLowerCase() === 'no') ? 0 : 1;
     const estadoVal = (row.estado || row.status || 'activo').toLowerCase().trim();
-    
+    const fechaIngreso = (row.fecha_ingreso || '').trim() || null;
+
     // NOTA: Como solicitó el usuario, ignoramos talles en la carga masiva (los dejamos como null o que mantengan lo anterior)
     const params = [
       documento, nombre,
       row.empresa || null, row.sector || null, row.puesto || null,
-      row.workplace_category || row.categoría_de_lugar || null, row.fecha_ingreso || null,
+      row.workplace_category || row.categoría_de_lugar || null, fechaIngreso,
       enabledVal, estadoVal, row.observaciones || null, createdBy,
     ];
 
@@ -157,10 +166,92 @@ export async function importEmployees(
       successful++;
     } catch (err: any) {
       errors.push({ row: rowNum, field: 'documento', message: err.message || 'Error al insertar' });
+      continue;
+    }
+
+    if (sendToIngresos) {
+      if (!fechaIngreso || !/^\d{4}-\d{2}-\d{2}$/.test(fechaIngreso)) {
+        ingresosSkipped++;
+        errors.push({ row: rowNum, field: 'fecha_ingreso', message: 'fecha_ingreso inválida o vacía — no se creó ingreso pendiente' });
+        continue;
+      }
+      try {
+        const emp = await db.get('SELECT id FROM agenda_employees WHERE documento = ?', [documento]);
+        if (!emp?.id) {
+          ingresosSkipped++;
+          continue;
+        }
+        // Slot 09:00 + 30min * orden del día, capacity=1
+        const idxDia = slotMinutesByDate.get(fechaIngreso) ?? 0;
+        slotMinutesByDate.set(fechaIngreso, idxDia + 1);
+        const baseMin = 9 * 60 + idxDia * 30;
+        const startH = Math.floor(baseMin / 60);
+        const startM = baseMin % 60;
+        const endMin = baseMin + 30;
+        const endH = Math.floor(endMin / 60);
+        const endM = endMin % 60;
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const startTime = `${pad(startH)}:${pad(startM)}`;
+        const endTime = `${pad(endH)}:${pad(endM)}`;
+        const nowSql = isPg ? 'NOW()' : "datetime('now')";
+
+        let slotId: number | undefined;
+        const existingSlot = await db.get(
+          `SELECT id, capacity, current_bookings FROM agenda_time_slots WHERE fecha = ? AND start_time = ? AND end_time = ? AND estado = 'activo'`,
+          [fechaIngreso, startTime, endTime]
+        );
+        if (existingSlot && (existingSlot.current_bookings || 0) < (existingSlot.capacity || 1)) {
+          slotId = existingSlot.id;
+        } else {
+          const slotRes = await db.run(
+            `INSERT INTO agenda_time_slots (fecha, start_time, end_time, capacity, current_bookings, estado) VALUES (?, ?, ?, 1, 0, 'activo')`,
+            [fechaIngreso, startTime, endTime]
+          );
+          if (isPg) {
+            const r = await db.get(
+              `SELECT id FROM agenda_time_slots WHERE fecha = ? AND start_time = ? AND end_time = ? ORDER BY id DESC LIMIT 1`,
+              [fechaIngreso, startTime, endTime]
+            );
+            slotId = r?.id;
+          } else {
+            slotId = slotRes.lastInsertRowid as number;
+          }
+        }
+        if (!slotId) { ingresosSkipped++; continue; }
+
+        // Evitar duplicar si ya existe un ingreso pendiente para este empleado
+        const dup = await db.get(
+          `SELECT id FROM agenda_appointments WHERE employee_id = ? AND is_ingreso = 1 AND status = 'confirmada' ORDER BY id DESC LIMIT 1`,
+          [emp.id]
+        );
+        if (dup?.id) { ingresosSkipped++; continue; }
+
+        await db.run(
+          `INSERT INTO agenda_appointments (employee_id, time_slot_id, status, is_ingreso, created_at, updated_at)
+           VALUES (?, ?, 'confirmada', 1, ${nowSql}, ${nowSql})`,
+          [emp.id, slotId]
+        );
+        await db.run(
+          `UPDATE agenda_time_slots SET current_bookings = current_bookings + 1 WHERE id = ?`,
+          [slotId]
+        );
+        ingresosCreated++;
+      } catch (e: any) {
+        ingresosSkipped++;
+        errors.push({ row: rowNum, field: 'ingreso', message: `No se pudo crear ingreso pendiente: ${e.message || e}` });
+      }
     }
   }
 
-  return { success: errors.length === 0, processed: rows.length, successful, failed: errors.length, errors };
+  return {
+    success: errors.length === 0,
+    processed: rows.length,
+    successful,
+    failed: errors.length,
+    errors,
+    ingresosCreated: sendToIngresos ? ingresosCreated : undefined,
+    ingresosSkipped: sendToIngresos ? ingresosSkipped : undefined,
+  };
 }
 
 // ─── Importación de migración histórica de artículos ─────────────────────────

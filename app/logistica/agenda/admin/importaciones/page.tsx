@@ -25,12 +25,14 @@ export default function ImportacionesPage() {
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sendToIngresos, setSendToIngresos] = useState(false);
 
   useEffect(() => {
     setFile(null);
     setPreviewData(null);
     setResult(null);
     setError(null);
+    setSendToIngresos(false);
   }, [importType]);
 
   useEffect(() => {
@@ -123,6 +125,9 @@ export default function ImportacionesPage() {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('type', importType);
+      if (importType === 'employees' && sendToIngresos) {
+        fd.append('send_to_ingresos', 'true');
+      }
       const res = await fetch('/api/logistica/agenda/import', { method: 'POST', body: fd });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Error en la importación'); return; }
@@ -207,6 +212,24 @@ export default function ImportacionesPage() {
                 : <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>Clic para seleccionar archivo Excel (.xlsx, .xls) o CSV</div>}
             </div>
 
+            {importType === 'employees' && (
+              <label style={{
+                display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer',
+                marginTop: '0.75rem', padding: '0.6rem 0.75rem', borderRadius: '8px',
+                border: `2px solid ${sendToIngresos ? '#059669' : '#e2e8f0'}`,
+                background: sendToIngresos ? '#ecfdf5' : '#f8fafc',
+              }}>
+                <input type="checkbox" checked={sendToIngresos} onChange={e => setSendToIngresos(e.target.checked)} style={{ marginTop: '2px' }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#065f46' }}>Enviar todos a Nuevos Ingresos</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>
+                    Crea un turno pendiente (is_ingreso) para cada empleado usando su <code>fecha_ingreso</code>.
+                    Logística los completará desde <strong>/admin/ingresos</strong>. Se omiten filas sin fecha válida.
+                  </div>
+                </div>
+              </label>
+            )}
+
             {error && <div style={{ marginTop: '0.75rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '0.6rem', fontSize: '0.82rem', color: '#7f1d1d' }}>{error}</div>}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
@@ -272,6 +295,12 @@ export default function ImportacionesPage() {
                   { label: 'Total procesadas', value: result.processed, color: '#374151', bg: '#f8fafc' },
                   { label: 'Exitosas', value: result.successful, color: '#065f46', bg: '#d1fae5' },
                   { label: 'Con errores', value: result.failed, color: '#7f1d1d', bg: '#fee2e2' },
+                  ...(result.ingresosCreated !== undefined ? [
+                    { label: 'Ingresos pendientes creados', value: result.ingresosCreated, color: '#92400e', bg: '#fef3c7' },
+                  ] : []),
+                  ...(result.ingresosSkipped !== undefined && result.ingresosSkipped > 0 ? [
+                    { label: 'Ingresos omitidos', value: result.ingresosSkipped, color: '#475569', bg: '#f1f5f9' },
+                  ] : []),
                 ].map(s => (
                   <div key={s.label} style={{ flex: '1 1 100px', textAlign: 'center', padding: '0.75rem', borderRadius: '8px', background: s.bg }}>
                     <div style={{ fontSize: '1.4rem', fontWeight: 800, color: s.color }}>{s.value}</div>

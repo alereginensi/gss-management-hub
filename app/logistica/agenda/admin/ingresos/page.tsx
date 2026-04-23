@@ -16,6 +16,7 @@ interface IngresoItem {
   employee_documento: string;
   employee_empresa?: string | null;
   employee_sector?: string | null;
+  status: string;
   delivered_order_items: Array<{ article_type: string; size?: string; qty?: number }>;
   remito_number?: string | null;
   remito_pdf_url?: string | null;
@@ -42,6 +43,7 @@ export default function IngresosPage() {
   const [search, setSearch] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'pendiente' | 'completada' | ''>('');
   const [viewingFirmas, setViewingFirmas] = useState<IngresoItem | null>(null);
 
   useEffect(() => {
@@ -57,6 +59,7 @@ export default function IngresosPage() {
       if (search) p.set('search', search);
       if (from) p.set('from', from);
       if (to) p.set('to', to);
+      if (statusFilter) p.set('status', statusFilter);
       const res = await fetch(`/api/logistica/agenda/ingresos?${p}`);
       const data = await res.json();
       setItems(data.items || []);
@@ -65,7 +68,7 @@ export default function IngresosPage() {
     } finally {
       setFetching(false);
     }
-  }, [search, from, to]);
+  }, [search, from, to, statusFilter]);
 
   useEffect(() => {
     if (!isAuthenticated || loading) return;
@@ -106,31 +109,68 @@ export default function IngresosPage() {
 
         {/* Filtros */}
         <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.6rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.35rem 0.6rem', background: 'var(--bg-color)' }}>
-              <Search size={13} color="var(--text-secondary)" />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Buscar por nombre o cédula"
-                style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: '0.83rem' }}
-              />
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 2fr) minmax(140px, 1fr) minmax(140px, 1fr) auto', gap: '0.6rem', alignItems: 'end' }}>
+            <div>
+              <label style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.1rem' }}>Buscar</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', padding: '0.35rem 0.6rem', background: 'var(--bg-color)', height: '32px', boxSizing: 'border-box' }}>
+                <Search size={13} color="var(--text-secondary)" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Nombre o cédula"
+                  style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--text-primary)', fontSize: '0.83rem' }}
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    title="Limpiar búsqueda"
+                    style={{ border: 'none', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
             </div>
             <div>
-              <label style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Desde</label>
+              <label style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.1rem' }}>Desde</label>
               <input type="date" value={from} onChange={e => setFrom(e.target.value)}
-                style={{ width: '100%', padding: '0.35rem 0.55rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)', fontSize: '0.83rem' }} />
+                style={{ width: '100%', height: '32px', padding: '0 0.55rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)', fontSize: '0.83rem', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Hasta</label>
+              <label style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.1rem' }}>Hasta</label>
               <input type="date" value={to} onChange={e => setTo(e.target.value)}
-                style={{ width: '100%', padding: '0.35rem 0.55rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)', fontSize: '0.83rem' }} />
+                style={{ width: '100%', height: '32px', padding: '0 0.55rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)', fontSize: '0.83rem', boxSizing: 'border-box' }} />
             </div>
             <button onClick={load}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.75rem', border: '1px solid var(--border-color)', background: 'transparent', borderRadius: 'var(--radius)', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.8rem', alignSelf: 'end' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', height: '32px', padding: '0 0.85rem', border: '1px solid var(--border-color)', background: 'transparent', borderRadius: 'var(--radius)', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
               <RefreshCw size={13} /> Actualizar
             </button>
+          </div>
+          {/* Tabs de estado */}
+          <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.7rem', flexWrap: 'wrap' }}>
+            {([
+              { value: '', label: 'Todos' },
+              { value: 'pendiente', label: 'Pendientes' },
+              { value: 'completada', label: 'Completados' },
+            ] as const).map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setStatusFilter(opt.value as any)}
+                style={{
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '999px',
+                  border: `1px solid ${statusFilter === opt.value ? '#059669' : 'var(--border-color)'}`,
+                  background: statusFilter === opt.value ? '#ecfdf5' : 'transparent',
+                  color: statusFilter === opt.value ? '#065f46' : 'var(--text-secondary)',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -145,8 +185,11 @@ export default function IngresosPage() {
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.85rem' }}>
-            {items.map(it => (
-              <div key={it.id} className="card" style={{ padding: '1rem', borderLeft: '4px solid #059669', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
+            {items.map(it => {
+              const isPending = it.status === 'confirmada';
+              const borderColor = isPending ? '#f59e0b' : '#059669';
+              return (
+              <div key={it.id} className="card" style={{ padding: '1rem', borderLeft: `4px solid ${borderColor}`, display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: '0.92rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -158,8 +201,8 @@ export default function IngresosPage() {
                       {it.employee_sector && <> · {it.employee_sector}</>}
                     </div>
                   </div>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.55rem', background: '#dcfce7', color: '#166534', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                    <PackageCheck size={10} /> Ingreso
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.2rem 0.55rem', background: isPending ? '#fef3c7' : '#dcfce7', color: isPending ? '#92400e' : '#166534', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    <PackageCheck size={10} /> {isPending ? 'Pendiente' : 'Completado'}
                   </span>
                 </div>
                 <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
@@ -198,14 +241,23 @@ export default function IngresosPage() {
                   </div>
                   <Link
                     href={`/logistica/agenda/admin/citas/${it.id}`}
-                    title="Editar ingreso (abre detalle de la cita)"
-                    style={{ fontSize: '0.72rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '4px', padding: '0.2rem 0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none', fontWeight: 600 }}
+                    title={isPending ? 'Completar entrega (items, firmas, remito)' : 'Editar ingreso'}
+                    style={{
+                      fontSize: '0.72rem',
+                      background: isPending ? '#fef3c7' : '#eff6ff',
+                      color: isPending ? '#92400e' : '#1d4ed8',
+                      border: `1px solid ${isPending ? '#fcd34d' : '#bfdbfe'}`,
+                      borderRadius: '4px', padding: '0.25rem 0.6rem',
+                      display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                      textDecoration: 'none', fontWeight: 700,
+                    }}
                   >
-                    <Pencil size={11} /> Editar
+                    {isPending ? <><PackageCheck size={11} /> Completar entrega</> : <><Pencil size={11} /> Editar</>}
                   </Link>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
