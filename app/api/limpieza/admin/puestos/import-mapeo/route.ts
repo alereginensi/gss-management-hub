@@ -186,15 +186,20 @@ export async function POST(request: NextRequest) {
       // Si hay 2 columnas "Turno", usar la última (la derecha suele ser el turno real)
       const cT = turnoLast || cols['turno'];
 
-      // Buscar el sector correspondiente al nombre de la hoja. Si no matchea
-      // exacto, intentar por contenido (ej hoja "Planillas Asilo" contiene "Asilo").
+      // Buscar el sector correspondiente al nombre de la hoja.
+      // 1) Match exacto.
+      // 2) Si no, elegir el sector cuyo nombre esté contenido en la hoja, con
+      //    el MAYOR score (longitud del nombre matcheado). Así una hoja
+      //    "Planilla Torre 1 PisosVip 4-5-6" matchea con el sector "PisosVip"
+      //    (específico) en lugar de "Torre 1" (ambos contenidos pero genérico).
       const sheetNameNorm = normNombre(ws.name);
       let targetSector = sectorByName.get(sheetNameNorm);
       if (!targetSector) {
+        let bestScore = 0;
         for (const [sn, sname] of sectorByName) {
-          if (sheetNameNorm.includes(sn) || sn.includes(sheetNameNorm)) {
+          if (sn && sheetNameNorm.includes(sn) && sn.length > bestScore) {
+            bestScore = sn.length;
             targetSector = sname;
-            break;
           }
         }
       }

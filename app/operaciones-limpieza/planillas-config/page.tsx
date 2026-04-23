@@ -224,7 +224,13 @@ export default function PlanillasConfigPage() {
 
     const activos = clientes.filter(c => c.active === 1);
     const sectoresActivos = sectores.filter(s => s.active === 1);
-    const turnosDelSector = Array.from(new Set(puestos.filter(p => p.active === 1).map(p => p.turno))).sort();
+    // Ordenar turnos por hora de inicio (ej "6 A 14" → 6). No-numéricos al final.
+    const parseTurnoStart = (t: string): number => {
+        const m = String(t).match(/^(\d+)/);
+        return m ? parseInt(m[1], 10) : 9999;
+    };
+    const turnosDelSector = Array.from(new Set(puestos.filter(p => p.active === 1).map(p => p.turno)))
+        .sort((a, b) => parseTurnoStart(a) - parseTurnoStart(b) || a.localeCompare(b));
 
     const colCard: React.CSSProperties = { background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.65rem', minHeight: '400px' };
     const inputStyle: React.CSSProperties = { padding: '0.5rem 0.7rem', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.85rem', flex: 1 };

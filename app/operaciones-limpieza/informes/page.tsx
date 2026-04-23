@@ -303,7 +303,17 @@ function getTurnosForSector(sector: string): string[] {
         k => k.toLowerCase() === sector.toLowerCase()
     );
     if (!key) return TURNOS;
-    return Object.keys(PLANILLA_CONFIG[key]);
+    return sortTurnosChronologically(Object.keys(PLANILLA_CONFIG[key]));
+}
+
+// Orden cronológico por hora de inicio del turno (ej "6 A 14" → 6).
+// Turnos no-numéricos (ej "HEMOTERAPIA") al final.
+function sortTurnosChronologically(turnos: string[]): string[] {
+    const parseStart = (t: string): number => {
+        const m = String(t).match(/^(\d+)/);
+        return m ? parseInt(m[1], 10) : 9999;
+    };
+    return [...turnos].sort((a, b) => parseStart(a) - parseStart(b) || a.localeCompare(b));
 }
 
 export default function InformesOperativosPage() {
@@ -1554,7 +1564,7 @@ export default function InformesOperativosPage() {
                                                     if (!byTurno.has(t)) byTurno.set(t, []);
                                                     byTurno.get(t)!.push(r);
                                                 }
-                                                const turnosOrdenados = [...byTurno.keys()].sort();
+                                                const turnosOrdenados = sortTurnosChronologically([...byTurno.keys()]);
                                                 return (
                                                     <div style={{ maxHeight: '320px', overflow: 'auto', border: '1px solid #f1f5f9', borderRadius: '6px' }}>
                                                         {turnosOrdenados.map(turno => {
