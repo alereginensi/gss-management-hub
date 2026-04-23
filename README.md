@@ -84,7 +84,7 @@ Abre [http://localhost:3000](http://localhost:3000) y usa cualquiera de estas cr
 | `tecnico@example.com` | Técnico | Seguridad electrónica |
 | `logistica@example.com` | Logística | Módulo de logística completo |
 | `contador@example.com` | Contador | Cotización y liquidación |
-| `rrhh@example.com` | RRHH | Agenda web de uniformes |
+| `rrhh@example.com` | RRHH | Agenda web de uniformes + Jornales |
 | `encargado@example.com` | Encargado limpieza | Operaciones del cliente asignado |
 
 **Contraseña para todos:** `Dev1234!`
@@ -128,7 +128,7 @@ Módulo para técnicos: registro de eventos de monitoreo y gestión de mantenimi
 Gestión comercial y liquidación de horas: categorías de empleados, tarifas por hora, períodos de facturación y exportación de reportes Excel para clientes.
 
 ### Recursos Humanos (RRHH)
-Acceso al sistema de gestión de uniformes desde el área de RRHH. Permite consultar y registrar entregas al personal.
+Incluye dos submódulos: acceso a la **Agenda Web** de uniformes (consulta y registro de entregas al personal) y **Jornales**, un tablero de control de días trabajados con carga de Excel de marcas, altas/bajas de funcionarios y cálculo automático de efectividad (≥100 jornales).
 
 ### Mi Trabajo (Mitrabajo)
 Descarga automática diaria del reporte de asistencia desde el portal externo mitrabajo.uy. Los archivos quedan disponibles para descarga directa desde el sistema y, opcionalmente, se envían por email como adjunto a los destinatarios configurados en la misma sección.
@@ -172,7 +172,7 @@ Gestión de clientes (ubicaciones) y sus sectores, configuración de notificacio
 | Técnico | Seguridad electrónica |
 | Logística | Módulo de logística completo |
 | Contador | Cotización y liquidación |
-| RRHH | Agenda web de uniformes |
+| RRHH | Agenda web de uniformes + Jornales |
 | Encargado de limpieza | Operaciones limpieza (cliente asignado) |
 | Limpieza | Registro de limpieza (pantalla pública) |
 
@@ -197,7 +197,7 @@ Documentación escrita para usuarios sin conocimientos técnicos.
 | [Logística](./docs/guias/GUIA_LOGISTICA.md) | Agenda web, envíos, órdenes de compra |
 | [Seguridad Electrónica](./docs/guias/GUIA_SEGURIDAD_ELECTRONICA.md) | Monitoreo y mantenimiento |
 | [Cotización](./docs/guias/GUIA_COTIZACION.md) | Tarifas, liquidación, reportes |
-| [RRHH](./docs/guias/GUIA_RRHH.md) | Agenda web de uniformes |
+| [RRHH](./docs/guias/GUIA_RRHH.md) | Agenda web de uniformes y control de jornales |
 | [Gestión de Usuarios (Admin)](./docs/guias/GUIA_ADMIN_USUARIOS.md) | Alta, edición, permisos, funcionarios |
 | [Configuración del Sistema (Admin)](./docs/guias/GUIA_ADMIN_CONFIG.md) | Ubicaciones, sectores, herramientas |
 | [Registro de Limpieza](./docs/guias/GUIA_REGISTRO_LIMPIEZA.md) | Pantalla pública con cédula |

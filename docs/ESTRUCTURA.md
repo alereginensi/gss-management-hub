@@ -64,7 +64,8 @@ Cada subcarpeta de `app/` corresponde a una sección del sistema.
 | [`app/logistica/agenda/admin/devoluciones-egreso/`](../app/logistica/agenda/admin/devoluciones-egreso/) | `/logistica/agenda/admin/devoluciones-egreso` | Devoluciones al finalizar relación laboral (listado + alta de nuevo egreso) |
 | [`app/seguridad-electronica/`](../app/seguridad-electronica/) | `/seguridad-electronica` | Monitoreo y mantenimientos técnicos |
 | [`app/cotizacion/`](../app/cotizacion/) | `/cotizacion` | Cotización comercial y liquidación de horas |
-| [`app/rrhh/`](../app/rrhh/) | `/rrhh` | RRHH — agenda web de uniformes |
+| [`app/rrhh/`](../app/rrhh/) | `/rrhh` | RRHH — hub con Agenda web y Jornales |
+| [`app/rrhh/jornales/`](../app/rrhh/jornales/) | `/rrhh/jornales` | Control de días trabajados (personal, marcas, altas/bajas, resultados) |
 | [`app/limpieza/`](../app/limpieza/) | `/limpieza` | Pantalla pública de registro de limpieza (sin login) |
 | [`app/turno/`](../app/turno/) | `/turno` | Pantalla pública de consulta de turnos de uniforme |
 | [`app/mitrabajo/`](../app/mitrabajo/) | `/mitrabajo` | Descarga de reportes desde mitrabajo.uy |
@@ -88,6 +89,8 @@ Dentro de cada módulo hay una carpeta `api/` con los endpoints:
 | [`app/api/seguridad-electronica/`](../app/api/seguridad-electronica/) | Eventos, mantenimientos preventivos y correctivos |
 | [`app/api/cotizacion/`](../app/api/cotizacion/) | Categorías, tarifas, períodos, reportes |
 | [`app/api/rrhh/`](../app/api/rrhh/) | Entregas de uniformes desde RRHH |
+| [`app/api/rrhh/jornales/`](../app/api/rrhh/jornales/) | Personal, marcas, archivos y resultados del módulo de Jornales |
+| [`scripts/seed-jornales-historico.cjs`](../scripts/seed-jornales-historico.cjs) | Seed idempotente de personal + marcas sintéticas iniciales del módulo Jornales |
 | [`app/api/limpieza/`](../app/api/limpieza/) | Confirmación de tareas (pantalla pública) |
 | [`app/api/turno/`](../app/api/turno/) | Consulta de turno por cédula |
 | [`app/api/mitrabajo/`](../app/api/mitrabajo/) | Trigger de descarga, listado de archivos |

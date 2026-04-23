@@ -13,7 +13,8 @@
     "agenda:slots": "node scripts/cron-agenda.cjs --manual",
     "agenda:reset-catalog": "node scripts/reset-agenda-catalog.cjs",
     "agenda:migrate-catalog-category": "node scripts/migrate-catalog-puesto-to-category.cjs",
-    "seed": "node scripts/seed-dev.js"
+    "seed": "node scripts/seed-dev.js",
+    "seed:jornales-historico": "node scripts/seed-jornales-historico.cjs"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",

@@ -1,6 +1,6 @@
 # Guía de Recursos Humanos (RRHH)
 
-El módulo de Recursos Humanos permite al equipo de RRHH gestionar la entrega y el seguimiento de uniformes del personal a través de la Agenda Web.
+El módulo de Recursos Humanos tiene dos funcionalidades principales: la **Agenda Web** para la entrega y seguimiento de uniformes y el módulo de **Jornales** para el control de días trabajados del personal.
 
 ---
 
@@ -59,3 +59,62 @@ Es el mismo sistema (Agenda Web). El acceso desde RRHH es para el equipo de recu
 
 **¿Quién puede acceder a este módulo?**
 Solo los usuarios con tipo **RRHH** o **Administrador** tienen acceso al módulo de Recursos Humanos.
+
+---
+
+## 6. Jornales
+
+El submódulo de **Jornales** permite controlar cuántos días trabajó cada funcionario a partir de los archivos de marcas que exporta el sistema de asistencia. El objetivo es identificar a los funcionarios que ya alcanzaron la cantidad de días necesarios para pasar a efectividad.
+
+### 6.1. Cómo acceder
+
+Desde el hub `/rrhh` hacé clic en la tarjeta **"Jornales"**. Vas a ver cinco pestañas: **Resultados**, **Personal**, **Agregar marcas**, **Altas** y **Bajas**.
+
+Toda la información (personal, marcas, altas y bajas) queda guardada en la base de datos — al recargar la página no se pierde nada y cualquier otro usuario de RRHH/Admin ve lo mismo.
+
+### 6.2. Personal
+
+Listado de los funcionarios que controla el módulo. Cada fila muestra padrón, nombre, cédula, jornales acumulados y si tiene **efectividad autorizada**.
+
+- **Cargar listado desde Excel**: subí un archivo con las columnas `Padron` y `Nombre` (opcionales: `Apellido`, `Cedula`). **Atención**: esta operación reemplaza el personal existente en el módulo.
+- **Efectividad autorizada (checkbox)**: marcar a una persona como "efectividad autorizada" fija su estado en *Efectividad autorizada*. Los Excel nuevos ya no le suman jornales, pero la cantidad que acumuló hasta ese momento se mantiene visible.
+- **Dar de baja**: botón rojo por fila; pide confirmación.
+
+### 6.3. Agregar marcas
+
+Subí archivos Excel con columnas `Número de empleado`, `Fecha` y `Lugar`. El sistema:
+
+- **Ignora duplicados** — una persona, una fecha y un lugar sólo suman una vez aunque estén en archivos distintos.
+- **Ignora archivos repetidos** — si ya subiste un archivo con el mismo nombre y tamaño, lo salta.
+- Deja registrado cada archivo cargado como un "chip" abajo. Si clickeás la **×** del chip se borran sólo las marcas de ese archivo.
+- Si necesitás empezar de cero, usá **"Limpiar todas las marcas"**.
+
+### 6.4. Altas
+
+Dos formas de agregar personal sin reemplazar el listado:
+
+- **Pegar texto**: formato `padrón<TAB>nombre<TAB>apellido<TAB>cédula`, una persona por línea.
+- **Subir Excel**: mismo formato que el listado general (`Padron`, `Nombre`, opcionales).
+
+Primero muestra una **vista previa** indicando cuáles ya existen en el sistema, y recién confirmás con **"Confirmar altas"** para persistirlas.
+
+### 6.5. Bajas
+
+Tres modos para dar de baja funcionarios:
+
+- **Buscar por nombre**: escribí parte del nombre o padrón y seleccioná con los checkboxes.
+- **Pegar padrones**: un padrón por línea, o separados por comas o espacios.
+- **Subir Excel**: archivo con columna `Padrón` o `Número de empleado`.
+
+Antes de confirmar muestra una vista previa con las personas que va a dar de baja (los padrones no encontrados quedan marcados como tal y no se procesan).
+
+### 6.6. Resultados
+
+Tabla final ordenada con los funcionarios clasificados según sus jornales acumulados:
+
+- **Sin marcas** (0 jornales).
+- **En curso** (entre 1 y 99 jornales).
+- **Efectivo** (≥ 100 jornales).
+- **Ef. autorizada** — estado fijo marcado manualmente desde la pestaña Personal.
+
+Permite filtrar por texto y por estado, y exportar todo a Excel.

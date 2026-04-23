@@ -823,6 +823,39 @@ class DbWrapper {
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
  );
+
+ CREATE TABLE IF NOT EXISTS jornales_personal (
+ id SERIAL PRIMARY KEY,
+ padron TEXT NOT NULL UNIQUE,
+ nombre TEXT NOT NULL,
+ doc TEXT,
+ efectividad_autorizada INTEGER DEFAULT 0,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ );
+
+ CREATE TABLE IF NOT EXISTS jornales_archivos (
+ id SERIAL PRIMARY KEY,
+ file_key TEXT NOT NULL UNIQUE,
+ name TEXT NOT NULL,
+ size INTEGER,
+ registros_totales INTEGER,
+ registros_nuevos INTEGER,
+ uploaded_by INTEGER,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ );
+
+ CREATE TABLE IF NOT EXISTS jornales_marcas (
+ id SERIAL PRIMARY KEY,
+ padron TEXT NOT NULL,
+ fecha DATE NOT NULL,
+ lugar TEXT,
+ file_id INTEGER,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE (padron, fecha, lugar)
+ );
+
+ CREATE INDEX IF NOT EXISTS idx_jornales_marcas_padron ON jornales_marcas(padron);
+ CREATE INDEX IF NOT EXISTS idx_jornales_marcas_fecha ON jornales_marcas(fecha);
  `;
 
  // Migration for limpieza_registros

@@ -1,0 +1,5 @@
+[
+  ["1001", "Nombre Apellido Ejemplo", 50, "curso", "Cliente X - Sector - Puesto"],
+  ["1002", "Otro Funcionario Ejemplo", 110, "efectivo_autorizado", "Cliente Y - Sector - Puesto"],
+  ["1003", "Tercer Ejemplo", 0, "sinmarcas", ""]
+]

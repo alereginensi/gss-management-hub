@@ -622,3 +622,58 @@ Banner amarillo permanente: *"Los cambios solo afectan planillas futuras. Los in
 - **Renombrar** un cliente/sector en el editor NO actualiza strings ya guardados en informes viejos — esos se siguen leyendo con el nombre original.
 - **Eliminar** un cliente/sector solo lo quita del dropdown de informes nuevos; históricos intactos.
 - Migración en `lib/db.ts` usa exclusivamente `CREATE TABLE IF NOT EXISTS` + INSERT condicional. Cero `ALTER`/`DROP`/`UPDATE` sobre tablas preexistentes.
+
+---
+
+## Módulo Jornales (RRHH) — `app/rrhh/jornales/`
+
+Control de días trabajados ("jornales") del personal de RRHH. Lee archivos Excel de marcas de asistencia, deduplica por empleado+fecha+lugar y clasifica a cada funcionario según un umbral (default **100 jornales** → `Efectivo`).
+
+### Estado y persistencia
+
+Toda la información vive en **PostgreSQL** (SQLite en dev), no en client state. Sobrevive recargas y es compartida entre usuarios autorizados.
+
+### Tablas (lib/db.ts — aditivas, prefijo `jornales_`)
+
+- **`jornales_personal`** — funcionarios activos. `padron TEXT UNIQUE`, `nombre`, `doc`, `efectividad_autorizada INTEGER`, `created_at`.
+- **`jornales_marcas`** — marcas diarias deduplicadas por `(padron, fecha, lugar)`. Columna `file_id` (FK blanda a `jornales_archivos`) permite eliminar marcas por archivo. Índices en `padron` y `fecha`.
+- **`jornales_archivos`** — registro de cada Excel de marcas cargado. `file_key UNIQUE = name|size` (evita doble carga), `registros_totales`, `registros_nuevos`, `uploaded_by`.
+
+### Endpoints (`/api/rrhh/jornales/`)
+
+Todos protegidos con `getSession()` + `isJornalesRole()` (solo **`admin`** y **`rrhh`**; constante `JORNALES_ALLOWED_ROLES` en [lib/jornales-helpers.ts](lib/jornales-helpers.ts)).
+
+- `personal/` — GET lista, POST agregar (array de altas, dedup por padrón).
+- `personal/[padron]/` — DELETE baja, PATCH toggle `efectividad_autorizada` (no borra marcas; solo cambia el flag — las marcas ya acumuladas siguen contando para el display, pero nuevos uploads ignoran a los padrones con flag=1).
+- `personal/import/` — POST multipart: reemplaza todo el personal con un Excel (columnas `Padron`, `Nombre`, opcional `Apellido`/`Cedula`).
+- `marcas/` — POST multipart: parsea Excel, ignora padrones con efectividad autorizada, dedup por `(padron, fecha, lugar)`. DELETE limpia todas las marcas + archivos.
+- `marcas/archivos/` — GET lista de archivos cargados.
+- `marcas/archivos/[id]/` — DELETE borra marcas con ese `file_id` y la fila de `jornales_archivos`.
+- `resultados/` — GET: JOIN `jornales_personal` + `jornales_marcas`, `COUNT(DISTINCT fecha)` por padrón, último servicio por fecha desc. Calcula estado (`efectivo_autorizado` / `efectivo` / `curso` / `sinmarcas`) via [lib/jornales-helpers.ts](lib/jornales-helpers.ts).
+
+### UI (`app/rrhh/jornales/`)
+
+- **`page.tsx`** — Client page con guard `hasModuleAccess(currentUser, 'rrhh')`. Importa `./jornales.css` (estilos scoped bajo `.jornales-module` para no colisionar con `.card`/`.badge`/`.btn-*`/`.stat-card` de `globals.css`).
+- **`JornalesModule.tsx`** — Root con tabs: `Resultados`, `Personal`, `Agregar marcas`, `Altas`, `Bajas`.
+- **`hooks/useJornalesApi.ts`** — Hidrata desde 3 endpoints en paralelo y re-fetcha tras cada mutación. Expone `cargarPersonalDesdeExcel`, `agregarPersonas`, `darDeBaja`, `autorizarEfectividad`, `cargarArchivoMarcas`, `limpiarMarcas`, `quitarArchivoMarcas`, `refetchAll`.
+- **`utils/parsearExcel.ts`** — `leerExcel`, `findCol`, `parsearPersonal` usados del lado cliente para preview antes de persistir (tabs Altas/Bajas).
+- **`utils/exportarExcel.ts`** — Export Excel con SheetJS (`xlsx`).
+- **`components/Tab*.tsx`** — 5 componentes de tabs con lógica idéntica al módulo original `modulo-jornales` pero consumiendo los callbacks async del hook.
+
+### Reglas de negocio
+
+- **1 jornal = 1 día trabajado**, sin importar cuántas marcas/servicios tenga ese día.
+- Duplicados (mismo padrón, misma fecha, mismo lugar) se ignoran al cargar.
+- **Estados**: Sin marcas (0 j) → En curso (1..99 j) → Efectivo (≥100 j).
+- **Efectividad autorizada**: flag manual por persona. Los Excels nuevos no suman marcas a padrones con flag=1, pero las marcas ya acumuladas se preservan (la columna "Jornales" sigue mostrando el total histórico).
+- **Umbral**: hardcoded a 100 en `JornalesModule` (prop). Editar requiere cambio de código.
+
+### Acceso y roles
+
+- Solo `admin` o `rrhh`.
+- Entrada: tarjeta "Jornales" en el hub `/rrhh` (`app/rrhh/page.tsx`).
+- Ruta `/rrhh/jornales` — no está en `PANEL_GENERAL_PREFIXES` del middleware; la protección es client-side via `hasModuleAccess(currentUser, 'rrhh')`.
+
+### Seed histórico inicial
+
+[scripts/seed-jornales-historico.cjs](scripts/seed-jornales-historico.cjs) (`npm run seed:jornales-historico`) carga una lista fija de personas + marcas sintéticas para reproducir el estado previo al módulo. Los datos (nombres, padrones, lugares) viven en `scripts/seed-jornales-data.local.json` — gitignored porque contiene información personal; ver `scripts/seed-jornales-data.example.json` para el formato. Idempotente via sentinela `file_key='__seed_historico_v1__'` en `jornales_archivos`: re-ejecutar borra todas las marcas de ese archivo y re-inserta. No toca marcas provenientes de uploads reales (distinto `file_id`). Fechas sintéticas empiezan en 2020-01-01 para no colisionar con marcas reales futuras. `DRY_RUN=1` para simular sin escribir.
