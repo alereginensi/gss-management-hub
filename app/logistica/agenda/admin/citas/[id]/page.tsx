@@ -440,7 +440,8 @@ export default function CitaDetallePage() {
                   <thead>
                     <tr>
                       <th style={{ backgroundColor: '#f8fafc', padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, border: '1px solid #e2e8f0' }}>Prenda</th>
-                      <th style={{ backgroundColor: '#f8fafc', padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, border: '1px solid #e2e8f0', width: '200px' }}>Talla / Color</th>
+                      <th style={{ backgroundColor: '#f8fafc', padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, border: '1px solid #e2e8f0', width: '160px' }}>Talla / Color</th>
+                      <th style={{ backgroundColor: '#f8fafc', padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 700, border: '1px solid #e2e8f0', width: '70px' }}>Cant.</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -450,10 +451,11 @@ export default function CitaDetallePage() {
                         <td style={{ padding: '0.5rem 0.75rem', border: '1px solid #e2e8f0' }}>
                           {[item.size, (item as any).color].filter(Boolean).join(' · ') || '—'}
                         </td>
+                        <td style={{ padding: '0.5rem 0.75rem', border: '1px solid #e2e8f0', textAlign: 'center' }}>{(item as any).qty ?? 1}</td>
                       </tr>
                     )) : (
                       <tr>
-                        <td colSpan={2} style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', border: '1px solid #e2e8f0' }}>No hay ítems registrados</td>
+                        <td colSpan={3} style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', border: '1px solid #e2e8f0' }}>No hay ítems registrados</td>
                       </tr>
                     )}
                   </tbody>
@@ -470,7 +472,8 @@ export default function CitaDetallePage() {
                       <thead>
                         <tr>
                           <th style={{ backgroundColor: '#fef2f2', padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, border: '1px solid #fecaca', color: '#991b1b' }}>Prenda</th>
-                          <th style={{ backgroundColor: '#fef2f2', padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, border: '1px solid #fecaca', width: '200px', color: '#991b1b' }}>Talla / Color</th>
+                          <th style={{ backgroundColor: '#fef2f2', padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 700, border: '1px solid #fecaca', width: '160px', color: '#991b1b' }}>Talla / Color</th>
+                          <th style={{ backgroundColor: '#fef2f2', padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 700, border: '1px solid #fecaca', width: '70px', color: '#991b1b' }}>Cant.</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -478,6 +481,7 @@ export default function CitaDetallePage() {
                           <tr key={i}>
                             <td style={{ padding: '0.5rem 0.75rem', border: '1px solid #fecaca' }}>{item.article_type || 'Artículo'}</td>
                             <td style={{ padding: '0.5rem 0.75rem', border: '1px solid #fecaca' }}>{[item.size, (item as any).color].filter(Boolean).join(' · ') || '—'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', border: '1px solid #fecaca', textAlign: 'center' }}>{(item as any).qty ?? 1}</td>
                           </tr>
                         ))}
                       </tbody>
