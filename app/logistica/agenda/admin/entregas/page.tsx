@@ -237,7 +237,14 @@ export default function EntregasPage() {
                     {/* Fechas */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.72rem', color: '#475569' }}>
                       <span>Turno: <strong style={{ color: '#1e293b' }}>{appt.fecha}{appt.start_time ? ` · ${appt.start_time}` : ''}</strong></span>
-                      <span>Entregado: <strong style={{ color: '#1e293b' }}>{appt.delivered_at ? appt.delivered_at.split('T')[0] : '—'}</strong></span>
+                      <span>Entregado: <strong style={{ color: '#1e293b' }}>{(() => {
+                        if (!appt.delivered_at) return '—';
+                        // Extrae YYYY-MM-DD del string y lo reformatea a DD/MM/YYYY.
+                        // Tolera ambos formatos: ISO "2026-04-22T..." y PG "2026-04-22 ...".
+                        const iso = String(appt.delivered_at).slice(0, 10);
+                        const [y, m, d] = iso.split('-');
+                        return y && m && d ? `${d}/${m}/${y}` : iso;
+                      })()}</strong></span>
                     </div>
 
                     {/* Remito + firmas */}
