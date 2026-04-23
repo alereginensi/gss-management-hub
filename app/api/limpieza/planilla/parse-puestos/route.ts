@@ -78,6 +78,33 @@ function turnoFromHorario(entrada: string, salida: string): string {
   return `${e} A ${s}`;
 }
 
+// Parsea rango horario de un turno; null si no es numérico
+function parseTurnoRango(t: string): { start: number; end: number } | null {
+  const m = t.match(/^(\d+)\s*A\s*(\d+)$/i);
+  if (!m) return null;
+  const start = parseInt(m[1], 10);
+  let end = parseInt(m[2], 10);
+  if (end <= start) end += 24;
+  return { start, end };
+}
+
+// Si turnoPanel no matchea exacto, buscar el turno del mapping cuyo rango
+// contenga la hora de inicio del panel.
+function findBestMatch<T extends { turno: string }>(items: T[], turnoPanel: string): T | undefined {
+  const exact = items.find(t => normalizeTurno(t.turno) === normalizeTurno(turnoPanel));
+  if (exact) return exact;
+  const panel = parseTurnoRango(normalizeTurno(turnoPanel));
+  if (!panel) return undefined;
+  for (const it of items) {
+    const rango = parseTurnoRango(normalizeTurno(it.turno));
+    if (!rango) continue;
+    let hora = panel.start;
+    if (rango.end > 24 && hora < rango.start) hora += 24;
+    if (hora >= rango.start && hora < rango.end) return it;
+  }
+  return undefined;
+}
+
 // DD/MM/YYYY → YYYY-MM-DD
 function parseFechaPanel(raw: string): string {
   const m = String(raw || '').trim().match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
@@ -212,7 +239,8 @@ export async function POST(request: NextRequest) {
       const entrada = getV(cEntrada);
       const salida = getV(cSalida);
       const turnoPanel = turnoFromHorario(entrada, salida);
-      const m = matches.find(t => t.turno === turnoPanel) || matches[0];
+      // Elegir match por turno: exacto, o por rango (ej panel "13 A 19" → DB "6 A 14").
+      const m = findBestMatch(matches, turnoPanel) || matches[0];
       const sheet = sheets.find(s => s.name === m.sheet);
       if (!sheet) continue;
 
@@ -223,7 +251,9 @@ export async function POST(request: NextRequest) {
       sheet.rows.push({
         lugar_sistema: m.lugar_sistema,
         lugar_planilla: m.lugar_planilla,
-        turno: turnoPanel || m.turno,
+        // Usar el turno del puesto (DB) que ya está reasignado al estándar.
+        // Si no hubo match, fallback al turno del panel.
+        turno: m.turno || turnoPanel,
         turno_raw: `${entrada}-${salida}`,
         frecuencia: '',
         cantidad: 1,

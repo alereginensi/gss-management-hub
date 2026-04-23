@@ -42,6 +42,42 @@ function normNombre(s: string): string {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 }
 
+// Parsea un turno tipo "6 A 14" → { start: 6, end: 14 }. Devuelve null si no es numérico.
+// Para turnos que cruzan medianoche ("22 A 6" → end=6+24=30) devuelve end > 24.
+function parseTurnoRango(t: string): { start: number; end: number } | null {
+  const m = t.match(/^(\d+)\s*A\s*(\d+)$/i);
+  if (!m) return null;
+  const start = parseInt(m[1], 10);
+  let end = parseInt(m[2], 10);
+  if (end <= start) end += 24;
+  return { start, end };
+}
+
+// Dado un turno del Excel y los turnos configurados del sector, devuelve el
+// turno estándar cuyo rango cubre la hora de inicio del turno del Excel.
+// Ej: "13 A 19" y ["6 A 14", "14 A 22", "22 A 6"] → "6 A 14" (porque 13 ∈ [6, 14)).
+// Si el turno del Excel ya existe en la lista, devuelve el mismo.
+// Si no es numérico (ej "HEMOTERAPIA") o no hay match, devuelve null.
+function findMatchingStandardTurno(turnoExcel: string, turnosEstandar: string[]): string | null {
+  const norm = normalizeTurno(turnoExcel);
+  // Match exacto primero
+  for (const t of turnosEstandar) {
+    if (normalizeTurno(t) === norm) return t;
+  }
+  const nuevo = parseTurnoRango(norm);
+  if (!nuevo) return null;
+  // Probar contención: start del turno nuevo debe caer en [std.start, std.end)
+  for (const t of turnosEstandar) {
+    const std = parseTurnoRango(normalizeTurno(t));
+    if (!std) continue;
+    let hora = nuevo.start;
+    // Ajustar si el turno estándar cruza medianoche y la hora es AM (ej "22 A 6", hora=2)
+    if (std.end > 24 && hora < std.start) hora += 24;
+    if (hora >= std.start && hora < std.end) return t;
+  }
+  return null;
+}
+
 // POST /api/limpieza/admin/puestos/import-mapeo
 // multipart/form-data: file=<xlsx>, cliente_id=<id>, apply=<'0'|'1'>
 // Si apply='0' (default): modo DRY-RUN, solo analiza y devuelve preview.
@@ -86,9 +122,14 @@ export async function POST(request: NextRequest) {
        WHERE s.cliente_id = ? AND p.active = 1 AND s.active = 1`,
       [clienteId]
     );
+    // Turnos conocidos por sector (para reasignación de turnos no-estándar)
+    const turnosPorSector = new Map<string, Set<string>>();
     for (const p of puestosWithLS as any[]) {
       const key = `${normNombre(p.sector_name)}|${normalizeTurno(p.turno)}|${normNombre(p.nombre)}`;
       puestoIndex.set(key, { id: p.id, sector_name: p.sector_name, turno: p.turno, nombre: p.nombre, lugar_sistema: p.lugar_sistema });
+      const sectorKey = normNombre(p.sector_name);
+      if (!turnosPorSector.has(sectorKey)) turnosPorSector.set(sectorKey, new Set());
+      turnosPorSector.get(sectorKey)!.add(p.turno);
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -101,9 +142,10 @@ export async function POST(request: NextRequest) {
     let createdSectors = 0;
     const unmatched: { sheet: string; turno: string; puesto: string; lugar_sistema: string }[] = [];
     const matches: { puesto_id: number; sector: string; turno: string; nombre: string; lugar_sistema_actual: string | null; lugar_sistema_nuevo: string }[] = [];
-    const toCreate: { sector: string; turno: string; nombre: string; lugar_sistema: string; sector_exists: boolean }[] = [];
+    const toCreate: { sector: string; turno: string; nombre: string; lugar_sistema: string; sector_exists: boolean; turno_original?: string }[] = [];
     const seenPuestoIds = new Set<number>();
     const plannedCreate = new Set<string>(); // sector|turno|nombre ya agendado para crear
+    const reassigned: { sector: string; turno_original: string; turno_final: string; puesto: string }[] = [];
 
     // Indexar sectores existentes por norm para crear los faltantes si hace falta
     const sectoresMap = new Map<string, { id: number; name: string }>();
@@ -171,18 +213,31 @@ export async function POST(request: NextRequest) {
         const turno_raw = get(cT);
         if (!lugar_sistema || !lugar_planilla) continue;
 
-        const turno = normalizeTurno(turno_raw);
-        const key = `${normNombre(targetSector)}|${turno}|${normNombre(lugar_planilla)}`;
+        const turnoOriginal = normalizeTurno(turno_raw);
+        // Reasignar turnos no-estándar al turno configurado cuyo rango cubra la hora de inicio.
+        // Ej: "13 A 19" no existe en el sector pero "6 A 14" sí → usar "6 A 14".
+        const sectorKey = normNombre(targetSector);
+        const turnosConocidos = [...(turnosPorSector.get(sectorKey) || new Set<string>())];
+        let turno = turnoOriginal;
+        const matchingStd = findMatchingStandardTurno(turnoOriginal, turnosConocidos);
+        if (matchingStd && normalizeTurno(matchingStd) !== turnoOriginal) {
+          turno = normalizeTurno(matchingStd);
+          reassigned.push({ sector: targetSector, turno_original: turnoOriginal, turno_final: turno, puesto: lugar_planilla });
+        }
+        const key = `${sectorKey}|${turno}|${normNombre(lugar_planilla)}`;
         const pInfo = puestoIndex.get(key);
         if (!pInfo) {
           // Puesto inexistente: registrar en unmatched siempre; si createMissing,
           // agendar su creación (dedup por key para no crear duplicados del mismo puesto).
           if (createMissing && !plannedCreate.has(key)) {
             plannedCreate.add(key);
-            const sectorExists = sectoresMap.has(normNombre(targetSector));
-            toCreate.push({ sector: targetSector, turno, nombre: lugar_planilla, lugar_sistema, sector_exists: sectorExists });
+            const sectorExists = sectoresMap.has(sectorKey);
+            toCreate.push({
+              sector: targetSector, turno, nombre: lugar_planilla, lugar_sistema, sector_exists: sectorExists,
+              turno_original: turnoOriginal !== turno ? turnoOriginal : undefined,
+            });
           }
-          unmatched.push({ sheet: ws.name, turno, puesto: lugar_planilla, lugar_sistema });
+          unmatched.push({ sheet: ws.name, turno: turnoOriginal, puesto: lugar_planilla, lugar_sistema });
           skipped++;
           continue;
         }
@@ -255,6 +310,7 @@ export async function POST(request: NextRequest) {
       matches,
       to_create: toCreate,
       unmatched,
+      reassigned,
     });
   } catch (e: any) {
     console.error('Error import-mapeo:', e);
