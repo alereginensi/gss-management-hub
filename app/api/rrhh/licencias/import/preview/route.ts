@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import db from '@/lib/db';
 import { getSession } from '@/lib/auth-server';
-import { parseLicenciasFromExcel } from '@/lib/licencias-import';
+import { parseLicenciasFromExcel, detectarMatchesContraDB, type ImportStrategy } from '@/lib/licencias-import';
 
 export const maxDuration = 60;
 
@@ -17,6 +18,7 @@ export async function POST(request: NextRequest) {
     const form = await request.formData();
     const file = form.get('file');
     const yearParam = form.get('year');
+    const strategy = (String(form.get('strategy') || 'merge') as ImportStrategy);
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: 'Archivo requerido' }, { status: 400 });
@@ -39,6 +41,19 @@ export async function POST(request: NextRequest) {
       if (!v.sector) sinSector++;
     }
 
+    // Si la estrategia es upsert, clasificamos contra la DB para saber
+    // cuántas van a ser insertadas vs actualizadas ANTES de confirmar.
+    let porInsertar: number | null = null;
+    let porActualizar: number | null = null;
+    if (strategy === 'upsert') {
+      const { nuevas, actualizaciones } = await detectarMatchesContraDB(
+        validas,
+        db as unknown as { get: (sql: string, p: unknown[]) => Promise<{ id?: number } | null> },
+      );
+      porInsertar = nuevas.length;
+      porActualizar = actualizaciones.length;
+    }
+
     return NextResponse.json({
       totalFilas,
       validas: validas.length,
@@ -47,6 +62,9 @@ export async function POST(request: NextRequest) {
       sinSector,
       porTipo,
       porSector,
+      strategy,
+      porInsertar,
+      porActualizar,
       primeras: validas.slice(0, PREVIEW_ROWS),
       errores: errores.slice(0, 20),
     });

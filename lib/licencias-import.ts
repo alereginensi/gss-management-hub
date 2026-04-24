@@ -30,6 +30,51 @@ export interface ParseResult {
   descartadas: number;
 }
 
+export type ImportStrategy = 'merge' | 'replace' | 'upsert';
+
+/**
+ * Clasifica las licencias parseadas contra la DB actual usando
+ * `(funcionario + desde + tipo_licencia)` como clave lógica.
+ * Devuelve las que ya existen (para UPDATE) y las que son nuevas (INSERT).
+ *
+ * Ignora filas sin `desde` — si no tiene fecha no hay forma de matchear
+ * unicamente; van todas a `nuevas` (se insertan).
+ */
+export async function detectarMatchesContraDB(
+  validas: LicenciaParseada[],
+  dbInstance: { get: (sql: string, params: unknown[]) => Promise<{ id?: number } | null> },
+): Promise<{ nuevas: LicenciaParseada[]; actualizaciones: Array<{ id: number; data: LicenciaParseada }> }> {
+  const nuevas: LicenciaParseada[] = [];
+  const actualizaciones: Array<{ id: number; data: LicenciaParseada }> = [];
+
+  for (const v of validas) {
+    if (!v.desde) {
+      nuevas.push(v);
+      continue;
+    }
+    try {
+      const existing = await dbInstance.get(
+        `SELECT id FROM rrhh_licencias
+         WHERE LOWER(TRIM(funcionario)) = LOWER(TRIM(?))
+           AND desde = ?
+           AND tipo_licencia = ?
+         LIMIT 1`,
+        [v.funcionario, v.desde, v.tipo_licencia],
+      );
+      if (existing?.id) {
+        actualizaciones.push({ id: existing.id, data: v });
+      } else {
+        nuevas.push(v);
+      }
+    } catch {
+      // Si la query falla, tratamos como nueva (lado seguro: no rompe import).
+      nuevas.push(v);
+    }
+  }
+
+  return { nuevas, actualizaciones };
+}
+
 const SECTOR_SET = new Set<string>(SECTORES);
 
 const MESES: Record<string, number> = {

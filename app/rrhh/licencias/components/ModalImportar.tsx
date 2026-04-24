@@ -1,23 +1,23 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import type { PreviewResult } from '../hooks/useLicenciasApi';
+import type { PreviewResult, ImportStrategy, ImportResult } from '../hooks/useLicenciasApi';
 
 type Step = 'elegir' | 'preview' | 'resultado';
 
 interface Props {
   onCerrar: () => void;
-  onPreview: (file: File, year: number) => Promise<PreviewResult>;
-  onImportar: (file: File, year: number, strategy: 'merge' | 'replace') => Promise<{ insertados: number; descartadas: number; total_filas: number; errores: string[] }>;
+  onPreview: (file: File, year: number, strategy: ImportStrategy) => Promise<PreviewResult>;
+  onImportar: (file: File, year: number, strategy: ImportStrategy) => Promise<ImportResult>;
 }
 
 export default function ModalImportar({ onCerrar, onPreview, onImportar }: Props) {
   const [step, setStep] = useState<Step>('elegir');
   const [file, setFile] = useState<File | null>(null);
   const [year, setYear] = useState(new Date().getFullYear());
-  const [strategy, setStrategy] = useState<'merge' | 'replace'>('merge');
+  const [strategy, setStrategy] = useState<ImportStrategy>('upsert');
   const [preview, setPreview] = useState<PreviewResult | null>(null);
-  const [result, setResult] = useState<{ insertados: number; descartadas: number; total_filas: number; errores: string[] } | null>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -27,7 +27,7 @@ export default function ModalImportar({ onCerrar, onPreview, onImportar }: Props
     setWorking(true);
     setError(null);
     try {
-      const res = await onPreview(file, year);
+      const res = await onPreview(file, year, strategy);
       setPreview(res);
       setStep('preview');
     } catch (e) {
@@ -96,14 +96,16 @@ export default function ModalImportar({ onCerrar, onPreview, onImportar }: Props
                 </div>
                 <div className="lic-field">
                   <label>Estrategia</label>
-                  <select value={strategy} onChange={(e) => setStrategy(e.target.value as 'merge' | 'replace')}>
-                    <option value="merge">Agregar al final (recomendado)</option>
+                  <select value={strategy} onChange={(e) => setStrategy(e.target.value as ImportStrategy)}>
+                    <option value="upsert">Actualizar coincidencias + agregar nuevas (recomendado)</option>
+                    <option value="merge">Agregar todo al final (puede duplicar)</option>
                     <option value="replace">Reemplazar TODO el histórico</option>
                   </select>
                 </div>
               </div>
 
               <p className="lic-hint">
+                <strong>Actualizar coincidencias</strong>: busca cada fila por <code>funcionario + fecha desde + tipo</code>; si existe la actualiza, si no la agrega. Ideal para re-subir un Excel corregido sin duplicar.<br />
                 Las fechas del Excel vienen como <code>17-Jul</code> (sin año). El sistema usa el año que elijas acá para todas las filas.
               </p>
 
@@ -122,6 +124,9 @@ export default function ModalImportar({ onCerrar, onPreview, onImportar }: Props
               <h4>✓ Importación completada</h4>
               <ul>
                 <li><strong>{result.insertados}</strong> licencias insertadas.</li>
+                {result.actualizados > 0 && (
+                  <li><strong>{result.actualizados}</strong> licencias actualizadas (existían ya y se sobrescribieron).</li>
+                )}
                 <li>{result.descartadas} filas descartadas por falta de datos obligatorios.</li>
                 <li>Total leídas del Excel: {result.total_filas}.</li>
               </ul>
@@ -148,7 +153,11 @@ export default function ModalImportar({ onCerrar, onPreview, onImportar }: Props
             <>
               <button type="button" className="lic-btn" onClick={() => setStep('elegir')} disabled={working}>← Volver</button>
               <button type="button" className="lic-btn lic-btn--primary" onClick={handleImportar} disabled={working}>
-                {working ? 'Importando…' : `Confirmar e importar ${preview?.validas ?? 0} filas`}
+                {working
+                  ? 'Importando…'
+                  : strategy === 'upsert' && preview
+                    ? `Confirmar (${preview.porInsertar ?? 0} nuevas · ${preview.porActualizar ?? 0} actualizar)`
+                    : `Confirmar e importar ${preview?.validas ?? 0} filas`}
               </button>
             </>
           )}
@@ -161,16 +170,33 @@ export default function ModalImportar({ onCerrar, onPreview, onImportar }: Props
   );
 }
 
-function PreviewBody({ preview, strategy, year }: { preview: PreviewResult; strategy: 'merge' | 'replace'; year: number }) {
+function PreviewBody({ preview, strategy, year }: { preview: PreviewResult; strategy: ImportStrategy; year: number }) {
   return (
     <>
       <div className={`lic-preview-alert ${strategy === 'replace' ? 'lic-preview-alert--warn' : ''}`}>
-        {strategy === 'replace' ? (
-          <>⚠ <strong>Modo "Reemplazar TODO":</strong> al confirmar se van a borrar TODAS las licencias existentes antes de insertar las {preview.validas} nuevas. Usá "Agregar al final" si querés conservar las que ya había.</>
-        ) : (
-          <>Modo <strong>"Agregar al final"</strong>: se van a sumar {preview.validas} licencias nuevas sin tocar las existentes. Año aplicado a fechas sin año: <strong>{year}</strong>.</>
+        {strategy === 'replace' && (
+          <>⚠ <strong>Modo &quot;Reemplazar TODO&quot;:</strong> al confirmar se van a borrar TODAS las licencias existentes antes de insertar las {preview.validas} nuevas. Usá las otras opciones si querés conservar las que ya había.</>
+        )}
+        {strategy === 'merge' && (
+          <>Modo <strong>&quot;Agregar todo al final&quot;</strong>: se van a sumar {preview.validas} licencias nuevas sin tocar las existentes (puede generar duplicados si re-subís un Excel). Año aplicado a fechas sin año: <strong>{year}</strong>.</>
+        )}
+        {strategy === 'upsert' && (
+          <>Modo <strong>&quot;Actualizar coincidencias + agregar nuevas&quot;</strong>: busca por <code>funcionario + fecha desde + tipo de licencia</code>. Las existentes se sobrescriben, las nuevas se agregan. Año: <strong>{year}</strong>.</>
         )}
       </div>
+
+      {strategy === 'upsert' && preview.porInsertar !== null && preview.porActualizar !== null && (
+        <div className="lic-preview-stats" style={{ gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: 10 }}>
+          <div className="lic-preview-stat lic-preview-stat--ok">
+            <div className="lic-preview-stat-n">{preview.porInsertar}</div>
+            <div className="lic-preview-stat-l">Nuevas (INSERT)</div>
+          </div>
+          <div className="lic-preview-stat" style={{ background: '#eaf2ff', borderColor: '#b8d4ff' }}>
+            <div className="lic-preview-stat-n" style={{ color: '#1e40af' }}>{preview.porActualizar}</div>
+            <div className="lic-preview-stat-l">Existentes (UPDATE)</div>
+          </div>
+        </div>
+      )}
 
       <div className="lic-preview-stats">
         <div className="lic-preview-stat">

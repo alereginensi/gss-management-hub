@@ -43,6 +43,8 @@ export interface PreviewRow {
   observaciones: string | null;
 }
 
+export type ImportStrategy = 'merge' | 'replace' | 'upsert';
+
 export interface PreviewResult {
   totalFilas: number;
   validas: number;
@@ -51,7 +53,19 @@ export interface PreviewResult {
   sinSector: number;
   porTipo: Record<string, number>;
   porSector: Record<string, number>;
+  strategy: ImportStrategy;
+  porInsertar: number | null;   // solo presente cuando strategy === 'upsert'
+  porActualizar: number | null; // idem
   primeras: PreviewRow[];
+  errores: string[];
+}
+
+export interface ImportResult {
+  insertados: number;
+  actualizados: number;
+  total_filas: number;
+  descartadas: number;
+  strategy: ImportStrategy;
   errores: string[];
 }
 
@@ -154,10 +168,12 @@ export function useLicenciasApi() {
   const previewImport = useCallback(async (
     file: File,
     year: number,
+    strategy: ImportStrategy,
   ): Promise<PreviewResult> => {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('year', String(year));
+    fd.append('strategy', strategy);
     const res = await fetch('/api/rrhh/licencias/import/preview', {
       method: 'POST',
       credentials: 'include',
@@ -173,8 +189,8 @@ export function useLicenciasApi() {
   const importar = useCallback(async (
     file: File,
     year: number,
-    strategy: 'merge' | 'replace',
-  ): Promise<{ insertados: number; descartadas: number; total_filas: number; errores: string[] }> => {
+    strategy: ImportStrategy,
+  ): Promise<ImportResult> => {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('year', String(year));
