@@ -508,6 +508,16 @@ Rol dedicado para supervisores que solo gestionan la planilla de **un cliente (y
 - **`/api/limpieza/asistencia`**: si el caller tiene rol `encargado_limpieza`, el endpoint **sobrescribe** los query params `cliente` y `sector` con los del usuario (no se pueden consultar otros clientes aunque se manipule la URL).
 - UI admin (`app/admin/users/page.tsx`): al elegir rol `encargado_limpieza`, se muestra bloque con dropdown de clientes (poblado desde `/api/limpieza/planilla-config/full`) + selector de sectores (cascading desde el mismo endpoint) + input obligatorio de cédula. Acción POST nueva `create_encargado_limpieza` en `/api/admin/users`.
 
+### Módulo granular `limpieza-informes`
+
+Además del módulo `limpieza` (acceso completo al hub: Informes, Historial, Recuento de Tareas, Asignar Tareas, Personal, Solicitudes de Uniformes, Editor de Planillas), existe el módulo granular `limpieza-informes` que da acceso **solo a la pantalla de Informes Operativos** (registro de asistencia, firma, subir planilla). Útil para supervisores a los que hay que darles capacidad de completar la planilla del día pero no de tocar catálogo/personal/asignaciones.
+
+- **Checkboxes mutuamente excluyentes** en admin/users: marcar "Operaciones Limpieza/Seguridad (completo)" desmarca "solo Informes Operativos" y viceversa. Quien tiene el módulo completo ya ve Informes, por eso no tiene sentido combinar.
+- **`hasModuleAccess(user, 'limpieza-informes')`** devuelve true si el usuario tiene cualquiera de los dos módulos (`limpieza` o `limpieza-informes`) o si su rol directo habilita limpieza (`limpieza` / `encargado_limpieza` / `admin`).
+- **Guards cliente**: `app/operaciones-limpieza/page.tsx` acepta ambos módulos para entrar al hub, pero filtra las cards — con `limpieza-informes` solo muestra la card "Informes Operativos". `app/operaciones-limpieza/informes/page.tsx` también acepta ambos.
+- **Otros paths** (`/historial`, `/tareas`, `/personal`, etc.) siguen chequeando `hasModuleAccess('limpieza')` sin más, por lo que un usuario con solo `limpieza-informes` que intente navegar manualmente a esas URLs queda redirigido a `/`.
+- **Endpoints**: como los endpoints de asistencia solo requieren sesión válida (no módulos específicos), un usuario con `limpieza-informes` puede completar la planilla normalmente. Los endpoints de admin del editor (`/api/limpieza/admin/*`) ya requieren rol admin — no hay leak.
+
 ### DB — cambios en `limpieza_asistencia`
 
 Columnas agregadas (ALTER TABLE aditivo en ambos motores):

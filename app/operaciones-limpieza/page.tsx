@@ -24,10 +24,15 @@ export default function OperacionesLimpiezaPage() {
     useEffect(() => {
         if (loading) return;
         if (!isAuthenticated) router.push('/login');
-        else if (currentUser && !hasModuleAccess(currentUser, 'limpieza')) router.push('/');
+        // Acepta tanto acceso completo ('limpieza') como el granular 'limpieza-informes'.
+        else if (currentUser && !hasModuleAccess(currentUser, 'limpieza') && !hasModuleAccess(currentUser, 'limpieza-informes')) router.push('/');
     }, [loading, isAuthenticated, currentUser, router]);
 
     if (loading || !currentUser) return null;
+
+    // Scope del acceso: "full" ve todas las cards; "informes" solo la de Informes Operativos.
+    const accesoFull = hasModuleAccess(currentUser, 'limpieza');
+    const accesoSoloInformes = !accesoFull && hasModuleAccess(currentUser, 'limpieza-informes');
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#f5f7fa' }}>
@@ -75,7 +80,13 @@ export default function OperacionesLimpiezaPage() {
                     </p>
 
                     <div className="landing-modules-grid">
-                        {MENU_ITEMS.filter(i => !i.adminOnly || currentUser.role === 'admin').map((item) => {
+                        {MENU_ITEMS.filter((i) => {
+                            // Admin-only items: solo admin los ve.
+                            if (i.adminOnly && currentUser.role !== 'admin') return false;
+                            // Acceso granular "solo informes": únicamente la card de Informes Operativos.
+                            if (accesoSoloInformes) return i.href === '/operaciones-limpieza/informes';
+                            return true;
+                        }).map((item) => {
                             const Icon = item.icon;
                             return (
                                 <Link key={item.href} href={item.href} className="landing-card-btn">

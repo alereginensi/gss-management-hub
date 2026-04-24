@@ -724,7 +724,8 @@ export default function UserManagement() {
                                             { key: 'logistica', label: 'Logística' },
                                             { key: 'tecnico', label: 'Seguridad Electrónica' },
                                             { key: 'cotizacion', label: 'Cotización' },
-                                            { key: 'limpieza', label: 'Operaciones Limpieza/Seguridad' },
+                                            { key: 'limpieza', label: 'Operaciones Limpieza/Seguridad (completo)' },
+                                            { key: 'limpieza-informes', label: 'Operaciones Limpieza — solo Informes Operativos' },
                                             { key: 'rrhh', label: 'Recursos Humanos' },
                                             { key: 'mitrabajo', label: 'Mitrabajo Panel de Control' },
                                         ].map(mod => {
@@ -736,11 +737,17 @@ export default function UserManagement() {
                                                         type="checkbox"
                                                         checked={checked}
                                                         onChange={(e) => {
-                                                            const current = editForm.modules ? editForm.modules.split(',').filter(m => m) : [];
-                                                            const updated = e.target.checked
-                                                                ? [...current, mod.key]
-                                                                : current.filter(m => m !== mod.key);
-                                                            setEditForm({ ...editForm, modules: updated.join(',') });
+                                                            let current = editForm.modules ? editForm.modules.split(',').filter(m => m) : [];
+                                                            // 'limpieza' y 'limpieza-informes' son mutuamente excluyentes:
+                                                            // tener el completo implica Informes, y al revés no tiene sentido.
+                                                            if (e.target.checked) {
+                                                                if (mod.key === 'limpieza') current = current.filter(m => m !== 'limpieza-informes');
+                                                                if (mod.key === 'limpieza-informes') current = current.filter(m => m !== 'limpieza');
+                                                                current.push(mod.key);
+                                                            } else {
+                                                                current = current.filter(m => m !== mod.key);
+                                                            }
+                                                            setEditForm({ ...editForm, modules: current.join(',') });
                                                         }}
                                                     />
                                                     {mod.label}

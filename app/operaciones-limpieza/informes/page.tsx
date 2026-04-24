@@ -383,7 +383,8 @@ export default function InformesOperativosPage() {
     useEffect(() => {
         if (loading) return;
         if (!isAuthenticated) router.push('/login');
-        else if (currentUser && !hasModuleAccess(currentUser, 'limpieza')) router.push('/');
+        // Acepta acceso completo ('limpieza') o granular 'limpieza-informes'.
+        else if (currentUser && !hasModuleAccess(currentUser, 'limpieza') && !hasModuleAccess(currentUser, 'limpieza-informes')) router.push('/');
     }, [loading, isAuthenticated, currentUser, router]);
 
     const fetchClientes = useCallback(async () => {
@@ -697,7 +698,8 @@ export default function InformesOperativosPage() {
     };
 
     useEffect(() => {
-        if (isAuthenticated && currentUser && hasModuleAccess(currentUser, 'limpieza') && clienteSeleccionado && sectorSeleccionado && turnoSeleccionado) {
+        const puedeVer = currentUser && (hasModuleAccess(currentUser, 'limpieza') || hasModuleAccess(currentUser, 'limpieza-informes'));
+        if (isAuthenticated && puedeVer && clienteSeleccionado && sectorSeleccionado && turnoSeleccionado) {
             fetchAsistencia(fecha, clienteSeleccionado, sectorSeleccionado, turnoSeleccionado);
         }
     }, [isAuthenticated, currentUser, fecha, clienteSeleccionado, sectorSeleccionado, turnoSeleccionado, fetchAsistencia]);

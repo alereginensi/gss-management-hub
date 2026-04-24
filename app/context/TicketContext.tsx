@@ -105,16 +105,27 @@ export interface User {
     cedula?: string | null;
 }
 
-export function hasModuleAccess(user: User, mod: 'logistica' | 'tecnico' | 'cotizacion' | 'limpieza' | 'rrhh'): boolean {
+export type Modulo = 'logistica' | 'tecnico' | 'cotizacion' | 'limpieza' | 'limpieza-informes' | 'rrhh';
+
+export function hasModuleAccess(user: User, mod: Modulo): boolean {
     if (user.role === 'admin') return true;
     if (mod === 'logistica' && user.role === 'logistica') return true;
     if (mod === 'tecnico' && user.role === 'tecnico') return true;
     if (mod === 'cotizacion' && user.role === 'contador') return true;
     if (mod === 'limpieza' && (user.role === 'limpieza' || user.role === 'encargado_limpieza')) return true;
     if (mod === 'rrhh' && user.role === 'rrhh') return true;
-    if (user.modules) {
-        return user.modules.split(',').map(m => m.trim()).includes(mod);
+
+    const mods = user.modules ? user.modules.split(',').map(m => m.trim()).filter(Boolean) : [];
+
+    // Acceso al módulo completo de limpieza también habilita la vista
+    // "solo informes" (el módulo granular es un subconjunto).
+    if (mod === 'limpieza-informes') {
+        if (mods.includes('limpieza-informes') || mods.includes('limpieza')) return true;
+        if (user.role === 'limpieza' || user.role === 'encargado_limpieza') return true;
+        return false;
     }
+
+    if (mods.includes(mod)) return true;
     return false;
 }
 

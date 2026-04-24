@@ -64,6 +64,17 @@ Algunos usuarios pueden tener acceso solo a ciertos módulos del sistema (por ej
 3. Marcá o desmarcá los módulos a los que debe tener acceso.
 4. Guardá.
 
+### Operaciones Limpieza — acceso completo vs solo informes
+
+Hay dos opciones para habilitar Operaciones Limpieza:
+
+- **Operaciones Limpieza/Seguridad (completo)**: el usuario ve todas las secciones del módulo — Informes Operativos, Historial, Recuento de Tareas, Asignar Tareas, Personal, Solicitudes de Uniformes.
+- **Operaciones Limpieza — solo Informes Operativos**: el usuario solo ve la pantalla de Informes Operativos (marcar asistencia, firma, subir planilla). No ve historial, tareas, personal ni solicitudes.
+
+Los dos checkboxes son **mutuamente excluyentes**: al marcar uno se desmarca el otro automáticamente. Usá el completo para responsables/jefes y el "solo informes" para supervisores que solo completan planilla del día.
+
+> ⚠ El usuario tiene que cerrar sesión y volver a entrar para que el cambio de acceso se refleje.
+
 ---
 
 ## 6. Bloquear o eliminar un usuario
