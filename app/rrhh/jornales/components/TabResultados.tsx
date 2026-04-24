@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { ResultadoJornal } from '@/lib/jornales-helpers';
 import { exportarExcel } from '../utils/exportarExcel';
-import type { EstadisticasResultados } from '../hooks/useJornalesApi';
+import type { EstadisticasResultados, EstadisticasMarcas } from '../hooks/useJornalesApi';
 
 const ESTADO_LABELS: Record<ResultadoJornal['estado'], string> = {
   efectivo_autorizado: 'Ef. autorizada',
@@ -30,10 +30,11 @@ function JornalBadge({ efAuth, jornales }: { efAuth: boolean; jornales: number }
 interface Props {
   resultados: ResultadoJornal[];
   estadisticas: EstadisticasResultados;
+  estadisticasMarcas?: EstadisticasMarcas;
   umbralEfectividad?: number;
 }
 
-export default function TabResultados({ resultados, estadisticas, umbralEfectividad = 100 }: Props) {
+export default function TabResultados({ resultados, estadisticas, estadisticasMarcas, umbralEfectividad = 100 }: Props) {
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState<'' | ResultadoJornal['estado']>('');
 
@@ -47,8 +48,24 @@ export default function TabResultados({ resultados, estadisticas, umbralEfectivi
     return matchQ && matchEstado;
   });
 
+  const periodo = estadisticasMarcas && (estadisticasMarcas.fechaMin || estadisticasMarcas.fechaMax);
+
   return (
     <div className="tab-resultados">
+      {periodo && (
+        <div className="stat-card stat-card--periodo" style={{ marginBottom: 12 }}>
+          <div className="stat-label">Período de marcas cargadas</div>
+          <div className="stat-number">
+            {formatFechaDMY(estadisticasMarcas!.fechaMin)}
+            <span className="stat-sep"> — </span>
+            {formatFechaDMY(estadisticasMarcas!.fechaMax)}
+          </div>
+          <div className="stat-sublabel">
+            Rango que cubre la planilla actual — desde la marca más antigua hasta la más reciente.
+          </div>
+        </div>
+      )}
+
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-number">{estadisticas.total}</div>
@@ -143,4 +160,11 @@ export default function TabResultados({ resultados, estadisticas, umbralEfectivi
       )}
     </div>
   );
+}
+
+function formatFechaDMY(iso: string | null): string {
+  if (!iso) return '—';
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso;
+  return `${m[3]}/${m[2]}/${m[1]}`;
 }

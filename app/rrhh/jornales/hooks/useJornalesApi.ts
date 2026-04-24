@@ -38,6 +38,8 @@ export interface EstadisticasMarcas {
   totalArchivos: number;
   personasEnMarcas: number;
   diasUnicos: number;
+  fechaMin: string | null;
+  fechaMax: string | null;
 }
 
 interface UseJornalesApiOpts {
@@ -52,6 +54,7 @@ export function useJornalesApi({ umbralEfectividad = 100 }: UseJornalesApiOpts =
   });
   const [estadisticasMarcas, setEstadisticasMarcas] = useState<EstadisticasMarcas>({
     totalRegistros: 0, totalArchivos: 0, personasEnMarcas: 0, diasUnicos: 0,
+    fechaMin: null, fechaMax: null,
   });
   const [archivosMeta, setArchivosMeta] = useState<ArchivoMarcasMeta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +73,7 @@ export function useJornalesApi({ umbralEfectividad = 100 }: UseJornalesApiOpts =
     const data = await res.json();
     setResultados(data.resultados || []);
     setEstadisticas(data.estadisticas || { total: 0, efectivoAutorizado: 0, efectivo: 0, curso: 0, sinMarcas: 0 });
-    setEstadisticasMarcas(data.estadisticasMarcas || { totalRegistros: 0, totalArchivos: 0, personasEnMarcas: 0, diasUnicos: 0 });
+    setEstadisticasMarcas(data.estadisticasMarcas || { totalRegistros: 0, totalArchivos: 0, personasEnMarcas: 0, diasUnicos: 0, fechaMin: null, fechaMax: null });
   }, [umbralEfectividad]);
 
   const fetchArchivos = useCallback(async () => {

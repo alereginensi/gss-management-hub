@@ -37,12 +37,21 @@ export async function GET(request: NextRequest) {
     };
 
     // Estadísticas de marcas (requiere otra query ligera)
-    const [totalRegs, totalArchivos, personasEnMarcas, diasUnicos] = await Promise.all([
+    const [totalRegs, totalArchivos, personasEnMarcas, diasUnicos, rango] = await Promise.all([
       db.get(`SELECT COUNT(*) AS c FROM jornales_marcas`, []),
       db.get(`SELECT COUNT(*) AS c FROM jornales_archivos`, []),
       db.get(`SELECT COUNT(DISTINCT padron) AS c FROM jornales_marcas`, []),
       db.get(`SELECT COUNT(DISTINCT fecha) AS c FROM jornales_marcas`, []),
+      db.get(`SELECT MIN(fecha) AS fmin, MAX(fecha) AS fmax FROM jornales_marcas`, []),
     ]);
+
+    // PG devuelve `DATE` como objeto Date; SQLite como string. Normalizamos a
+    // ISO YYYY-MM-DD para el cliente.
+    const toIsoDate = (v: unknown): string | null => {
+      if (!v) return null;
+      if (v instanceof Date) return v.toISOString().slice(0, 10);
+      return String(v).slice(0, 10);
+    };
 
     return NextResponse.json({
       resultados,
@@ -52,6 +61,8 @@ export async function GET(request: NextRequest) {
         totalArchivos: Number(totalArchivos?.c) || 0,
         personasEnMarcas: Number(personasEnMarcas?.c) || 0,
         diasUnicos: Number(diasUnicos?.c) || 0,
+        fechaMin: toIsoDate(rango?.fmin),
+        fechaMax: toIsoDate(rango?.fmax),
       },
       umbral,
     });

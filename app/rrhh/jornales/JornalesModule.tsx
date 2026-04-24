@@ -48,6 +48,7 @@ export default function JornalesModule({ umbralEfectividad = 100 }: Props) {
           <TabResultados
             resultados={jornales.resultados}
             estadisticas={jornales.estadisticas}
+            estadisticasMarcas={jornales.estadisticasMarcas}
             umbralEfectividad={umbralEfectividad}
           />
         )}

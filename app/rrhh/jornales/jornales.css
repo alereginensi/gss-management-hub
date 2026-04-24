@@ -123,6 +123,28 @@
 .jornales-module .stat-number { font-size: 24px; font-weight: 600; line-height: 1; }
 .jornales-module .stat-label { font-size: 11px; color: var(--j-text-secondary); margin-top: 4px; }
 
+/* Card azul del período de marcas — resumen visible arriba del grid de stats */
+.jornales-module .stat-card--periodo {
+  background: #eaf2ff;
+  border-color: #b8d4ff;
+  border-left: 4px solid #1e40af;
+}
+.jornales-module .stat-card--periodo .stat-number {
+  font-size: 18px;
+  color: #1e3a8a;
+  margin-top: 4px;
+}
+.jornales-module .stat-card--periodo .stat-sep {
+  margin: 0 6px;
+  color: #475569;
+  font-weight: 400;
+}
+.jornales-module .stat-card--periodo .stat-sublabel {
+  font-size: 11px;
+  color: #475569;
+  margin-top: 6px;
+}
+
 .jornales-module .filtros-bar {
   display: flex;
   gap: 8px;

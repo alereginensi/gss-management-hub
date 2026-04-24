@@ -107,6 +107,20 @@ export default function TabMarcas({ archivosMeta, estadisticas, onCargarArchivo,
         )}
       </div>
 
+      {(estadisticas.fechaMin || estadisticas.fechaMax) && (
+        <div className="stat-card stat-card--periodo" style={{ marginTop: 12 }}>
+          <div className="stat-label">Período de marcas cargadas</div>
+          <div className="stat-number">
+            {formatFechaDMY(estadisticas.fechaMin)}
+            <span className="stat-sep"> — </span>
+            {formatFechaDMY(estadisticas.fechaMax)}
+          </div>
+          <div className="stat-sublabel">
+            Desde la marca más antigua hasta la más reciente en la base de datos.
+          </div>
+        </div>
+      )}
+
       <div className="stats-grid stats-grid-4">
         <div className="stat-card">
           <div className="stat-number">{estadisticas.totalRegistros.toLocaleString()}</div>
@@ -127,4 +141,11 @@ export default function TabMarcas({ archivosMeta, estadisticas, onCargarArchivo,
       </div>
     </div>
   );
+}
+
+function formatFechaDMY(iso: string | null): string {
+  if (!iso) return '—';
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso;
+  return `${m[3]}/${m[2]}/${m[1]}`;
 }
