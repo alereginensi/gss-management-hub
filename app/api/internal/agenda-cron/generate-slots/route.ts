@@ -7,10 +7,12 @@ export const maxDuration = 60;
 
 interface AgendaConfigRow {
   slots_per_day: number | null;
-  start_hour: string | null;
-  end_hour: string | null;
-  break_start: string | null;
-  break_end: string | null;
+  // Estas columnas NO existen en el schema actual pero se leen con optional
+  // chaining por si se agregan en el futuro como campos configurables.
+  start_hour?: string | null;
+  end_hour?: string | null;
+  break_start?: string | null;
+  break_end?: string | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -30,7 +32,10 @@ export async function POST(request: NextRequest) {
       month = next.getMonth() + 1;
     }
 
-    const config = (await db.get(`SELECT slots_per_day, start_hour, end_hour, break_start, break_end FROM agenda_config WHERE id = 1`)) as AgendaConfigRow | null;
+    // SELECT * para no romper si el schema de agenda_config no tiene start_hour/end_hour/etc.
+    // Esos campos no existen hoy en el schema — usamos defaults hardcodeados (mismo que
+    // hacía scripts/cron-agenda.cjs originalmente con SELECT * + ?? fallback).
+    const config = (await db.get(`SELECT * FROM agenda_config WHERE id = 1`)) as AgendaConfigRow | null;
 
     const result = await generateSlotsForMonth({
       year: Number(year),
