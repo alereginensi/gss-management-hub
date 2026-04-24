@@ -87,28 +87,64 @@ const MESES: Record<string, number> = {
 
 export function parseFechaLicencia(raw: unknown, year: number): string | null {
   if (raw == null) return null;
+
+  // Date object (cuando XLSX corre con cellDates: true o la celda viene ya tipada)
+  if (raw instanceof Date) {
+    if (isNaN(raw.getTime())) return null;
+    return `${raw.getFullYear()}-${String(raw.getMonth() + 1).padStart(2, '0')}-${String(raw.getDate()).padStart(2, '0')}`;
+  }
+
   const s = String(raw).trim();
   if (!s) return null;
-  // Caso 1: "D-MMM" o "D MMM" (formato del Excel histórico)
-  const m = s.match(/^(\d{1,2})[-\s]([A-Za-z]{3,4})$/);
-  if (m) {
-    const d = parseInt(m[1], 10);
-    const mon = MESES[m[2].toLowerCase().slice(0, 3)];
-    if (d && mon) {
+
+  // Caso 1: "D-MMM" o "D MMM" con nombre de mes (formato del Excel histórico: "17-Jul")
+  const mTxt = s.match(/^(\d{1,2})[-\s]([A-Za-z]{3,4})$/);
+  if (mTxt) {
+    const d = parseInt(mTxt[1], 10);
+    const mon = MESES[mTxt[2].toLowerCase().slice(0, 3)];
+    if (d >= 1 && d <= 31 && mon >= 1 && mon <= 12) {
       return `${year}-${String(mon).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     }
   }
-  // Caso 2: ya viene como "YYYY-MM-DD"
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-  // Caso 3: "DD/MM/YYYY"
-  const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-  if (m2) {
-    const d = parseInt(m2[1], 10);
-    const mon = parseInt(m2[2], 10);
-    let y = parseInt(m2[3], 10);
-    if (y < 100) y += 2000;
-    if (d && mon && y) return `${y}-${String(mon).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+  // Caso 2: ya viene ISO "YYYY-MM-DD" (validamos rango real)
+  const mIso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T].*)?$/);
+  if (mIso) {
+    const y = parseInt(mIso[1], 10);
+    const mm = parseInt(mIso[2], 10);
+    const dd = parseInt(mIso[3], 10);
+    if (y && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+      return `${y}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+    }
+    return null; // evita ISOs inválidos como "2025-15-09"
   }
+
+  // Caso 3: "DD/MM/YYYY" o "MM/DD/YYYY" (o con guiones). Detectamos el orden
+  // por magnitud: si un componente es > 12 tiene que ser el día.
+  const mNum = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (mNum) {
+    const a = parseInt(mNum[1], 10);
+    const b = parseInt(mNum[2], 10);
+    let y = parseInt(mNum[3], 10);
+    if (y < 100) y += 2000;
+    if (!y || a < 1 || b < 1) return null;
+
+    let d: number;
+    let mm: number;
+    if (a > 12 && b <= 12) {
+      d = a; mm = b; // DD/MM (uruguayo, europeo)
+    } else if (b > 12 && a <= 12) {
+      d = b; mm = a; // MM/DD (americano)
+    } else if (a <= 12 && b <= 12) {
+      d = a; mm = b; // ambiguo: default DD/MM (uruguayo)
+    } else {
+      return null; // ambos > 12, no es fecha válida
+    }
+    if (d >= 1 && d <= 31 && mm >= 1 && mm <= 12) {
+      return `${y}-${String(mm).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+  }
+
   return null;
 }
 
