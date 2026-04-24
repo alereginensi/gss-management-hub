@@ -10,6 +10,7 @@
     "migrate:limpieza-personal": "node scripts/migrate_limpieza_personal_only.cjs",
     "mitrabajo:download": "node scripts/download-mitrabajo.cjs",
     "mitrabajo:cron": "node scripts/cron-mitrabajo.cjs",
+    "agenda:cron": "node scripts/cron-agenda.cjs",
     "agenda:slots": "node scripts/cron-agenda.cjs --manual",
     "agenda:reset-catalog": "node scripts/reset-agenda-catalog.cjs",
     "agenda:migrate-catalog-category": "node scripts/migrate-catalog-puesto-to-category.cjs",

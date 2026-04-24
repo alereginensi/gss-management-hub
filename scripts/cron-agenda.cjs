@@ -5,15 +5,18 @@
  * Se ejecuta el día 28 de cada mes a las 09:00 (genera el mes siguiente).
  *
  * Uso:
- *   node scripts/cron-agenda.cjs
- *   node scripts/cron-agenda.cjs --manual 2025-08    # genera mes específico sin esperar cron
+ *   node scripts/cron-agenda.cjs                       # modo cron (worker persistente)
+ *   node scripts/cron-agenda.cjs --manual 2025-08      # genera mes específico y sale
+ *   node scripts/cron-agenda.cjs --sync-renewals       # sync de renovaciones y sale
  *
- * En producción: agregar al script "start" junto a next start y cron-mitrabajo.
+ * En producción (Railway): correr como **worker service separado** del principal.
+ * Expone /api/health para que Railway pueda hacer health check del servicio.
  */
 
 'use strict';
 
 const cron = require('node-cron');
+const http = require('http');
 const path = require('path');
 
 // Detectar modo manual: node cron-agenda.cjs --manual 2025-08
@@ -102,13 +105,31 @@ if (manualTarget) {
   const RENEWAL_SCHEDULE = '0 2 * * *';
 
   console.log(`[cron-agenda] Iniciado.`);
-  console.log(`[cron-agenda]   slots:       ${SLOTS_SCHEDULE} (día 28, 09:00)`);
-  console.log(`[cron-agenda]   renovaciones: ${RENEWAL_SCHEDULE} (diario, 02:00)`);
+  console.log(`[cron-agenda]   slots:       ${SLOTS_SCHEDULE} (día 28, 09:00 America/Montevideo)`);
+  console.log(`[cron-agenda]   renovaciones: ${RENEWAL_SCHEDULE} (diario, 02:00 America/Montevideo)`);
 
   cron.schedule(SLOTS_SCHEDULE, () => generateSlots(null), { timezone: 'America/Montevideo' });
   cron.schedule(RENEWAL_SCHEDULE, () => syncRenewals(), { timezone: 'America/Montevideo' });
 
+  // Mini HTTP server para health check de Railway (mismo patrón que mitrabajo-worker).
+  const PORT = process.env.PORT || 3000;
+  http.createServer((req, res) => {
+    if (req.url === '/api/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', service: 'agenda-cron', ts: new Date().toISOString() }));
+    } else {
+      res.writeHead(404);
+      res.end();
+    }
+  }).listen(PORT, () => {
+    console.log(`[cron-agenda] Health check server escuchando en puerto ${PORT}`);
+  });
+
   // Mantener proceso vivo
+  process.on('SIGINT', () => {
+    console.log('[cron-agenda] SIGINT recibido — cerrando.');
+    process.exit(0);
+  });
   process.on('SIGTERM', () => {
     console.log('[cron-agenda] SIGTERM recibido — cerrando.');
     process.exit(0);

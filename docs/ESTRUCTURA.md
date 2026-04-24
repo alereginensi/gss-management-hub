@@ -206,8 +206,8 @@ Scripts que se corren manualmente o como procesos separados. **No se ejecutan co
 
 | Archivo | Qué hace |
 |---------|---------|
-| [`cron-mitrabajo.cjs`](../scripts/cron-mitrabajo.cjs) | Worker Railway: descarga automática diaria de mitrabajo.uy + servidor HTTP de health check |
-| [`cron-agenda.cjs`](../scripts/cron-agenda.cjs) | Cron de agenda: envía recordatorios de turnos de entrega |
+| [`cron-mitrabajo.cjs`](../scripts/cron-mitrabajo.cjs) | Worker Railway `mitrabajo-worker`: descarga diaria de mitrabajo.uy a las 08:00 (America/Montevideo) + servidor HTTP de health check |
+| [`cron-agenda.cjs`](../scripts/cron-agenda.cjs) | Worker Railway `agenda-worker`: genera slots del mes siguiente el día 28 a las 09:00 + sync de renovaciones diario a las 02:00 (ambos America/Montevideo) + servidor HTTP de health check. Ver [docs/RAILWAY_WORKERS.md](./RAILWAY_WORKERS.md) |
 
 ### Descarga de datos externos
 
