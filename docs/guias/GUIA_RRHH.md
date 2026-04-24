@@ -1,6 +1,6 @@
 # Guía de Recursos Humanos (RRHH)
 
-El módulo de Recursos Humanos tiene tres funcionalidades principales: la **Agenda Web** para la entrega y seguimiento de uniformes, **Jornales** para el control de días trabajados del personal y **Citaciones Laborales** para la gestión de audiencias ante el MTSS y el Juzgado.
+El módulo de Recursos Humanos tiene cuatro funcionalidades principales: la **Agenda Web** para la entrega y seguimiento de uniformes, **Jornales** para el control de días trabajados del personal, **Citaciones Laborales** para la gestión de audiencias ante el MTSS y el Juzgado, y **Registro de Licencias** para certificaciones médicas, PAP, lactancia y otras licencias del personal.
 
 ---
 
@@ -157,3 +157,79 @@ El botón **"↓ Excel"** descarga un archivo `.xlsx` con todas las citaciones v
 ### 7.6. Quién puede usarlo
 
 Mismo criterio que Jornales: solo **Administrador** o **RRHH**.
+
+---
+
+## 8. Registro de Licencias
+
+Planilla del área para llevar el registro de licencias del personal: certificaciones médicas, PAP, lactancia, licencia por estudio, donación de sangre y otras. Replica el Excel que se llevaba a mano, con la ventaja de que **se edita directo en la tabla como en Excel** y los cambios se guardan solos.
+
+### 8.1. Cómo acceder
+
+Desde el hub `/rrhh` hacé clic en la tarjeta **"Registro de Licencias"**.
+
+### 8.2. La tabla
+
+Cada fila es una licencia con estas columnas:
+
+- **Remitente**: quien reporta la licencia (persona de RRHH).
+- **Padrón**: número del funcionario.
+- **Funcionario**: nombre.
+- **Servicio**: cliente donde trabaja.
+- **Sector**: Staff / Tercerizado / Limpieza / Seguridad.
+- **Tipo**: Certificación médica / Donación de sangre / PAP / Licencia por estudio / Lactancia / Otro.
+- **Desde** y **Hasta**: rango de fechas.
+- **Suplente**: si lo hubo.
+- **Notif** / **Sup** / **Cert** / **Plan**: los 4 checks de seguimiento.
+- **Observaciones**: notas libres.
+
+Las filas con los **4 checks en verde** se pintan de fondo verde (licencia completamente tramitada). Las que tienen algún check en gris van con fondo amarillo (pendiente).
+
+### 8.3. Edición inline (estilo Excel)
+
+Todo se edita directo en la tabla:
+- **Texto, padrón, observaciones**: click en la celda, escribís, y cuando salís (click afuera) se guarda.
+- **Sector, tipo**: menú desplegable, click → elegís → guarda.
+- **Fechas**: selector de fecha.
+- **Checks (Notif, Sup, Cert, Plan)**: click en el círculo — si está verde pasa a gris, si está gris pasa a verde. Guarda al instante.
+
+No hace falta apretar "Guardar" en ningún lado. Una barra azul animada a la izquierda de la fila indica que está guardando, y desaparece apenas termina.
+
+### 8.4. Agregar una licencia nueva
+
+Botón **"+ Nueva"** arriba a la derecha. Se abre un formulario chico con los 3 campos obligatorios: remitente, funcionario y tipo. El resto (suplente, observaciones, checks, servicio) se completa después directo en la tabla.
+
+### 8.5. Filtros y búsqueda
+
+Arriba de la tabla hay:
+- Búsqueda por nombre o padrón.
+- Filtro por sector.
+- Filtro por tipo de licencia.
+- Filtro por estado: Todas / Solo pendientes / Solo completas.
+
+Las 4 tarjetas de arriba (Total / Completas / Pendientes / tipo más frecuente) se actualizan según los filtros actuales.
+
+### 8.6. Exportar a Excel
+
+Botón **"↓ Excel"** descarga un `.xlsx` con las columnas exactas del Excel original, manteniendo el formato `TRUE`/`FALSE` para los 4 checks. Incluye solo las filas visibles según los filtros activos.
+
+### 8.7. Importar histórico (solo admin)
+
+Si tenías un Excel previo con licencias ya registradas, podés subirlo de una:
+
+1. Botón **"↑ Importar"** (solo visible para admin).
+2. Arrastrá el Excel o elegilo del explorador.
+3. **Año**: el Excel original tiene fechas como "17-Jul" sin año. Elegí el año al que corresponden (default: año actual).
+4. **Estrategia**:
+   - **Agregar al final** (recomendado): mantiene lo que ya hay y suma las filas nuevas.
+   - **Reemplazar TODO**: borra toda la tabla y la reemplaza con el Excel. Usar con cuidado.
+5. Click **Importar**. Al final muestra cuántas filas se insertaron, cuántas se descartaron (por faltar datos obligatorios) y un detalle de errores si los hay.
+
+### 8.8. Eliminar una licencia
+
+Columna última de la fila: icono de papelera. Click → confirmación → se elimina.
+
+### 8.9. Quién puede usarlo
+
+- **Ver, editar, crear, eliminar**: Administrador o RRHH.
+- **Importar Excel histórico**: solo Administrador.

@@ -65,9 +65,10 @@ Cada subcarpeta de `app/` corresponde a una sección del sistema.
 | [`app/logistica/agenda/admin/devoluciones-egreso/`](../app/logistica/agenda/admin/devoluciones-egreso/) | `/logistica/agenda/admin/devoluciones-egreso` | Devoluciones al finalizar relación laboral (listado + alta de nuevo egreso) |
 | [`app/seguridad-electronica/`](../app/seguridad-electronica/) | `/seguridad-electronica` | Monitoreo y mantenimientos técnicos |
 | [`app/cotizacion/`](../app/cotizacion/) | `/cotizacion` | Cotización comercial y liquidación de horas |
-| [`app/rrhh/`](../app/rrhh/) | `/rrhh` | RRHH — hub con Agenda web, Jornales y Citaciones Laborales |
+| [`app/rrhh/`](../app/rrhh/) | `/rrhh` | RRHH — hub con Agenda web, Jornales, Citaciones Laborales y Registro de Licencias |
 | [`app/rrhh/jornales/`](../app/rrhh/jornales/) | `/rrhh/jornales` | Control de días trabajados (personal, marcas, altas/bajas, resultados) |
 | [`app/rrhh/citaciones/`](../app/rrhh/citaciones/) | `/rrhh/citaciones` | Gestión de audiencias MTSS y Juzgado, acuerdos, facturas del abogado |
+| [`app/rrhh/licencias/`](../app/rrhh/licencias/) | `/rrhh/licencias` | Registro de licencias con tabla editable inline (autoguardado) + 4 checks de seguimiento + import/export Excel |
 | [`app/limpieza/`](../app/limpieza/) | `/limpieza` | Pantalla pública de registro de limpieza (sin login) |
 | [`app/turno/`](../app/turno/) | `/turno` | Pantalla pública de consulta de turnos de uniforme |
 | [`app/mitrabajo/`](../app/mitrabajo/) | `/mitrabajo` | Descarga de reportes desde mitrabajo.uy |
@@ -93,6 +94,7 @@ Dentro de cada módulo hay una carpeta `api/` con los endpoints:
 | [`app/api/rrhh/`](../app/api/rrhh/) | Entregas de uniformes desde RRHH |
 | [`app/api/rrhh/jornales/`](../app/api/rrhh/jornales/) | Personal, marcas, archivos y resultados del módulo de Jornales |
 | [`app/api/rrhh/citaciones/`](../app/api/rrhh/citaciones/) | CRUD de citaciones laborales (GET/POST, [id]/PUT/DELETE, parse-pdf para autofill, [id]/pdf para adjuntar/ver/quitar PDF) |
+| [`app/api/rrhh/licencias/`](../app/api/rrhh/licencias/) | CRUD de registro de licencias (GET/POST con filtros, [id]/PUT para autoguardado inline, [id]/DELETE, import/POST para Excel histórico) |
 | [`scripts/seed-jornales-historico.cjs`](../scripts/seed-jornales-historico.cjs) | Seed idempotente de personal + marcas sintéticas iniciales del módulo Jornales |
 | [`app/api/limpieza/`](../app/api/limpieza/) | Confirmación de tareas (pantalla pública) |
 | [`app/api/turno/`](../app/api/turno/) | Consulta de turno por cédula |
@@ -195,6 +197,7 @@ Código TypeScript puro, sin dependencias de Next.js. Se importa desde páginas 
 | [`jornales-helpers.ts`](../lib/jornales-helpers.ts) | Roles permitidos (admin, rrhh), cálculo de estado y parseo de fechas para Jornales |
 | [`citaciones-helpers.ts`](../lib/citaciones-helpers.ts) | Roles permitidos (admin, rrhh) para el módulo de Citaciones Laborales |
 | [`citaciones-pdf-parser.ts`](../lib/citaciones-pdf-parser.ts) | Parser heurístico de PDFs de citaciones MTSS/Juzgado: extrae texto con pdf-parse y matchea regex sobre labels (empresa, trabajador, fecha, hora, abogado, rubros, monto) |
+| [`licencias-helpers.ts`](../lib/licencias-helpers.ts) | Roles permitidos (admin, rrhh) + enums `SECTORES` y `TIPOS_LICENCIA` del módulo Registro de Licencias |
 
 ---
 
@@ -221,6 +224,7 @@ Scripts que se corren manualmente o como procesos separados. **No se ejecutan co
 |---------|---------|
 | [`generate-clients.js`](../scripts/generate-clients.js) | Lee `CLIENTS_DATA` env var y genera `app/config/clients.ts` (corre antes del build) |
 | [`generate-vapid-keys.js`](../scripts/generate-vapid-keys.js) | Genera par de claves VAPID para Web Push |
+| [`gen-guia-planillas.cjs`](../scripts/gen-guia-planillas.cjs) | Genera [`docs/GUIA_CARGA_PLANILLAS.pdf`](./GUIA_CARGA_PLANILLAS.pdf) (HTML embebido + Playwright). `npm run docs:guia-planillas` |
 
 ### Datos de prueba
 

@@ -227,6 +227,7 @@ npm run dev          # desarrollo (webpack explícito en package.json)
 npm run build        # build producción
 npm run lint         # eslint
 npm run migrate:limpieza-personal  # migración segura limpieza → Postgres
+npm run docs:guia-planillas        # regenera docs/GUIA_CARGA_PLANILLAS.pdf
 ```
 
 ---
@@ -236,6 +237,7 @@ npm run migrate:limpieza-personal  # migración segura limpieza → Postgres
 - [README](./README.md) — instalación y visión general.
 - [DEPLOYMENT_QUICKSTART](./docs/DEPLOYMENT_QUICKSTART.md) — Railway.
 - [BACKUPS](./docs/BACKUPS.md) — procedimientos de backup de base de datos.
+- [GUIA_CARGA_PLANILLAS.pdf](./docs/GUIA_CARGA_PLANILLAS.pdf) — Guía para supervisores/admin sobre Editor de Planillas + subida de planilla al informe operativo. Generada por `scripts/gen-guia-planillas.cjs` (HTML embebido + Playwright). Regenerar con `npm run docs:guia-planillas`.
 
 ### Guías de usuario (GUIA_*.md)
 
@@ -762,3 +764,67 @@ Mismo patrón que agenda remitos (BYTEA en DB por restricción PDF de Cloudinary
 ### Roles
 
 - Solo `admin` o `rrhh` (mismo criterio que Jornales, vía `isCitacionesRole`).
+
+---
+
+## Módulo Registro de Licencias (RRHH) — `app/rrhh/licencias/`
+
+Replica del Excel "Registro de licencias.xlsx" que llevaba RRHH a mano. Planilla editable con **edición inline estilo Excel**: click en la celda → edita → blur/Enter → autoguarda con debounce 400ms. Los 4 checks de seguimiento (Notificación, Supervisión, Certificado, Planificación) son toggles que guardan al instante.
+
+### Ruta y acceso
+
+- **`/rrhh/licencias`** — [app/rrhh/licencias/page.tsx](app/rrhh/licencias/page.tsx). Guard `hasModuleAccess('rrhh')`.
+- Card en hub `/rrhh` con icono `CalendarDays`.
+- Rol: admin o rrhh. **Importación de histórico**: solo admin (endpoint rechaza otros roles).
+
+### Tabla `rrhh_licencias` ([lib/db.ts](lib/db.ts))
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `id` | SERIAL PK | |
+| `remitente` | TEXT NOT NULL | Quien reporta (persona de RRHH) |
+| `padron` | TEXT | Número del funcionario (opcional) |
+| `funcionario` | TEXT NOT NULL | Nombre |
+| `nombre_servicio` | TEXT | Cliente (ej: Casmu 2, Medis) |
+| `sector` | TEXT | Staff/Tercerizado/Limpieza/Seguridad |
+| `tipo_licencia` | TEXT NOT NULL | Certificación médica/Donación de sangre/PAP/Licencia por estudio/Lactancia/Otro |
+| `desde`, `hasta` | DATE | Al importar desde "D-MMM" se completa el año en el modal (default año actual) |
+| `suplente` | TEXT | |
+| `recep_notificacion`, `supervision`, `recep_certificado`, `planificacion` | INTEGER 0/1 | Los 4 checks de seguimiento |
+| `observaciones` | TEXT | |
+| Índices | | `padron`, `sector`, `tipo_licencia`, `desde` |
+
+### API routes
+
+- **`GET /api/rrhh/licencias`** — lista con filtros query: `sector`, `tipo`, `remitente`, `search` (funcionario/padrón), `desde_gte`, `desde_lte`. ORDER BY desde DESC, id DESC.
+- **`POST /api/rrhh/licencias`** — crea con validación de obligatorios (`remitente`, `funcionario`, `tipoLicencia`). Devuelve la licencia creada.
+- **`PUT /api/rrhh/licencias/[id]`** — update parcial. Usado por el autoguardado inline (cada celda dispara un PUT con el campo modificado). SET dinámico con coerción por tipo (`bool` → 0/1, `date` → YYYY-MM-DD, `stringOrNull`).
+- **`DELETE /api/rrhh/licencias/[id]`** — elimina una fila.
+- **`POST /api/rrhh/licencias/import`** — admin-only. FormData con `file` (Excel) + `year` (default año actual) + `strategy` (`merge` por default o `replace` para borrar todo antes de insertar). Mapea las 14 columnas del Excel original. Parse de fechas "17-Jul" (soporta inglés/español). Responde `{ insertados, descartadas, total_filas, errores: string[] }`.
+
+### Helper ([lib/licencias-helpers.ts](lib/licencias-helpers.ts))
+
+Exporta `LICENCIAS_ALLOWED_ROLES = ['admin', 'rrhh']`, `isLicenciasRole()`, y los enums `SECTORES` / `TIPOS_LICENCIA` / `CHECK_FIELDS` usados tanto en el backend como en la UI (selects, validación de import).
+
+### Hook `useLicenciasApi` ([app/rrhh/licencias/hooks/useLicenciasApi.ts](app/rrhh/licencias/hooks/useLicenciasApi.ts))
+
+`actualizarCampo(id, field, value)`:
+1. Optimistic update del state local.
+2. Debounce **400ms** por par `(id, field)` para campos de texto/select/fecha. **Sin debounce** para los 4 checks booleanos (click intencional).
+3. `PUT` al endpoint. Respuesta reconcilia con `updated_at` del server.
+4. On error: `setError()` + `fetchLicencias()` para resync desde DB.
+
+### UI
+
+- `LicenciasModule.tsx`: `StatsBar` arriba (total/completas/pendientes/tipo más frecuente), toolbar con búsqueda + filtros + botones `Excel` / `Importar` (admin) / `Nueva`, y la `TablaLicencias`.
+- `TablaLicencias.tsx`: sticky header, filas con fondo verde suave si los 4 checks están en true y amarillo suave si falta alguno. Cada celda es `input`/`select`/`date` según el tipo. Los checks son `<Toggle />` pill verde/gris. Indicador `lic-row--saving` con animación en la barra izquierda mientras se guarda.
+- `ModalNueva.tsx`: alta rápida con solo campos obligatorios (remitente con datalist autocomplete, funcionario, tipo) + fecha desde/hasta opcional. Resto se completa inline después.
+- `ModalImportar.tsx`: admin-only. Drag-and-drop del Excel, selector de año, estrategia `merge`/`replace`, resultado con contador de insertados/descartados/errores.
+- Export Excel cliente: [app/rrhh/licencias/utils/exportarLicencias.ts](app/rrhh/licencias/utils/exportarLicencias.ts) — regenera el formato original (14 columnas, `TRUE`/`FALSE`, fechas `DD/MM/YYYY`).
+
+### Gotchas
+
+- El Excel original tiene la columna `Tipo de licencia ` con **trailing space**. El importer prueba ambas variantes (`'Tipo de licencia'` y `'Tipo de licencia '`).
+- Meses mezclados en inglés/español en el Excel (`Jul`, `Aug`, `Sep`, `Oct`). El parser `MESES` cubre ambos.
+- Valor de `SECTOR` no reconocido (no es Staff/Tercerizado/Limpieza/Seguridad) → se guarda como `null`. `TIPO_LICENCIA` no reconocido → se mapea a `Otro`.
+- `ORDER BY desde DESC NULLS LAST` para PG; fallback a `ORDER BY desde DESC` para SQLite que no soporta NULLS LAST.

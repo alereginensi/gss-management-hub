@@ -884,6 +884,31 @@ class DbWrapper {
 
  CREATE INDEX IF NOT EXISTS idx_rrhh_citaciones_estado ON rrhh_citaciones(estado);
  CREATE INDEX IF NOT EXISTS idx_rrhh_citaciones_fecha ON rrhh_citaciones(fecha);
+
+ CREATE TABLE IF NOT EXISTS rrhh_licencias (
+ id SERIAL PRIMARY KEY,
+ remitente TEXT NOT NULL,
+ padron TEXT,
+ funcionario TEXT NOT NULL,
+ nombre_servicio TEXT,
+ sector TEXT,
+ tipo_licencia TEXT NOT NULL,
+ desde DATE,
+ hasta DATE,
+ suplente TEXT,
+ recep_notificacion INTEGER DEFAULT 0,
+ supervision INTEGER DEFAULT 0,
+ recep_certificado INTEGER DEFAULT 0,
+ planificacion INTEGER DEFAULT 0,
+ observaciones TEXT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ );
+
+ CREATE INDEX IF NOT EXISTS idx_rrhh_licencias_padron ON rrhh_licencias(padron);
+ CREATE INDEX IF NOT EXISTS idx_rrhh_licencias_sector ON rrhh_licencias(sector);
+ CREATE INDEX IF NOT EXISTS idx_rrhh_licencias_tipo ON rrhh_licencias(tipo_licencia);
+ CREATE INDEX IF NOT EXISTS idx_rrhh_licencias_desde ON rrhh_licencias(desde);
  `;
 
  // Migration for limpieza_registros

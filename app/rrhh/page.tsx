@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Clock, Scale, Shirt } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Clock, Scale, Shirt } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 
@@ -88,6 +88,13 @@ export default function RrhhPage() {
                             <div className="landing-card-content">
                                 <p className="landing-card-label">Citaciones Laborales</p>
                                 <p className="landing-card-desc">Audiencias MTSS y Juzgado, acuerdos y facturas</p>
+                            </div>
+                        </Link>
+                        <Link href="/rrhh/licencias" className="landing-card-btn">
+                            <div className="landing-card-icon"><CalendarDays size={26} color="white" /></div>
+                            <div className="landing-card-content">
+                                <p className="landing-card-label">Registro de Licencias</p>
+                                <p className="landing-card-desc">Certificaciones médicas, PAP, lactancia, estudio</p>
                             </div>
                         </Link>
                     </div>

@@ -84,7 +84,7 @@ Abre [http://localhost:3000](http://localhost:3000) y usa cualquiera de estas cr
 | `tecnico@example.com` | Técnico | Seguridad electrónica |
 | `logistica@example.com` | Logística | Módulo de logística completo |
 | `contador@example.com` | Contador | Cotización y liquidación |
-| `rrhh@example.com` | RRHH | Agenda web de uniformes, Jornales y Citaciones Laborales |
+| `rrhh@example.com` | RRHH | Agenda web de uniformes, Jornales, Citaciones Laborales y Registro de Licencias |
 | `encargado@example.com` | Encargado limpieza | Operaciones del cliente asignado |
 
 **Contraseña para todos:** `Dev1234!`
@@ -128,7 +128,7 @@ Módulo para técnicos: registro de eventos de monitoreo y gestión de mantenimi
 Gestión comercial y liquidación de horas: categorías de empleados, tarifas por hora, períodos de facturación y exportación de reportes Excel para clientes.
 
 ### Recursos Humanos (RRHH)
-Incluye tres submódulos: acceso a la **Agenda Web** de uniformes (consulta y registro de entregas al personal); **Jornales**, un tablero de control de días trabajados con carga de Excel de marcas, altas/bajas de funcionarios y cálculo automático de efectividad (≥100 jornales); y **Citaciones Laborales**, expediente digital de audiencias MTSS y Juzgado con acuerdos transaccionales, facturas del abogado y export Excel.
+Incluye cuatro submódulos: acceso a la **Agenda Web** de uniformes; **Jornales**, tablero de control de días trabajados con carga de Excel de marcas y cálculo automático de efectividad (≥100 jornales); **Citaciones Laborales**, expediente digital de audiencias MTSS y Juzgado con acuerdos y facturas; y **Registro de Licencias**, planilla editable inline con tabla estilo Excel para certificaciones médicas, PAP, lactancia, estudio y otras licencias, con 4 checks de seguimiento (Notificación, Supervisión, Certificado, Planificación) y import/export del Excel histórico.
 
 ### Mi Trabajo (Mitrabajo)
 Descarga automática diaria del reporte de asistencia desde el portal externo mitrabajo.uy. Los archivos quedan disponibles para descarga directa desde el sistema y, opcionalmente, se envían por email como adjunto a los destinatarios configurados en la misma sección.
@@ -172,7 +172,7 @@ Gestión de clientes (ubicaciones) y sus sectores, configuración de notificacio
 | Técnico | Seguridad electrónica |
 | Logística | Módulo de logística completo |
 | Contador | Cotización y liquidación |
-| RRHH | Agenda web de uniformes, Jornales y Citaciones Laborales |
+| RRHH | Agenda web de uniformes, Jornales, Citaciones Laborales y Registro de Licencias |
 | Encargado de limpieza | Operaciones limpieza (cliente asignado) |
 | Limpieza | Registro de limpieza (pantalla pública) |
 
@@ -194,6 +194,7 @@ Documentación escrita para usuarios sin conocimientos técnicos.
 | [Configuración Personal](./docs/guias/GUIA_CONFIGURACION.md) | Tema, notificaciones push |
 | [Panel de Administración](./docs/guias/GUIA_ADMINISTRACION_DASHBOARD.md) | Métricas y gestión de tickets |
 | [Operaciones Limpieza](./docs/guias/GUIA_OPERACIONES_LIMPIEZA.md) | Informes, tareas, personal, uniformes |
+| [Carga de Planillas (PDF)](./docs/GUIA_CARGA_PLANILLAS.pdf) | Paso a paso para admin + supervisores: Editor de Planillas y subida de planilla al informe |
 | [Logística](./docs/guias/GUIA_LOGISTICA.md) | Agenda web, envíos, órdenes de compra |
 | [Seguridad Electrónica](./docs/guias/GUIA_SEGURIDAD_ELECTRONICA.md) | Monitoreo y mantenimiento |
 | [Cotización](./docs/guias/GUIA_COTIZACION.md) | Tarifas, liquidación, reportes |
