@@ -49,7 +49,7 @@ export default function Landing() {
     { key: 'tecnico',    label: 'Seguridad Electrónica',          description: 'Monitoreo, mantenimiento e historial',           icon: Shield,     href: '/seguridad-electronica', access: hasModuleAccess(currentUser, 'tecnico') },
     { key: 'logistica',  label: 'Logística',                      description: 'Solicitudes de materiales y órdenes de compra', icon: Package,    href: '/logistica',             access: hasModuleAccess(currentUser, 'logistica') },
     { key: 'cotizacion', label: 'Cotización',                     description: 'Tarifas, liquidaciones y reportes',              icon: Calculator, href: '/cotizacion',            access: hasModuleAccess(currentUser, 'cotizacion') },
-    { key: 'limpieza',   label: 'Operaciones Limpieza/Seguridad', description: 'Tareas, informes y control operativo',           icon: Droplets,   href: '/operaciones-limpieza',  access: hasModuleAccess(currentUser, 'limpieza') },
+    { key: 'limpieza',   label: 'Operaciones Limpieza/Seguridad', description: 'Tareas, informes y control operativo',           icon: Droplets,   href: '/operaciones-limpieza',  access: hasModuleAccess(currentUser, 'limpieza') || hasModuleAccess(currentUser, 'limpieza-informes') },
     { key: 'rrhh',       label: 'Recursos Humanos',               description: 'Gestión de personal y RRHH',                    icon: Users,      href: '/rrhh',                  access: hasModuleAccess(currentUser, 'rrhh') },
   ];
 
