@@ -32,8 +32,8 @@
 |---------|-------|
 | Primer commit | 2026-02-10 |
 | Último commit | 2026-04-24 |
-| Commits totales | 507 |
-| Horas calendario (desde primer commit) | 1747 h |
+| Commits totales | 509 |
+| Horas calendario (desde primer commit) | 1748 h |
 | Horas efectivas estimadas | 141 h |
 
 <sub>Horas efectivas = suma de intervalos entre commits con gap ≤ 120 min + 30 min por arranque de sesión. Aproximación basada en git; no contempla trabajo sin commit.</sub>
