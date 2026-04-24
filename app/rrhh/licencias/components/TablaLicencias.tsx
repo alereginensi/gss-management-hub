@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import type { Licencia, LicenciaField } from '../hooks/useLicenciasApi';
 import { SECTORES, TIPOS_LICENCIA } from '@/lib/licencias-helpers';
@@ -85,7 +85,7 @@ function Fila({ licencia: l, guardando, onActualizar, onEliminar }: { licencia: 
       <td className="lic-check-td">
         <Toggle value={l.planificacion} onChange={(v) => onActualizar(l.id, 'planificacion', v)} />
       </td>
-      <td><InputCelda value={l.observaciones} onChange={(v) => onActualizar(l.id, 'observaciones', v)} multiline /></td>
+      <td><CeldaObservaciones value={l.observaciones} onChange={(v) => onActualizar(l.id, 'observaciones', v)} funcionario={l.funcionario} /></td>
       <td>
         <button
           type="button"
@@ -127,6 +127,65 @@ function InputCelda({ value, onChange, multiline }: { value: string; onChange: (
       onChange={(e) => setLocal(e.target.value)}
       onBlur={() => { if (local !== value) onChange(local); }}
     />
+  );
+}
+
+function CeldaObservaciones({ value, onChange, funcionario }: { value: string; onChange: (v: string) => void; funcionario: string }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    if (editing) setDraft(value);
+  }, [editing, value]);
+
+  function guardar() {
+    if (draft !== value) onChange(draft);
+    setEditing(false);
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="lic-obs-cell"
+        onClick={() => setEditing(true)}
+        title={value || 'Click para agregar observación'}
+      >
+        {value ? value : <span className="lic-obs-placeholder">—</span>}
+      </button>
+      {editing && (
+        <div className="lic-modal-overlay" onClick={() => setEditing(false)}>
+          <div className="lic-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="lic-modal-header">
+              <h3>Observación · {funcionario}</h3>
+              <button type="button" className="lic-modal-close" onClick={() => setEditing(false)}>✕</button>
+            </div>
+            <div className="lic-modal-body">
+              <textarea
+                autoFocus
+                className="lic-input"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={8}
+                style={{ width: '100%', fontSize: 13, lineHeight: 1.5, padding: 10, resize: 'vertical', minHeight: 140 }}
+                onKeyDown={(e) => {
+                  // Ctrl/Cmd + Enter guarda rápido
+                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); guardar(); }
+                  if (e.key === 'Escape') { setEditing(false); }
+                }}
+              />
+              <p className="lic-hint" style={{ marginTop: 6 }}>
+                Ctrl+Enter para guardar · Esc para cancelar.
+              </p>
+            </div>
+            <div className="lic-modal-footer">
+              <button type="button" className="lic-btn" onClick={() => setEditing(false)}>Cancelar</button>
+              <button type="button" className="lic-btn lic-btn--primary" onClick={guardar}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

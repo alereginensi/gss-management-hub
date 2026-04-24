@@ -219,6 +219,33 @@
   border-color: var(--lic-primary);
 }
 
+/* Celda de observaciones: botón que muestra texto truncado y abre modal al click */
+.licencias-module .lic-obs-cell {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-family: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.5;
+}
+.licencias-module .lic-obs-cell:hover {
+  background: white;
+  border-color: var(--lic-border);
+}
+.licencias-module .lic-obs-placeholder {
+  color: #9ca3af;
+  font-style: italic;
+}
+
 /* Filas: verde si completa, amarillo si pendiente */
 .licencias-module .lic-row--ok > td:not(.lic-check-td) {
   background: var(--lic-ok-bg);
