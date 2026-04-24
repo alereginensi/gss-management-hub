@@ -48,16 +48,54 @@ function normalizeSizeToken(raw: string): string {
 // o números de calzado 36-46. Extender acá si aparecen nuevos talles.
 const SIZE_TOKEN_PATTERN = '(?:S|M|L|XL|XXL|XXXL|XXXXL|XXXXXL|3XL|4XL|5XL|3[6-9]|4[0-6])';
 
+// Artículos de talle único: cuando el remito no trae talle (ni "- S" ni "Talle
+// XX"), si la descripción incluye una de estas keywords asumimos size = 'Única'
+// (consistente con lib/agenda-uniforms.ts donde Corbata y Pañuelo se declaran
+// con `sizes: ['Única']`). Extender si aparecen más items sin talle.
+const SIZELESS_ITEM_KEYWORDS = ['corbata', 'pañuelo', 'panuelo'];
+const UNICA_SIZE = 'Única';
+
+function detectSizelessItem(desc: string): boolean {
+  const n = normKey(desc); // ya quita tildes y pasa a lowercase
+  return SIZELESS_ITEM_KEYWORDS.some((kw) => n.includes(normKey(kw)));
+}
+
 function splitBodyAndTrailingSize(desc: string): { body: string; size: string } | null {
+  // Caso 1: formato clásico "Body - TALLE" (con dash delimitador).
   const last = desc.lastIndexOf(' - ');
-  if (last === -1) return null;
-  const sizeRaw = desc.slice(last + 3).trim();
-  const body = desc.slice(0, last).trim();
-  if (!body || !sizeRaw) return null;
-  const talleMatch = sizeRaw.match(/^talle\s+(\d{2})$/i);
-  if (talleMatch) return { body, size: talleMatch[1] };
-  const size = /^\d{2}$/.test(sizeRaw) ? sizeRaw : normalizeSizeToken(sizeRaw);
-  return { body, size };
+  if (last !== -1) {
+    const sizeRaw = desc.slice(last + 3).trim();
+    const body = desc.slice(0, last).trim();
+    if (body && sizeRaw) {
+      const talleMatch = sizeRaw.match(/^tall[ea]\s+(\d{2}|[A-Za-z]{1,5})$/i);
+      if (talleMatch) {
+        const raw = talleMatch[1];
+        const size = /^\d{2}$/.test(raw) ? raw : normalizeSizeToken(raw);
+        return { body, size };
+      }
+      const size = /^\d{2}$/.test(sizeRaw) ? sizeRaw : normalizeSizeToken(sizeRaw);
+      return { body, size };
+    }
+  }
+  // Caso 2: "Body Talle XX" / "Body Talla XX" al final, sin dash precediendo.
+  // Algunos proveedores (ej. ORBIS) emiten remitos con ese formato.
+  const talleEnd = desc.match(/^(.+?)\s+tall[ea]\s+(\d{2}|[A-Za-z]{1,5})$/i);
+  if (talleEnd) {
+    // Quitar dash colgante al final del body (ocurre cuando la línea tenía
+    // "Body - Talla X" y el regex capturó hasta antes de "Talla").
+    const body = talleEnd[1].trim().replace(/\s*-\s*$/, '').trim();
+    const raw = talleEnd[2];
+    if (body.length >= 2) {
+      const size = /^\d{2}$/.test(raw) ? raw : normalizeSizeToken(raw);
+      return { body, size };
+    }
+  }
+  // Caso 3: artículo de talle único (ej. "Corbata (Orbis)", "Pañuelo"). No
+  // tiene talle en el remito; se marca con 'Única' igual que en el catálogo.
+  if (desc.trim().length >= 2 && detectSizelessItem(desc)) {
+    return { body: desc.trim(), size: UNICA_SIZE };
+  }
+  return null;
 }
 
 function scoreUniformAgainstBody(bodyNorm: string, u: UniformItem): number {
@@ -131,13 +169,33 @@ function extractSizeToken(afterLastDash: string): string | null {
 function articleStringFromAfterCant(afterCant: string): string | null {
   const s = afterCant.trim();
   if (!s) return null;
+  // Caso 1: formato clásico "Body - TALLE"
   const lastDash = s.lastIndexOf(' - ');
-  if (lastDash === -1) return null;
-  const sizeToken = extractSizeToken(s.slice(lastDash + 3));
-  if (!sizeToken) return null;
-  const desc = s.slice(0, lastDash).trim();
-  if (desc.length < 2) return null;
-  return `${desc} - ${sizeToken}`;
+  if (lastDash !== -1) {
+    const sizeToken = extractSizeToken(s.slice(lastDash + 3));
+    if (sizeToken) {
+      const desc = s.slice(0, lastDash).trim();
+      if (desc.length >= 2) return `${desc} - ${sizeToken}`;
+    }
+  }
+  // Caso 2: "Body Talle XX" / "Body Talla XX" al final (sin dash antes).
+  const talleEnd = s.match(/^(.+?)\s+tall[ea]\s+(\d{2}|[A-Za-z]{1,5})$/i);
+  if (talleEnd) {
+    // Quitar dash colgante al final del body si el string original tenía
+    // "Body - Talla X" (caso común: "R - Buzo Polar Gris - Talla S").
+    const body = talleEnd[1].trim().replace(/\s*-\s*$/, '').trim();
+    const raw = talleEnd[2];
+    if (body.length >= 2) {
+      const size = /^\d{2}$/.test(raw) ? raw : normalizeSizeToken(raw);
+      if (size) return `${body} - ${size}`;
+    }
+  }
+  // Caso 3: artículo de talle único (corbata, pañuelo, etc.). No trae talle
+  // en el remito pero lo reconocemos por keyword y asignamos size 'Única'.
+  if (s.length >= 2 && detectSizelessItem(s)) {
+    return `${s} - ${UNICA_SIZE}`;
+  }
+  return null;
 }
 
 function extractDescriptionsFromTightNoSpace(text: string): DescWithQty[] {
