@@ -91,6 +91,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Bloqueo por turno activo: si el empleado ya tiene una cita confirmada o
+    // en proceso con fecha >= hoy, no permitir agendar otra hasta que esa cita
+    // se complete, cancele o quede como ausente. Mostrar los datos de la cita
+    // existente para que el usuario sepa cuál es.
+    const hoyIso = new Date().toISOString().slice(0, 10);
+    const turnoActivo = await db.get(
+      `SELECT a.id, a.status, a.order_items, s.fecha, s.start_time, s.end_time
+       FROM agenda_appointments a
+       JOIN agenda_time_slots s ON s.id = a.time_slot_id
+       WHERE a.employee_id = ?
+         AND a.status IN ('confirmada', 'en_proceso')
+         AND s.fecha >= ?
+       ORDER BY s.fecha ASC, s.start_time ASC
+       LIMIT 1`,
+      [employee.id, hoyIso]
+    );
+
+    if (turnoActivo) {
+      let items: Array<{ article_type?: string; size?: string; color?: string; qty?: number }> = [];
+      try {
+        const raw = turnoActivo.order_items;
+        if (typeof raw === 'string' && raw) items = JSON.parse(raw);
+        else if (Array.isArray(raw)) items = raw;
+      } catch {
+        items = [];
+      }
+
+      await db.run(
+        'INSERT INTO agenda_failed_attempts (documento, motivo, ip) VALUES (?, ?, ?)',
+        [docNorm, 'already_scheduled', ip]
+      ).catch(() => {});
+
+      return NextResponse.json(
+        {
+          error: 'Ya tenés un turno agendado.',
+          reason: 'already_scheduled',
+          scheduled_appointment: {
+            id: turnoActivo.id,
+            status: turnoActivo.status,
+            fecha: typeof turnoActivo.fecha === 'string' ? turnoActivo.fecha.slice(0, 10) : String(turnoActivo.fecha).slice(0, 10),
+            start_time: turnoActivo.start_time,
+            end_time: turnoActivo.end_time,
+            order_items: items,
+          },
+        },
+        { status: 409 }
+      );
+    }
+
     // Obtener catálogo de la empresa del empleado
     const catalog = await getCatalogForEmployee(
       employee.empresa,

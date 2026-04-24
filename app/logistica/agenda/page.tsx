@@ -26,7 +26,13 @@ export default function AgendaLookupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [whatsapp, setWhatsapp] = useState<string | null>(null);
-  const [view, setView] = useState<'lookup' | 'not-enabled'>('lookup');
+  const [view, setView] = useState<'lookup' | 'not-enabled' | 'already-scheduled'>('lookup');
+  const [scheduled, setScheduled] = useState<{
+    fecha: string;
+    start_time: string;
+    end_time?: string;
+    order_items: Array<{ article_type?: string; size?: string; color?: string; qty?: number }>;
+  } | null>(null);
 
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +51,12 @@ export default function AgendaLookupPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        if (data.error && data.error.includes('No habilitado')) {
+        if (data.reason === 'already_scheduled' && data.scheduled_appointment) {
+          setScheduled(data.scheduled_appointment);
+          setView('already-scheduled');
+          return;
+        }
+        if (data.reason === 'not_enabled' || (data.error && data.error.includes('No habilitado'))) {
           setView('not-enabled');
           if (data.whatsapp) setWhatsapp(data.whatsapp);
           return;
@@ -213,6 +224,67 @@ export default function AgendaLookupPage() {
               </button>
             </form>
           </>
+        ) : view === 'already-scheduled' && scheduled ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ width: '64px', height: '64px', background: '#fff7ed', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
+              <AlertCircle size={32} color="#d97706" />
+            </div>
+
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem', textAlign: 'center' }}>
+              Ya tenés un turno agendado
+            </h2>
+
+            <p style={{ fontSize: '0.95rem', color: '#64748b', lineHeight: '1.6', marginBottom: '1.25rem', textAlign: 'center' }}>
+              No podés volver a agendar hasta que se complete, se cancele o no asistas al turno actual.
+            </p>
+
+            <div style={{
+              width: '100%',
+              background: '#fff7ed',
+              border: '1px solid #fed7aa',
+              borderLeft: '4px solid #d97706',
+              borderRadius: '8px',
+              padding: '1rem 1.1rem',
+              marginBottom: '1.5rem',
+            }}>
+              <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#9a3412', fontWeight: 700, marginBottom: '6px' }}>
+                Tu próximo turno
+              </div>
+              <div style={{ fontSize: '1.05rem', color: '#111827', fontWeight: 600, lineHeight: 1.4 }}>
+                {formatFechaLarga(scheduled.fecha)}
+                {scheduled.start_time && <> a las <span style={{ color: '#9a3412' }}>{scheduled.start_time.slice(0, 5)}</span></>}
+              </div>
+              {scheduled.order_items.length > 0 && (
+                <div style={{ marginTop: '8px', fontSize: '0.85rem', color: '#4b5563' }}>
+                  <span style={{ fontWeight: 600, color: '#374151' }}>Productos: </span>
+                  {formatItems(scheduled.order_items)}
+                </div>
+              )}
+            </div>
+
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <button
+                onClick={() => { setView('lookup'); setScheduled(null); setDocumento(''); }}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#29416b',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '0.9rem',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                <ArrowLeft size={18} /> Volver al inicio
+              </button>
+            </div>
+          </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ width: '64px', height: '64px', background: '#fef2f2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
@@ -299,4 +371,32 @@ export default function AgendaLookupPage() {
       </p>
     </div>
   );
+}
+
+function formatFechaLarga(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso;
+  const y = parseInt(m[1], 10);
+  const mon = parseInt(m[2], 10);
+  const d = parseInt(m[3], 10);
+  const fecha = new Date(y, mon - 1, d);
+  if (isNaN(fecha.getTime())) return iso;
+  const opts: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+  return fecha.toLocaleDateString('es-UY', opts);
+}
+
+function formatItems(items: Array<{ article_type?: string; size?: string; color?: string; qty?: number }>): string {
+  if (!items?.length) return '';
+  return items
+    .map((it) => {
+      const partes: string[] = [];
+      if (it.article_type) partes.push(it.article_type);
+      if (it.color) partes.push(it.color);
+      if (it.size) partes.push(`talle ${it.size}`);
+      const base = partes.join(' ');
+      const qty = Number(it.qty) || 1;
+      return qty > 1 ? `${base} ×${qty}` : base;
+    })
+    .filter(Boolean)
+    .join(', ');
 }
