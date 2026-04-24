@@ -26,14 +26,14 @@
 
 <!-- TIMER-START -->
 
-**Tiempo en desarrollo**: 2 meses · 11 días · 9 horas
+**Tiempo en desarrollo**: 2 meses · 11 días · 15 horas
 
 | Métrica | Valor |
 |---------|-------|
 | Primer commit | 2026-02-10 |
-| Último commit | 2026-04-23 |
-| Commits totales | 492 |
-| Horas calendario (desde primer commit) | 1735 h |
+| Último commit | 2026-04-24 |
+| Commits totales | 493 |
+| Horas calendario (desde primer commit) | 1740 h |
 | Horas efectivas estimadas | 138 h |
 
 <sub>Horas efectivas = suma de intervalos entre commits con gap ≤ 120 min + 30 min por arranque de sesión. Aproximación basada en git; no contempla trabajo sin commit.</sub>
