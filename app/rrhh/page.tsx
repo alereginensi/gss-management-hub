@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Clock, Shirt } from 'lucide-react';
+import { ArrowLeft, Clock, Scale, Shirt } from 'lucide-react';
 import { useTicketContext, hasModuleAccess } from '@/app/context/TicketContext';
 import LogoutExpandButton from '@/app/components/LogoutExpandButton';
 
@@ -81,6 +81,13 @@ export default function RrhhPage() {
                             <div className="landing-card-content">
                                 <p className="landing-card-label">Jornales</p>
                                 <p className="landing-card-desc">Control de días trabajados del personal</p>
+                            </div>
+                        </Link>
+                        <Link href="/rrhh/citaciones" className="landing-card-btn">
+                            <div className="landing-card-icon"><Scale size={26} color="white" /></div>
+                            <div className="landing-card-content">
+                                <p className="landing-card-label">Citaciones Laborales</p>
+                                <p className="landing-card-desc">Audiencias MTSS y Juzgado, acuerdos y facturas</p>
                             </div>
                         </Link>
                     </div>

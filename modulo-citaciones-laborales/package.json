@@ -1,0 +1,18 @@
+{
+  "name": "modulo-citaciones-laborales",
+  "version": "1.0.0",
+  "description": "Módulo de gestión de citaciones laborales MTSS/Juzgado para el módulo de RRHH",
+  "main": "index.ts",
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0",
+    "typescript": ">=4.0.0"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  },
+  "notes": {
+    "instalacion": "Corré: npm install xlsx",
+    "integracion": "Ver README.md para instrucciones detalladas"
+  }
+}

@@ -1,6 +1,6 @@
 # Guía de Recursos Humanos (RRHH)
 
-El módulo de Recursos Humanos tiene dos funcionalidades principales: la **Agenda Web** para la entrega y seguimiento de uniformes y el módulo de **Jornales** para el control de días trabajados del personal.
+El módulo de Recursos Humanos tiene tres funcionalidades principales: la **Agenda Web** para la entrega y seguimiento de uniformes, **Jornales** para el control de días trabajados del personal y **Citaciones Laborales** para la gestión de audiencias ante el MTSS y el Juzgado.
 
 ---
 
@@ -118,3 +118,42 @@ Tabla final ordenada con los funcionarios clasificados según sus jornales acumu
 - **Ef. autorizada** — estado fijo marcado manualmente desde la pestaña Personal.
 
 Permite filtrar por texto y por estado, y exportar todo a Excel.
+
+---
+
+## 7. Citaciones Laborales
+
+Desde el hub `/rrhh` hacé clic en la tarjeta **"Citaciones Laborales"**. Es el expediente digital de cada audiencia laboral (MTSS o Juzgado), con el detalle del reclamo, el acuerdo transaccional si lo hubo y las facturas del abogado asociadas al caso.
+
+### 7.1. Panel principal
+
+Arriba tenés tarjetas de resumen con: total de expedientes, pendientes, en curso, cerrados, total reclamado, total pagado en acuerdos y total de honorarios facturados.
+
+Debajo, cuatro pestañas para filtrar rápido: **Todas**, **Pendientes**, **En curso** y **Cerradas**. Además una barra con búsqueda por empresa o trabajador y un filtro para ver solo MTSS o solo Juzgado.
+
+### 7.2. Crear una citación nueva
+
+1. Hacé clic en **"+ Nueva citación"** (esquina superior derecha).
+2. Se abre un panel lateral con el formulario. Empresa y fecha de audiencia son obligatorios.
+3. **(Opcional, recomendado)** En el primer bloque podés **subir el PDF de la citación**: hacé clic en **"Elegir PDF"** y seleccioná el archivo. El sistema va a leerlo y autocompletar todos los campos que detecte (empresa, trabajador, fecha, hora, sede, abogado, rubros, monto reclamado, organismo MTSS/Juzgado). Los campos autocompletados aparecen listados en un cartelito verde. Si algún dato no sale bien, lo corregís a mano — el PDF queda adjunto al expediente de todas formas.
+4. Completá datos de la citación: organismo (MTSS o Juzgado), hora, dirección/sede, trabajador, abogado de parte, rubros reclamados, total reclamado, estado y motivo.
+4. Si corresponde, llená la sección **"Acuerdo transaccional"** con el detalle y el monto pagado.
+5. Agregá las **facturas del abogado** una por una con el botón **"+ Agregar factura"**: número, concepto (asistencia MTSS, contestación demanda, acuerdo, asistencia juzgado, otros) y monto.
+6. Opcionalmente, observaciones libres.
+7. Hacé clic en **"Guardar cambios"**.
+
+### 7.3. Editar un expediente
+
+En la tabla, hacé clic en la fila para abrir el panel lateral con todos los datos ya cargados. Cambiá lo que necesites y guardá. Si el expediente tenía un PDF adjunto lo vas a ver arriba, con botones **Ver** (abre el PDF en otra pestaña), **Reemplazar** y **Quitar**.
+
+### 7.4. Cerrar un expediente
+
+Desde la acción de la fila hacé clic en **"Cerrar expediente"**. El estado pasa a **Cerrado** y el caso se mueve a la pestaña correspondiente. Se mantiene en la tabla para consulta futura.
+
+### 7.5. Exportar a Excel
+
+El botón **"↓ Excel"** descarga un archivo `.xlsx` con todas las citaciones visibles según los filtros actuales (empresa, trabajador, organismo, fecha, estado, montos, acuerdos, facturas).
+
+### 7.6. Quién puede usarlo
+
+Mismo criterio que Jornales: solo **Administrador** o **RRHH**.

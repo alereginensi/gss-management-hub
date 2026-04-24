@@ -977,3 +977,15 @@ textarea {
   grid-template-columns: 1fr 1fr !important;
   gap: 0.6rem !important;
 }
+
+/* ── Módulo Citaciones Laborales: alinear tema con design system GSS ──────── */
+.cit-module {
+  --cit-mtss: #29416b;
+  --cit-mtss-bg: #e8ecf3;
+  --cit-juz: #7c2d12;
+  --cit-juz-bg: #faf0ed;
+  --cit-danger: #e04951;
+  --cit-danger-bg: #fdeeec;
+  --cit-radius: 0px;
+  --cit-radius-lg: 0px;
+}

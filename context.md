@@ -677,3 +677,87 @@ Todos protegidos con `getSession()` + `isJornalesRole()` (solo **`admin`** y **`
 ### Seed histórico inicial
 
 [scripts/seed-jornales-historico.cjs](scripts/seed-jornales-historico.cjs) (`npm run seed:jornales-historico`) carga una lista fija de personas + marcas sintéticas para reproducir el estado previo al módulo. Los datos (nombres, padrones, lugares) viven en `scripts/seed-jornales-data.local.json` — gitignored porque contiene información personal; ver `scripts/seed-jornales-data.example.json` para el formato. Idempotente via sentinela `file_key='__seed_historico_v1__'` en `jornales_archivos`: re-ejecutar borra todas las marcas de ese archivo y re-inserta. No toca marcas provenientes de uploads reales (distinto `file_id`). Fechas sintéticas empiezan en 2020-01-01 para no colisionar con marcas reales futuras. `DRY_RUN=1` para simular sin escribir.
+
+---
+
+## Módulo Citaciones Laborales (RRHH) — `app/rrhh/citaciones/`
+
+Expediente digital de audiencias laborales ante el **MTSS** y el **Juzgado**. Registra la citación, el acuerdo transaccional si lo hubo, las facturas del abogado asociadas y permite exportar todo a Excel. Reemplaza el tracking manual en planillas sueltas.
+
+### Origen del código
+
+El UI y la lógica viven en un paquete auto-contenido en la raíz del repo: **[`modulo-citaciones-laborales/`](modulo-citaciones-laborales/)** (React 18+/TypeScript). Entregado como bundle externo, integrado tal cual: `CitacionesModule` es el componente raíz (`modulo-citaciones-laborales/index.ts`). Los imports internos son relativos, por eso no se descompone dentro de `app/`.
+
+Estructura interna:
+- `components/CitacionesModule.tsx` — raíz. Importa `./citaciones.css` directamente.
+- `components/{PlanillaView,DrawerEditar,StatsGrid,FacturasEditor}.tsx` — UI.
+- `hooks/useCitaciones.ts` — todo el estado (filtros, tabs, drawer, CRUD).
+- `api/citaciones.api.ts` — re-exporta desde `utils/storage.ts`.
+- `utils/storage.ts` — **adaptado a REST** contra `/api/rrhh/citaciones` (el bundle original usaba `localStorage`).
+- `utils/{format,export}.ts` — helpers de fecha/monto y export Excel con `xlsx` (dep ya existente, `package.json:40`).
+- `types/citacion.ts` — interfaces `Citacion`, `Factura`, `CitacionFormData`, `CitacionesStats`, `EstadoCitacion` (`'pendiente'|'en curso'|'cerrado'`), `Organismo` (`'MTSS'|'Juzgado'`), `TipoFactura`.
+
+### Ruta y acceso
+
+- **`/rrhh/citaciones`** — page cliente en [app/rrhh/citaciones/page.tsx](app/rrhh/citaciones/page.tsx). Guard `hasModuleAccess(currentUser, 'rrhh')` (redirige a `/` si no). Header GSS estándar con breadcrumb "← RRHH".
+- Tarjeta de entrada en el hub `/rrhh` ([app/rrhh/page.tsx](app/rrhh/page.tsx)) con icono `Scale` de `lucide-react`.
+- No requiere entrada en `PANEL_GENERAL_PREFIXES` del middleware — protección solo client-side + chequeo de rol en cada endpoint.
+
+### APIs (`/api/rrhh/citaciones/`)
+
+- **`route.ts`** — GET (listar, ordenadas por `created_at DESC`) y POST (crear). El POST genera `id = crypto.randomUUID()` y `now = new Date().toISOString()`, valida `empresa` y devuelve el row hidratado.
+- **`[id]/route.ts`** — PUT (update parcial con SET dinámico por campos presentes en el body; retorna 404 si el id no existe) y DELETE.
+- Todos protegidos con `getSession()` + `isCitacionesRole()` (constante `CITACIONES_ALLOWED_ROLES = ['admin','rrhh']` en [lib/citaciones-helpers.ts](lib/citaciones-helpers.ts)).
+- Paso PG vs SQLite: ambos endpoints usan `db.query(..., [params])` y `db.run(..., [params])` con placeholders `?` — el wrapper ([lib/db.ts:98-115](lib/db.ts)) convierte a `$1,$2,...` para PG automáticamente.
+
+### Tabla `rrhh_citaciones` ([lib/db.ts](lib/db.ts) L860-885)
+
+| Columna | Tipo | Nota |
+|---------|------|------|
+| `id` | TEXT PRIMARY KEY | UUID generado por el backend |
+| `empresa`, `org`, `fecha`, `hora`, `sede`, `trabajador`, `abogado`, `rubros`, `estado`, `motivo`, `acuerdo`, `obs` | TEXT | `org` default `MTSS`, `estado` default `pendiente` |
+| `total`, `macuerdo` | NUMERIC | Montos en UYU; PG devuelve string, handler envuelve en `Number()` |
+| `facturas` | TEXT | JSON serializado del array `Factura[]`; parseado en read |
+| `created_at`, `updated_at` | TIMESTAMP | ISO string |
+| Índices | | `(estado)`, `(fecha)` |
+
+### Adaptación de `utils/storage.ts`
+
+Reemplaza las 4 funciones del bundle original:
+- `getAll()` → `GET /api/rrhh/citaciones` (devuelve `{ citaciones: Citacion[] }`).
+- `create(data)` → `POST` con el payload sin `id`/`createdAt`/`updatedAt`.
+- `update(id, data)` → `PUT /api/rrhh/citaciones/:id` con body parcial.
+- `remove(id)` → `DELETE /api/rrhh/citaciones/:id`.
+
+Todas con `credentials: 'include'` para la cookie httpOnly `session`. El hook `useCitaciones` solo conoce estas funciones — no hay que tocar otros archivos del módulo.
+
+### Estilos
+
+El módulo usa prefijo `--cit-*` y clases `.cit-*`, sin colisión con `.card`/`.badge`/`.btn-*` de `globals.css`. Para alinear al design system GSS se sobrescriben, dentro de `.cit-module`, las variables `--cit-mtss` (→ `#29416b`), `--cit-juz`, `--cit-danger` (→ `#e04951`) y `--cit-radius(-lg)` (→ `0px` — estilo cuadrado del resto de la app). Ver bloque al final de [app/globals.css](app/globals.css).
+
+### Adjunto PDF con autofill
+
+Columnas adicionales en `rrhh_citaciones` (aditivas, migración PG + SQLite):
+`pdf_url TEXT` (marker `db://<id>`), `pdf_data BYTEA/BLOB` (bytes del PDF, máx 10 MB), `pdf_filename TEXT`, `parsed_pdf_text TEXT`.
+
+Mismo patrón que agenda remitos (BYTEA en DB por restricción PDF de Cloudinary y filesystem efímero Railway). Sin Cloudinary para PDFs.
+
+**Endpoints:**
+- `POST /api/rrhh/citaciones/parse-pdf` — recibe `FormData{ file }`, extrae texto con `pdf-parse` (dynamic import `pdf-parse/lib/pdf-parse.js`), aplica heurística regex con [lib/citaciones-pdf-parser.ts](lib/citaciones-pdf-parser.ts) y devuelve `{ parsed: Partial<CitacionFormData>, rawText, filename, size }`. No persiste nada — es preview para autofill antes de crear la cita.
+- `POST /api/rrhh/citaciones/[id]/pdf` — adjunta PDF a una citación existente (UPDATE `pdf_data`, `pdf_filename`, `pdf_url=db://<id>`, `parsed_pdf_text`). Valida magic bytes `%PDF`, máx 10 MB. Responde `{ pdfUrl, pdfFilename }`.
+- `GET /api/rrhh/citaciones/[id]/pdf` — proxy descarga: sirve los bytes con `Content-Type: application/pdf`, `Content-Disposition: inline`, `Cache-Control: private, no-store`.
+- `DELETE /api/rrhh/citaciones/[id]/pdf` — nulifica `pdf_data`, `pdf_filename`, `pdf_url`, `parsed_pdf_text`.
+
+**Heurística ([lib/citaciones-pdf-parser.ts](lib/citaciones-pdf-parser.ts)):** `extractCitacionFromPdfText(text)` busca con regex las labels frecuentes en formularios MTSS/Juzgado UY. Patrones MTSS específicos (probados contra PDFs reales): "Señor/a: RAZON SOCIAL" (tolerante a "Seftor/a" cuando pdf-parse decodifica mal la ñ), "Para atender reclamo de [TRABAJADOR]", "asistido por: [ABOGADO]", "sita en [SEDE]", "El día DD/MM/YYYY", "A la hora HH:MM". Patrones genéricos fallback: "Empresa:", "Trabajador:", "Letrado patrocinante:", "Sede/Dirección:", "Fecha de audiencia:" (acepta DD/MM/YYYY y "22 de mayo de 2026"), "Total reclamado / Se reclama la suma de" (parsea formato UY `1.234.567,89`), "RUBROS RECLAMADOS" y "RELACION DE HECHOS QUE MOTIVAN EL RECLAMO" (case-sensitive para evitar falsos positivos contra referencias en minúsculas del cuerpo). Detecta organismo por keywords (`MINISTERIO DE TRABAJO|MTSS|DINATRA|AUDIENCIA DE CONCILIACION` → MTSS, `JUZGADO LETRADO|PODER JUDICIAL|CEDULÓN JUDICIAL` → Juzgado).
+
+**Dos helpers correctivos para PDFs con fuente custom mal decodificada:**
+- `restoreCommonAccents(text)` — repone tildes perdidas con reglas morfológicas seguras: `[vocal]cin` → `[vocal]ción` ("aclaracin" → "aclaración"), `[consonante]sion` → `[consonante]sión` ("admision" → "admisión").
+- `isLikelyCorrupt(text)` — detecta bloques severamente corrompidos (palabras ≥3 letras sin vocales tipo "trnbnjnr"/"pnrn"/"cltndn" o runs de palabras de 1-2 letras no-stopword tipo "I O 12"). Si el bloque de `rubros` o `motivo` supera el umbral, se **omite el autofill** en lugar de llenar con basura — el usuario lo completa a mano mirando el PDF. Stopwords ("de", "la", "el", "en", "se", "es", "sra", etc.) excluidas para evitar falsos positivos en texto español normal.
+
+**Detección de PDFs escaneados:** `looksScanned(rawText)` → si hay menos de 80 caracteres útiles el endpoint `parse-pdf` responde `scanned: true` y la UI muestra "El PDF parece escaneado (imagen) — completá los campos a mano. El archivo igual queda adjunto al guardar". Caso típico: cedulones del Juzgado subidos como fotocopia escaneada.
+
+**Flujo UI (DrawerEditar):** al elegir archivo → `parsePdf(file)` → el hook hace `setFormData` solo sobre campos actualmente vacíos (no pisa ediciones manuales) y muestra una lista de "Campos autocompletados". El `File` queda en estado local; al apretar "Guardar", primero se crea/actualiza la citación, y tras recibir el `id`, se hace `attachPdf(id, file)`. Si el attach falla, la citación queda guardada y se muestra aviso al usuario. En modo edición con un PDF ya adjunto se ofrece ver/reemplazar/quitar.
+
+### Roles
+
+- Solo `admin` o `rrhh` (mismo criterio que Jornales, vía `isCitacionesRole`).

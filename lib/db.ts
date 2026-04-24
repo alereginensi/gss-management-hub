@@ -856,6 +856,34 @@ class DbWrapper {
 
  CREATE INDEX IF NOT EXISTS idx_jornales_marcas_padron ON jornales_marcas(padron);
  CREATE INDEX IF NOT EXISTS idx_jornales_marcas_fecha ON jornales_marcas(fecha);
+
+ CREATE TABLE IF NOT EXISTS rrhh_citaciones (
+ id TEXT PRIMARY KEY,
+ empresa TEXT NOT NULL,
+ org TEXT NOT NULL DEFAULT 'MTSS',
+ fecha TEXT,
+ hora TEXT,
+ sede TEXT,
+ trabajador TEXT,
+ abogado TEXT,
+ rubros TEXT,
+ total NUMERIC DEFAULT 0,
+ estado TEXT NOT NULL DEFAULT 'pendiente',
+ motivo TEXT,
+ acuerdo TEXT,
+ macuerdo NUMERIC DEFAULT 0,
+ facturas TEXT,
+ obs TEXT,
+ pdf_url TEXT,
+ pdf_data BYTEA,
+ pdf_filename TEXT,
+ parsed_pdf_text TEXT,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ );
+
+ CREATE INDEX IF NOT EXISTS idx_rrhh_citaciones_estado ON rrhh_citaciones(estado);
+ CREATE INDEX IF NOT EXISTS idx_rrhh_citaciones_fecha ON rrhh_citaciones(fecha);
  `;
 
  // Migration for limpieza_registros
@@ -1696,6 +1724,26 @@ class DbWrapper {
  console.error('Error migrating agenda_requests (Postgres):', e);
  }
 
+ // Migrate rrhh_citaciones: columnas PDF (adjunto + texto parseado) para bases ya creadas
+ try {
+ const ccCols = await this.pgPool!.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'rrhh_citaciones'`);
+ const ccColNames = ccCols.rows.map((r: any) => r.column_name);
+ const newCcCols: [string, string][] = [
+ ['pdf_url', 'TEXT'],
+ ['pdf_data', 'BYTEA'],
+ ['pdf_filename', 'TEXT'],
+ ['parsed_pdf_text', 'TEXT'],
+ ];
+ for (const [col, def] of newCcCols) {
+ if (!ccColNames.includes(col)) {
+ await this.pgPool!.query(`ALTER TABLE rrhh_citaciones ADD COLUMN ${col} ${def}`);
+ console.log(`Migrated rrhh_citaciones: added ${col}`);
+ }
+ }
+ } catch (e) {
+ console.error('Error migrating rrhh_citaciones (Postgres):', e);
+ }
+
  // Fix double-encoded UTF-8 names stored as Latin-1 (caused by atob() in verifyJWT)
  // "Andreína" was stored as "AndreÃna" — convert_to LATIN1 then decode as UTF8 reverses this
  try {
@@ -2052,6 +2100,25 @@ class DbWrapper {
  }
  } catch (e) {
  console.error('Error migrating agenda_requests (SQLite):', e);
+ }
+
+ // Migrate rrhh_citaciones: columnas PDF (adjunto + texto parseado) para bases ya creadas
+ try {
+ const ccInfo = this.sqliteDb.prepare("PRAGMA table_info(rrhh_citaciones)").all() as any[];
+ const ccCols = ccInfo.map((c: any) => c.name);
+ const newCcCols: [string, string][] = [
+ ['pdf_url', 'TEXT'],
+ ['pdf_data', 'BLOB'],
+ ['pdf_filename', 'TEXT'],
+ ['parsed_pdf_text', 'TEXT'],
+ ];
+ for (const [col, def] of newCcCols) {
+ if (!ccCols.includes(col)) {
+ this.sqliteDb.exec(`ALTER TABLE rrhh_citaciones ADD COLUMN ${col} ${def}`);
+ }
+ }
+ } catch (e) {
+ console.error('Error migrating rrhh_citaciones (SQLite):', e);
  }
 
  // Fix notifications table: ensure id column is INTEGER PRIMARY KEY (auto-increment)

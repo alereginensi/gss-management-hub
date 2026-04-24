@@ -24,6 +24,7 @@ Guía de referencia rápida para entender qué hace cada archivo y carpeta del p
 gss-management-hub/
 ├── app/ # Todo el código Next.js (páginas + APIs)
 ├── lib/ # Lógica compartida (no es Next.js, es TypeScript puro)
+├── modulo-citaciones-laborales/ # Paquete externo integrado en RRHH (React + TypeScript)
 ├── scripts/ # Utilidades de mantenimiento, migraciones, crons
 ├── docs/ # Documentación
 ├── public/ # Archivos estáticos (imágenes, SW, manifest)
@@ -64,8 +65,9 @@ Cada subcarpeta de `app/` corresponde a una sección del sistema.
 | [`app/logistica/agenda/admin/devoluciones-egreso/`](../app/logistica/agenda/admin/devoluciones-egreso/) | `/logistica/agenda/admin/devoluciones-egreso` | Devoluciones al finalizar relación laboral (listado + alta de nuevo egreso) |
 | [`app/seguridad-electronica/`](../app/seguridad-electronica/) | `/seguridad-electronica` | Monitoreo y mantenimientos técnicos |
 | [`app/cotizacion/`](../app/cotizacion/) | `/cotizacion` | Cotización comercial y liquidación de horas |
-| [`app/rrhh/`](../app/rrhh/) | `/rrhh` | RRHH — hub con Agenda web y Jornales |
+| [`app/rrhh/`](../app/rrhh/) | `/rrhh` | RRHH — hub con Agenda web, Jornales y Citaciones Laborales |
 | [`app/rrhh/jornales/`](../app/rrhh/jornales/) | `/rrhh/jornales` | Control de días trabajados (personal, marcas, altas/bajas, resultados) |
+| [`app/rrhh/citaciones/`](../app/rrhh/citaciones/) | `/rrhh/citaciones` | Gestión de audiencias MTSS y Juzgado, acuerdos, facturas del abogado |
 | [`app/limpieza/`](../app/limpieza/) | `/limpieza` | Pantalla pública de registro de limpieza (sin login) |
 | [`app/turno/`](../app/turno/) | `/turno` | Pantalla pública de consulta de turnos de uniforme |
 | [`app/mitrabajo/`](../app/mitrabajo/) | `/mitrabajo` | Descarga de reportes desde mitrabajo.uy |
@@ -90,6 +92,7 @@ Dentro de cada módulo hay una carpeta `api/` con los endpoints:
 | [`app/api/cotizacion/`](../app/api/cotizacion/) | Categorías, tarifas, períodos, reportes |
 | [`app/api/rrhh/`](../app/api/rrhh/) | Entregas de uniformes desde RRHH |
 | [`app/api/rrhh/jornales/`](../app/api/rrhh/jornales/) | Personal, marcas, archivos y resultados del módulo de Jornales |
+| [`app/api/rrhh/citaciones/`](../app/api/rrhh/citaciones/) | CRUD de citaciones laborales (GET/POST, [id]/PUT/DELETE, parse-pdf para autofill, [id]/pdf para adjuntar/ver/quitar PDF) |
 | [`scripts/seed-jornales-historico.cjs`](../scripts/seed-jornales-historico.cjs) | Seed idempotente de personal + marcas sintéticas iniciales del módulo Jornales |
 | [`app/api/limpieza/`](../app/api/limpieza/) | Confirmación de tareas (pantalla pública) |
 | [`app/api/turno/`](../app/api/turno/) | Consulta de turno por cédula |
@@ -189,6 +192,9 @@ Código TypeScript puro, sin dependencias de Next.js. Se importa desde páginas 
 | [`mitrabajo-download.js`](../lib/mitrabajo-download.js) | Descarga de reportes desde mitrabajo.uy con Playwright (versión lib) |
 | [`mitrabajo-mailer.cjs`](../lib/mitrabajo-mailer.cjs) | Envío del Excel como adjunto vía SMTP tras guardar en DB (lee destinatarios de `mitrabajo_config`) |
 | [`rate-limit.ts`](../lib/rate-limit.ts) | Rate limiting en memoria por IP y clave. Incluye `getClientIp` (compatible con Railway) |
+| [`jornales-helpers.ts`](../lib/jornales-helpers.ts) | Roles permitidos (admin, rrhh), cálculo de estado y parseo de fechas para Jornales |
+| [`citaciones-helpers.ts`](../lib/citaciones-helpers.ts) | Roles permitidos (admin, rrhh) para el módulo de Citaciones Laborales |
+| [`citaciones-pdf-parser.ts`](../lib/citaciones-pdf-parser.ts) | Parser heurístico de PDFs de citaciones MTSS/Juzgado: extrae texto con pdf-parse y matchea regex sobre labels (empresa, trabajador, fecha, hora, abogado, rubros, monto) |
 
 ---
 
