@@ -77,6 +77,7 @@ app/config/clients.ts
 *.xls
 *.csv
 *.pdf
+!docs/GUIA_*.pdf
 data/
 
 # Archivos locales / temporales

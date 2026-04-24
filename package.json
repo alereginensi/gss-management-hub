@@ -12,6 +12,7 @@
     "mitrabajo:cron": "node scripts/cron-mitrabajo.cjs",
     "agenda:cron": "node scripts/cron-agenda.cjs",
     "agenda:slots": "node scripts/cron-agenda.cjs --manual",
+    "docs:guia-planillas": "node scripts/gen-guia-planillas.cjs",
     "agenda:reset-catalog": "node scripts/reset-agenda-catalog.cjs",
     "agenda:migrate-catalog-category": "node scripts/migrate-catalog-puesto-to-category.cjs",
     "seed": "node scripts/seed-dev.js",
