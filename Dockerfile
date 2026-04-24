@@ -84,6 +84,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/nodemailer ./node_mo
 RUN mkdir -p ./scripts ./lib
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/download-mitrabajo.cjs ./scripts/download-mitrabajo.cjs
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/cron-mitrabajo.cjs ./scripts/cron-mitrabajo.cjs
+# cron-agenda es self-contained: sólo node-cron + fetch nativo (Node 20) — llama
+# endpoints internos del servicio principal en lugar de importar lib/ TypeScript.
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/cron-agenda.cjs ./scripts/cron-agenda.cjs
 # mitrabajo-mailer es requerido por download-mitrabajo.cjs con require relativo ../lib/
 COPY --from=builder --chown=nextjs:nodejs /app/lib/mitrabajo-mailer.cjs ./lib/mitrabajo-mailer.cjs
 
